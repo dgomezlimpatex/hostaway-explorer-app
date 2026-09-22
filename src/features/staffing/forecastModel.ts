@@ -122,12 +122,12 @@ function buildLedgers(data: ForecastDataset, context: ForecastContext, placement
 /** One pure model for every production screen. Scheduling suggestions never become actual work. */
 export function buildForecastModel(input: ForecastDataset, context: ForecastContext, reinforcementHours = 0): ForecastModel {
   if (input.sedeId !== context.sedeId) throw new Error('La sede del resultado no corresponde a la consulta.');
-  if (!Number.isFinite(reinforcementHours) || reinforcementHours < 0 || reinforcementHours > 60 || !Number.isInteger(reinforcementHours * 4)) throw new Error('Refuerzo inválido (0–60 h, intervalos de 0,25 h).');
+  if (!Number.isFinite(reinforcementHours) || reinforcementHours < 0 || !Number.isSafeInteger(reinforcementHours * 4)) throw new Error('Refuerzo inválido: indica horas positivas en intervalos de 0,25 h.');
   const data: ForecastDataset = { ...input, workers: input.workers.map(w => ({ ...w, blockedSlots: [...(w.blockedSlots ?? [])] })), issues: [...input.issues] };
   const cache = new Map<string, number>(); paidCache.set(data, cache);
   const tasksByDate = new Map<string, ForecastTask[]>();
   for (const task of data.tasks) tasksByDate.set(task.date, [...(tasksByDate.get(task.date) ?? []), task]);
-  if (reinforcementHours > 0) data.workers.push({ id: 'hypothetical', name: 'Refuerzo hipotético', weeklyMinutes: reinforcementHours * 60 / 1.3, weeklyMinutesMax: reinforcementHours * 60, contractKnown: true, engagement: 'collaborator', restDays: [], restDay: null, flexibleRest: false, canMove: !context.center, homeCenterIds: context.center ? [context.center] : [], centerPriorities: context.center ? [{ centerId: context.center, priority: 89 }] : [], unavailableDates: [], confirmedRestDates: [], availability: [], excluded: false });
+  if (reinforcementHours > 0) data.workers.push({ id: 'hypothetical', name: 'Refuerzo hipotético', weeklyMinutes: reinforcementHours * 60 / 1.3, weeklyMinutesMax: reinforcementHours * 60, contractKnown: true, engagement: 'collaborator', restDays: [], restDay: null, flexibleRest: false, canMove: !context.center, homeCenterIds: context.center ? [context.center] : [], centerPriorities: context.center ? [{ centerId: context.center, priority: 89 }] : [], unavailableDates: [], confirmedRestDates: [], availability: [], excluded: false, activeFrom: context.reinforcementFrom, activeTo: context.reinforcementTo });
   const issues = [...data.issues];
   if (context.center && !data.centers.some(c => c.id === context.center)) issues.push({ code: 'center-unavailable', message: 'El centro no está disponible en la sede actual.', source: 'properties', ids: [context.center], centerId: context.center, impact: 'capacity' });
   // Any overlap between an external recurring service and a task needs identity review.

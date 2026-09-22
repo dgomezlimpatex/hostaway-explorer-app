@@ -81,7 +81,8 @@
     "test:staffing": "node scripts/staffingEngineTest.mjs && node scripts/staffingDataTest.mjs && node scripts/staffingCollaboratorsTest.mjs && node scripts/staffingShiftsTest.mjs && node scripts/staffingBusinessRulesTest.mjs && node scripts/forecastContractTest.mjs && node scripts/staffingReadClientTest.mjs && node scripts/forecastAccessTest.mjs && node scripts/staffingVisualTest.mjs && node scripts/forecastQueryTest.mjs && node scripts/staffingTeamParityTest.mjs && node scripts/staffingBalanceTest.mjs && node scripts/staffingSsrTest.mjs && node scripts/staffingMonthlyTest.mjs",
     "test:staffing:browser": "node scripts/staffingVisualTest.mjs && node scripts/forecastQueryTest.mjs && node scripts/staffingTeamParityTest.mjs && node scripts/staffingBalanceTest.mjs && node scripts/staffingSsrTest.mjs",
     "test:forecast": "node scripts/forecastContractTest.mjs && node scripts/forecastAccessTest.mjs && node scripts/forecastQueryTest.mjs && node scripts/staffingReadClientTest.mjs",
-    "preview:forecast": "node scripts/forecastPreview.mjs"
+    "preview:forecast": "node scripts/forecastPreview.mjs",
+    "test:forecast:ui-ux": "node scripts/forecastPresentationTest.mjs && node scripts/forecastUiAcceptanceTest.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -1,9 +1,9 @@
 import type { StaffingCenter, StaffingWorker } from './types';
 import { addCivilDays, addCivilMonths, monthEnd } from './monthly';
 
-export const RULES_VERSION = 'staffing-2026-09-21.1';
+export const RULES_VERSION = 'staffing-2026-09-22.1';
 export type ForecastScreen = 'home' | 'forecast' | 'team' | 'shifts' | 'centers' | 'reports' | 'settings';
-export interface ForecastContext { sedeId: string; month: string; horizon: number; week: string; center: string; scenario: 'known' | 'reserve'; asOf: string }
+export interface ForecastContext { sedeId: string; month: string; horizon: number; week: string; center: string; scenario: 'known' | 'reserve'; asOf: string; reinforcementFrom?: string; reinforcementTo?: string }
 export interface ForecastIssue { code: string; message: string; source: string; ids: string[]; impact: 'demand' | 'capacity' | 'ledger' | 'information'; date?: string; workerId?: string; centerId?: string }
 export interface ForecastTask {
   id: string; propertyId: string; name: string; centerId: string; date: string;
@@ -15,6 +15,7 @@ export interface ForecastWorker extends StaffingWorker { restDays: number[]; exc
 export interface ForecastDataset {
   sedeId: string; from: string; to: string; fetchedAt: string; rulesVersion: string;
   centers: (StaffingCenter & { propertyCount: number })[]; workers: ForecastWorker[]; tasks: ForecastTask[];
+  properties?: { id: string; name: string; centerId: string; minutes: number; windowStart: number; windowEnd: number }[];
   absences: ForecastAbsence[]; issues: ForecastIssue[];
   sources: { name: string; count: number; status: 'ready' | 'unavailable'; fetchedAt: string }[];
 }
@@ -47,10 +48,12 @@ export function parseForecastContext(params: URLSearchParams, sedeId: string, as
   const weekValue = params.get('week') ?? `${month}-01`;
   const proposedWeek = monday(validDate(weekValue) ? weekValue : `${month}-01`);
   const firstWeek = monday(`${month}-01`), lastWeek = monday(monthEnd(addCivilMonths(`${month}-01`, horizon - 1)));
-  return { sedeId, month, horizon, week: proposedWeek >= firstWeek && proposedWeek <= lastWeek ? proposedWeek : firstWeek, center: params.get('center') ?? '', scenario: params.get('scenario') === 'reserve' ? 'reserve' : 'known', asOf };
+  const simFrom = params.get('simFrom') ?? '', simTo = params.get('simTo') ?? '';
+  const simulation = validDate(simFrom) && validDate(simTo) && simFrom <= simTo && simFrom >= firstWeek && simTo <= addCivilDays(lastWeek, 6) ? { reinforcementFrom: simFrom, reinforcementTo: simTo } : {};
+  return { sedeId, month, horizon, week: proposedWeek >= firstWeek && proposedWeek <= lastWeek ? proposedWeek : firstWeek, center: params.get('center') ?? '', scenario: params.get('scenario') === 'reserve' ? 'reserve' : 'known', asOf, ...simulation };
 }
 export function forecastLink(screen: ForecastScreen, context: ForecastContext, extra: Record<string, string> = {}) {
-  const params = new URLSearchParams({ sede: context.sedeId, month: context.month, horizon: String(context.horizon), week: context.week, center: context.center, scenario: context.scenario, ...extra });
+  const params = new URLSearchParams({ sede: context.sedeId, month: context.month, horizon: String(context.horizon), week: context.week, center: context.center, scenario: context.scenario, ...(context.reinforcementFrom ? { simFrom: context.reinforcementFrom, simTo: context.reinforcementTo! } : {}), ...extra });
   return `/staffing-forecast/screens/${screen}?${params}`;
 }
 export const monthDates = (month: string) => dates(`${month}-01`, monthEnd(`${month}-01`));

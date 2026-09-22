@@ -144,5 +144,6 @@ export async function readForecastDataset(read: StaffingReadPage, sedeId: string
     if (!validDate(absence.from) || !validDate(absence.to) || absence.to < absence.from || !full && !validInterval || !['vacation', 'sick', 'sick_leave', 'day_off', 'holiday', 'personal', 'external_work'].includes(absence.type)) issue('invalid-absence', 'Ausencia con fechas, franja o tipo no verificables.', 'worker_absences', 'capacity', [absence.workerId, absence.id]);
     if (absence.type === 'external_work' ? !validInterval : !full) issue('absence-adjustment-unverified', 'Faltan datos para computar este servicio o ajustar una ausencia parcial.', 'worker_absences', 'ledger', [absence.workerId, absence.id]);
   }
-  return { sedeId, from, to, fetchedAt: new Date().toISOString(), rulesVersion: RULES_VERSION, centers: [...centers.values()], workers, tasks: normalizedTasks, absences: normalizedAbsences, issues, sources: [...sources.values()] };
+  const propertyDetails = properties.map(row => ({ id: text(row.id), name: text(row.nombre), centerId: centerByProperty.get(text(row.id))!, minutes: numeric(row.duracion_servicio), windowStart: timeMinutes(row.check_out_predeterminado), windowEnd: timeMinutes(row.check_in_predeterminado) }));
+  return { sedeId, from, to, fetchedAt: new Date().toISOString(), rulesVersion: RULES_VERSION, centers: [...centers.values()], properties: propertyDetails, workers, tasks: normalizedTasks, absences: normalizedAbsences, issues, sources: [...sources.values()] };
 }

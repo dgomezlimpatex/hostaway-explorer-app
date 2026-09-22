@@ -1,0 +1,49 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { downloadForecastCsv } from './forecastExport';
+import { buildReport, reportCsvRows, type ForecastReportType } from './forecastReportData';
+import { centerLabel, countLabel, focusMonth, fullDate, sourceLabel } from './forecastPresentation';
+import { Issues, Panel, Empty, Badge, type ScreenProps } from './ForecastUi';
+
+export function Reports(props: ScreenProps & { sedeName: string }) {
+  const { model, dataset, params, change, to, sedeName } = props;
+  const tab = (['hours', 'coverage', 'absences'].includes(params.get('tab') ?? '') ? params.get('tab') : 'hours') as ForecastReportType;
+  const month = focusMonth(model.context, params), query = params.get('q') ?? '', status = params.get('status') ?? '';
+  const report = buildReport(dataset, model, month, tab, query, status);
+  const [exportState, setExportState] = useState(''), [exporting, setExporting] = useState(false);
+  const names = { hours: 'Balance de horas', coverage: 'Cobertura', absences: 'Ausencias y disponibilidad' };
+  const scenario = `${params.get('refuerzo') ? `Simulación con ${params.get('refuerzo')} h/semana` : 'Situación actual'} · reserva ${model.context.scenario === 'reserve' ? '+20 %' : 'desactivada'}`;
+  const doExport = async () => {
+    setExporting(true); setExportState('Preparando archivo…');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    try { downloadForecastCsv(reportCsvRows(report, { sede: sedeName, center: model.context.center ? dataset.centers.find(c => c.id === model.context.center)?.name ?? 'Centro por revisar' : 'Todos los centros', scenario, rules: dataset.rulesVersion, issues: model.issues.length }), month, `prevision-${tab}`); setExportState(`Archivo preparado: prevision-${tab}-${month}.csv. Consulta las descargas de tu navegador.`); }
+    catch { setExportState('No se pudo preparar el archivo. Pulsa Exportar CSV para reintentar.'); }
+    finally { setExporting(false); }
+  };
+  return <Panel title={names[tab]} action={<button disabled={exporting} onClick={doExport}>{exporting ? 'Preparando…' : 'Exportar CSV'}</button>}><p className="sf-caption">{report.scope.label} · {scenario}. {countLabel(report.rows.length, 'registro')}.{tab !== 'coverage' && ` ${report.evaluated} personas evaluables · ${report.unknown} pendientes de verificar.`}</p><div className="sf-toolbar"><label>Informe<select value={tab} onChange={e => change({ tab: e.target.value, q: '', status: '' })}><option value="hours">Balance de horas</option><option value="coverage">Cobertura</option><option value="absences">Ausencias y disponibilidad</option></select></label>{tab !== 'coverage' && <><label>Buscar persona<input type="search" value={query} onChange={e => change({ q: e.target.value })} /></label><label>Estado del balance<select value={status} onChange={e => change({ status: e.target.value })}><option value="">Plantilla incluida</option><option value="Faltan horas">Horas pendientes</option><option value="No verificable">Por verificar</option><option value="Cumple">Objetivo alcanzable</option><option value="Excluido">Excluidos</option></select></label></>}{(query || status) && <button onClick={() => change({ q: '', status: '' })}>Limpiar filtros</button>}</div>{exportState && <p role="status" className="sf-caption">{exportState}</p>}
+    {tab === 'hours' && <p className="sf-caption">Computadas + futuras forman el compromiso mensual. Otros servicios ya están incluidos; no se suman de nuevo. Las propuestas no completan el objetivo. Los balances de las personas incluyen todos sus centros. Computadas y futuras suman las horas registradas disponibles; los datos sin verificar pueden dejar esos subtotales incompletos.</p>}
+    {tab === 'absences' && <p className="sf-caption">Los servicios ocupan disponibilidad y cuentan en el balance. Las ausencias ajustan el objetivo según las reglas; no se deduce un ajuste numérico de su etiqueta. Las filas muestran fechas completas del registro, aunque atraviesen el mes consultado.</p>}
+    <div className="sf-table-scroll"><table><caption>{names[tab]} · {report.scope.label} · {scenario}</caption><thead><tr>{report.headings.map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{report.rows.map(row => <tr key={row.key}>{row.cells.map((cell, i) => i === 0 ? <th key={i}>{row.workerId ? <Link to={to('reports', { person: row.workerId, focusMonth: month })}>{cell}</Link> : row.date ? <Link to={to('shifts', { date: row.date, view: 'day', focusMonth: month })}>{fullDate(row.date)}</Link> : cell}</th> : <td key={i}>{typeof cell === 'number' ? Number.isFinite(cell) ? new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3 }).format(cell) : 'Por verificar' : cell}</td>)}</tr>)}</tbody>{report.totals && <tfoot><tr>{report.totals.map((cell, i) => i === 0 ? <th key={i}>{cell}</th> : <td key={i}>{typeof cell === 'number' ? Number.isFinite(cell) ? new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3 }).format(cell) : 'Por verificar' : cell}</td>)}</tr></tfoot>}</table></div>{!report.rows.length && <Empty reset={query || status ? () => change({ q: '', status: '' }) : undefined}>No hay registros para este informe y estos filtros.</Empty>}
+  </Panel>;
+}
+
+const rules = [
+  ['Objetivo mensual', 'Horas semanales × 4,345, ajustadas por ausencias. Un contrato de 15 h tiene una base de 65,175 h al mes. Las semanas pueden compensarse dentro del mismo mes.', 'Contrato de la persona y ausencias registradas'],
+  ['Máximo semanal', 'De lunes a domingo, hasta el 130 % de la jornada contractual. Para 15 h son 19,5 h. Incluye todos los servicios computables de Limpatex.', 'Jornada contractual'],
+  ['Horas computadas', 'Una tarea asignada se computa cuando pasa su fin registrado, aunque no esté marcada como completada. Se distingue de ejecución confirmada.', 'Asignaciones y horarios registrados'],
+  ['Otros servicios y mantenimiento', 'Cuentan en el balance y ocupan su franja real. El mantenimiento reduce la disponibilidad del trabajador; no se añade a la demanda del calendario de previsión.', 'Servicios de cada persona'],
+  ['Ausencias y libranzas', 'Las ausencias bloquean disponibilidad y ajustan el objetivo por los días laborables afectados. No se descuenta dos veces una libranza. Los ajustes parciales sin datos suficientes quedan por verificar.', 'Ausencias, contrato y descansos'],
+  ['Libranza flexible', 'Es una recomendación semanal revisable que busca reducir el mayor déficit diario. No equivale a una libranza registrada ni se guarda automáticamente.', 'Cálculo sobre compromisos del equipo'],
+  ['Tareas sin asignar', 'Cuentan como demanda y no completan las horas de ninguna persona. Las propuestas se muestran separadas y se guardan solo en el calendario operativo.', 'Tareas y asignaciones'],
+  ['Ventana y duración', 'Una persona realiza la tarea completa dentro de la ventana del cliente. La duración es la personalizada de la propiedad. Salida y estancia conservan su identidad.', 'Propiedad y ventana heredada del cliente'],
+  ['Reserva +20 %', 'Una reserva adicional sobre turismo por semana, sin tareas ni reparto diario artificial. En semanas partidas se atribuye a cada mes por su carga turística, una sola vez.', 'Demanda turística conocida'],
+  ['Viajes', 'No se contabiliza tiempo de desplazamiento en esta previsión, según la instrucción vigente de Daniel.', 'Regla operativa confirmada'],
+  ['Prioridad de candidatos', 'Titular → suplentes → backup → otros edificios. Solo se muestra el primer nivel con personas elegibles; dentro de él, más horas mensuales pendientes y mejor encaje horario.', 'Roles del edificio, movilidad y disponibilidad'],
+  ['Exclusiones', 'Las personas excluidas y las de 0 h no aportan capacidad ni candidatos. Las de 0 h siguen visibles; sus tareas siguen siendo carga. NOT COUNT queda fuera del previsor.', 'Reglas de sede y jornadas registradas'],
+  ['Orden de solución', 'Primero el equipo actual con su margen semanal; después el refuerzo hipotético. El refuerzo y las propuestas nunca modifican asignaciones reales.', 'Motor de encaje'],
+];
+export function Settings(props: ScreenProps) {
+  const { dataset, model, params, change, to } = props;
+  const dataTab = params.get('tab') === 'data';
+  return <><div className="sf-toolbar sf-segment"><button aria-pressed={!dataTab} onClick={() => change({ tab: 'rules' })}>Reglas del previsor</button><button aria-pressed={dataTab} onClick={() => change({ tab: 'data' })}>Datos por revisar</button></div>{dataTab ? <Panel title="Datos por revisar"><p className="sf-caption">Revisa cada causa y su impacto antes de cerrar una decisión. Las fichas de origen se abren desde el detalle del registro; su modificación corresponde a la administración autorizada.</p><Issues {...props} /></Panel> : <Panel title="Reglas vigentes"><dl className="sf-rules">{rules.map(([title, description, source]) => <div key={title}><dt>{title}</dt><dd>{description}<small>Origen: {source}</small></dd></div>)}</dl><details className="sf-detail-block"><summary>Consultar ventanas y duraciones de los centros</summary><p>El detalle de cada centro muestra las franjas de sus tareas leídas; pueden ser diferentes entre propiedades.</p><div className="sf-reference-list">{dataset.centers.map(c => <Link key={c.id} to={to('settings', { detail: c.id })}>{centerLabel(c)}</Link>)}</div></details></Panel>}<details className="sf-detail-block"><summary>Estado y detalles técnicos de las fuentes</summary><ul>{dataset.sources.map(s => <li key={s.name}><strong>{sourceLabel(s.name)}</strong> · <Badge>{s.status === 'ready' ? `${s.count} registros leídos` : 'Lectura pendiente'}</Badge><small>{s.name} · {new Date(s.fetchedAt).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })}</small></li>)}</ul><p>Versión de reglas: {dataset.rulesVersion} · {model.issues.length} avisos originales.</p></details></>;
+}
