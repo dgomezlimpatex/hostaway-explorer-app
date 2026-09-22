@@ -1,0 +1,160 @@
+{
+  "checkedAt": "2026-09-22T15:26:06.041Z",
+  "commit": "5389fc3d352c9a1fd2d04d1420b9d92c17632744",
+  "deployment": "dpl_DDbTJDUYpaQKyQ43gEATvePiQp47",
+  "url": "https://gestionlimpatex-jz286wr6j-limpatex.vercel.app",
+  "previousDeployment": "dpl_EhaMicPtN8fGHQPpqTMWWyvUNSp7",
+  "previousUrl": "https://gestionlimpatex-1pqbtc625-limpatex.vercel.app",
+  "rulesVersion": "staffing-2026-09-22.3",
+  "authenticatedQA": false,
+  "checks": [
+    {
+      "domain": "gestionlimpatex.vercel.app",
+      "deployment": "dpl_DDbTJDUYpaQKyQ43gEATvePiQp47",
+      "pages": [
+        {
+          "path": "/staffing-forecast/screens/home",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/forecast",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/team",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/shifts",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/centers",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/reports",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/settings",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        }
+      ],
+      "assets": [
+        {
+          "path": "/assets/index-Dwv1c-Dw.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "sha256": "34fa279d4295ad056f491f91cb3d9334a52963fe44f11144939f1343bcf42106"
+        },
+        {
+          "path": "/assets/StaffingOperationalWorkspace-BnKYY4Ec.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "sha256": "db4637ac2a3f69e56008ec87df59b79008ded7b9ed463e3dcd2c599340281b85"
+        },
+        {
+          "path": "/assets/StaffingOperationalWorkspace-CeHRWEUP.css",
+          "status": 200,
+          "contentType": "text/css; charset=utf-8",
+          "sha256": "54cb570f10ec41ee4d3ccba6062e6171457d29c7e620f8436dfdb28498d5433a"
+        },
+        {
+          "path": "/assets/forecastWorker-C4U5d4x2.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "sha256": "d9ed204576cc45ff2344f7b616cefeac6f734d03ae53fe94a29dde626fb53b93"
+        }
+      ]
+    },
+    {
+      "domain": "gestionlimpatex-limpatex.vercel.app",
+      "deployment": "dpl_DDbTJDUYpaQKyQ43gEATvePiQp47",
+      "pages": [
+        {
+          "path": "/staffing-forecast/screens/home",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/forecast",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/team",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/shifts",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/centers",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/reports",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        },
+        {
+          "path": "/staffing-forecast/screens/settings",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "sha256": "3116b95f3023cbafa9fbab01d8694797c88e49ae296a5dda4cd792d3ff0c86d7"
+        }
+      ],
+      "assets": [
+        {
+          "path": "/assets/index-Dwv1c-Dw.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "sha256": "34fa279d4295ad056f491f91cb3d9334a52963fe44f11144939f1343bcf42106"
+        },
+        {
+          "path": "/assets/StaffingOperationalWorkspace-BnKYY4Ec.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "sha256": "db4637ac2a3f69e56008ec87df59b79008ded7b9ed463e3dcd2c599340281b85"
+        },
+        {
+          "path": "/assets/StaffingOperationalWorkspace-CeHRWEUP.css",
+          "status": 200,
+          "contentType": "text/css; charset=utf-8",
+          "sha256": "54cb570f10ec41ee4d3ccba6062e6171457d29c7e620f8436dfdb28498d5433a"
+        },
+        {
+          "path": "/assets/forecastWorker-C4U5d4x2.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "sha256": "d9ed204576cc45ff2344f7b616cefeac6f734d03ae53fe94a29dde626fb53b93"
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,7 @@ Fecha: 22 de septiembre de 2026. Rama: `codex/previsor-incidencias-n01-n03`.
 Base preservada: `04187abe`, posterior a la publicación `ed3bebc550d13ce31272a6903d92734a6bc3e810`.
 Reglas: `staffing-2026-09-22.3`.
 
-Estado: implementado y probado localmente. Lecturas reales contrastadas mediante SELECT y reproducción local del lector y motor. **Pendiente de recorrido autenticado en navegador y de publicación.**
+Estado: implementado y probado localmente; publicado después de autorización expresa en el commit `5389fc3d`. Lecturas reales contrastadas mediante SELECT y reproducción local del lector y motor. **Pendiente de recorrido autenticado en navegador.** Ver [publicación y verificación de ambos dominios](PUBLICACION_INCIDENCIAS_20260922.md).
 
 ## Encargo y alcance
 
@@ -71,4 +71,4 @@ No se ha realizado una certificación con lectores de pantalla. La comprobación
 
 Servidor local: http://127.0.0.1:8080/staffing-forecast. Usa la aplicación real; requiere iniciar sesión. No se sirve el arnés de datos sintéticos en esa ruta.
 
-El código de esta iteración se guarda en un commit sobre `04187abe`. Para revertirlo antes de publicar, aplicar `git revert` a ese commit en la rama de trabajo; no requiere reversión de datos. La versión de producción permanece intacta y no se ha cambiado el flujo de despliegue.
+El código de esta iteración se guarda en `5389fc3d`, sobre `04187abe`. Para revertir el código, aplicar `git revert` a ese commit en la rama de trabajo; no requiere reversión de datos. La publicación posterior conserva el despliegue anterior y documenta su restauración en el registro enlazado. Los despliegues automáticos siguen desactivados.
