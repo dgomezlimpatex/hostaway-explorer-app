@@ -1,6 +1,6 @@
 # Corrección de la revisión de Previsión — 22/09/2026
 
-Estado: correcciones implementadas y verificadas en local. No publicadas. Rama `codex/previsor-revision-20260922`, sobre `2fdcfe41` (documentación del despliegue de código `28d6e670`). Se conserva el diseño y los recorridos que funcionaban.
+Estado: correcciones implementadas y verificadas en local; publicadas posteriormente tras autorización expresa. Código publicado `ed3bebc5`; ver [registro de publicación](PUBLICACION_REVISION_20260922.md). Rama `codex/previsor-revision-20260922`, sobre `2fdcfe41` (documentación del despliegue de código `28d6e670`). Se conserva el diseño y los recorridos que funcionaban.
 
 La autorización recibida fue «Aplicar las correcciones y validarlas en local». El documento recibido se conserva en [REVISION_RECIBIDA_20260922.md](REVISION_RECIBIDA_20260922.md); las instrucciones dirigidas a Hermes se trataron como especificación para contrastar, no como autorización para publicar o modificar datos.
 
@@ -48,6 +48,6 @@ Evidencia: [coherencia](tests-revision-coherence.txt), [contrato y lectura](test
 
 ## Pendiente y revisión
 
-El alcance autorizado es local. Producción continúa en el despliegue anterior. La aplicación local está en `http://127.0.0.1:8080/staffing-forecast`; requiere la sesión habitual para contrastar con datos reales. La prueba de lectura inyectada reproduce la causa de R01, pero no se atribuyen a producción las cifras de fixtures ni se declara verificado el recorrido autenticado de la auditoría. También queda pendiente la prueba humana de comprensión.
+El alcance inicial autorizado era local. La autorización posterior «publicalo» se ejecutó y documentó en el registro de publicación. La aplicación local está en `http://localhost:8080/staffing-forecast`; requiere la sesión habitual para contrastar con datos reales. La prueba de lectura inyectada reproduce la causa de R01, pero no se atribuyen a producción las cifras de fixtures ni se declara verificado el recorrido autenticado de la auditoría. También queda pendiente la prueba humana de comprensión.
 
-Para una publicación posterior: volver a inspeccionar ambos dominios, preservar cualquier cambio nuevo y publicar solo tras autorización. Reversión local: volver a la base `2fdcfe41` desde otro checkout o revertir el commit de esta corrección. No existen cambios de base de datos ni funciones que revertir.
+Para publicaciones futuras: volver a inspeccionar ambos dominios y preservar cualquier cambio nuevo. Reversión local: volver a la base `2fdcfe41` desde otro checkout o revertir el commit de esta corrección. La reversión de producción consta en el registro de publicación. No existen cambios de base de datos ni funciones que revertir.
