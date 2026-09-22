@@ -1,0 +1,129 @@
+{
+  "checkedAt": "2026-09-22T07:02:20.405Z",
+  "commit": "28d6e67052ba5db4409a514fe9315246143878eb",
+  "deployment": "dpl_CLVWmV8aCwvSK698DKT6gTs8QoeD",
+  "previousDeployment": "dpl_2obWJESyXrh7UMLmp1Lok7di1SGV",
+  "authenticatedQA": false,
+  "checks": [
+    {
+      "domain": "gestionlimpatex.vercel.app",
+      "pages": [
+        {
+          "route": "home",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "forecast",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "team",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "shifts",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "centers",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "reports",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "settings",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        }
+      ],
+      "assets": [
+        {
+          "path": "/assets/StaffingOperationalWorkspace-rkoekQq6.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "sha256": "8d9945d364705541fece2f1fa578941e276bfb03393e3a23cbc1d0f5e402a45b"
+        },
+        {
+          "path": "/assets/StaffingOperationalWorkspace-C6Ut-dyW.css",
+          "status": 200,
+          "contentType": "text/css; charset=utf-8",
+          "sha256": "2c3d27330bb924624058d3f76f37b794fa104c0acca14929d704b446c5bd3db4"
+        },
+        {
+          "path": "/assets/forecastWorker-ClEDh2he.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "sha256": "22f20be030deb26cb8277f75dfffcd8cdd07ceef7e6a3a530bdaf8c495c93185"
+        }
+      ]
+    },
+    {
+      "domain": "gestionlimpatex-limpatex.vercel.app",
+      "pages": [
+        {
+          "route": "home",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "forecast",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "team",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "shifts",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "centers",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "reports",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        },
+        {
+          "route": "settings",
+          "status": 200,
+          "sha256": "83bc0b7e9b15a0c8195571aadf0c0c7667408763df01ea5cb6757bb11dbeab45"
+        }
+      ],
+      "assets": [
+        {
+          "path": "/assets/StaffingOperationalWorkspace-rkoekQq6.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "sha256": "8d9945d364705541fece2f1fa578941e276bfb03393e3a23cbc1d0f5e402a45b"
+        },
+        {
+          "path": "/assets/StaffingOperationalWorkspace-C6Ut-dyW.css",
+          "status": 200,
+          "contentType": "text/css; charset=utf-8",
+          "sha256": "2c3d27330bb924624058d3f76f37b794fa104c0acca14929d704b446c5bd3db4"
+        },
+        {
+          "path": "/assets/forecastWorker-ClEDh2he.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "sha256": "22f20be030deb26cb8277f75dfffcd8cdd07ceef7e6a3a530bdaf8c495c93185"
+        }
+      ]
+    }
+  ]
+}

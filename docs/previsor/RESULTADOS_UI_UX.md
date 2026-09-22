@@ -2,7 +2,7 @@
 
 Fecha: 22 de septiembre de 2026. Rama `codex/previsor-ui-ux-20260922`, sobre `3c4ae307`.
 
-Estado: siete pantallas implementadas y verificadas con pruebas locales. Falta contraste autenticado de esta versión con registros reales y prueba de comprensión por una persona ajena al desarrollo. No se ha publicado este cambio.
+Estado: siete pantallas implementadas, verificadas con pruebas locales y publicadas el 22 de septiembre de 2026 por autorización expresa del usuario. Falta contraste autenticado de esta versión con registros reales y prueba de comprensión por una persona ajena al desarrollo. Detalles del despliegue y reversión en [PUBLICACION_UI_UX_20260922.md](PUBLICACION_UI_UX_20260922.md).
 
 ## Cambios
 
@@ -99,6 +99,6 @@ Archivos de producto: `ForecastWorkspaceView`, `ForecastUi`, `ForecastOverview`,
 3. Registrar prueba de comprensión humana A01, revisión visual y cualquier corrección necesaria. No atribuir a la interfaz datos todavía desconocidos en origen.
 4. Antes de publicar, inspeccionar de nuevo los dos alias y su fuente; incorporar cambios de producción posteriores a la base. Los despliegues automáticos siguen desactivados.
 
-Producción inspeccionada al inicio: ambos dominios apuntaban a `dpl_2obWJESyXrh7UMLmp1Lok7di1SGV`, basado en el trabajo anterior. No se ha cambiado ese despliegue.
+Producción inspeccionada al inicio y antes de publicar: ambos dominios apuntaban a `dpl_2obWJESyXrh7UMLmp1Lok7di1SGV`, commit `3c4ae307`, antecesor de esta entrega. Se conserva como reversión. Ambos dominios sirven ahora `dpl_CLVWmV8aCwvSK698DKT6gTs8QoeD`, commit `28d6e670`.
 
 Reversión local: ejecutar la base `3c4ae307` en otro checkout o revertir el commit de esta rama. No se necesita reversión de datos ni funciones, porque esta entrega no los modifica. Una publicación posterior deberá registrar su commit/despliegue y conservar el despliegue previo de ambos dominios.

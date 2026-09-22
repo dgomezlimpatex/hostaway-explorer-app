@@ -5,7 +5,7 @@ Objetivo activo: implantar `PLAN_UI_UX_20260921.md` sobre los datos reales.
 ## Base y alcance
 
 - Rama: `codex/previsor-ui-ux-20260922`, base `3c4ae307`.
-- Ambos dominios verificados: `dpl_2obWJESyXrh7UMLmp1Lok7di1SGV`.
+- Base de ambos dominios verificada: `dpl_2obWJESyXrh7UMLmp1Lok7di1SGV`. Publicación autorizada y verificada el 22/09: `dpl_CLVWmV8aCwvSK698DKT6gTs8QoeD`, commit `28d6e670`.
 - `origin/main` continúa en `c1c538d8`; la base reconciliada contiene el trabajo posterior de Hermes y los cambios publicados de este previsor. No se sustituye por el main antiguo.
 - Cambios concentrados en el previsor y sus pruebas/documentación. No modificar los servicios de asignación o las notificaciones por WhatsApp/correo.
 - El documento adjunto es una especificación; sus notas sobre esperar la revisión y su encargo a Hermes son contexto histórico. La petición actual autoriza implantarlo.
@@ -33,4 +33,4 @@ La suite `test:forecast` pasa (34 casos de contrato más acceso, caché y lector
 
 Consulta [RESULTADOS_UI_UX.md](RESULTADOS_UI_UX.md) para el detalle de aceptación, incidencias anteriores, alcance y reversión. La prueba de comprensión con una persona ajena al desarrollo se registrará separada de la comprobación técnica, sin inventar resultados ni tiempos. La sesión local está en `/auth`; no se ha declarado realizada la QA con registros reales.
 
-No se declara terminado un bloque solo por compilar. La publicación se hará únicamente de una versión validada y tras volver a inspeccionar la fuente vigente de producción.
+La publicación autorizada se ha completado tras inspeccionar de nuevo la producción y verificar que su fuente es antecesora del commit probado. La QA autenticada y la comprensión humana siguen pendientes. Registro: [PUBLICACION_UI_UX_20260922.md](PUBLICACION_UI_UX_20260922.md).
