@@ -349,8 +349,8 @@ export const CleaningPlanningPage = () => {
 
   const advancedContent = (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-[#310984]/10 bg-white p-4 text-sm text-[#6b627a]">
-        <p className="font-semibold text-[#171321]">Solo necesitas esto si quieres buscar o revisar detalles.</p>
+      <div className="rounded-lg border border-line bg-white p-4 text-sm text-ink-3">
+        <p className="font-semibold text-ink">Solo necesitas esto si quieres buscar o revisar detalles.</p>
         <p className="mt-1">Para preparar el reparto del día, vuelve arriba y pulsa «Preparar el reparto».</p>
       </div>
       <PlanningFilters
@@ -385,7 +385,7 @@ export const CleaningPlanningPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#f7f5fb] p-3 text-[#171321] md:p-6">
+    <div className="min-h-screen bg-paper p-3 text-ink md:p-6">
       {(proposalState || calendarNavigation) && <div className="mx-auto w-full max-w-[1920px]"><PlanningDayNavigation date={date} disabled={isApplyingProposal || isSavingDay} onChange={handleCalendarDateChange} /></div>}
       {proposalState ? (
         <div className="mx-auto w-full max-w-[1920px]">
@@ -410,7 +410,7 @@ export const CleaningPlanningPage = () => {
           />
         </div>
       ) : calendarNavigation ? (
-        <div className="mx-auto max-w-[1920px] rounded-2xl border bg-white p-8" role="status">
+        <div className="mx-auto max-w-[1920px] rounded-lg border bg-white p-8" role="status">
           {isError || buildingDataQuery.isError ? <><p>No se pudo cargar este día. Tu borrador anterior se conserva.</p><Button variant="outline" onClick={()=>{void refetch();void buildingDataQuery.refetch();}}>Reintentar</Button></> : 'Cargando calendario…'}
         </div>
       ) : (

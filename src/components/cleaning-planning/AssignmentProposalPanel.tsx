@@ -201,16 +201,16 @@ export const AssignmentProposalPanel = ({
   const hasBlockingIssue = isStale || blockingWarnings.length > 0;
   return (
     <main className="space-y-4 pb-24 md:space-y-5 md:pb-28" aria-busy={isApplying}>
-      <header className="rounded-3xl border border-[#310984]/10 bg-white p-4 shadow-lg shadow-[#310984]/8 md:p-6">
+      <header className="rounded-lg border border-line bg-white p-4 shadow-sober md:p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#efe9fb] px-3 py-1 text-xs font-semibold text-[#310984]">
+            <div className="inline-flex items-center gap-2 rounded-full bg-line-soft px-3 py-1 text-xs font-semibold text-brand">
               <Sparkles className="h-3.5 w-3.5" /> Propuesta de la app
             </div>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#171321]">Propuesta para {dateLabel}</h1>
-            <p className="mt-1 text-sm text-[#6b627a]">{sedeName ? `${sedeName} · ` : ''}{isPartialScope ? `Faltan datos: se muestran ${tasks.length} de ${totalPendingTaskCount} limpiezas. ` : ''}Toca una limpieza para cambiar su responsable; con el botón derecho (o el botón ⋮) cambias la hora, la persona o la dejas sin asignar. Nada se guarda hasta pulsar «Guardar reparto».</p>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink">Propuesta para {dateLabel}</h1>
+            <p className="mt-1 text-sm text-ink-3">{sedeName ? `${sedeName} · ` : ''}{isPartialScope ? `Faltan datos: se muestran ${tasks.length} de ${totalPendingTaskCount} limpiezas. ` : ''}Toca una limpieza para cambiar su responsable; con el botón derecho (o el botón ⋮) cambias la hora, la persona o la dejas sin asignar. Nada se guarda hasta pulsar «Guardar reparto».</p>
           </div>
-          <Badge variant="outline" className="w-fit border-[#310984]/15 bg-[#faf8ff] px-3 py-1 text-[#310984]">
+          <Badge variant="outline" className="w-fit border-line bg-paper px-3 py-1 text-brand">
             {coveredCount} cubierta{coveredCount === 1 ? '' : 's'}
           </Badge>
         </div>
@@ -218,7 +218,7 @@ export const AssignmentProposalPanel = ({
       </header>
 
       {(applyError || isStale || blockingWarnings.length > 0) && (
-        <section className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-900" aria-live="polite">
+        <section className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-900" aria-live="polite">
           {applyError ? (
             <div className="flex items-start gap-2">
               <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -255,16 +255,16 @@ export const AssignmentProposalPanel = ({
         />
       </div>
 
-      <details className="group rounded-2xl border border-[#310984]/10 bg-white shadow-sm">
-        <summary className="flex min-h-[48px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-[#310984] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#310984]">
+      <details className="group rounded-lg border border-line bg-white shadow-sm">
+        <summary className="flex min-h-[48px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-brand outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand">
           Ver detalles del plan
           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
         </summary>
-        <div className="space-y-4 border-t border-[#310984]/10 p-4 text-sm text-[#6b627a]">
+        <div className="space-y-4 border-t border-line p-4 text-sm text-ink-3">
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{coveredCount}</p><p>limpiezas cubiertas</p></div>
-            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{minutesToHoursLabel(draftProposals.reduce((sum, item) => sum + item.durationMinutes, 0))}</p><p>horas repartidas</p></div>
-            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{proposal.summary.globalQuality?.globalScore ?? '—'}</p><p>encaje del reparto</p></div>
+            <div className="rounded-md bg-paper p-3"><p className="font-semibold text-ink">{coveredCount}</p><p>limpiezas cubiertas</p></div>
+            <div className="rounded-md bg-paper p-3"><p className="font-semibold text-ink">{minutesToHoursLabel(draftProposals.reduce((sum, item) => sum + item.durationMinutes, 0))}</p><p>horas repartidas</p></div>
+            <div className="rounded-md bg-paper p-3"><p className="font-semibold text-ink">{proposal.summary.globalQuality?.globalScore ?? '—'}</p><p>encaje del reparto</p></div>
           </div>
           {proposal.conflicts.length > 0 && (
             <div>
@@ -275,26 +275,26 @@ export const AssignmentProposalPanel = ({
           {softWarnings.length > 0 && (
             <div><p className="font-semibold text-amber-900">Avisos operativos</p><ul className="mt-2 space-y-1 text-amber-800">{softWarnings.map((warning) => <li key={warning.id}>• {warning.message}</li>)}</ul></div>
           )}
-          <div className="flex items-start gap-2 rounded-xl bg-[#faf8ff] p-3">
-            <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-[#310984]" />
+          <div className="flex items-start gap-2 rounded-md bg-paper p-3">
+            <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
             <p>Tus cambios se guardan en este navegador hasta guardar el reparto o descartar.</p>
           </div>
         </div>
       </details>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[#310984]/10 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(49,9,132,0.12)] backdrop-blur transition-[left] duration-200 md:p-4"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(49,9,132,0.12)] backdrop-blur transition-[left] duration-200 md:p-4"
         style={{ left: isMobile ? 0 : sidebarState === 'expanded' ? '18rem' : '4rem' }}
       >
         <div className="mx-auto flex w-full max-w-[1920px] flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <Button type="button" variant="outline" className="min-h-[48px] border-[#310984]/15 text-[#310984]" disabled={isApplying} onClick={handleDiscard}>
+          <Button type="button" variant="outline" className="min-h-[48px] border-line text-brand" disabled={isApplying} onClick={handleDiscard}>
             Descartar propuesta
           </Button>
           <div className="flex flex-col gap-2 sm:items-end">
-            <p className="text-xs font-semibold text-[#6b627a]">
+            <p className="text-xs font-semibold text-ink-3">
               Se guardarán {coveredCount} limpieza{coveredCount === 1 ? '' : 's'}{uncoveredCount > 0 ? ` · ${uncoveredCount} quedarán sin responsable` : ''}. Después se iniciarán los avisos.
             </p>
-            <Button type="button" className="min-h-[50px] bg-[#310984] px-6 text-base font-semibold text-white hover:bg-[#26066a]" disabled={!canApply} onClick={handleApply}>
+            <Button type="button" className="min-h-[50px] bg-brand px-6 text-base font-semibold text-white hover:bg-ink" disabled={!canApply} onClick={handleApply}>
               {isApplying
                 ? 'Guardando reparto…'
                 : uncoveredCount > 0

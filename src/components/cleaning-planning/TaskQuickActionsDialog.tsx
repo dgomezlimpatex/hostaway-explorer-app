@@ -168,7 +168,7 @@ export const TaskQuickActionsDialog = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-xl border bg-muted/30 p-3 text-sm">
+          <div className="rounded-md border bg-muted/30 p-3 text-sm">
             <p className="flex items-center gap-2 font-medium text-foreground">
               <Clock className="h-4 w-4 text-muted-foreground" />
               {normalizeStart(task.startTime)}–{fromMinutes((toMinutes(task.startTime) ?? toMinutes(DEFAULT_START)!) + durationMinutes)}
@@ -225,7 +225,7 @@ export const TaskQuickActionsDialog = ({
           </div>
 
           {confirmingUnassign && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900" role="alert">
+            <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900" role="alert">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
                 ¿Quitar la asignación a <strong>{currentCleanerLabel}</strong>? La limpieza quedará
@@ -234,7 +234,7 @@ export const TaskQuickActionsDialog = ({
             </div>
           )}
 
-          <p className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
+          <p className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
             Se guarda al momento sobre la tarea.
             {hasOpenProposal
               ? ' Tienes una propuesta de reparto abierta: quedará marcada como desactualizada y habrá que regenerarla.'
@@ -265,7 +265,7 @@ export const TaskQuickActionsDialog = ({
             </Button>
             <Button
               type="button"
-              className="min-h-[44px] bg-[#310984] text-white hover:bg-[#26066a]"
+              className="min-h-[44px] bg-brand text-white hover:bg-ink"
               disabled={!hasChanges || isSavingQuickAction}
               onClick={handleSave}
             >

@@ -25,8 +25,8 @@ export const PlanningSteps = ({ current, className }: PlanningStepsProps) => (
           key={step.number}
           aria-current={active ? 'step' : undefined}
           className={cn(
-            'flex items-start gap-3 rounded-2xl border p-3',
-            active ? 'border-[#310984]/25 bg-[#f3effc]' : 'border-[#310984]/10 bg-white',
+            'flex items-start gap-3 rounded-lg border p-3',
+            active ? 'border-brand bg-paper' : 'border-line bg-surface',
           )}
         >
           <span
@@ -36,17 +36,17 @@ export const PlanningSteps = ({ current, className }: PlanningStepsProps) => (
               done
                 ? 'bg-emerald-100 text-emerald-700'
                 : active
-                  ? 'bg-[#310984] text-white'
-                  : 'bg-muted text-[#6b627a]',
+                  ? 'bg-brand text-white'
+                  : 'bg-muted text-ink-3',
             )}
           >
             {done ? <Check className="h-4 w-4" /> : step.number}
           </span>
           <span className="min-w-0">
-            <span className={cn('block text-sm font-semibold', active ? 'text-[#171321]' : 'text-[#6b627a]')}>
+            <span className={cn('block text-sm font-semibold', active ? 'text-ink' : 'text-ink-3')}>
               {step.title}
             </span>
-            <span className="mt-0.5 block text-xs leading-5 text-[#6b627a]">{step.detail}</span>
+            <span className="mt-0.5 block text-xs leading-5 text-ink-3">{step.detail}</span>
           </span>
         </li>
       );

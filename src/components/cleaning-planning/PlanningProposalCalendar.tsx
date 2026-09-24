@@ -126,7 +126,7 @@ const DraggableHandle = ({
       type="button"
       aria-label="Arrastrar para cambiar responsable u horario"
       data-dnd-handle
-      className={`${compact ? 'h-5 w-full shrink-0' : 'min-h-[36px] min-w-[32px] shrink-0 p-1'} touch-none rounded-lg text-[#310984] hover:bg-[#efe9fb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] ${isDragging ? 'opacity-40' : ''}`}
+      className={`${compact ? 'h-5 w-full shrink-0' : 'min-h-[36px] min-w-[32px] shrink-0 p-1'} touch-none rounded-lg text-brand hover:bg-line-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${isDragging ? 'opacity-40' : ''}`}
       onClick={(event) => event.stopPropagation()}
       {...listeners}
       {...attributes}
@@ -1086,7 +1086,7 @@ export const PlanningProposalCalendar = ({
     >
       <div className="space-y-4">
         {isStale && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             Este plan está desactualizado. Regenera antes de guardar.
           </div>
         )}
@@ -1095,7 +1095,7 @@ export const PlanningProposalCalendar = ({
             role="alert"
             aria-live="assertive"
             data-dnd-notice
-            className={`flex items-center justify-between gap-3 rounded-2xl border p-3 text-sm ${moveNotice.error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}
+            className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-sm ${moveNotice.error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}
           >
             <span>{moveNotice.message}</span>
             {moveNotice.previous && (
@@ -1117,9 +1117,9 @@ export const PlanningProposalCalendar = ({
         {activeDrag && (
           <div
             data-dnd-mobile-destinations
-            className="max-[400px]:block rounded-2xl border border-[#310984]/15 bg-white p-3 lg:hidden"
+            className="max-[400px]:block rounded-lg border border-line bg-white p-3 lg:hidden"
           >
-            <p className="mb-2 text-xs font-semibold text-[#310984]">
+            <p className="mb-2 text-xs font-semibold text-brand">
               Suelta en una trabajadora
             </p>
             <div className="space-y-2">
@@ -1129,7 +1129,7 @@ export const PlanningProposalCalendar = ({
                   cleanerId={cleaner.id}
                   dropId={`mobile-cleaner:${cleaner.id}`}
                   feedback={dragFeedback.get(cleaner.id)}
-                  className="min-h-[48px] rounded-xl border p-3 text-sm font-semibold"
+                  className="min-h-[48px] rounded-md border p-3 text-sm font-semibold"
                 >
                   {cleaner.name}
                 </CleanerDropZone>
@@ -1141,7 +1141,7 @@ export const PlanningProposalCalendar = ({
         {(dayBlockingWarnings.length > 0 || daySoftWarnings.length > 0) && (
           <div className="grid gap-3 lg:grid-cols-2">
             {dayBlockingWarnings.length > 0 && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-3">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
                 <p className="flex items-center gap-2 text-sm font-semibold text-red-800">
                   <ShieldAlert className="h-4 w-4" />{' '}
                   {dayBlockingWarnings.length} problemas que impiden guardar
@@ -1169,7 +1169,7 @@ export const PlanningProposalCalendar = ({
               </div>
             )}
             {daySoftWarnings.length > 0 && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <p className="flex items-center gap-2 text-sm font-semibold text-amber-900">
                   <AlertTriangle className="h-4 w-4" /> {daySoftWarnings.length}{' '}
                   avisos operativos
@@ -1200,7 +1200,7 @@ export const PlanningProposalCalendar = ({
         )}
 
         {/* En móvil, la bandeja de sin asignar queda al final: este aviso fijo evita perderla. */}
-        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-[#fffafa]/95 px-3 py-2 text-sm shadow-sm backdrop-blur lg:hidden">
+        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-paper/95 px-3 py-2 text-sm shadow-sm backdrop-blur lg:hidden">
           <span className={unassignedTasks.length > 0 ? 'font-semibold text-red-800' : 'font-semibold text-emerald-700'}>
             {unassignedTasks.length > 0
               ? `${unassignedTasks.length} limpieza${unassignedTasks.length === 1 ? '' : 's'} sin asignar`
@@ -1226,7 +1226,7 @@ export const PlanningProposalCalendar = ({
             .map((item) => (
               <div
                 key={item.id}
-                className="flex min-h-[72px] items-center rounded-2xl border border-[#310984]/10 bg-white p-2 shadow-sm"
+                className="flex min-h-[72px] items-center rounded-lg border border-line bg-white p-2 shadow-sm"
                 onContextMenu={(event) => {
                   event.preventDefault();
                   setQuickActionsTaskId(item.taskId);
@@ -1251,10 +1251,10 @@ export const PlanningProposalCalendar = ({
                         ? 'Revisada'
                         : 'Ya asignada'}
                   </span>
-                  <span className="mt-1 block font-bold text-[#171321]">
+                  <span className="mt-1 block font-bold text-ink">
                     {item.task.property}
                   </span>
-                  <span className="mt-1 block text-xs text-[#6b627a]">
+                  <span className="mt-1 block text-xs text-ink-3">
                     {fromMinutes(item.startMinute)}-
                     {fromMinutes(item.endMinute)} · {item.cleanerName}
                   </span>
@@ -1274,7 +1274,7 @@ export const PlanningProposalCalendar = ({
                   type="button"
                   aria-label={`Acciones rápidas de ${item.task.property}`}
                   data-quick-actions
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[#310984] hover:bg-[#efe9fb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-md text-brand hover:bg-line-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   onClick={() => setQuickActionsTaskId(item.taskId)}
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -1286,9 +1286,9 @@ export const PlanningProposalCalendar = ({
         {/* Leyenda y ayuda: sin esto, los colores y las dos formas de mover una limpieza no se entienden. */}
         <div
           aria-label="Cómo leer el tablero"
-          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-[#310984]/10 bg-white px-4 py-3 text-xs text-[#6b627a]"
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-white px-4 py-3 text-xs text-ink-3"
         >
-          <span className="font-semibold text-[#171321]">Cómo leer el tablero</span>
+          <span className="font-semibold text-ink">Cómo leer el tablero</span>
           <span className="inline-flex items-center gap-2">
             <i aria-hidden="true" className="h-3 w-4 rounded border border-emerald-300 bg-emerald-50" />
             Lo propone la app
@@ -1311,13 +1311,13 @@ export const PlanningProposalCalendar = ({
         </div>
 
         <div data-planning-board className="hidden min-h-[620px] items-start gap-3 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
-          <aside aria-label="Tareas sin asignar" data-planning-unassigned className="sticky top-4 flex max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm lg:col-start-1 lg:row-start-1">
+          <aside aria-label="Tareas sin asignar" data-planning-unassigned className="sticky top-4 flex max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-lg border border-red-200 bg-paper shadow-sm lg:col-start-1 lg:row-start-1">
             <div className="flex items-center justify-between border-b border-red-100 px-4 py-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-600">
                   Sin asignar
                 </p>
-                <p className="text-sm font-semibold text-[#171321]">
+                <p className="text-sm font-semibold text-ink">
                   Arrastra al horario
                 </p>
               </div>
@@ -1327,7 +1327,7 @@ export const PlanningProposalCalendar = ({
             </div>
             <div data-planning-unassigned-list className="grid min-h-0 gap-2 overflow-y-auto overscroll-contain p-3">
               {unassignedTasks.length === 0 ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center text-sm text-emerald-800">
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-center text-sm text-emerald-800">
                   <CheckCircle2 className="mx-auto mb-2 h-5 w-5" /> Todo
                   cubierto este día.
                 </div>
@@ -1336,7 +1336,7 @@ export const PlanningProposalCalendar = ({
                   <div
                     key={task.id}
                     data-dnd-unassigned-tray-item
-                    className={`rounded-xl border bg-white p-2 shadow-sm ${selectedTask?.taskId === task.id && selectedTask.proposalIndex === undefined ? 'border-[#310984] ring-2 ring-[#310984]/10' : 'border-red-200'}`}
+                    className={`rounded-md border bg-white p-2 shadow-sm ${selectedTask?.taskId === task.id && selectedTask.proposalIndex === undefined ? 'border-[#310984] ring-2 ring-brand/10' : 'border-red-200'}`}
                   >
                     <div className="flex items-start gap-1">
                       <button
@@ -1344,10 +1344,10 @@ export const PlanningProposalCalendar = ({
                         className="min-w-0 flex-1 p-1 text-left"
                         onClick={() => openReassignment(task.id)}
                       >
-                        <p className="truncate text-sm font-bold text-[#171321]">
+                        <p className="truncate text-sm font-bold text-ink">
                           {task.propertyCode || task.property}
                         </p>
-                        <p className="mt-1 flex items-center gap-1 truncate text-xs text-[#6b627a]">
+                        <p className="mt-1 flex items-center gap-1 truncate text-xs text-ink-3">
                           <Building2 className="h-3 w-3" />{' '}
                           {task.detectedBuilding?.propertyGroupName ||
                             'Edificio sin configurar'}
@@ -1371,24 +1371,24 @@ export const PlanningProposalCalendar = ({
 
           <section
             aria-label="Ver calendario por horas"
-            className="min-w-0 rounded-2xl border border-[#310984]/10 bg-white shadow-sm lg:col-start-2 lg:row-start-1"
+            className="min-w-0 rounded-lg border border-line bg-white shadow-sm lg:col-start-2 lg:row-start-1"
           >
-            <div className="flex items-center justify-between border-b border-[#310984]/10 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <div>
-                <h3 className="font-bold text-[#171321]">Equipo y horario</h3>
-                <p className="text-xs text-[#6b627a]">
+                <h3 className="font-bold text-ink">Equipo y horario</h3>
+                <p className="text-xs text-ink-3">
                   Mueve horizontalmente para ajustar la hora o cambia de fila
                   para reasignar.
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <p className="text-xs font-semibold text-[#6b627a]">15 min</p>
+                <p className="text-xs font-semibold text-ink-3">15 min</p>
                 {manualChangeCount > 0 && (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="border-[#310984]/15 text-[#310984]"
+                    className="border-line text-brand"
                     onClick={resetDraft}
                   >
                     <RotateCcw className="mr-2 h-4 w-4" /> Restablecer cambios
@@ -1396,7 +1396,7 @@ export const PlanningProposalCalendar = ({
                 )}
               </div>
             </div>
-            <div data-planning-hours-sticky className="sticky top-0 z-30 bg-[#faf9fd] shadow-sm">
+            <div data-planning-hours-sticky className="sticky top-0 z-30 bg-paper shadow-sm">
               <div
                 ref={hoursScrollRef}
                 data-planning-hours-scroll
@@ -1406,15 +1406,15 @@ export const PlanningProposalCalendar = ({
                 }}
               >
               <div className="min-w-max">
-                <div className="flex h-11 border-b border-[#310984]/10 bg-[#faf9fd]">
-                  <div className="sticky left-0 z-20 flex w-[300px] shrink-0 items-center border-r border-[#310984]/10 bg-[#faf9fd] px-3 text-xs font-bold uppercase tracking-[0.14em] text-[#6b627a]">
+                <div className="flex h-11 border-b border-line bg-paper">
+                  <div className="sticky left-0 z-20 flex w-[300px] shrink-0 items-center border-r border-line bg-paper px-3 text-xs font-bold uppercase tracking-[0.14em] text-ink-3">
                     Trabajadora
                   </div>
                   <div className="relative" style={{ width: timelineWidth }}>
                     {timeMarkers.map((minute) => (
                       <span
                         key={minute}
-                        className="absolute top-3 -translate-x-1/2 text-xs font-semibold text-[#6b627a]"
+                        className="absolute top-3 -translate-x-1/2 text-xs font-semibold text-ink-3"
                         style={{
                           left: (minute - bounds.start) * PIXELS_PER_MINUTE,
                         }}
@@ -1437,7 +1437,7 @@ export const PlanningProposalCalendar = ({
             >
               <div className="min-w-max">
                 {visibleCleaners.length === 0 ? (
-                  <div className="flex min-h-[300px] items-center justify-center text-sm text-[#6b627a]">
+                  <div className="flex min-h-[300px] items-center justify-center text-sm text-ink-3">
                     No hay trabajadoras disponibles.
                   </div>
                 ) : (
@@ -1463,8 +1463,8 @@ export const PlanningProposalCalendar = ({
                         key={cleaner.id}
                         className="flex min-h-[92px] border-b border-[#310984]/8 last:border-b-0"
                       >
-                        <div className="sticky left-0 z-10 flex w-[300px] shrink-0 items-center gap-2 border-r border-[#310984]/10 bg-white px-3 py-2">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#efe9fb] text-xs font-bold text-[#310984]">
+                        <div className="sticky left-0 z-10 flex w-[300px] shrink-0 items-center gap-2 border-r border-line bg-white px-3 py-2">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-line-soft text-xs font-bold text-brand">
                             {cleaner.name
                               .split(' ')
                               .slice(0, 2)
@@ -1472,7 +1472,7 @@ export const PlanningProposalCalendar = ({
                               .join('')}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="break-words text-sm font-bold leading-tight text-[#171321]">
+                            <p className="break-words text-sm font-bold leading-tight text-ink">
                               {cleaner.name}
                             </p>
                             <p
@@ -1482,7 +1482,7 @@ export const PlanningProposalCalendar = ({
                               {weeklyQuery.isError ? 'No se pudo cargar la semana' : !weeklyReady ? 'Cargando semana…'
                                 : `${hoursLabel(assignedHours)} / ${contractHours > 0 ? hoursLabel(contractHours) : '—'} h · semana`}
                             </p>
-                            {weeklyReady && contractHours === 0 && <p className="text-xs text-[#6b627a]">Sin horas de contrato</p>}
+                            {weeklyReady && contractHours === 0 && <p className="text-xs text-ink-3">Sin horas de contrato</p>}
                             {availability?.isAvailable === false && <p className="text-xs text-red-600">No disponible hoy</p>}
                             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#eeeaf5]">
                               <div
@@ -1525,18 +1525,18 @@ export const PlanningProposalCalendar = ({
                                 selectedTask?.taskId === item.taskId &&
                                 selectedTask.proposalIndex ===
                                   item.proposalIndex;
-                              const tone =
+                              const statusColor =
                                 item.source === 'existing'
-                                  ? 'border-slate-200 bg-slate-100 text-slate-700'
+                                  ? '#71717A'
                                   : item.source === 'manual'
-                                    ? 'border-amber-300 bg-amber-50 text-amber-950'
-                                    : 'border-emerald-300 bg-emerald-50 text-emerald-950';
+                                    ? '#B54708'
+                                    : '#310984';
                               return (
                                 <div
                                   key={item.id}
                                   title={`${item.task.propertyCode || item.task.property} · ${fromMinutes(item.startMinute)}-${fromMinutes(item.endMinute)}${overlaps ? ' · Coincide en horario con otra tarea de este trabajador' : ''}`}
-                                  className={`absolute flex ${width < 140 ? 'flex-col' : ''} h-[84px] overflow-hidden rounded-xl border shadow-sm ${tone} ${selected ? 'ring-2 ring-[#310984] ring-offset-1' : ''}`}
-                                  style={{ left, width, top: 8 + lane * 92 }}
+                                  className={`absolute flex ${width < 140 ? 'flex-col' : ''} h-[84px] overflow-hidden rounded-md border border-line bg-surface shadow-sober ${selected ? 'ring-2 ring-brand ring-offset-1' : ''}`}
+                                  style={{ left, width, top: 8 + lane * 92, borderLeft: `3px solid ${statusColor}` }}
                                   onContextMenu={(event) => {
                                     event.preventDefault();
                                     setQuickActionsTaskId(item.taskId);
@@ -1546,7 +1546,7 @@ export const PlanningProposalCalendar = ({
                                     type="button"
                                     aria-label={`Acciones rápidas de ${item.task.property}`}
                                     data-quick-actions
-                                    className="absolute right-1 top-1 z-20 grid h-6 w-6 place-items-center rounded-md bg-white/85 text-[#310984] shadow-sm hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]"
+                                    className="absolute right-1 top-1 z-20 grid h-6 w-6 place-items-center rounded-md bg-white/85 text-brand shadow-sm hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                                     onClick={(event) => {
                                       event.stopPropagation();
                                       setQuickActionsTaskId(item.taskId);
@@ -1565,14 +1565,14 @@ export const PlanningProposalCalendar = ({
                                       )
                                     }
                                   >
-                                    <p className="flex items-center gap-1 text-[15px] font-semibold leading-tight text-[#171321]">
+                                    <p className="flex items-center gap-1 text-[15px] font-semibold leading-tight text-ink">
                                       {overlaps && <AlertTriangle aria-label="Solapamiento de horario" className="h-3 w-3 shrink-0 text-amber-700" />}
                                       <span className="truncate" title={item.task.propertyCode || item.task.property}>
                                       {item.task.propertyCode ||
                                         item.task.property}
                                       </span>
                                     </p>
-                                    <p className={`${width < 140 ? 'hidden' : ''} mt-1 truncate text-xs opacity-75`}>
+                                    <p className={`${width < 140 ? 'hidden' : ''} mt-1 truncate text-xs text-ink-3`}>
                                       {item.task.detectedBuilding
                                         ?.propertyGroupName ||
                                         item.task.property}
@@ -1611,7 +1611,7 @@ export const PlanningProposalCalendar = ({
         </div>
 
         {unassignedTasks.length > 0 && (
-          <div ref={mobileTrayRef} className="scroll-mt-24 rounded-2xl border border-red-200 bg-red-50 p-3 lg:hidden">
+          <div ref={mobileTrayRef} className="scroll-mt-24 rounded-lg border border-red-200 bg-red-50 p-3 lg:hidden">
             <p className="flex items-center gap-2 text-sm font-semibold text-red-900">
               <AlertTriangle className="h-4 w-4" /> Sin asignar
             </p>
@@ -1620,7 +1620,7 @@ export const PlanningProposalCalendar = ({
                 <button
                   key={task.id}
                   type="button"
-                  className="rounded-xl border border-red-200 bg-white p-3 text-left text-xs text-red-800"
+                  className="rounded-md border border-red-200 bg-white p-3 text-left text-xs text-red-800"
                   onClick={() => openReassignment(task.id)}
                 >
                   <span className="font-semibold text-red-900">
@@ -1636,7 +1636,7 @@ export const PlanningProposalCalendar = ({
           </div>
         )}
         {warnings.length === 0 && manualChangeCount === 0 && (
-          <div className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+          <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> El reparto no
             muestra solapes ni problemas con los datos disponibles.
           </div>
@@ -1648,7 +1648,7 @@ export const PlanningProposalCalendar = ({
         onOpenChange={(open) => !open && setReassignment(null)}
       >
         <DialogContent className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0">
-          <DialogHeader className="border-b border-[#310984]/10 p-5 pb-4 text-left">
+          <DialogHeader className="border-b border-line p-5 pb-4 text-left">
             <DialogTitle>Colocar tarea</DialogTitle>
             <DialogDescription>
               {reassignmentTask
@@ -1660,7 +1660,7 @@ export const PlanningProposalCalendar = ({
             <div>
               <label
                 htmlFor="placement-start-time"
-                className="mb-1 block text-sm font-semibold text-[#171321]"
+                className="mb-1 block text-sm font-semibold text-ink"
               >
                 Hora de inicio
               </label>
@@ -1669,19 +1669,19 @@ export const PlanningProposalCalendar = ({
                 type="time"
                 value={placementStartTime}
                 onChange={(event) => setPlacementStartTime(event.target.value)}
-                className="min-h-[44px] w-full rounded-xl border border-[#310984]/20 bg-white px-3 text-sm"
+                className="min-h-[44px] w-full rounded-md border border-[#310984]/20 bg-white px-3 text-sm"
               />
-              <p className="mt-1 text-xs text-[#6b627a]">
+              <p className="mt-1 text-xs text-ink-3">
                 El final se calcula con la duración prevista.
               </p>
             </div>
-            <p className="text-sm font-semibold text-[#171321]">
+            <p className="text-sm font-semibold text-ink">
               Elegir responsable
             </p>
             {reassignment?.proposalIndex !== undefined && (
               <button
                 type="button"
-                className={`flex min-h-[52px] w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${placementCleanerId === UNASSIGNED_PLACEMENT_ID ? 'border-red-500 bg-red-50' : 'border-red-200 bg-white'}`}
+                className={`flex min-h-[52px] w-full items-center justify-between rounded-lg border px-4 py-3 text-left ${placementCleanerId === UNASSIGNED_PLACEMENT_ID ? 'border-red-500 bg-red-50' : 'border-red-200 bg-white'}`}
                 onClick={() => setPlacementCleanerId(UNASSIGNED_PLACEMENT_ID)}
               >
                 <span className="font-semibold text-red-900">Sin asignar</span>
@@ -1694,10 +1694,10 @@ export const PlanningProposalCalendar = ({
               <button
                 key={cleaner.id}
                 type="button"
-                className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left ${placementCleanerId === cleaner.id ? 'border-[#310984] bg-[#f4efff]' : 'border-[#310984]/10 bg-white'}`}
+                className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left ${placementCleanerId === cleaner.id ? 'border-[#310984] bg-[#f4efff]' : 'border-line bg-white'}`}
                 onClick={() => setPlacementCleanerId(cleaner.id)}
               >
-                <span className="font-semibold text-[#171321]">
+                <span className="font-semibold text-ink">
                   {cleaner.name}
                 </span>
                 <span
@@ -1713,7 +1713,7 @@ export const PlanningProposalCalendar = ({
                   (item) => item.cleaner.id === placementCleanerId,
                 );
                 return selected && !selected.validation.valid ? (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                     <strong>Advertencia:</strong>{' '}
                     {selected.validation.conflict?.message}
                   </div>
@@ -1721,7 +1721,7 @@ export const PlanningProposalCalendar = ({
               })()}
             <Button
               type="button"
-              className="min-h-[44px] w-full bg-[#310984] text-white hover:bg-[#23066a]"
+              className="min-h-[44px] w-full bg-brand text-white hover:bg-ink"
               disabled={
                 !placementCleanerId ||
                 (placementCleanerId !== UNASSIGNED_PLACEMENT_ID &&

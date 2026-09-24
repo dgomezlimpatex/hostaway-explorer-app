@@ -23,18 +23,18 @@ const legend = [
 ];
 
 export const CleanerLoadTable = ({ days }: CleanerLoadTableProps) => (
-  <Card className="border-[#310984]/10 bg-white text-[#171321] shadow-lg shadow-[#310984]/6">
-    <CardHeader className="border-b border-[#310984]/10">
+  <Card className="border-line bg-white text-ink shadow-sober">
+    <CardHeader className="border-b border-line">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <CardTitle className="flex items-center gap-2 text-lg tracking-tight text-[#171321]">
-            <BarChart3 className="h-5 w-5 text-[#310984]" /> Carga por trabajadora
+          <CardTitle className="flex items-center gap-2 text-lg tracking-tight text-ink">
+            <BarChart3 className="h-5 w-5 text-brand" /> Carga por trabajadora
           </CardTitle>
-          <p className="mt-1 text-xs text-[#6b627a]">Horas previstas por trabajadora en el periodo elegido.</p>
+          <p className="mt-1 text-xs text-ink-3">Horas previstas por trabajadora en el periodo elegido.</p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs text-[#6b627a]" aria-label="Leyenda de carga">
+        <div className="flex flex-wrap gap-2 text-xs text-ink-3" aria-label="Leyenda de carga">
           {legend.map((item) => (
-            <span key={item.label} className="inline-flex items-center gap-1.5 rounded-full border border-[#310984]/10 bg-[#f7f5fb] px-2 py-1">
+            <span key={item.label} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-2 py-1">
               <span className={`h-2 w-2 rounded-full ${item.className}`} /> {item.label}
             </span>
           ))}
@@ -45,9 +45,9 @@ export const CleanerLoadTable = ({ days }: CleanerLoadTableProps) => (
       <div className="overflow-x-auto" aria-label="Tabla de carga desplazable horizontalmente">
         <table className="w-full min-w-[680px] text-sm">
           <caption className="sr-only">Carga prevista por trabajadora en el periodo elegido</caption>
-          <thead className="bg-[#f7f5fb] text-xs uppercase tracking-wide text-[#6b627a]">
+          <thead className="bg-paper text-xs uppercase tracking-wide text-ink-3">
             <tr>
-              <th scope="col" className="sticky left-0 bg-[#f7f5fb] px-4 py-3 text-left">Trabajadora</th>
+              <th scope="col" className="sticky left-0 bg-paper px-4 py-3 text-left">Trabajadora</th>
               <th scope="col" className="px-4 py-3 text-left">Tareas</th>
               <th scope="col" className="px-4 py-3 text-left">Planificado</th>
               <th scope="col" className="px-4 py-3 text-left">Capacidad</th>
@@ -58,18 +58,18 @@ export const CleanerLoadTable = ({ days }: CleanerLoadTableProps) => (
           <tbody className="divide-y divide-[#310984]/10">
             {days.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-[#6b627a]">
+                <td colSpan={6} className="px-4 py-6 text-center text-ink-3">
                   No hay trabajadoras con tareas visibles. Prueba a limpiar filtros, cambiar rango o revisar sede activa.
                 </td>
               </tr>
             ) : days.map((day) => {
               const overload = Math.max(day.utilizationPercent - 100, 0);
               return (
-                <tr key={day.cleanerId} className="group hover:bg-[#f7f5fb]">
-                  <td className="sticky left-0 bg-white px-4 py-3 font-medium text-[#171321] group-hover:bg-[#f7f5fb]">{day.cleanerName}</td>
-                  <td className="px-4 py-3 text-[#6b627a]">{day.tasks.length}</td>
-                  <td className="px-4 py-3 text-[#6b627a]">{minutesToHoursLabel(day.plannedMinutes)}</td>
-                  <td className="px-4 py-3 text-[#6b627a]">{minutesToHoursLabel(day.capacityMinutes)}</td>
+                <tr key={day.cleanerId} className="group hover:bg-paper">
+                  <td className="sticky left-0 bg-white px-4 py-3 font-medium text-ink group-hover:bg-paper">{day.cleanerName}</td>
+                  <td className="px-4 py-3 text-ink-3">{day.tasks.length}</td>
+                  <td className="px-4 py-3 text-ink-3">{minutesToHoursLabel(day.plannedMinutes)}</td>
+                  <td className="px-4 py-3 text-ink-3">{minutesToHoursLabel(day.capacityMinutes)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div
@@ -83,7 +83,7 @@ export const CleanerLoadTable = ({ days }: CleanerLoadTableProps) => (
                       >
                         <div aria-hidden="true" className={`h-full ${toneForUtilization(day.utilizationPercent)}`} style={{ width: `${Math.min(day.utilizationPercent, 100)}%` }} />
                       </div>
-                      <span className="w-10 shrink-0 text-right tabular-nums text-[#171321]">{day.utilizationPercent}%</span>
+                      <span className="w-10 shrink-0 text-right tabular-nums text-ink">{day.utilizationPercent}%</span>
                       {overload > 0 && <span className="text-xs text-red-700">+{overload}%</span>}
                     </div>
                   </td>

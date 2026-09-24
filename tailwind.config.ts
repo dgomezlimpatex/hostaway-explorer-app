@@ -19,6 +19,22 @@ export default {
 		},
 		extend: {
 			colors: {
+				paper: 'hsl(var(--paper))',
+				surface: 'hsl(var(--surface))',
+				line: 'hsl(var(--line))',
+				'line-soft': 'hsl(var(--line-soft))',
+				ink: {
+					DEFAULT: 'hsl(var(--ink))',
+					2: 'hsl(var(--ink-2))',
+					3: 'hsl(var(--ink-3))',
+					4: 'hsl(var(--ink-4))'
+				},
+				brand: {
+					DEFAULT: 'hsl(var(--primary))'
+				},
+				danger: 'hsl(var(--state-danger))',
+				warning: 'hsl(var(--state-warning))',
+				success: 'hsl(var(--state-success))',
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -62,6 +78,9 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				}
+			},
+			boxShadow: {
+				sober: '0 1px 2px rgba(24, 24, 27, 0.04), 0 1px 3px rgba(24, 24, 27, 0.06)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

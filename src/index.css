@@ -50,11 +50,24 @@
     --dashboard-light-purple: 263 42% 66%;
     --dashboard-violet: 257 64% 68%;
 
+    /* Sistema sobrio (2026-09-24): superficies neutras, un solo acento de marca,
+       estados desaturados. Ver DECISIONES de Engineer. */
+    --paper: 240 5% 97%;
+    --surface: 0 0% 100%;
+    --line: 240 6% 90%;
+    --line-soft: 240 6% 96%;
+    --ink: 240 6% 10%;
+    --ink-2: 240 5% 34%;
+    --ink-3: 240 4% 46%;
+    --ink-4: 240 5% 65%;
+    --state-danger: 4 72% 40%;
+    --state-warning: 26 91% 37%;
+    --state-success: 158 74% 24%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
 
-    --radius: 1rem;
+    --radius: 0.5rem;
 
     --sidebar-background: 259 87% 14%;
     --sidebar-foreground: 252 100% 98%;

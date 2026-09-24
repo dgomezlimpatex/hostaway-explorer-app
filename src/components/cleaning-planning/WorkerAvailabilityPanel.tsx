@@ -95,22 +95,22 @@ export const WorkerAvailabilityPanel = ({ cleaners, availabilities }: WorkerAvai
   const rows = aggregateAvailability(cleaners, availabilities);
 
   return (
-    <Card className="border-[#310984]/10 bg-white text-[#171321] shadow-lg shadow-[#310984]/6">
-      <CardHeader className="space-y-2 border-b border-[#310984]/10">
+    <Card className="border-line bg-white text-ink shadow-sober">
+      <CardHeader className="space-y-2 border-b border-line">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base font-semibold tracking-tight text-[#171321]">Disponibilidad real</CardTitle>
-          <Badge variant="outline" className="border-[#310984]/20 bg-[#310984]/10 text-[#310984]">
+          <CardTitle className="text-base font-semibold tracking-tight text-ink">Disponibilidad real</CardTitle>
+          <Badge variant="outline" className="border-[#310984]/20 bg-brand/10 text-brand">
             <Sparkles className="mr-1 h-3 w-3" /> Detalle
           </Badge>
         </div>
-        <p className="text-xs text-[#6b627a]">
+        <p className="text-xs text-ink-3">
           Capacidad calculada con horarios, ausencias, días libres, mantenimientos y tareas ya asignadas. Mira el detalle día a día, sobre todo en rangos de 7 o 30 días.
         </p>
       </CardHeader>
       <CardContent className="space-y-3 p-4">
         {rows.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[#310984]/15 bg-[#f7f5fb] p-4 text-sm text-[#6b627a]">
-            <p className="font-medium text-[#171321]">No hay disponibilidad cargada para el rango.</p>
+          <div className="rounded-md border border-dashed border-line bg-paper p-4 text-sm text-ink-3">
+            <p className="font-medium text-ink">No hay disponibilidad cargada para el rango.</p>
             <p className="mt-1 text-xs">Revisa sede activa, horario semanal, ausencias o configuración de trabajadoras antes de proponer asignaciones.</p>
           </div>
         ) : rows.map((row) => {
@@ -120,11 +120,11 @@ export const WorkerAvailabilityPanel = ({ cleaners, availabilities }: WorkerAvai
           const hiddenDays = row.days.length - visibleDays.length;
 
           return (
-            <div key={row.cleanerId} className="rounded-2xl border border-[#310984]/10 bg-[#f7f5fb] p-3">
+            <div key={row.cleanerId} className="rounded-lg border border-line bg-paper p-3">
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-medium text-[#171321]">{row.cleanerName}</p>
-                  <p className="text-xs text-[#6b627a]">
+                  <p className="text-sm font-medium text-ink">{row.cleanerName}</p>
+                  <p className="text-xs text-ink-3">
                     Libre {minutesToHoursLabel(row.remainingMinutes)} · planificado {minutesToHoursLabel(row.assignedMinutes)}
                   </p>
                 </div>
@@ -147,7 +147,7 @@ export const WorkerAvailabilityPanel = ({ cleaners, availabilities }: WorkerAvai
                 aria-label={`Disponibilidad de ${row.cleanerName}`}
                 aria-valuetext={`${utilization}% ocupado, ${minutesToHoursLabel(row.remainingMinutes)} libres`}
               />
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#6b627a]">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ink-3">
                 <span className="inline-flex items-center gap-1"><CalendarClock className="h-3 w-3" />{minutesToHoursLabel(row.availableMinutes)} reales</span>
                 {row.blockedCount > 0 && <span>{row.blockedCount} bloqueos</span>}
                 {row.fallbackDays > 0 && (
@@ -164,7 +164,7 @@ export const WorkerAvailabilityPanel = ({ cleaners, availabilities }: WorkerAvai
                       {dayLabel(day.date)} · {day.isAvailable ? minutesToHoursLabel(day.remainingMinutes) : 'no disponible'}
                     </span>
                   ))}
-                  {hiddenDays > 0 && <span className="rounded-full border border-[#310984]/10 bg-white px-2 py-1 text-xs text-[#6b627a]">+{hiddenDays} días</span>}
+                  {hiddenDays > 0 && <span className="rounded-full border border-line bg-white px-2 py-1 text-xs text-ink-3">+{hiddenDays} días</span>}
                 </div>
               )}
             </div>

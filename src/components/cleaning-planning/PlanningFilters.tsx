@@ -32,7 +32,7 @@ const taskFilters: Array<{ value: PlanningTaskFilter; label: string }> = [
   { value: 'risks', label: 'Solo riesgos' },
 ];
 
-const controlClass = 'h-11 min-h-[44px] rounded-md border border-[#310984]/12 bg-white px-3 text-sm text-[#171321] outline-none ring-offset-white placeholder:text-[#6b627a]/55 focus:border-[#310984]/50 focus:ring-2 focus:ring-[#310984]/15';
+const controlClass = 'h-11 min-h-[44px] rounded-md border border-line bg-white px-3 text-sm text-ink outline-none ring-offset-white placeholder:text-ink-3/55 focus:border-[#310984]/50 focus:ring-2 focus:ring-brand/15';
 
 export const PlanningFilters = ({
   date,
@@ -59,11 +59,11 @@ export const PlanningFilters = ({
   };
 
   return (
-    <div className="space-y-3 rounded-2xl border border-[#310984]/10 bg-white p-4 text-[#171321] shadow-lg shadow-[#310984]/6">
+    <div className="space-y-3 rounded-lg border border-line bg-white p-4 text-ink shadow-sober">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <p className="text-sm font-semibold text-[#171321]">Día, sede y periodo</p>
-          <p className="text-xs text-[#6b627a]">Elige qué operación quieres cerrar. Los filtros finos están en “Más filtros”.</p>
+          <p className="text-sm font-semibold text-ink">Día, sede y periodo</p>
+          <p className="text-xs text-ink-3">Elige qué operación quieres cerrar. Los filtros finos están en “Más filtros”.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -83,7 +83,7 @@ export const PlanningFilters = ({
             aria-label="Día anterior"
             variant="outline"
             size="sm"
-            className="min-h-[44px] border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff] hover:text-[#310984]"
+            className="min-h-[44px] border-line bg-white text-brand hover:bg-paper hover:text-brand"
             onClick={() => onDateChange(subDays(date, 1))}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -99,19 +99,19 @@ export const PlanningFilters = ({
             aria-label="Día siguiente"
             variant="outline"
             size="sm"
-            className="min-h-[44px] border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff] hover:text-[#310984]"
+            className="min-h-[44px] border-line bg-white text-brand hover:bg-paper hover:text-brand"
             onClick={() => onDateChange(addDays(date, 1))}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
 
-          <div className="flex rounded-md border border-[#310984]/10 bg-[#f7f3ff] p-1" aria-label="Periodo de planificación">
+          <div className="flex rounded-md border border-line bg-paper p-1" aria-label="Periodo de planificación">
             {presets.map((item) => (
               <Button
                 key={item.value}
                 size="sm"
                 variant={preset === item.value ? 'default' : 'ghost'}
-                className={preset === item.value ? 'min-h-[44px] bg-[#310984] text-white hover:bg-[#4c1bb0]' : 'min-h-[44px] text-[#6b627a] hover:bg-white hover:text-[#310984]'}
+                className={preset === item.value ? 'min-h-[44px] bg-brand text-white hover:bg-ink' : 'min-h-[44px] text-ink-3 hover:bg-white hover:text-brand'}
                 onClick={() => onPresetChange(item.value)}
               >
                 {item.label}
@@ -122,7 +122,7 @@ export const PlanningFilters = ({
           <Button
             type="button"
             variant="outline"
-            className="min-h-[44px] border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff] hover:text-[#310984]"
+            className="min-h-[44px] border-line bg-white text-brand hover:bg-paper hover:text-brand"
             onClick={() => setShowAdvancedFilters((current) => !current)}
           >
             <SlidersHorizontal className="mr-2 h-4 w-4" /> Más filtros{hasAdvancedFilters ? ' activos' : ''}
@@ -131,7 +131,7 @@ export const PlanningFilters = ({
       </div>
 
       {showAdvancedFilters && (
-        <div className="grid gap-2 border-t border-[#310984]/10 pt-3 md:grid-cols-5">
+        <div className="grid gap-2 border-t border-line pt-3 md:grid-cols-5">
           <input
             aria-label="Buscar propiedad, edificio o dirección"
             className={controlClass}
@@ -168,7 +168,7 @@ export const PlanningFilters = ({
           <Button
             type="button"
             variant="outline"
-            className="min-h-[44px] border-[#310984]/15 bg-white text-[#310984] hover:bg-[#f0eaff] hover:text-[#310984]"
+            className="min-h-[44px] border-line bg-white text-brand hover:bg-paper hover:text-brand"
             disabled={!hasAdvancedFilters}
             onClick={clearAdvancedFilters}
           >
