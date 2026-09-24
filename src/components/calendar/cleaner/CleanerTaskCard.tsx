@@ -98,7 +98,7 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`${getGradient()} p-6 rounded-3xl shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] text-white relative overflow-hidden`}
+      className={`${getGradient()} p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] text-white relative overflow-hidden`}
     >
       {/* Background pattern */}
       <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />

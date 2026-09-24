@@ -38,11 +38,11 @@ const dayLabel = (date: string): string => {
 };
 
 const dailyTone = (day: DailyAvailabilitySummary): string => {
-  if (!day.isAvailable || day.availableMinutes === 0) return 'border-red-200 bg-red-50 text-red-800';
+  if (!day.isAvailable || day.availableMinutes === 0) return 'border-line bg-surface text-danger';
   const utilization = Math.round((day.assignedMinutes / day.availableMinutes) * 100);
-  if (utilization >= 100 || day.remainingMinutes < 30) return 'border-red-200 bg-red-50 text-red-800';
-  if (utilization >= 85 || day.remainingMinutes < 60) return 'border-amber-200 bg-amber-50 text-amber-800';
-  return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+  if (utilization >= 100 || day.remainingMinutes < 30) return 'border-line bg-surface text-danger';
+  if (utilization >= 85 || day.remainingMinutes < 60) return 'border-line bg-surface text-warning';
+  return 'border-line bg-surface text-ink-2';
 };
 
 const aggregateAvailability = (
@@ -130,12 +130,12 @@ export const WorkerAvailabilityPanel = ({ cleaners, availabilities }: WorkerAvai
                 </div>
                 <div className="flex flex-wrap justify-end gap-1">
                   {isTight && (
-                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                    <Badge variant="outline" className="border-line bg-surface text-warning">
                       Ajustada
                     </Badge>
                   )}
                   {row.tightDays > 0 && (
-                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                    <Badge variant="outline" className="border-line bg-surface text-warning">
                       {row.tightDays} días al límite
                     </Badge>
                   )}
@@ -151,7 +151,7 @@ export const WorkerAvailabilityPanel = ({ cleaners, availabilities }: WorkerAvai
                 <span className="inline-flex items-center gap-1"><CalendarClock className="h-3 w-3" />{minutesToHoursLabel(row.availableMinutes)} reales</span>
                 {row.blockedCount > 0 && <span>{row.blockedCount} bloqueos</span>}
                 {row.fallbackDays > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-800">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2 py-0.5 text-warning">
                     <ShieldAlert className="h-3 w-3" />horario estimado
                   </span>
                 )}

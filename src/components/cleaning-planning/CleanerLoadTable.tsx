@@ -9,17 +9,15 @@ interface CleanerLoadTableProps {
 }
 
 const toneForUtilization = (utilization: number): string => {
-  if (utilization >= 100) return 'bg-red-500';
-  if (utilization >= 85) return 'bg-amber-400';
-  if (utilization >= 55) return 'bg-emerald-500';
-  return 'bg-sky-500';
+  if (utilization >= 100) return 'bg-danger';
+  if (utilization >= 85) return 'bg-ink';
+  return 'bg-ink-4';
 };
 
 const legend = [
-  { label: 'Baja', className: 'bg-sky-500' },
-  { label: 'Correcta', className: 'bg-emerald-500' },
-  { label: 'Ajustada', className: 'bg-amber-400' },
-  { label: 'Sobrecarga', className: 'bg-red-500' },
+  { label: 'Con margen', className: 'bg-ink-4' },
+  { label: 'Al límite', className: 'bg-ink' },
+  { label: 'Sobrecarga', className: 'bg-danger' },
 ];
 
 export const CleanerLoadTable = ({ days }: CleanerLoadTableProps) => (
@@ -84,14 +82,14 @@ export const CleanerLoadTable = ({ days }: CleanerLoadTableProps) => (
                         <div aria-hidden="true" className={`h-full ${toneForUtilization(day.utilizationPercent)}`} style={{ width: `${Math.min(day.utilizationPercent, 100)}%` }} />
                       </div>
                       <span className="w-10 shrink-0 text-right tabular-nums text-ink">{day.utilizationPercent}%</span>
-                      {overload > 0 && <span className="text-xs text-red-700">+{overload}%</span>}
+                      {overload > 0 && <span className="text-xs font-medium text-danger">+{overload}%</span>}
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     {day.riskFlags.length === 0 ? (
-                      <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-800">OK</Badge>
+                      <Badge variant="outline" className="border-line bg-surface text-ink-2">OK</Badge>
                     ) : (
-                      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">{day.riskFlags.length} aviso(s)</Badge>
+                      <Badge variant="outline" className="border-line bg-surface text-warning">{day.riskFlags.length} aviso(s)</Badge>
                     )}
                   </td>
                 </tr>

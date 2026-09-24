@@ -33,7 +33,7 @@ const CleanerTaskSummaryComponent: React.FC<CleanerTaskSummaryProps> = ({
       {/* Today's summary */}
       <div className="flex items-center gap-3">
         {/* Pending tasks */}
-        <div className="flex-1 bg-background/60 backdrop-blur-sm rounded-2xl p-3 border border-border/30">
+        <div className="flex-1 bg-background/60 backdrop-blur-sm rounded-lg p-3 border border-border/30">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
               <Clock className="h-4 w-4 text-amber-600" />
@@ -46,7 +46,7 @@ const CleanerTaskSummaryComponent: React.FC<CleanerTaskSummaryProps> = ({
         </div>
 
         {/* Completed tasks */}
-        <div className="flex-1 bg-background/60 backdrop-blur-sm rounded-2xl p-3 border border-border/30">
+        <div className="flex-1 bg-background/60 backdrop-blur-sm rounded-lg p-3 border border-border/30">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -60,7 +60,7 @@ const CleanerTaskSummaryComponent: React.FC<CleanerTaskSummaryProps> = ({
 
         {/* Total hours */}
         {todayTasks.length > 0 && (
-          <div className="flex-1 bg-background/60 backdrop-blur-sm rounded-2xl p-3 border border-border/30">
+          <div className="flex-1 bg-background/60 backdrop-blur-sm rounded-lg p-3 border border-border/30">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
                 <Clock className="h-4 w-4 text-primary" />
@@ -76,7 +76,7 @@ const CleanerTaskSummaryComponent: React.FC<CleanerTaskSummaryProps> = ({
 
       {/* Tomorrow preview */}
       {tomorrowTasks.length > 0 && (
-        <div className="flex items-center justify-between bg-background/40 backdrop-blur-sm rounded-xl px-3 py-2 border border-border/20">
+        <div className="flex items-center justify-between bg-background/40 backdrop-blur-sm rounded-md px-3 py-2 border border-border/20">
           <div className="flex items-center gap-2">
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Mañana:</span>

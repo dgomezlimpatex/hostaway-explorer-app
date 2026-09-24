@@ -56,7 +56,7 @@ function AgendaTaskCard({ task, onTaskClick }: { task: Task; onTaskClick: (task:
     <button
       type="button"
       onClick={() => onTaskClick(task)}
-      className="w-full rounded-xl border bg-card p-3 text-left shadow-sm transition active:scale-[0.99]"
+      className="w-full rounded-md border bg-card p-3 text-left shadow-sm transition active:scale-[0.99]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">

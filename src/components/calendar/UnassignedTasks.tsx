@@ -38,7 +38,7 @@ export const UnassignedTasks = ({
   };
 
   return (
-    <Card className="border border-orange-200 shadow-lg h-full py-[15px] rounded-xl bg-white">
+    <Card className="border border-orange-200 shadow-lg h-full py-[15px] rounded-md bg-white">
       <CardContent className="p-4 h-full flex flex-col my-0 py-[4px] mx-0 px-[8px]">
         <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 flex-shrink-0">
           📋 Tareas Sin Asignar 

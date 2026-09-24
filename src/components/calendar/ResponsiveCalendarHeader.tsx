@@ -75,7 +75,7 @@ export const ResponsiveCalendarHeader = ({
   const capitalizeFirst = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
   return (
-    <div className="rounded-2xl overflow-hidden shadow-lg border border-border/40">
+    <div className="rounded-lg overflow-hidden shadow-lg border border-border/40">
       {/* ===== BARRA DE TÍTULO Y ACCIONES ===== */}
       <div className="relative bg-gradient-to-r from-[hsl(258,70%,28%)] via-[hsl(262,65%,32%)] to-[hsl(268,60%,38%)] text-white">
         {/* Brillo suave para dar profundidad */}
