@@ -25,13 +25,13 @@ export const RoleBasedNavigation = () => {
   const { canAccessModule, hasPermission, isAdminOrManager } = useRolePermissions();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
+    <div className="min-h-screen bg-paper py-12">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className="text-3xl font-semibold tracking-tight text-ink mb-3">
             Panel de Control
           </h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-base text-ink-3">
             Selecciona la sección a la que deseas acceder
           </p>
           <div className="mt-4 flex justify-center">
@@ -46,10 +46,6 @@ export const RoleBasedNavigation = () => {
               title="Calendario"
               description="Visualiza y gestiona las tareas programadas en el calendario"
               icon={Calendar}
-              gradientFrom="bg-gradient-to-br from-blue-500"
-              gradientTo="to-blue-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-blue-300"
             />
           )}
 
@@ -59,10 +55,6 @@ export const RoleBasedNavigation = () => {
               title="Planificación"
               description="Planifica las limpiezas del día por sede, edificio y disponibilidad real, y revisa el reparto propuesto"
               icon={Layers}
-              gradientFrom="bg-gradient-to-br from-[#310984]"
-              gradientTo="to-violet-700"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-violet-300"
             />
           )}
 
@@ -72,10 +64,6 @@ export const RoleBasedNavigation = () => {
               title="Edificios"
               description="Consulta carga futura, equipo, propiedades y decisiones por edificio"
               icon={Building2}
-              gradientFrom="bg-gradient-to-br from-violet-600"
-              gradientTo="to-[#310984]"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-violet-300"
             />
           )}
 
@@ -85,10 +73,6 @@ export const RoleBasedNavigation = () => {
               title="Configuración de planificación"
               description="Configura edificios y reglas. No es necesario entrar aquí para repartir el día."
               icon={ClipboardList}
-              gradientFrom="bg-gradient-to-br from-slate-600"
-              gradientTo="to-slate-800"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-slate-300"
             />
           )}
 
@@ -98,10 +82,6 @@ export const RoleBasedNavigation = () => {
               title="Plantillas de Checklist"
               description="Gestiona las plantillas de checklist para diferentes propiedades"
               icon={FileText}
-              gradientFrom="bg-gradient-to-br from-cyan-500"
-              gradientTo="to-cyan-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-cyan-300"
             />
           )}
 
@@ -111,10 +91,6 @@ export const RoleBasedNavigation = () => {
               title="Trabajadores"
               description="Gestiona el equipo de limpieza y su disponibilidad"
               icon={Users}
-              gradientFrom="bg-gradient-to-br from-purple-500"
-              gradientTo="to-purple-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-purple-300"
             />
           )}
 
@@ -124,10 +100,6 @@ export const RoleBasedNavigation = () => {
               title="Clientes"
               description="Administra la información de tus clientes"
               icon={Users}
-              gradientFrom="bg-gradient-to-br from-orange-500"
-              gradientTo="to-orange-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-orange-300"
             />
           )}
 
@@ -137,10 +109,6 @@ export const RoleBasedNavigation = () => {
               title="Propiedades"
               description="Gestiona las propiedades y sus características"
               icon={MapPin}
-              gradientFrom="bg-gradient-to-br from-red-500"
-              gradientTo="to-red-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-red-300"
             />
           )}
 
@@ -150,10 +118,6 @@ export const RoleBasedNavigation = () => {
               title="Presupuestador"
               description="Simula costes, precio y rentabilidad de apartamentos turísticos"
               icon={Calculator}
-              gradientFrom="bg-gradient-to-br from-[#310984]"
-              gradientTo="to-fuchsia-700"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-violet-300"
             />
           )}
 
@@ -163,10 +127,6 @@ export const RoleBasedNavigation = () => {
               title="Tareas Recurrentes"
               description="Configura servicios que se repiten automáticamente"
               icon={RefreshCw}
-              gradientFrom="bg-gradient-to-br from-teal-500"
-              gradientTo="to-teal-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-teal-300"
             />
           )}
 
@@ -176,10 +136,6 @@ export const RoleBasedNavigation = () => {
               title="Supervisión y calidad"
               description="Rutas, checklist, comprobaciones, fotos e incidencias por sede"
               icon={ClipboardCheck}
-              gradientFrom="bg-gradient-to-br from-[#310984]"
-              gradientTo="to-violet-700"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-violet-300"
             />
           )}
 
@@ -189,10 +145,6 @@ export const RoleBasedNavigation = () => {
               title="Incidencias"
               description="Revisa y gestiona incidencias pendientes de aprobar"
               icon={AlertTriangle}
-              gradientFrom="bg-gradient-to-br from-amber-500"
-              gradientTo="to-orange-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-amber-300"
             />
           )}
 
@@ -203,10 +155,6 @@ export const RoleBasedNavigation = () => {
               title="Lavandería"
               description="Gestiona enlaces compartibles para repartidores de lavandería"
               icon={Shirt}
-              gradientFrom="bg-gradient-to-br from-pink-500"
-              gradientTo="to-pink-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-pink-300"
             />
           )}
 
@@ -217,10 +165,6 @@ export const RoleBasedNavigation = () => {
               title="Gestión de Usuarios"
               description="Invita nuevos usuarios y gestiona el acceso al sistema"
               icon={UserPlus}
-              gradientFrom="bg-gradient-to-br from-emerald-500"
-              gradientTo="to-emerald-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-emerald-300"
             />
           )}
 
@@ -230,10 +174,6 @@ export const RoleBasedNavigation = () => {
               title="Integraciones · REGISTRO"
               description="Sincroniza empleados desde REGISTRO sin perder tareas asignadas"
               icon={Link2}
-              gradientFrom="bg-gradient-to-br from-violet-500"
-              gradientTo="to-violet-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-violet-300"
             />
           )}
 
@@ -243,10 +183,6 @@ export const RoleBasedNavigation = () => {
               title="Little Hotelier"
               description="Reservas y mapeo de habitaciones para el hotel After Surf"
               icon={Hotel}
-              gradientFrom="bg-gradient-to-br from-amber-500"
-              gradientTo="to-amber-600"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-amber-300"
             />
           )}
 
@@ -256,10 +192,6 @@ export const RoleBasedNavigation = () => {
               title="Avirato Hotel"
               description="Reservas hoteleras, limpiezas diarias y checkout automatico"
               icon={Hotel}
-              gradientFrom="bg-gradient-to-br from-slate-700"
-              gradientTo="to-slate-900"
-              iconColor="text-white"
-              hoverBorderColor="hover:border-slate-300"
             />
           )}
         </div>

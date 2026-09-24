@@ -206,7 +206,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
 
     return (
       <div className="mb-4">
-        <h3 className="mb-2 px-4 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <h3 className="mb-2 px-4 text-[11px] font-semibold uppercase tracking-wide text-ink-3">
           {title}
         </h3>
         <div className="space-y-1 px-3">
@@ -218,19 +218,19 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
               className={cn(
                 'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive(item.href)
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                  ? 'bg-line-soft text-brand'
+                  : 'text-ink-2 hover:bg-paper hover:text-ink',
               )}
             >
               <item.icon
                 className={cn(
                   'h-5 w-5 shrink-0',
-                  isActive(item.href) ? 'text-blue-600' : 'text-slate-400',
+                  isActive(item.href) ? 'text-brand' : 'text-ink-4',
                 )}
               />
               <span className="min-w-0 flex-1">{item.title}</span>
               {getBadgeCount(item) > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-none text-white shadow-sm">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold leading-none text-white shadow-sm">
                   {getBadgeCount(item) > 99 ? '99+' : getBadgeCount(item)}
                 </span>
               )}
@@ -243,7 +243,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
 
   return (
     <div className="flex h-full flex-col bg-white">
-      <div className="border-b border-slate-200 px-4 py-4">
+      <div className="border-b border-line px-4 py-4">
         <GlobalSearch />
       </div>
 

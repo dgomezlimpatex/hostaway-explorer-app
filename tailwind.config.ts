@@ -19,6 +19,11 @@ export default {
 		},
 		extend: {
 			colors: {
+				'surface-dark': '#1C1C1F',
+				'surface-dark-2': '#26262B',
+				'line-dark': '#2A2A2F',
+				'ink-light': '#E4E4E7',
+				'ink-light-2': '#A1A1AA',
 				paper: 'hsl(var(--paper))',
 				surface: 'hsl(var(--surface))',
 				line: 'hsl(var(--line))',

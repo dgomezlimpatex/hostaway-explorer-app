@@ -303,19 +303,19 @@ export const DashboardSidebar = () => {
                     className={cn(
                       'relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-200',
                       isActive(item.href)
-                        ? 'bg-white text-[#310984] shadow-lg shadow-black/10'
+                        ? 'bg-surface-dark-2 text-white'
                         : 'text-white/72 hover:bg-white/10 hover:text-white'
                     )}
                   >
                     <item.icon className={cn(
                       'h-5 w-5',
-                      isActive(item.href) ? 'text-[#310984]' : 'text-white/48'
+                      isActive(item.href) ? 'text-white' : 'text-ink-light-2'
                     )} />
                     <span>{item.title}</span>
                     {getBadgeCount(item) > 0 && (
                       <span
                         className={cn(
-                          'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-none text-white shadow-sm'
+                          'ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold leading-none text-white shadow-sm'
                         )}
                       >
                         {getBadgeCount(item) > 99 ? '99+' : getBadgeCount(item)}
@@ -348,9 +348,9 @@ export const DashboardSidebar = () => {
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton>
-                    <RefreshCw className="h-5 w-5 text-gray-400" />
+                    <RefreshCw className="h-5 w-5 text-ink-light-2" />
                     <span>Sincronizaciones</span>
-                    <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90 h-4 w-4 text-gray-400" />
+                    <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90 h-4 w-4 text-ink-light-2" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
@@ -376,13 +376,13 @@ export const DashboardSidebar = () => {
   };
 
   return (
-    <Sidebar id="app-sidebar" className="border-r border-white/10 bg-[#160329] text-white shadow-[24px_0_80px_rgba(49,9,132,0.25)]" collapsible="offcanvas">
-      <SidebarContent className="flex h-full flex-col bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_18rem)]">
+    <Sidebar id="app-sidebar" className="border-r border-line-dark bg-surface-dark text-ink-light" collapsible="offcanvas">
+      <SidebarContent className="flex h-full flex-col">
         {/* Header */}
         <div className="border-b border-white/10 p-4">
             <div className="rounded-3xl border border-white/10 bg-white/8 p-3 shadow-2xl shadow-black/10 backdrop-blur">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#d9ccff] via-white to-cyan-200 text-lg font-black text-[#310984] shadow-lg shadow-cyan-950/20">
+                <div className="flex h-11 w-11 items-center justify-center rounded-md bg-brand text-lg font-black text-white">
                   L
                 </div>
                 <div>
@@ -423,7 +423,7 @@ export const DashboardSidebar = () => {
           variant="ghost"
           size="sm"
           onClick={signOut}
-          className="w-full justify-start rounded-2xl text-rose-100 hover:bg-rose-500/15 hover:text-white"
+          className="w-full justify-start rounded-md text-ink-light-2 hover:bg-surface-dark-2 hover:text-white"
         >
           <LogOut className="h-4 w-4" />
           <span className="ml-2">Cerrar sesión</span>
