@@ -225,7 +225,7 @@ const CleanerRow = memo(({
             // Let drag events pass through to the underlying TimeSlot so the
             // user can drop a task on top of an existing one (cascade insert).
             isAnyDragging && !isBeingDragged && "pointer-events-none",
-            position.hasOverlap && "border-2 border-red-400 border-dashed shadow-lg"
+            position.hasOverlap && "border-2 border-danger border-dashed shadow-lg"
           )}
           style={{
             left: position.left,
@@ -357,7 +357,7 @@ const CleanerRow = memo(({
        className={cn(
          "h-16 relative transition-all duration-200 flex border-b border-border",
          !isAbsent && !isPreferred && !isDimmed && (index % 2 === 0 ? "bg-background hover:bg-accent/50" : "bg-muted/30 hover:bg-accent/50"),
-         isPreferred && "bg-yellow-50/60 ring-1 ring-inset ring-yellow-300",
+         isPreferred && "bg-surface/60 ring-1 ring-inset ring-warning",
          isDimmed && "opacity-40"
        )}
        style={isAbsent ? {

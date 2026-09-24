@@ -35,8 +35,8 @@ const CleanerTaskSummaryComponent: React.FC<CleanerTaskSummaryProps> = ({
         {/* Pending tasks */}
         <div className="flex-1 bg-background/60 backdrop-blur-sm rounded-lg p-3 border border-border/30">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-              <Clock className="h-4 w-4 text-amber-600" />
+            <div className="h-8 w-8 rounded-full bg-surface/20 flex items-center justify-center">
+              <Clock className="h-4 w-4 text-warning" />
             </div>
             <div>
               <div className="text-xl font-bold text-foreground">{pendingToday}</div>
@@ -48,8 +48,8 @@ const CleanerTaskSummaryComponent: React.FC<CleanerTaskSummaryProps> = ({
         {/* Completed tasks */}
         <div className="flex-1 bg-background/60 backdrop-blur-sm rounded-lg p-3 border border-border/30">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <div className="h-8 w-8 rounded-full bg-surface/20 flex items-center justify-center">
+              <CheckCircle2 className="h-4 w-4 text-success" />
             </div>
             <div>
               <div className="text-xl font-bold text-foreground">{completedToday}</div>

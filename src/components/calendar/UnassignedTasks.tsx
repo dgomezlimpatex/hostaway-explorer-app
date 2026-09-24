@@ -38,11 +38,11 @@ export const UnassignedTasks = ({
   };
 
   return (
-    <Card className="border border-orange-200 shadow-lg h-full py-[15px] rounded-md bg-white">
+    <Card className="border border-line shadow-lg h-full py-[15px] rounded-md bg-white">
       <CardContent className="p-4 h-full flex flex-col my-0 py-[4px] mx-0 px-[8px]">
         <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 flex-shrink-0">
           📋 Tareas Sin Asignar 
-          <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
+          <span className="bg-line-soft text-warning text-xs px-2 py-1 rounded-full">
             {tasks.length}
           </span>
         </h3>

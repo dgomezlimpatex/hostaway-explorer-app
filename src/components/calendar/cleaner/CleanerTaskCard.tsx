@@ -38,8 +38,8 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
       className={cn(
         'absolute -top-2 -right-2 z-20 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold shadow-lg',
         allCompleted
-          ? 'bg-green-500 text-white'
-          : 'bg-red-500 text-white animate-pulse'
+          ? 'bg-surface text-white'
+          : 'bg-surface text-white animate-pulse'
       )}
     >
       <ListTodo className="h-3.5 w-3.5" />
@@ -87,11 +87,11 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
   const getGradient = () => {
     switch (task.status) {
       case 'completed':
-        return 'bg-gradient-to-br from-green-400 to-green-600';
+        return 'bg-success';
       case 'in-progress':
-        return 'bg-gradient-to-br from-blue-400 to-blue-600';
+        return 'bg-ink-3';
       default:
-        return 'bg-gradient-to-br from-amber-400 to-orange-500';
+        return 'bg-warning';
     }
   };
 

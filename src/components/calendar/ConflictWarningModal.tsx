@@ -63,7 +63,7 @@ export const ConflictWarningModal = ({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+          <AlertDialogTitle className="flex items-center gap-2 text-warning">
             <AlertTriangle className="h-5 w-5" />
             Conflicto de Disponibilidad
           </AlertDialogTitle>
@@ -122,7 +122,7 @@ export const ConflictWarningModal = ({
           <AlertDialogCancel onClick={onCancel}>Cancelar</AlertDialogCancel>
           <AlertDialogAction 
             onClick={onConfirm}
-            className="bg-amber-600 hover:bg-amber-700"
+            className="bg-warning hover:bg-ink"
           >
             Asignar de todos modos
           </AlertDialogAction>

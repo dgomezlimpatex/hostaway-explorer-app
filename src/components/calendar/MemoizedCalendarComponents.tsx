@@ -104,11 +104,11 @@ export const MemoizedUnassignedTasks = memo<{
     return (
       <div className="w-80 flex-shrink-0">
         <div className="bg-card rounded-lg border shadow-sm p-4">
-          <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-700 font-medium">
+          <div className="text-center p-4 bg-surface border border-line rounded-lg">
+            <p className="text-warning font-medium">
               ⚡ Lista de Tareas Optimizada
             </p>
-            <p className="text-yellow-600 text-sm mt-1">
+            <p className="text-warning text-sm mt-1">
               {tasks.length} tareas sin asignar
             </p>
           </div>

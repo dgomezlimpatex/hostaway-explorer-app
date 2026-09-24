@@ -65,7 +65,7 @@ export const CalendarHeader = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link to="/">
-            <Button variant="ghost" size="sm" className="text-fuchsia-600 mx-0 my-0 px-0 text-lg bg-violet-100">
+            <Button variant="ghost" size="sm" className="mx-0 my-0 px-0 text-lg text-ink-2">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver al Menú
             </Button>
@@ -83,7 +83,7 @@ export const CalendarHeader = ({
           
           {/* Tasks button */}
           <Link to="/tasks" className="mx-0.5 my-0 px-0 py-[10px]">
-            <Button variant="outline" size="sm" className="mx-[62px] my-px px-[42px] py-[8px] text-xl text-fuchsia-500 font-normal bg-pink-50 rounded">
+            <Button variant="outline" size="sm" className="mx-[62px] my-px px-[42px] py-[8px] text-xl text-ink-2 font-normal rounded-md border border-line bg-surface">
               <CheckSquare className="h-4 w-4 mr-2" />
               Gestión de Tareas
             </Button>
@@ -136,7 +136,7 @@ export const CalendarHeader = ({
           </div>
 
           {/* New task button */}
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={onNewTask}>
+          <Button size="sm" className="bg-ink-3 hover:bg-ink text-white" onClick={onNewTask}>
             <Plus className="h-4 w-4 mr-2" />
             Nueva Tarea
           </Button>

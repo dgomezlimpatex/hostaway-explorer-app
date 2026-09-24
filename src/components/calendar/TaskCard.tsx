@@ -26,8 +26,8 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
       className={cn(
         "absolute -top-1 -right-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md",
         allCompleted 
-          ? "bg-green-500 text-white" 
-          : "bg-red-500 text-white animate-pulse"
+          ? "bg-surface text-white" 
+          : "bg-surface text-white animate-pulse"
       )}
     >
       <ListTodo className="h-3 w-3" />
@@ -50,11 +50,11 @@ export const TaskCard = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-500 hover:bg-green-600";
+        return "bg-surface hover:bg-success";
       case "in-progress":
-        return "bg-yellow-500 hover:bg-yellow-600";
+        return "bg-surface hover:bg-warning";
       case "pending":
-        return "bg-red-500 hover:bg-red-600";
+        return "bg-surface hover:bg-danger";
       default:
         return "bg-gray-500 hover:bg-gray-600";
     }
@@ -101,7 +101,7 @@ export const TaskCard = ({
   return (
     <div 
       className={cn(
-        isRecurring ? "bg-blue-400/70 hover:bg-blue-500/80 border-2 border-dashed border-blue-300" : getStatusColor(task.status), 
+        isRecurring ? "bg-line-soft hover:bg-paper border-2 border-dashed border-line" : getStatusColor(task.status), 
         "rounded-lg p-2 text-white shadow-lg hover:shadow-xl transition-all duration-200 group relative overflow-visible select-none",
         effectiveDraggable && "cursor-move",
         !effectiveDraggable && "cursor-pointer",
@@ -119,7 +119,7 @@ export const TaskCard = ({
 
       {/* Recurring badge */}
       {isRecurring && (
-        <div className="absolute -top-1 -left-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md bg-blue-600 text-white">
+        <div className="absolute -top-1 -left-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md bg-ink-3 text-white">
           <RefreshCw className="h-3 w-3" />
         </div>
       )}
@@ -169,7 +169,7 @@ export const TaskCard = ({
       
       {/* Drag feedback overlay */}
       {isDragging && (
-        <div className="absolute inset-0 bg-blue-500 opacity-20 animate-pulse" />
+        <div className="absolute inset-0 bg-surface opacity-20 animate-pulse" />
       )}
     </div>
   );

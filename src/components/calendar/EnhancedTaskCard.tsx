@@ -30,8 +30,8 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
       className={cn(
         "absolute top-1 right-7 z-20 flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold shadow-sm",
         allCompleted
-          ? "bg-emerald-500 text-white"
-          : "bg-rose-500 text-white animate-pulse"
+          ? "bg-surface text-white"
+          : "bg-danger text-white animate-pulse"
       )}
     >
       <ListTodo className="h-2.5 w-2.5" />
@@ -104,12 +104,12 @@ export const EnhancedTaskCard = React.memo(({
 
   // Configuración del icono de estado
   const statusConfig = isCompleted
-    ? { Icon: Check, bg: 'bg-emerald-500', label: 'Completada' }
+    ? { Icon: Check, bg: 'bg-surface', label: 'Completada' }
     : isInProgress
-    ? { Icon: Play, bg: 'bg-blue-500', label: 'En progreso' }
+    ? { Icon: Play, bg: 'bg-surface', label: 'En progreso' }
     : isCancelled
     ? { Icon: X, bg: 'bg-gray-500', label: 'Cancelada' }
-    : { Icon: Hourglass, bg: 'bg-orange-500', label: 'Pendiente' };
+    : { Icon: Hourglass, bg: 'bg-surface', label: 'Pendiente' };
   const StatusIcon = statusConfig.Icon;
 
   const formatTime = (time: string) => {
@@ -204,8 +204,8 @@ export const EnhancedTaskCard = React.memo(({
         !resizing && "hover:-translate-y-0.5",
         "focus:outline-none focus:ring-2 focus:ring-primary/40",
         "transform-gpu overflow-hidden",
-        isCompleted && "ring-2 ring-emerald-400/60 ring-offset-0",
-        isInProgress && "ring-2 ring-blue-400/70 ring-offset-0 animate-pulse",
+        isCompleted && "ring-2 ring-success ring-offset-0",
+        isInProgress && "ring-2 ring-ink-3 ring-offset-0 animate-pulse",
         isCancelled && "bg-muted text-muted-foreground line-through opacity-70",
         isDragging && "opacity-50 rotate-1 scale-95 shadow-2xl z-50",
         resizing && "ring-2 ring-primary shadow-2xl"

@@ -14,10 +14,10 @@ export const OverlapAlert: React.FC<OverlapAlertProps> = ({
   if (overlappingTasks.length === 0) return null;
 
   return (
-    <div className="border border-red-200 bg-red-50/60 dark:bg-red-950/20 dark:border-red-900/50 rounded-md px-2 py-1 text-xs">
+    <div className="border border-line bg-paper dark:bg-red-950/20 dark:border-red-900/50 rounded-md px-2 py-1 text-xs">
       <div className="flex items-center gap-2 flex-wrap">
-        <AlertTriangle className="h-3 w-3 text-red-600 flex-shrink-0" />
-        <span className="font-medium text-red-800 dark:text-red-200 truncate">
+        <AlertTriangle className="h-3 w-3 text-danger flex-shrink-0" />
+        <span className="font-medium text-danger dark:text-red-200 truncate">
           {cleanerName}
         </span>
         <div className="flex items-center gap-1 flex-wrap">

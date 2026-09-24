@@ -37,15 +37,15 @@ type AgendaFilter = 'all' | 'unassigned' | string;
 const statusMeta = {
   completed: {
     label: 'OK',
-    className: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    className: 'bg-line-soft text-success border-line',
   },
   'in-progress': {
     label: 'En curso',
-    className: 'bg-blue-100 text-blue-800 border-blue-200',
+    className: 'bg-line-soft text-ink-2 border-line',
   },
   pending: {
     label: 'Pendiente',
-    className: 'bg-amber-100 text-amber-800 border-amber-200',
+    className: 'bg-line-soft text-warning border-line',
   },
 } satisfies Record<Task['status'], { label: string; className: string }>;
 
@@ -61,7 +61,7 @@ function AgendaTaskCard({ task, onTaskClick }: { task: Task; onTaskClick: (task:
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 text-sm font-semibold text-slate-950">{task.property}</h3>
+            <h3 className="line-clamp-2 text-sm font-semibold text-ink">{task.property}</h3>
             <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.className)}>
               {meta.label}
             </Badge>
@@ -149,14 +149,14 @@ export function ManagerMobileAgendaCalendar({
   }, [filteredTasks]);
 
   return (
-    <div className="h-[100dvh] overflow-y-auto bg-slate-50 pb-28">
+    <div className="h-[100dvh] overflow-y-auto bg-paper pb-28">
       <header className="sticky top-0 z-20 border-b bg-background/95 px-4 pb-3 pt-3 shadow-sm backdrop-blur">
         <div className="mb-3 flex items-center justify-between">
           <Button variant="outline" size="icon" onClick={() => navigate('/')} aria-label="Dashboard">
             <Home className="h-4 w-4" />
           </Button>
           <div className="text-center">
-            <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Agenda diaria</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-2">Agenda diaria</p>
             <h1 className="text-lg font-bold capitalize">
               {format(currentDate, 'EEEE d MMM', { locale: es })}
             </h1>
@@ -171,27 +171,27 @@ export function ManagerMobileAgendaCalendar({
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="grid flex-1 grid-cols-4 gap-2">
-            <Card className="border-0 bg-slate-950 text-white">
+            <Card className="border-0 bg-ink text-white">
               <CardContent className="p-2 text-center">
                 <div className="text-lg font-bold">{summary.total}</div>
-                <div className="text-[10px] text-slate-300">Total</div>
+                <div className="text-[10px] text-ink-4">Total</div>
               </CardContent>
             </Card>
             <Card className="border-0">
               <CardContent className="p-2 text-center">
-                <div className="text-lg font-bold text-amber-700">{summary.unassigned}</div>
+                <div className="text-lg font-bold text-warning">{summary.unassigned}</div>
                 <div className="text-[10px] text-muted-foreground">Sin asig.</div>
               </CardContent>
             </Card>
             <Card className="border-0">
               <CardContent className="p-2 text-center">
-                <div className="text-lg font-bold text-blue-700">{summary.inProgress}</div>
+                <div className="text-lg font-bold text-ink-2">{summary.inProgress}</div>
                 <div className="text-[10px] text-muted-foreground">Curso</div>
               </CardContent>
             </Card>
             <Card className="border-0">
               <CardContent className="p-2 text-center">
-                <div className="text-lg font-bold text-emerald-700">{summary.completed}</div>
+                <div className="text-lg font-bold text-success">{summary.completed}</div>
                 <div className="text-[10px] text-muted-foreground">OK</div>
               </CardContent>
             </Card>
@@ -239,8 +239,8 @@ export function ManagerMobileAgendaCalendar({
         {groupedTasks.length > 0 ? (
           groupedTasks.map((group) => (
             <section key={group.time} className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                <Clock className="h-4 w-4 text-blue-600" />
+              <div className="flex items-center gap-2 text-sm font-semibold text-ink-2">
+                <Clock className="h-4 w-4 text-ink-3" />
                 <span>{group.time}</span>
                 <div className="h-px flex-1 bg-border" />
               </div>

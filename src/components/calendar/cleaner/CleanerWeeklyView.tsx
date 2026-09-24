@@ -101,13 +101,13 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
                 {pending > 0 && (
                   <div className={cn(
                     "w-2 h-2 rounded-full",
-                    selected ? "bg-amber-200" : "bg-amber-500"
+                    selected ? "bg-line-soft" : "bg-surface"
                   )} />
                 )}
                 {completed > 0 && (
                   <div className={cn(
                     "w-2 h-2 rounded-full",
-                    selected ? "bg-green-200" : "bg-green-500"
+                    selected ? "bg-line-soft" : "bg-surface"
                   )} />
                 )}
               </div>

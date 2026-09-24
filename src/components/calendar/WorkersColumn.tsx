@@ -25,19 +25,19 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
     e.dataTransfer.dropEffect = 'move';
     onDragOver(e);
     const target = e.currentTarget as HTMLElement;
-    target.classList.add('bg-blue-100');
+    target.classList.add('bg-line-soft');
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     const target = e.currentTarget as HTMLElement;
-    target.classList.remove('bg-blue-100');
+    target.classList.remove('bg-line-soft');
   };
 
   const handleDrop = (e: React.DragEvent, cleanerId: string) => {
     e.preventDefault();
     e.stopPropagation();
     const target = e.currentTarget as HTMLElement;
-    target.classList.remove('bg-blue-100');
+    target.classList.remove('bg-line-soft');
     const taskId = e.dataTransfer.getData('text/plain');
     if (taskId) {
       onDrop(e, cleanerId, cleaners);
@@ -79,7 +79,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
             className={cn(
               "h-16 border-b border-gray-200 px-3 py-1.5 flex items-center transition-all duration-200 cursor-pointer relative",
               !isAbsent && !isPreferred && !isDimmed && (index % 2 === 0 ? "bg-white hover:bg-gray-100" : "bg-gray-50 hover:bg-gray-100"),
-              isPreferred && "bg-yellow-50 ring-2 ring-yellow-400 ring-inset shadow-inner",
+              isPreferred && "bg-surface ring-2 ring-warning ring-inset shadow-inner",
               isDimmed && "opacity-40"
             )}
             style={isAbsent ? { 
@@ -148,7 +148,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
               </div>
               <div className="min-w-0 flex-1 overflow-hidden">
                 <div className="font-semibold text-gray-900 text-[13px] flex items-center gap-1 min-w-0 leading-tight">
-                  {isPreferred && <Star className="h-3 w-3 text-yellow-500 flex-shrink-0 fill-yellow-500" />}
+                  {isPreferred && <Star className="h-3 w-3 shrink-0 fill-warning text-warning" />}
                   <span className="truncate">{cleaner.name}</span>
                 </div>
                 {isAbsent ? (
@@ -178,7 +178,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                               </span>
                             </>
                           ) : (
-                            <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">
+                            <span className="rounded-md bg-line-soft px-1.5 py-0.5 text-xs font-semibold text-ink-3">
                               {workload.totalWorked.toFixed(1)} h · Sin contrato
                             </span>
                           )}
@@ -212,10 +212,10 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                             <span>{workload.totalWorked.toFixed(1)}h / {workload.contractHoursPerWeek}h</span>
                           </div>
                           {workload.overtimeHours > 0 && (
-                            <div className="text-amber-600 font-medium">⚠️ Horas extra: +{workload.overtimeHours.toFixed(1)}h</div>
+                            <div className="text-warning font-medium">⚠️ Horas extra: +{workload.overtimeHours.toFixed(1)}h</div>
                           )}
                           {workload.remainingHours > 0 && workload.status !== 'on-track' && (
-                            <div className="text-blue-600 font-medium">📊 Faltan: {workload.remainingHours.toFixed(1)}h</div>
+                            <div className="text-ink-3 font-medium">📊 Faltan: {workload.remainingHours.toFixed(1)}h</div>
                           )}
                         </div>
                       </TooltipContent>
@@ -223,7 +223,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
                   </TooltipProvider>
                 ) : (
                   <div className="flex items-center gap-1 mt-0.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${cleaner.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+                    <div className={`w-1.5 h-1.5 rounded-full ${cleaner.isActive ? 'bg-success' : 'bg-gray-400'}`} />
                     <span className="text-[10px] text-gray-500">
                       {cleaner.isActive ? 'Activo' : 'Inactivo'}
                     </span>
