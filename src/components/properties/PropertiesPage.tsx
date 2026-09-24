@@ -27,7 +27,7 @@ function PropertiesWorkspace() {
   const { activeSede, loading, isInitialized } = useSede();
   const { isDesktop } = useDeviceType();
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('all');
+  const [status, setStatus] = useState('active');
   const [clientFilter, setClientFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const properties = useMemo(() => propertiesQuery.data || [], [propertiesQuery.data]);
@@ -48,23 +48,18 @@ function PropertiesWorkspace() {
   }).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true, sensitivity: 'base' }));
   const selected = visible.find(property => property.id === selectedId);
   const desktopProperty = selected || visible[0];
-  const hasFilters = !!search || status !== 'all' || clientFilter !== 'all';
-  const reset = () => { setSearch(''); setStatus('all'); setClientFilter('all'); setSelectedId(null); };
+  const hasFilters = !!search || status !== 'active' || clientFilter !== 'all';
+  const reset = () => { setSearch(''); setStatus('active'); setClientFilter('all'); setSelectedId(null); };
   const count = (value: number) => unavailable ? '—' : value;
   const detail = (property: Property) => <PropertyDetailPanel key={property.id} property={property} clientName={getClientName(property)} active={active(property)} />;
 
   return (
-    <DirectoryPage title="Propiedades" eyebrow="Alojamientos" description="Características, limpiezas y checklists en una única ficha." icon={Home} actions={<CreatePropertyModal />} stats={[
-      { label: 'Total', value: count(properties.length), helper: 'propiedades en la sede', tone: 'sky' },
-      { label: 'Activas', value: count(activeCount), helper: 'disponibles para servicio', tone: 'green' },
-      { label: 'Inactivas', value: count(properties.length - activeCount), helper: 'fuera de servicio', tone: 'muted' },
-      { label: 'Clientes', value: count(clientOptions.length), helper: 'con propiedades', tone: 'violet' },
-    ]}>
+    <DirectoryPage className="properties-page" showStats={false} title="Propiedades" eyebrow="Alojamientos" description="Características, limpiezas y checklists en una única ficha." icon={Home} actions={<CreatePropertyModal />}>
       <div className="grid items-stretch gap-4 lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[440px_minmax(0,1fr)]">
-        <Card className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-270px)] lg:min-h-[640px]">
+        <Card aria-label="Directorio de propiedades" className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-180px)] lg:min-h-0">
           <div className="space-y-4 p-4 sm:p-5">
             <div className="flex items-start justify-between gap-2">
-              <div><h2 className="font-bold">Directorio de propiedades</h2><p className="mt-1 text-sm text-slate-500">Despliega un cliente y selecciona su propiedad.</p></div>
+              <div><h2 className="font-semibold tracking-tight">Directorio de propiedades</h2><p className="mt-1 text-sm text-slate-500">Despliega un cliente y selecciona su propiedad.</p></div>
               {hasFilters && <Button variant="ghost" size="sm" onClick={reset}>Limpiar</Button>}
             </div>
             <DirectorySearch value={search} onChange={setSearch} placeholder="Buscar nombre, código, dirección o cliente" />

@@ -1,11 +1,22 @@
 import { AvantioReservation } from './types.ts';
+import { envValue, resolveDaysAhead } from '../_shared/syncHorizon.ts';
 
 const API_BASE_URL = 'https://api.avantio.pro/pms/v1';
 const MAX_RETRIES = 4;
 const TIMEOUT_MS = 30000;
-const FUTURE_DAYS = 30;
+const DEFAULT_FUTURE_DAYS = 30;
 const MAX_PAGES = 100;
 const PAGE_SIZE = 200;
+
+export const AVANTIO_FUTURE_DAYS_ENV = 'AVANTIO_FUTURE_DAYS';
+
+/**
+ * Días hacia el futuro que se leen de Avantio cuando la invocación no indica
+ * otro horizonte. Los pases diarios no lo envían, así que siguen con 30 días.
+ */
+export function avantioFutureDays(): number {
+  return resolveDaysAhead(envValue(AVANTIO_FUTURE_DAYS_ENV), DEFAULT_FUTURE_DAYS);
+}
 
 export interface HttpGetOptions {
   retries?: number;
@@ -28,6 +39,8 @@ export interface AvantioFetchOptions {
   deadlineAt?: number;
   fetchImpl?: typeof fetch;
   sleep?: (milliseconds: number) => Promise<void>;
+  /** Horizonte de lectura; si no se indica, `avantioFutureDays()`. */
+  futureDays?: number;
 }
 
 export class AvantioSourceBudgetExceededError extends Error {}
@@ -228,7 +241,7 @@ export async function fetchAllAvantioReservations(
   const today = todayISO();
   // Avantio's departureFrom appears exclusive, so include yesterday.
   const fromDate = addDaysISO(today, -1);
-  const toDate = addDaysISO(today, FUTURE_DAYS);
+  const toDate = addDaysISO(today, options.futureDays ?? avantioFutureDays());
 
   interface RawItem {
     id: string;

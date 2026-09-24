@@ -22,11 +22,14 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useSede } from "@/contexts/SedeContext";
 import { Loader2 } from "lucide-react";
 import type { Client } from "@/types/client";
+import { useSearchParams } from "react-router-dom";
 
 const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
+  const [searchParams] = useSearchParams();
   const hasLoadedOnce = useRef(false);
+  const deepLinkTaskOpened = useRef(false);
   const { isLoading: authGuardLoading, hasFullAccess, hasSedeAccess } = useAuthGuard();
   const { isInitialized: sedeInitialized, loading: sedeLoading, activeSede } = useSede();
 
@@ -67,6 +70,25 @@ const CleaningCalendar = () => {
     setIsCreateModalOpen,
     setIsBatchCreateModalOpen,
   } = useCalendarLogic();
+
+  const deepLinkDate = searchParams.get('date');
+  const deepLinkTaskId = searchParams.get('task');
+
+  useEffect(() => {
+    if (!deepLinkDate || !/^\d{4}-\d{2}-\d{2}$/.test(deepLinkDate)) return;
+    const date = new Date(`${deepLinkDate}T12:00:00`);
+    if (Number.isNaN(date.getTime())) return;
+    setCurrentDate(date);
+    setCurrentView('day');
+  }, [deepLinkDate, setCurrentDate, setCurrentView]);
+
+  useEffect(() => {
+    if (!deepLinkTaskId || deepLinkTaskOpened.current) return;
+    const task = tasks.find(item => item.id === deepLinkTaskId);
+    if (!task) return;
+    handleTaskClick(task);
+    deepLinkTaskOpened.current = true;
+  }, [deepLinkTaskId, handleTaskClick, tasks]);
 
   const cleanerDateRange = useMemo(
     () => getTaskWindowRange(currentDate, 2),

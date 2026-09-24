@@ -22,6 +22,9 @@
     "test:supervision-domain": "node scripts/supervisionDomainTest.mjs",
     "test:supervision-ui": "node scripts/supervisionUiContractTest.mjs",
     "test:role-modes": "node scripts/roleModeTest.mjs",
+    "test:worker-fixed-days-off-planning": "node scripts/workerFixedDaysOffPlanningTest.mjs",
+    "test:worker-maintenance-conflict": "node scripts/workerMaintenanceConflictTest.mjs",
+    "test:worker-task-overlap": "node scripts/workerTaskOverlapTest.mjs",
     "test:cleaning-planning-proposal-engine": "node scripts/cleaningPlanningProposalEngineTest.mjs",
     "test:cleaning-planning-domain-safety": "node scripts/cleaningPlanningDomainSafetyTest.mjs",
     "test:cleaning-planning-ui": "node scripts/cleaningPlanningUiContractTest.mjs",
@@ -57,6 +60,8 @@
     "test:recurring-task-schedule": "node scripts/recurringTaskScheduleTest.mjs",
     "test:pms-cancellation-safety": "node scripts/pmsCancellationSafetyTest.mjs",
     "test:avantio-timeout-resilience": "node scripts/avantioTimeoutResilienceTest.mjs",
+    "test:sync-horizon": "node scripts/syncHorizonTest.mjs",
+    "test:trimestral-schedule": "node scripts/trimestralScheduleContractTest.mjs",
     "test:edge-authorization-safety": "node scripts/edgeAuthorizationSafetyTest.mjs",
     "test:hostaway-dormancy": "node scripts/hostawayDormancyTest.mjs",
     "test:planning-batch-contract": "node scripts/planningBatchContractTest.mjs",
@@ -71,7 +76,10 @@
     "test:planning-provider-safety": "node scripts/planningProviderSafetyTest.mjs",
     "test:planning-hermes-150": "node scripts/planningHermes150Harness.mjs",
     "test:planning-hermes-150:red": "node scripts/planningHermes150RedHarness.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:properties-ui": "node scripts/propertiesUiContractTest.mjs",
+    "test:staffing": "node scripts/staffingEngineTest.mjs && node scripts/staffingDataTest.mjs && node scripts/staffingCollaboratorsTest.mjs && node scripts/staffingShiftsTest.mjs && node scripts/staffingBusinessRulesTest.mjs && node scripts/staffingPageRulesTest.mjs && node scripts/staffingReadClientTest.mjs && node scripts/staffingAccessTest.mjs && node scripts/staffingVisualTest.mjs && node scripts/staffingPageBrowserTest.mjs && node scripts/staffingTeamParityTest.mjs && node scripts/staffingBalanceTest.mjs && node scripts/staffingSsrTest.mjs && node scripts/staffingMonthlyTest.mjs",
+                    "test:staffing:browser": "node scripts/staffingVisualTest.mjs && node scripts/staffingPageBrowserTest.mjs && node scripts/staffingTeamParityTest.mjs && node scripts/staffingBalanceTest.mjs && node scripts/staffingSsrTest.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

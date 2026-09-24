@@ -382,7 +382,7 @@ const BagAssemblyGuide = ({ bag }: { bag: RouteBag }) => {
       for (const columns of container.clientWidth >= 560 ? [1, 2, 3, 4] : [1]) {
         setColumns(columns);
         let low = 6;
-        let high = 28;
+        let high = 36;
         for (let attempt = 0; attempt < 9; attempt += 1) {
           const size = (low + high) / 2;
           container.style.setProperty('--bag-font', `${size}px`);
@@ -535,7 +535,7 @@ const BagCard = ({
           </div>
         </div>
       )}
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-2 p-0">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-1.5 p-0">
         <div className="flex shrink-0 items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-[9px] font-semibold uppercase tracking-wider text-[#a18465]">Bolsa actual</p>
@@ -565,7 +565,7 @@ const BagCard = ({
         <BagAssemblyGuide bag={bag} />
 
         {createPortal(
-          <div ref={dockRef} data-laundry-actions className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e8e1d7] bg-[#faf7f1] px-4 pt-3 font-sans shadow-[0_-4px_20px_rgba(39,35,30,0.04)]" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+          <div ref={dockRef} data-laundry-actions className="fixed inset-x-0 bottom-0 z-30 border-t border-[#e8e1d7] bg-[#faf7f1] px-4 pt-2 font-sans shadow-[0_-4px_20px_rgba(39,35,30,0.04)]" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
             <div className="mx-auto max-w-[416px]">{children}</div>
           </div>,
           document.body,
@@ -590,14 +590,14 @@ const PreparationPhaseHeader = ({ urgent, pending, deliveryDate }: {
   }, [urgent, toast]);
   const deliveryIsToday = deliveryDate === formatMadridDate(new Date());
   return (
-    <section aria-label="Fase de preparación" className={cn('shrink-0 rounded-xl border p-2.5', urgent ? 'border-orange-300 bg-orange-50 text-orange-950' : 'border-blue-300 bg-blue-50 text-blue-950')}>
-      <ol className="mb-2 grid grid-cols-2 gap-2 text-[11px] font-semibold">
-        <li aria-current={urgent ? 'step' : undefined} className={cn('rounded-md px-2 py-1', urgent ? 'bg-orange-600 text-white' : 'text-blue-800')}>① Pendientes para hoy</li>
-        <li aria-current={!urgent ? 'step' : undefined} className={cn('rounded-md px-2 py-1', !urgent ? 'bg-blue-600 text-white' : 'text-orange-800')}>② Siguiente ruta</li>
+    <section aria-label="Fase de preparación" className={cn('shrink-0 rounded-xl border p-2', urgent ? 'border-orange-300 bg-orange-50 text-orange-950' : 'border-blue-300 bg-blue-50 text-blue-950')}>
+      <ol className="mb-1.5 grid grid-cols-2 gap-1.5 text-[10px] font-semibold">
+        <li aria-current={urgent ? 'step' : undefined} className={cn('rounded-md px-1.5 py-0.5', urgent ? 'bg-orange-600 text-white' : 'text-blue-800')}>① Pendientes para hoy</li>
+        <li aria-current={!urgent ? 'step' : undefined} className={cn('rounded-md px-1.5 py-0.5', !urgent ? 'bg-blue-600 text-white' : 'text-orange-800')}>② Siguiente ruta</li>
       </ol>
-      <h2 className="text-sm font-black leading-tight">{urgent ? 'PREPARANDO BOLSAS PARA HOY' : 'PREPARANDO LA SIGUIENTE RUTA'}</h2>
-      <p className="mt-1 text-[11px] leading-tight">{urgent ? 'Pendientes de la ruta anterior y nuevas reservas' : 'Bolsas para el próximo día de reparto'}</p>
-      <p className="mt-1.5 text-xs font-bold">{pending} {pending === 1 ? 'bolsa pendiente' : 'bolsas pendientes'} · Entrega {deliveryIsToday ? 'hoy, ' : ''}{formatDate(deliveryDate)}</p>
+      <h2 className="text-[13px] font-black leading-tight">{urgent ? 'PREPARANDO BOLSAS PARA HOY' : 'PREPARANDO LA SIGUIENTE RUTA'}</h2>
+      <p className="mt-0.5 text-[10px] leading-tight">{urgent ? 'Pendientes de la ruta anterior y nuevas reservas' : 'Bolsas para el próximo día de reparto'}</p>
+      <p className="mt-1 text-[11px] font-bold">{pending} {pending === 1 ? 'bolsa pendiente' : 'bolsas pendientes'} · Entrega {deliveryIsToday ? 'hoy, ' : ''}{formatDate(deliveryDate)}</p>
     </section>
   );
 };
@@ -956,7 +956,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [dockHeight, setDockHeight] = useState(144);
+  const [dockHeight, setDockHeight] = useState(112);
   const activeBagId = workflow?.urgentBags[0]?.taskId || nextPendingBag?.taskId;
   const hasWorkflow = Boolean(workflow);
   useEffect(() => {
@@ -1120,21 +1120,37 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
   return (
     <div ref={scrollContainerRef} className="fixed inset-x-0 top-0 h-dvh overflow-clip overscroll-none bg-[#faf7f1] font-sans" data-laundry-scroll>
-      <main className="mx-auto flex h-full max-w-md flex-col gap-2 px-4 py-1.5 landscape:max-w-3xl" style={{ paddingBottom: buildingViewActive ? 12 : dockHeight + 12 }}>
+      <main className="mx-auto flex h-full max-w-md flex-col gap-1.5 px-4 py-1 landscape:max-w-3xl" style={{ paddingBottom: buildingViewActive ? 12 : dockHeight + 8 }}>
         {accessRequired && routeAccess?.worker && (
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e8e1d7] pb-1">
+          <div className="flex shrink-0 items-center gap-2 border-b border-[#e8e1d7] pb-0.5">
             <div className="min-w-0">
-              <p className="text-[10px] leading-3 text-[#766b5e]">Ruta iniciada por</p>
-              <p className="truncate text-xs font-semibold leading-4 text-[#17130f]">{routeAccess.worker.workerName}</p>
+              <p className="text-[9px] leading-3 text-[#766b5e]">Ruta iniciada por</p>
+              <p className="truncate text-[11px] font-semibold leading-3.5 text-[#17130f]">{routeAccess.worker.workerName}</p>
             </div>
-            <Button variant="ghost" size="sm" onClick={logoutRouteWorker} className="h-11 shrink-0 px-2 text-xs text-[#8d351e]">
-              <LogOut className="mr-1.5 h-4 w-4" />
-              Cambiar
+            {preparationBags.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                aria-pressed={showBuildings}
+                onClick={() => setShowBuildings(!showBuildings)}
+                className="ml-auto h-8 shrink-0 rounded-lg px-2 text-[10px] font-semibold text-[#2456a6]"
+              >
+                Ver bolsas
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Cerrar sesión de la ruta"
+              title="Cerrar sesión de la ruta"
+              onClick={logoutRouteWorker}
+              className="h-8 w-8 shrink-0 text-[#8d351e]"
+            >
+              <LogOut className="h-3.5 w-3.5" />
             </Button>
           </div>
         )}
         {preparationBags.length > 0 && <PreparationPhaseHeader urgent={Boolean(urgentBag)} pending={preparationBags.length} deliveryDate={urgentBag ? workflow.route.deliveryDate : workflow.route.nextDeliveryDate} />}
-        {preparationBags.length > 0 && <Button variant="outline" className="w-full shrink-0" aria-pressed={showBuildings} onClick={() => setShowBuildings(!showBuildings)}>{showBuildings ? 'Ver bolsas una a una' : 'Ver bolsas por edificio'}</Button>}
         {buildingViewActive && <div key={urgentBag ? 'urgent' : 'prepare_next'} className="min-h-0 flex-1 overflow-y-auto pb-3"><PreparationBuildingList bags={preparationBags} currentIds={new Set(workflow.currentRouteBags.map((bag) => bag.taskId))} busy={pendingActionKeys.size > 0} onPrepare={(taskId) => runAction({ action: 'prepare', taskId })} /></div>}
         {!buildingViewActive && urgentBag && (
           <section className="flex min-h-0 flex-1 flex-col gap-2">
@@ -1204,18 +1220,18 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: urgentBag.taskId })}
-                    className="h-16 touch-manipulation rounded-xl bg-[#c4512e] text-base font-semibold hover:bg-[#a94427]"
+                    className="h-12 touch-manipulation rounded-xl bg-[#c4512e] text-sm font-semibold hover:bg-[#a94427]"
                   >
-                    <PackageCheck className="mr-2 h-5 w-5" />
+                    <PackageCheck className="mr-2 h-4 w-4" />
                     Bolsa preparada
                   </Button>
                   <Button
                     variant="outline"
-                    size="lg"
+                    size="sm"
                     onClick={() => openIssueForm(urgentBag.taskId)}
-                    className="h-12 touch-manipulation rounded-xl border-transparent bg-transparent text-sm font-medium text-[#a94427] hover:bg-[#f1e8dc]"
+                    className="h-9 touch-manipulation rounded-xl border-transparent bg-transparent text-[11px] font-medium text-[#a94427] hover:bg-[#f1e8dc]"
                   >
-                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    <AlertTriangle className="mr-2 h-3.5 w-3.5" />
                     Marcar incidencia
                   </Button>
                 </div>
@@ -1261,18 +1277,18 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: nextPendingBag.taskId })}
-                    className="h-16 touch-manipulation rounded-xl bg-[#c4512e] text-base font-semibold hover:bg-[#a94427]"
+                    className="h-12 touch-manipulation rounded-xl bg-[#c4512e] text-sm font-semibold hover:bg-[#a94427]"
                   >
-                    <PackageCheck className="mr-2 h-5 w-5" />
+                    <PackageCheck className="mr-2 h-4 w-4" />
                     Bolsa preparada
                   </Button>
                   <Button
                     variant="outline"
-                    size="lg"
+                    size="sm"
                     onClick={() => openIssueForm(nextPendingBag.taskId)}
-                    className="h-12 touch-manipulation rounded-xl border-transparent bg-transparent text-sm font-medium text-[#a94427] hover:bg-[#f1e8dc]"
+                    className="h-9 touch-manipulation rounded-xl border-transparent bg-transparent text-[11px] font-medium text-[#a94427] hover:bg-[#f1e8dc]"
                   >
-                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    <AlertTriangle className="mr-2 h-3.5 w-3.5" />
                     Marcar incidencia
                   </Button>
                 </div>

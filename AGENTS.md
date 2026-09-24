@@ -42,3 +42,18 @@ This app is already used in production. Keep changes small, reversible, and veri
 - Before continuing, read `docs/TRASPASO_HERMES.md`. Start from a fresh clone of `main`; do not overlay older local files.
 - Automatic Vercel Git deployments are disabled deliberately. Keep this setting unless the user explicitly changes the publication workflow.
 - Supabase remains the existing production project. The deployed function snapshots are in `supabase/production-snapshot`; they may differ from `supabase/functions` in the Vercel source snapshot. Never bulk-deploy functions or apply historical migrations during setup.
+
+## Corrección — 2026-09-24 (copia recuperada de producción)
+
+Lo anterior se conserva íntegro por trazabilidad, pero el traspaso del 14/09 ya no describe la
+realidad:
+
+- GitHub `main` (`c1c538d8`, 14/09) está **por detrás** de producción. La versión que sirve
+  producción es **esta copia**, recuperada del deployment `dpl_AJTpSjCWkVMrf8jDfF2cCghhWzLx`
+  (2026-09-24) y verificada contra él. Detalle completo en `ESTADO-PRODUCCION.md`.
+- Esta carpeta es la **única** copia que se mantiene y se publica. Las copias antiguas del equipo
+  quedan archivadas y no deben editarse ni publicarse.
+- Prohibido «empezar desde un clon limpio de `main`»: ese clon no contiene el previsor ni el
+  trabajo posterior al 14/09.
+- Siguen vigentes las reglas de seguridad: rama por tarea, verificación antes de publicar,
+  RLS/grants, y comprobar **los dos** alias canónicos antes y después de publicar.

@@ -18,7 +18,11 @@ import { shouldCreateTaskForReservation } from './reservation-validator.ts';
 export class ReservationProcessor {
   private supabase;
 
-  constructor(supabaseUrl: string, supabaseServiceKey: string) {
+  constructor(
+    supabaseUrl: string,
+    supabaseServiceKey: string,
+    private taskHorizonDays?: number,
+  ) {
     this.supabase = createClient(supabaseUrl, supabaseServiceKey);
   }
 
@@ -88,7 +92,7 @@ export class ReservationProcessor {
     syncLogId?: string | null
   ): Promise<void> {
     try {
-      const shouldCreate = shouldCreateTaskForReservation(reservation);
+      const shouldCreate = shouldCreateTaskForReservation(reservation, this.taskHorizonDays);
       let taskId = null;
       
       if (shouldCreate) {
@@ -223,7 +227,7 @@ export class ReservationProcessor {
         }
         
         // Create new task for the new property
-        if (shouldCreateTaskForReservation(reservation)) {
+        if (shouldCreateTaskForReservation(reservation, this.taskHorizonDays)) {
           try {
             const task = await createTaskForReservation(reservation, property);
             existingReservation.task_id = task.id; // Update reference for later
@@ -282,7 +286,7 @@ export class ReservationProcessor {
         }
 
         // If no task exists yet but should have one, create it
-        if (!existingReservation.task_id && shouldCreateTaskForReservation(reservation)) {
+        if (!existingReservation.task_id && shouldCreateTaskForReservation(reservation, this.taskHorizonDays)) {
           try {
             const task = await createTaskForReservation(reservation, property);
             stats.tasks_created++;
