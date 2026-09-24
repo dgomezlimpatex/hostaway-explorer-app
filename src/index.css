@@ -42,13 +42,7 @@
     --info: 199 89% 48%;
     --info-foreground: 210 40% 98%;
 
-    /* Dashboard colors from palette */
-    --dashboard-blue: 216 83% 56%;
-    --dashboard-purple: 260 73% 71%;
-    --dashboard-magenta: 301 65% 55%;
-    --dashboard-turquoise: 188 65% 75%;
-    --dashboard-light-purple: 263 42% 66%;
-    --dashboard-violet: 257 64% 68%;
+
 
     /* Sistema sobrio (2026-09-24): superficies neutras, un solo acento de marca,
        estados desaturados. Ver DECISIONES de Engineer. */

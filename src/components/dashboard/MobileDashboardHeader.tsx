@@ -24,8 +24,8 @@ export const MobileDashboardHeader = () => {
   return (
     <>
       {/* Header móvil */}
-      <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
+      <div className="bg-white border-b border-line p-4 flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-ink">Dashboard</h1>
         
         <div className="flex items-center gap-2">
           <GlobalSearch

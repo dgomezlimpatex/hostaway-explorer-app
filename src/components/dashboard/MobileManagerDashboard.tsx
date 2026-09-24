@@ -56,15 +56,15 @@ interface MobileManagerDashboardProps {
 const statusMeta = {
   completed: {
     label: 'Completada',
-    className: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    className: 'bg-line-soft text-success border-line',
   },
   'in-progress': {
     label: 'En curso',
-    className: 'bg-blue-100 text-blue-800 border-blue-200',
+    className: 'bg-line-soft text-ink-2 border-line',
   },
   pending: {
     label: 'Pendiente',
-    className: 'bg-amber-100 text-amber-800 border-amber-200',
+    className: 'bg-line-soft text-warning border-line',
   },
 } satisfies Record<Task['status'], { label: string; className: string }>;
 
@@ -80,7 +80,7 @@ function TaskRow({ task, onTaskClick }: { task: Task; onTaskClick: (task: Task) 
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
-            <span className="tabular-nums text-blue-700">{task.startTime}</span>
+            <span className="tabular-nums text-ink-2">{task.startTime}</span>
             <span className="truncate">{task.property}</span>
           </div>
           <p className="line-clamp-1 text-xs text-muted-foreground">{task.address}</p>
@@ -133,13 +133,13 @@ export function MobileManagerDashboard({
   }, [todayTasks]);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-28">
+    <div className="min-h-screen bg-paper pb-28">
       <div className="mx-auto max-w-md space-y-4 px-4 py-4">
         <header className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Sistema de gestion</p>
-              <h1 className="text-2xl font-bold text-slate-950">Hoy</h1>
+              <p className="text-xs font-medium uppercase tracking-wide text-ink-2">Sistema de gestion</p>
+              <h1 className="text-2xl font-bold text-ink">Hoy</h1>
               <p className="text-sm capitalize text-muted-foreground">
                 {format(new Date(), "EEEE, d MMMM", { locale: es })}
               </p>
@@ -149,24 +149,24 @@ export function MobileManagerDashboard({
             </div>
           </div>
 
-          <Card className="border-0 bg-slate-950 text-white shadow-lg">
+          <Card className="border-0 bg-ink text-white shadow-lg">
             <CardContent className="p-4">
               <div className="grid grid-cols-4 gap-3 text-center">
                 <div>
                   <div className="text-2xl font-bold">{todayTasks.length}</div>
-                  <div className="text-[11px] text-slate-300">Tareas</div>
+                  <div className="text-[11px] text-ink-4">Tareas</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-amber-300">{summary.pending}</div>
-                  <div className="text-[11px] text-slate-300">Pend.</div>
+                  <div className="text-[11px] text-ink-4">Pend.</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-sky-300">{summary.inProgress}</div>
-                  <div className="text-[11px] text-slate-300">Curso</div>
+                  <div className="text-[11px] text-ink-4">Curso</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-emerald-300">{summary.completed}</div>
-                  <div className="text-[11px] text-slate-300">OK</div>
+                  <div className="text-[11px] text-ink-4">OK</div>
                 </div>
               </div>
             </CardContent>
@@ -184,7 +184,7 @@ export function MobileManagerDashboard({
               variant="outline"
               className="h-20 flex-col gap-1 rounded-xl bg-white"
             >
-              <Route className="h-5 w-5 text-violet-700" />
+              <Route className="h-5 w-5 text-brand" />
               Nuevo sistema de ruta
             </Button>
           )}
@@ -193,7 +193,7 @@ export function MobileManagerDashboard({
             variant="outline"
             className="h-16 justify-start gap-3 rounded-xl bg-white"
           >
-            <CalendarDays className="h-5 w-5 text-blue-600" />
+            <CalendarDays className="h-5 w-5 text-ink-2" />
             Ver agenda
           </Button>
           <Button
@@ -201,7 +201,7 @@ export function MobileManagerDashboard({
             variant="outline"
             className="h-16 justify-start gap-3 rounded-xl bg-white"
           >
-            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            <AlertTriangle className="h-5 w-5 text-warning" />
             Sin asignar ({unassignedTasks.length})
           </Button>
         </section>
@@ -236,7 +236,7 @@ export function MobileManagerDashboard({
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center justify-between text-base">
               <span className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-rose-600" />
+                <AlertTriangle className="h-5 w-5 text-danger" />
                 Incidencias
               </span>
               <Button variant="ghost" size="sm" onClick={() => navigate('/cleaning-reports')}>
@@ -245,17 +245,17 @@ export function MobileManagerDashboard({
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-3 gap-2 pt-0 text-center">
-            <div className="rounded-xl bg-rose-50 p-3">
-              <p className="text-xl font-bold text-rose-700">{pendingIncidents}</p>
-              <p className="text-[11px] text-rose-800">Pendientes</p>
+            <div className="rounded-xl bg-surface p-3">
+              <p className="text-xl font-bold text-danger">{pendingIncidents}</p>
+              <p className="text-[11px] text-danger">Pendientes</p>
             </div>
-            <div className="rounded-xl bg-cyan-50 p-3">
-              <p className="text-xl font-bold text-cyan-700">{activeIncidents}</p>
-              <p className="text-[11px] text-cyan-800">Activas</p>
+            <div className="rounded-xl bg-surface p-3">
+              <p className="text-xl font-bold text-ink-2">{activeIncidents}</p>
+              <p className="text-[11px] text-ink-2">Activas</p>
             </div>
-            <div className="rounded-xl bg-emerald-50 p-3">
-              <p className="text-xl font-bold text-emerald-700">{incidentStats?.resolved ?? 0}</p>
-              <p className="text-[11px] text-emerald-800">Resueltas</p>
+            <div className="rounded-xl bg-surface p-3">
+              <p className="text-xl font-bold text-success">{incidentStats?.resolved ?? 0}</p>
+              <p className="text-[11px] text-success">Resueltas</p>
             </div>
           </CardContent>
         </Card>
@@ -264,7 +264,7 @@ export function MobileManagerDashboard({
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
-                <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                <CheckCircle2 className="h-5 w-5 text-ink-2" />
                 Tareas de hoy
               </CardTitle>
               <Button variant="ghost" size="sm" onClick={() => navigate('/calendar')}>
@@ -291,11 +291,11 @@ export function MobileManagerDashboard({
         </Card>
 
         {unassignedTasks.length > 0 && (
-          <Card className="border-amber-200 bg-amber-50 shadow-sm">
+          <Card className="border-line bg-surface shadow-sm">
             <CardContent className="flex items-center justify-between gap-3 p-4">
               <div>
-                <p className="font-semibold text-amber-950">Tareas sin asignar</p>
-                <p className="text-sm text-amber-800">{unassignedTasks.length} necesitan trabajador</p>
+                <p className="font-semibold text-warning">Tareas sin asignar</p>
+                <p className="text-sm text-warning">{unassignedTasks.length} necesitan trabajador</p>
               </div>
               <Button variant="outline" size="sm" onClick={() => navigate('/calendar')}>
                 Revisar
