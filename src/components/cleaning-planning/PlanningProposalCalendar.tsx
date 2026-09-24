@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Clock,
   GripVertical,
+  MoreVertical,
   RotateCcw,
   ShieldAlert,
 } from 'lucide-react';
@@ -48,6 +49,7 @@ import {
   validateDraftAssignmentMove,
   type DraftAssignmentMoveValidation,
 } from '@/utils/cleaning-planning/proposalEngine';
+import { TaskQuickActionsDialog } from './TaskQuickActionsDialog';
 
 export type PlanningProposalDraftWarningSeverity = 'blocking' | 'warning';
 
@@ -445,6 +447,7 @@ export const PlanningProposalCalendar = ({
     previous?: AssignmentProposal[];
     error?: boolean;
   } | null>(null);
+  const [quickActionsTaskId, setQuickActionsTaskId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
@@ -622,6 +625,27 @@ export const PlanningProposalCalendar = ({
         ),
     [calendarTasks, cleaners, draftedTaskIds, selectedDate],
   );
+
+  // Clic derecho (o botón ⋮) sobre una limpieza asignada: ajuste rápido de hora y responsable.
+  const quickActionsTask = quickActionsTaskId
+    ? taskById.get(quickActionsTaskId) || null
+    : null;
+  const quickActionsBusyCleanerIds = useMemo(() => {
+    const busy = new Set<string>();
+    if (!quickActionsTask) return busy;
+    const taskStart = toMinutes(quickActionsTask.startTime);
+    const taskEnd = toMinutes(quickActionsTask.endTime);
+    calendarItems.forEach((item) => {
+      if (item.taskId === quickActionsTask.id) return;
+      if (item.task.date !== quickActionsTask.date) return;
+      const overlaps =
+        taskStart !== null && taskEnd !== null
+          ? item.startMinute < taskEnd && item.endMinute > taskStart
+          : true;
+      if (overlaps) busy.add(item.cleanerId);
+    });
+    return busy;
+  }, [calendarItems, quickActionsTask]);
 
   const bounds = useMemo(() => {
     const starts = dayItems.map((item) => item.startMinute);
@@ -1154,6 +1178,10 @@ export const PlanningProposalCalendar = ({
               <div
                 key={item.id}
                 className="flex min-h-[72px] items-center rounded-2xl border border-[#310984]/10 bg-white p-2 shadow-sm"
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setQuickActionsTaskId(item.taskId);
+                }}
               >
                 <button
                   type="button"
@@ -1193,6 +1221,15 @@ export const PlanningProposalCalendar = ({
                     disabled={isStale}
                   />
                 )}
+                <button
+                  type="button"
+                  aria-label={`Acciones rápidas de ${item.task.property}`}
+                  data-quick-actions
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-[#310984] hover:bg-[#efe9fb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]"
+                  onClick={() => setQuickActionsTaskId(item.taskId)}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
               </div>
             ))}
         </div>
@@ -1424,7 +1461,23 @@ export const PlanningProposalCalendar = ({
                                   title={`${item.task.propertyCode || item.task.property} · ${fromMinutes(item.startMinute)}-${fromMinutes(item.endMinute)}${overlaps ? ' · Coincide en horario con otra tarea de este trabajador' : ''}`}
                                   className={`absolute flex ${width < 140 ? 'flex-col' : ''} h-[76px] overflow-hidden rounded-xl border shadow-sm ${tone} ${selected ? 'ring-2 ring-[#310984] ring-offset-1' : ''}`}
                                   style={{ left, width, top: 8 + lane * 84 }}
+                                  onContextMenu={(event) => {
+                                    event.preventDefault();
+                                    setQuickActionsTaskId(item.taskId);
+                                  }}
                                 >
+                                  <button
+                                    type="button"
+                                    aria-label={`Acciones rápidas de ${item.task.property}`}
+                                    data-quick-actions
+                                    className="absolute right-1 top-1 z-20 grid h-6 w-6 place-items-center rounded-md bg-white/85 text-[#310984] shadow-sm hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984]"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setQuickActionsTaskId(item.taskId);
+                                    }}
+                                  >
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </button>
                                   <button
                                     type="button"
                                     className="min-h-0 min-w-0 flex-1 overflow-hidden p-1 text-left"
@@ -1607,6 +1660,32 @@ export const PlanningProposalCalendar = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Ajuste rápido sobre una limpieza ya asignada (clic derecho o botón ⋮) */}
+      <TaskQuickActionsDialog
+        open={Boolean(quickActionsTask)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setQuickActionsTaskId(null);
+        }}
+        task={quickActionsTask}
+        cleaners={cleaners}
+        busyCleanerIds={quickActionsBusyCleanerIds}
+        availableCleanerIds={availableCleanerIds}
+        hasOpenProposal
+        onSaved={(taskId) => {
+          // El cambio ya está guardado en la tarea real: el borrador deja de representar
+          // esa limpieza para que el tablero muestre el estado real (o la bandeja Sin cubrir).
+          onDraftProposalsChange(
+            draftProposals.filter((proposal) => proposal.taskId !== taskId),
+          );
+          setEditedExistingTaskIds((current) => {
+            const next = new Set(current);
+            next.delete(taskId);
+            return next;
+          });
+          setQuickActionsTaskId(null);
+        }}
+      />
     </DndContext>
   );
 };

@@ -18,6 +18,21 @@ type ApplyProposalInput = {
   freshTasks: Task[];
 };
 
+/** Cambio rápido de horario sobre una tarea ya guardada. */
+export type QuickScheduleChange = {
+  task: Task;
+  startTime: string;
+  endTime: string;
+};
+
+/** Cambio rápido de responsable (y opcionalmente de horario) sobre una tarea ya guardada. */
+export type QuickReassignment = {
+  task: Task;
+  cleaner: Cleaner;
+  startTime?: string;
+  endTime?: string;
+};
+
 export const useCleaningPlanningActions = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -173,11 +188,85 @@ export const useCleaningPlanningActions = () => {
     },
   });
 
+  /**
+   * Cambios rápidos (clic derecho en el tablero de planificación): se escriben al momento
+   * sobre la tarea real, con los mismos servicios que usa el resto de la app.
+   */
+  const updateTaskScheduleMutation = useMutation({
+    mutationFn: async ({ task, startTime, endTime }: QuickScheduleChange) => {
+      if (task.isRecurringInstance) {
+        return materializeRecurringTaskInstance(task, {
+          cleaner: task.cleaner,
+          cleanerId: task.cleanerId,
+          startTime,
+          endTime,
+          status: 'pending',
+        });
+      }
+      return taskStorageService.updateTaskSchedule(task.id, { startTime, endTime }, task);
+    },
+    onSuccess: () => {
+      invalidatePlanning();
+      toast({
+        title: 'Horario actualizado',
+        description: 'Se ha avisado a quien tiene la limpieza asignada.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'No se pudo cambiar el horario',
+        description: error instanceof Error ? error.message : 'La tarea no se ha modificado.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const reassignTaskMutation = useMutation({
+    mutationFn: async ({ task, cleaner, startTime, endTime }: QuickReassignment) => {
+      if (task.isRecurringInstance) {
+        return materializeRecurringTaskInstance(task, {
+          cleaner: cleaner.name,
+          cleanerId: cleaner.id,
+          ...(startTime && endTime ? { startTime, endTime } : {}),
+          status: 'pending',
+        });
+      }
+      return taskStorageService.assignTaskWithSchedule(
+        task.id,
+        cleaner.name,
+        cleaner.id,
+        startTime,
+        endTime,
+      );
+    },
+    onSuccess: (_data, variables) => {
+      invalidatePlanning();
+      toast({
+        title: 'Limpieza reasignada',
+        description: `Ahora la tiene ${variables.cleaner.name}.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'No se pudo reasignar',
+        description: error instanceof Error ? error.message : 'La tarea no se ha modificado.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   return {
     applyProposal: applyProposalMutation.mutateAsync,
     assignTask: assignTaskMutation.mutate,
     unassignTask: unassignTaskMutation.mutate,
+    unassignTaskAsync: unassignTaskMutation.mutateAsync,
+    updateTaskSchedule: updateTaskScheduleMutation.mutateAsync,
+    reassignTask: reassignTaskMutation.mutateAsync,
     isAssigning: assignTaskMutation.isPending || unassignTaskMutation.isPending,
+    isSavingQuickAction:
+      updateTaskScheduleMutation.isPending
+      || reassignTaskMutation.isPending
+      || unassignTaskMutation.isPending,
     isApplyingProposal: applyProposalMutation.isPending,
   };
 };
