@@ -221,7 +221,7 @@ function BuildingsWorkspace() {
               <div className="space-y-2">
                 <Label htmlFor="building-code">Código interno</Label>
                 <Input id="building-code" value={buildingForm.internalCode} onChange={(event) => setBuildingForm((current) => ({ ...current, internalCode: event.target.value }))} placeholder="Ej. M30" required />
-                <p className="text-xs text-[#6b627a]">Debe ser único. Hermes lo utiliza para detectar y relacionar el edificio.</p>
+                <p className="text-xs text-[#6b627a]">Debe ser único. La app lo utiliza para detectar y relacionar el edificio.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">

@@ -131,7 +131,7 @@ export const BuildingAssignmentProposalPanel = ({ profile, proposal, onGenerate,
             <div className="flex flex-col gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 md:flex-row md:items-center md:justify-between">
               <div className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>No guarda cambios. Si te encaja, abre Hermes Planificación para confirmar/aplicar con el flujo seguro.</p>
+                <p>No guarda cambios. Si te encaja, abre el Planificador diario para confirmar y aplicar con el flujo seguro.</p>
               </div>
               <Button asChild className="w-fit bg-emerald-600 text-white hover:bg-emerald-500">
                 <Link to={planningHref}>
