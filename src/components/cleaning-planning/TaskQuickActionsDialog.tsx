@@ -93,7 +93,7 @@ export const TaskQuickActionsDialog = ({
     () => selectableCleaners.find((cleaner) => cleaner.id === currentCleanerId),
     [currentCleanerId, selectableCleaners],
   );
-  const currentCleanerLabel = currentCleaner?.name || task?.cleaner || 'Sin responsable';
+  const currentCleanerLabel = currentCleaner?.name || task?.cleaner || 'Sin asignar';
   const coworkerCount = useMemo(() => {
     const assigned = Array.from(new Set(
       ((task?.assignments || [])
@@ -229,7 +229,7 @@ export const TaskQuickActionsDialog = ({
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
                 ¿Quitar la asignación a <strong>{currentCleanerLabel}</strong>? La limpieza quedará
-                sin responsable y aparecerá en la bandeja de «Sin cubrir» de la planificación.
+                sin asignar y aparecerá en la lista de tareas sin asignar de la planificación.
               </p>
             </div>
           )}

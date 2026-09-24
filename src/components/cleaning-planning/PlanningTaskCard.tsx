@@ -127,7 +127,7 @@ export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssig
         {isSimple && (
           <div className="flex flex-wrap gap-2 text-xs">
             <Badge variant="outline" className={task.cleanerId ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}>
-              {task.cleaner || 'Sin responsable'}
+              {task.cleaner || 'Sin asignar'}
             </Badge>
             {task.riskFlags.length > 0 && (
               <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
@@ -144,12 +144,12 @@ export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssig
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <select
-            aria-label={`Seleccionar limpiadora para ${task.property}`}
+            aria-label={`Seleccionar trabajadora para ${task.property}`}
             className={isSimple ? 'h-11 min-h-[44px] flex-1 rounded-md border border-[#310984]/12 bg-white px-3 text-sm text-[#171321] outline-none ring-offset-white focus:border-[#310984]/50 focus:ring-2 focus:ring-[#310984]/15' : 'h-11 min-h-[44px] flex-1 rounded-md border border-white/10 bg-black/30 px-3 text-sm text-white outline-none ring-offset-[#08090a] focus:border-[#c7b8ff]/60 focus:ring-2 focus:ring-[#c7b8ff]/30'}
             value={selectedCleanerId}
             onChange={(event) => setSelectedCleanerId(event.target.value)}
           >
-            <option value="">Seleccionar limpiadora…</option>
+            <option value="">Seleccionar trabajadora…</option>
             {operationalCleaners.map((cleaner) => (
               <option key={cleaner.id} value={cleaner.id}>{cleaner.name}</option>
             ))}
@@ -216,7 +216,7 @@ export const PlanningTaskCard = ({ task, cleaners, onAssign, onUnassign, isAssig
                 <AlertDialogHeader>
                   <AlertDialogTitle>Quitar asignación</AlertDialogTitle>
                   <AlertDialogDescription>
-                    La tarea volverá a quedar sin responsable y deberá revisarse en la planificación.
+                    La tarea volverá a quedar sin asignar y deberá revisarse en la planificación.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="rounded-xl border bg-muted/30 p-3 text-sm">

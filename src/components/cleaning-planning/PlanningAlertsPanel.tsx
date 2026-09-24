@@ -18,31 +18,31 @@ export const PlanningAlertsPanel = ({ tasks, summary }: PlanningAlertsPanelProps
 
   if (!hasAlerts) {
     return (
-      <Alert className="border-emerald-300/30 bg-emerald-400/10 text-emerald-50">
+      <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900">
         <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Sin alertas operativas visibles</AlertTitle>
-        <AlertDescription>La planificación filtrada no tiene tareas sin cubrir, edificios pendientes ni sobrecargas detectadas.</AlertDescription>
+        <AlertDescription>La planificación filtrada no tiene tareas sin asignar, edificios pendientes ni sobrecargas detectadas.</AlertDescription>
       </Alert>
     );
   }
 
   return (
-    <Alert className="border-amber-300/30 bg-amber-400/10 text-amber-50">
+    <Alert className="border-amber-200 bg-amber-50 text-amber-900">
       <AlertTriangle className="h-4 w-4" />
-      <AlertTitle>Alertas técnicas de planificación</AlertTitle>
+      <AlertTitle>Avisos de la planificación</AlertTitle>
       <AlertDescription>
         <div className="mt-2 flex flex-wrap gap-2">
-          {unassigned.length > 0 && <Badge variant="outline" className="border-red-300/30 bg-red-500/10 text-red-100">{unassigned.length} tareas sin cubrir</Badge>}
-          {missingBuildings.length > 0 && <Badge variant="outline" className="border-purple-300/30 bg-purple-500/10 text-purple-100">{missingBuildings.length} edificios a revisar</Badge>}
-          {conflictTasks.length > 0 && <Badge variant="outline" className="border-amber-300/30 bg-amber-500/10 text-amber-100">{conflictTasks.length} conflictos/capacidad</Badge>}
+          {unassigned.length > 0 && <Badge variant="outline" className="border-red-200 bg-red-100 text-red-800">{unassigned.length} tareas sin asignar</Badge>}
+          {missingBuildings.length > 0 && <Badge variant="outline" className="border-purple-200 bg-purple-100 text-purple-800">{missingBuildings.length} edificio(s) por revisar</Badge>}
+          {conflictTasks.length > 0 && <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-900">{conflictTasks.length} choque(s) de horario o exceso de horas</Badge>}
           {summary.overcapacityCleaners > 0 && (
-            <Badge variant="outline" className="border-red-300/30 bg-red-500/10 text-red-100">
-              {summary.overcapacityCleaners} limpiadora(s) sobrecargada(s)
+            <Badge variant="outline" className="border-red-200 bg-red-100 text-red-800">
+              {summary.overcapacityCleaners} trabajadora(s) con demasiadas horas
             </Badge>
           )}
           {largeHomes.length > 0 && (
-            <Badge variant="outline" className="border-sky-300/30 bg-sky-500/10 text-sky-100">
-              {largeHomes.length} casa(s) grande(s), {minutesToHoursLabel(largeHomes.reduce((total, task) => total + task.durationMinutes, 0))}: valorar 2–3 limpiadoras
+            <Badge variant="outline" className="border-sky-200 bg-sky-100 text-sky-800">
+              {largeHomes.length} casa(s) grande(s), {minutesToHoursLabel(largeHomes.reduce((total, task) => total + task.durationMinutes, 0))}: puede necesitar 2–3 trabajadoras
             </Badge>
           )}
         </div>

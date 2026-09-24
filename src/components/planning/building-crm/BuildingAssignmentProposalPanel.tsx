@@ -77,7 +77,7 @@ export const BuildingAssignmentProposalPanel = ({ profile, proposal, onGenerate,
               <Sparkles className="h-5 w-5 text-[#310984]" /> Proponer asignación
             </CardTitle>
             <p className="mt-1 text-sm text-[#6b627a]">
-              Calcula una propuesta solo para {buildingName}. No guarda cambios ni notifica: sirve para probar y revisar antes de ir a Hermes Planificación.
+              Calcula una propuesta solo para {buildingName}. No guarda cambios ni notifica: sirve para probar y revisar antes de ir al Planificador diario.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

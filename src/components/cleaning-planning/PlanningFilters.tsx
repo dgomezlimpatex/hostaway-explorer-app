@@ -62,7 +62,7 @@ export const PlanningFilters = ({
     <div className="space-y-3 rounded-2xl border border-[#310984]/10 bg-white p-4 text-[#171321] shadow-lg shadow-[#310984]/6">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <p className="text-sm font-semibold text-[#171321]">Día, sede y horizonte</p>
+          <p className="text-sm font-semibold text-[#171321]">Día, sede y periodo</p>
           <p className="text-xs text-[#6b627a]">Elige qué operación quieres cerrar. Los filtros finos están en “Más filtros”.</p>
         </div>
 
@@ -105,7 +105,7 @@ export const PlanningFilters = ({
             <ChevronRight className="h-4 w-4" />
           </Button>
 
-          <div className="flex rounded-md border border-[#310984]/10 bg-[#f7f3ff] p-1" aria-label="Horizonte de planificación">
+          <div className="flex rounded-md border border-[#310984]/10 bg-[#f7f3ff] p-1" aria-label="Periodo de planificación">
             {presets.map((item) => (
               <Button
                 key={item.value}
@@ -157,12 +157,12 @@ export const PlanningFilters = ({
             {zones.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
           </select>
           <select
-            aria-label="Filtrar por limpiadora"
+            aria-label="Filtrar por trabajadora"
             className={controlClass}
             value={filters.cleanerId}
             onChange={(event) => updateFilter('cleanerId', event.target.value)}
           >
-            <option value="all">Todas las limpiadoras</option>
+            <option value="all">Todas las trabajadoras</option>
             {cleaners.map((cleaner) => <option key={cleaner.id} value={cleaner.id}>{cleaner.name}</option>)}
           </select>
           <Button

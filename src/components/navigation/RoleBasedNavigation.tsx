@@ -57,7 +57,7 @@ export const RoleBasedNavigation = () => {
             <NavigationCard
               to="/planning"
               title="Planificación"
-              description="Planifica limpiezas por sede, edificio, disponibilidad real y revisión de Hermes"
+              description="Planifica las limpiezas del día por sede, edificio y disponibilidad real, y revisa el reparto propuesto"
               icon={Layers}
               gradientFrom="bg-gradient-to-br from-[#310984]"
               gradientTo="to-violet-700"

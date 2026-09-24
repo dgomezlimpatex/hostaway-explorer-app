@@ -39,8 +39,8 @@ export const PlanningAttentionSummary = ({ tasks, summary }: PlanningAttentionSu
   const bullets = [
     unassigned.length > 0 ? {
       icon: Users,
-      text: `${unassigned.length} limpieza${unassigned.length === 1 ? '' : 's'} sin responsable`,
-      detail: 'Hermes puede proponer una asignación segura.',
+      text: `${unassigned.length} limpieza${unassigned.length === 1 ? '' : 's'} sin asignar`,
+      detail: 'La app puede proponer una asignación segura.',
       tone: 'text-amber-700 bg-amber-50 border-amber-200',
     } : null,
     earlyCheckIns.length > 0 ? {
@@ -52,13 +52,13 @@ export const PlanningAttentionSummary = ({ tasks, summary }: PlanningAttentionSu
     largeHomes.length > 0 ? {
       icon: Home,
       text: `${largeHomes.length} casa${largeHomes.length === 1 ? '' : 's'} grande${largeHomes.length === 1 ? '' : 's'} (${minutesToHoursLabel(largeHomes.reduce((total, task) => total + task.durationMinutes, 0))})`,
-      detail: 'Pueden necesitar 2–3 limpiadoras.',
+      detail: 'Pueden necesitar 2–3 trabajadoras.',
       tone: 'text-purple-700 bg-purple-50 border-purple-200',
     } : null,
     summary.overcapacityCleaners > 0 || availabilityReview.length > 0 ? {
       icon: AlertTriangle,
-      text: `${summary.overcapacityCleaners || availabilityReview.length} caso${(summary.overcapacityCleaners || availabilityReview.length) === 1 ? '' : 's'} de capacidad a revisar`,
-      detail: 'Evita sobrecargas antes de confirmar.',
+      text: `${summary.overcapacityCleaners || availabilityReview.length} trabajadora${(summary.overcapacityCleaners || availabilityReview.length) === 1 ? '' : 's'} con demasiadas horas`,
+      detail: 'Reparte antes de guardar para que nadie termine el día con exceso de horas.',
       tone: 'text-red-700 bg-red-50 border-red-200',
     } : null,
     buildingReview.length > 0 ? {

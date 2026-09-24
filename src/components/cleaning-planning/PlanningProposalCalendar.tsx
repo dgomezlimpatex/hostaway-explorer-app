@@ -430,6 +430,7 @@ export const PlanningProposalCalendar = ({
   const weeklyQuery = usePlanningCalendarWeek(selectedDate);
   const hoursScrollRef = useRef<HTMLDivElement>(null);
   const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const mobileTrayRef = useRef<HTMLDivElement>(null);
   const [reassignment, setReassignment] = useState<SelectedTask | null>(null);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [placementCleanerId, setPlacementCleanerId] = useState('');
@@ -949,7 +950,7 @@ export const PlanningProposalCalendar = ({
         ),
       );
       setMoveNotice({
-        message: `${task.property} queda sin cubrir.`,
+        message: `${task.property} queda sin asignar.`,
         previous,
       });
       setReassignment(null);
@@ -1143,12 +1144,27 @@ export const PlanningProposalCalendar = ({
               <div className="rounded-2xl border border-red-200 bg-red-50 p-3">
                 <p className="flex items-center gap-2 text-sm font-semibold text-red-800">
                   <ShieldAlert className="h-4 w-4" />{' '}
-                  {dayBlockingWarnings.length} bloqueos antes de confirmar
+                  {dayBlockingWarnings.length} problemas que impiden guardar
                 </p>
                 <ul className="mt-2 space-y-1 text-xs text-red-700">
                   {dayBlockingWarnings.slice(0, 4).map((warning) => (
-                    <li key={warning.id}>• {warning.message}</li>
+                    <li key={warning.id} className="flex flex-wrap items-center justify-between gap-2">
+                      <span>• {warning.message}</span>
+                      {warning.taskId && (
+                        <button
+                          type="button"
+                          data-planning-warning-action
+                          className="shrink-0 rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-semibold text-red-800 hover:bg-red-100"
+                          onClick={() => openReassignment(warning.taskId as string)}
+                        >
+                          Ver esta limpieza
+                        </button>
+                      )}
+                    </li>
                   ))}
+                  {dayBlockingWarnings.length > 4 && (
+                    <li className="font-semibold">y {dayBlockingWarnings.length - 4} más</li>
+                  )}
                 </ul>
               </div>
             )}
@@ -1160,13 +1176,46 @@ export const PlanningProposalCalendar = ({
                 </p>
                 <ul className="mt-2 space-y-1 text-xs text-amber-800">
                   {daySoftWarnings.slice(0, 4).map((warning) => (
-                    <li key={warning.id}>• {warning.message}</li>
+                    <li key={warning.id} className="flex flex-wrap items-center justify-between gap-2">
+                      <span>• {warning.message}</span>
+                      {warning.taskId && (
+                        <button
+                          type="button"
+                          data-planning-warning-action
+                          className="shrink-0 rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                          onClick={() => openReassignment(warning.taskId as string)}
+                        >
+                          Ver esta limpieza
+                        </button>
+                      )}
+                    </li>
                   ))}
+                  {daySoftWarnings.length > 4 && (
+                    <li className="font-semibold">y {daySoftWarnings.length - 4} más</li>
+                  )}
                 </ul>
               </div>
             )}
           </div>
         )}
+
+        {/* En móvil, la bandeja de sin asignar queda al final: este aviso fijo evita perderla. */}
+        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-[#fffafa]/95 px-3 py-2 text-sm shadow-sm backdrop-blur lg:hidden">
+          <span className={unassignedTasks.length > 0 ? 'font-semibold text-red-800' : 'font-semibold text-emerald-700'}>
+            {unassignedTasks.length > 0
+              ? `${unassignedTasks.length} limpieza${unassignedTasks.length === 1 ? '' : 's'} sin asignar`
+              : 'Todo asignado este día'}
+          </span>
+          {unassignedTasks.length > 0 && (
+            <button
+              type="button"
+              className="shrink-0 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-800"
+              onClick={() => mobileTrayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              Ver sin asignar
+            </button>
+          )}
+        </div>
 
         <div
           className="space-y-2 lg:hidden"
@@ -1197,7 +1246,7 @@ export const PlanningProposalCalendar = ({
                   >
                     ●{' '}
                     {item.source === 'hermes'
-                      ? 'Propuesta Hermes'
+                      ? 'Propuesta de la app'
                       : item.source === 'manual'
                         ? 'Revisada'
                         : 'Ya asignada'}
@@ -1234,12 +1283,39 @@ export const PlanningProposalCalendar = ({
             ))}
         </div>
 
+        {/* Leyenda y ayuda: sin esto, los colores y las dos formas de mover una limpieza no se entienden. */}
+        <div
+          aria-label="Cómo leer el tablero"
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-[#310984]/10 bg-white px-4 py-3 text-xs text-[#6b627a]"
+        >
+          <span className="font-semibold text-[#171321]">Cómo leer el tablero</span>
+          <span className="inline-flex items-center gap-2">
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-emerald-300 bg-emerald-50" />
+            Lo propone la app
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-amber-300 bg-amber-50" />
+            Lo he cambiado yo
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-slate-300 bg-slate-100" />
+            Ya estaba asignada
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-red-300 bg-red-50" />
+            Sin asignar
+          </span>
+          <span className="hidden md:ml-auto md:inline">
+            Toca o arrastra una limpieza para moverla. Con el botón derecho (o el botón ⋮) cambias la hora, la persona o la dejas sin asignar.
+          </span>
+        </div>
+
         <div data-planning-board className="hidden min-h-[620px] items-start gap-3 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
-          <aside aria-label="Tareas sin cubrir" data-planning-unassigned className="sticky top-4 flex max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm lg:col-start-1 lg:row-start-1">
+          <aside aria-label="Tareas sin asignar" data-planning-unassigned className="sticky top-4 flex max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-2xl border border-red-200 bg-[#fffafa] shadow-sm lg:col-start-1 lg:row-start-1">
             <div className="flex items-center justify-between border-b border-red-100 px-4 py-3">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-red-600">
-                  Sin cubrir
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-600">
+                  Sin asignar
                 </p>
                 <p className="text-sm font-semibold text-[#171321]">
                   Arrastra al horario
@@ -1271,7 +1347,7 @@ export const PlanningProposalCalendar = ({
                         <p className="truncate text-sm font-bold text-[#171321]">
                           {task.propertyCode || task.property}
                         </p>
-                        <p className="mt-1 flex items-center gap-1 truncate text-[11px] text-[#6b627a]">
+                        <p className="mt-1 flex items-center gap-1 truncate text-xs text-[#6b627a]">
                           <Building2 className="h-3 w-3" />{' '}
                           {task.detectedBuilding?.propertyGroupName ||
                             'Edificio sin configurar'}
@@ -1331,14 +1407,14 @@ export const PlanningProposalCalendar = ({
               >
               <div className="min-w-max">
                 <div className="flex h-11 border-b border-[#310984]/10 bg-[#faf9fd]">
-                  <div className="sticky left-0 z-20 flex w-[300px] shrink-0 items-center border-r border-[#310984]/10 bg-[#faf9fd] px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b627a]">
+                  <div className="sticky left-0 z-20 flex w-[300px] shrink-0 items-center border-r border-[#310984]/10 bg-[#faf9fd] px-3 text-xs font-bold uppercase tracking-[0.14em] text-[#6b627a]">
                     Trabajadora
                   </div>
                   <div className="relative" style={{ width: timelineWidth }}>
                     {timeMarkers.map((minute) => (
                       <span
                         key={minute}
-                        className="absolute top-3 -translate-x-1/2 text-[11px] font-semibold text-[#6b627a]"
+                        className="absolute top-3 -translate-x-1/2 text-xs font-semibold text-[#6b627a]"
                         style={{
                           left: (minute - bounds.start) * PIXELS_PER_MINUTE,
                         }}
@@ -1401,13 +1477,13 @@ export const PlanningProposalCalendar = ({
                             </p>
                             <p
                               title={`Semana ${weeklyQuery.startDate} — ${weeklyQuery.endDate}. Horas asignadas, incluida esta propuesta, / horas de contrato de la ficha.`}
-                              className={`text-[11px] font-semibold ${availability?.isAvailable === false ? 'text-red-600' : 'text-emerald-700'}`}
+                              className={`text-xs font-semibold ${availability?.isAvailable === false ? 'text-red-600' : 'text-emerald-700'}`}
                             >
                               {weeklyQuery.isError ? 'No se pudo cargar la semana' : !weeklyReady ? 'Cargando semana…'
                                 : `${hoursLabel(assignedHours)} / ${contractHours > 0 ? hoursLabel(contractHours) : '—'} h · semana`}
                             </p>
-                            {weeklyReady && contractHours === 0 && <p className="text-[10px] text-[#6b627a]">Sin horas de contrato</p>}
-                            {availability?.isAvailable === false && <p className="text-[10px] text-red-600">No disponible hoy</p>}
+                            {weeklyReady && contractHours === 0 && <p className="text-xs text-[#6b627a]">Sin horas de contrato</p>}
+                            {availability?.isAvailable === false && <p className="text-xs text-red-600">No disponible hoy</p>}
                             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#eeeaf5]">
                               <div
                                 className={`h-full rounded-full ${assignedHours > contractHours && contractHours > 0 ? 'bg-red-500' : capacityPercent >= 85 ? 'bg-amber-500' : 'bg-emerald-500'}`}
@@ -1459,8 +1535,8 @@ export const PlanningProposalCalendar = ({
                                 <div
                                   key={item.id}
                                   title={`${item.task.propertyCode || item.task.property} · ${fromMinutes(item.startMinute)}-${fromMinutes(item.endMinute)}${overlaps ? ' · Coincide en horario con otra tarea de este trabajador' : ''}`}
-                                  className={`absolute flex ${width < 140 ? 'flex-col' : ''} h-[76px] overflow-hidden rounded-xl border shadow-sm ${tone} ${selected ? 'ring-2 ring-[#310984] ring-offset-1' : ''}`}
-                                  style={{ left, width, top: 8 + lane * 84 }}
+                                  className={`absolute flex ${width < 140 ? 'flex-col' : ''} h-[84px] overflow-hidden rounded-xl border shadow-sm ${tone} ${selected ? 'ring-2 ring-[#310984] ring-offset-1' : ''}`}
+                                  style={{ left, width, top: 8 + lane * 92 }}
                                   onContextMenu={(event) => {
                                     event.preventDefault();
                                     setQuickActionsTaskId(item.taskId);
@@ -1496,12 +1572,12 @@ export const PlanningProposalCalendar = ({
                                         item.task.property}
                                       </span>
                                     </p>
-                                    <p className={`${width < 140 ? 'hidden' : ''} mt-1 truncate text-[10px] opacity-75`}>
+                                    <p className={`${width < 140 ? 'hidden' : ''} mt-1 truncate text-xs opacity-75`}>
                                       {item.task.detectedBuilding
                                         ?.propertyGroupName ||
                                         item.task.property}
                                     </p>
-                                    <p className="mt-1 flex items-center gap-1 text-[10px] font-semibold">
+                                    <p className="mt-1 flex items-center gap-1 text-xs font-semibold">
                                       <Clock className="h-3 w-3" />{' '}
                                       {fromMinutes(item.startMinute)}-
                                       {fromMinutes(item.endMinute)}
@@ -1535,9 +1611,9 @@ export const PlanningProposalCalendar = ({
         </div>
 
         {unassignedTasks.length > 0 && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-3 lg:hidden">
+          <div ref={mobileTrayRef} className="scroll-mt-24 rounded-2xl border border-red-200 bg-red-50 p-3 lg:hidden">
             <p className="flex items-center gap-2 text-sm font-semibold text-red-900">
-              <AlertTriangle className="h-4 w-4" /> Sin cubrir
+              <AlertTriangle className="h-4 w-4" /> Sin asignar
             </p>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {unassignedTasks.map((task) => (
@@ -1562,7 +1638,7 @@ export const PlanningProposalCalendar = ({
         {warnings.length === 0 && manualChangeCount === 0 && (
           <div className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> El reparto no
-            muestra solapes ni bloqueos con los datos disponibles.
+            muestra solapes ni problemas con los datos disponibles.
           </div>
         )}
       </div>
@@ -1610,7 +1686,7 @@ export const PlanningProposalCalendar = ({
               >
                 <span className="font-semibold text-red-900">Sin asignar</span>
                 <span className="text-xs font-semibold text-red-700">
-                  Dejar sin responsable
+                  Dejar sin asignar
                 </span>
               </button>
             )}
@@ -1654,7 +1730,7 @@ export const PlanningProposalCalendar = ({
               onClick={() => applyPlacement()}
             >
               {placementCleanerId === UNASSIGNED_PLACEMENT_ID
-                ? 'Dejar sin cubrir'
+                ? 'Dejar sin asignar'
                 : 'Aplicar cambio'}
             </Button>
           </div>
@@ -1674,7 +1750,7 @@ export const PlanningProposalCalendar = ({
         hasOpenProposal
         onSaved={(taskId) => {
           // El cambio ya está guardado en la tarea real: el borrador deja de representar
-          // esa limpieza para que el tablero muestre el estado real (o la bandeja Sin cubrir).
+          // esa limpieza para que el tablero muestre el estado real (o la bandeja Sin asignar).
           onDraftProposalsChange(
             draftProposals.filter((proposal) => proposal.taskId !== taskId),
           );

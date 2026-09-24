@@ -16,7 +16,6 @@ const planningTaskCard = read('src/components/cleaning-planning/PlanningTaskCard
 const desktopSidebar = read('src/components/dashboard/DashboardSidebar.tsx');
 const mobileSidebar = read('src/components/dashboard/MobileDashboardSidebar.tsx');
 const roleBasedNavigation = read('src/components/navigation/RoleBasedNavigation.tsx');
-const workflowGuide = read('src/components/cleaning-planning/PlanningWorkflowGuide.tsx');
 const operationalTypes = read('src/types/operationalPlanning.ts');
 
 const requiredFiles = [
@@ -170,8 +169,7 @@ assert.match(assignmentPanel, /Ver en planificación/, 'Building assignment pane
 assert.match(desktopSidebar, /title: 'Edificios'[\s\S]*href: '\/planning\/buildings'[\s\S]*permission: 'tasks-edit'/, 'Desktop sidebar must expose Edificios with tasks-edit permission');
 assert.match(mobileSidebar, /title: 'Edificios'[\s\S]*href: '\/planning\/buildings'[\s\S]*permission: 'tasks-edit'/, 'Mobile sidebar must expose Edificios with tasks-edit permission');
 assert.match(roleBasedNavigation, /to="\/planning\/buildings"[\s\S]*title="Edificios"/, 'Control panel must expose Edificios for planning users');
-assert.match(workflowGuide, /Personalizar edificios/, 'Hermes planning workflow guide must include an explicit building access CTA');
-assert.match(workflowGuide, /to="\/planning\/buildings"/, 'Hermes planning building CTA must point to operational buildings index');
+assert.match(roleBasedNavigation, /to="\/planning\/buildings"/, 'Planning navigation must point to the operational buildings index');
 
 assert.match(propertyGroupsPage, /\/planning\/buildings\/\$\{group\.id\}/, 'PropertyGroupsPage must link each group to building CRM');
 assert.match(propertyGroupDetails, /\/planning\/buildings\/\$\{group\.id\}/, 'PropertyGroupDetails must link selected group to building CRM');

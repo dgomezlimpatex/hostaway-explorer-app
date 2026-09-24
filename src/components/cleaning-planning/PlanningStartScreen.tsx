@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react';
-import { AlertTriangle, CalendarDays, ChevronDown, RefreshCw, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, ChevronDown, RefreshCw, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { addDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Sede } from '@/types/sede';
 import { formatMadridDate } from '@/utils/date';
+import { PlanningSteps } from './PlanningSteps';
 
 interface PlanningStartScreenProps {
   date: Date;
@@ -48,6 +51,8 @@ export const PlanningStartScreen = ({
   const hasSeveralSedes = availableSedes.length > 1;
   const hasBlockingError = isError || buildingDataError;
   const hasPartialScope = pendingTaskCount !== totalPendingTaskCount;
+  const nothingToPlan = !isLoading && !hasBlockingError && totalPendingTaskCount === 0;
+  const hiddenByFilters = !isLoading && !hasBlockingError && totalPendingTaskCount > 0 && pendingTaskCount === 0;
   const statusMessage = isLoading
     ? 'Cargando las limpiezas…'
     : pendingTaskCount === 0
@@ -65,8 +70,9 @@ export const PlanningStartScreen = ({
             ¿Qué día quieres planificar?
           </h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-[#6b627a] md:text-base">
-            Hermes prepara el reparto. Tú lo revisas antes de guardarlo.
+            La app prepara el reparto y tú lo revisas. Nada se guarda hasta que pulses «Guardar reparto».
           </p>
+          <PlanningSteps current={1} className="mt-5" />
         </div>
 
         <div className="space-y-5 p-5 md:p-8">
@@ -110,8 +116,10 @@ export const PlanningStartScreen = ({
           <div className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] px-4 py-3 text-sm text-[#6b627a]">
             <p className="font-medium text-[#171321]">{scopeLabel} · {activeSede?.nombre || 'Sin sede seleccionada'}</p>
             <p className="mt-1">{statusMessage}</p>
-            {hasPartialScope && (
-              <p className="mt-1 font-semibold text-amber-800">Alcance parcial · {pendingTaskCount} de {totalPendingTaskCount} limpiezas sin asignar.</p>
+            {hasPartialScope && !hiddenByFilters && (
+              <p className="mt-1 font-semibold text-amber-800">
+                Los filtros activos dejan fuera {totalPendingTaskCount - pendingTaskCount} de {totalPendingTaskCount} limpiezas sin asignar.
+              </p>
             )}
           </div>
 
@@ -133,16 +141,55 @@ export const PlanningStartScreen = ({
             </div>
           )}
 
-          <Button
-            data-planning-initial-control
-            type="button"
-            className="min-h-[50px] w-full bg-[#310984] text-base font-semibold text-white hover:bg-[#26066a]"
-            disabled={!canGenerateProposal || hasBlockingError || isLoading}
-            onClick={onGenerateProposal}
-          >
-            <Sparkles className="mr-2 h-5 w-5" />
-            {isLoading ? 'Cargando limpiezas…' : 'Preparar reparto con Hermes'}
-          </Button>
+          {hiddenByFilters && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="font-semibold">Los filtros activos dejan fuera todas las limpiezas de este día.</p>
+              <p className="mt-1">
+                Este día tiene {totalPendingTaskCount} limpieza{totalPendingTaskCount === 1 ? '' : 's'} pendiente{totalPendingTaskCount === 1 ? '' : 's'}, pero ningún resultado pasa el filtro.
+                Abre «Más filtros y detalles técnicos» y pulsa «Limpiar filtros» para verlas todas.
+              </p>
+            </div>
+          )}
+
+          {nothingToPlan ? (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+              <p className="flex items-center gap-2 font-semibold">
+                <CheckCircle2 className="h-5 w-5 shrink-0" /> Todo repartido para este día
+              </p>
+              <p className="mt-1 text-sm text-emerald-800">
+                No quedan limpiezas sin asignar en {activeSede?.nombre || 'la sede activa'}. Puedes pasar al día siguiente o ver el día en el calendario.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+
+                  type="button"
+                  variant="outline"
+                  className="min-h-[44px] border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100 hover:text-emerald-900"
+                  onClick={() => onDateChange(addDays(date, 1))}
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" /> Ir al día siguiente
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="min-h-[44px] border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100 hover:text-emerald-900"
+                >
+                  <Link to="/calendar">Ver el día en el calendario</Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              data-planning-initial-control
+              type="button"
+              className="min-h-[50px] w-full bg-[#310984] text-base font-semibold text-white hover:bg-[#26066a]"
+              disabled={!canGenerateProposal || hasBlockingError || isLoading}
+              onClick={onGenerateProposal}
+            >
+              <Sparkles className="mr-2 h-5 w-5" />
+              {isLoading ? 'Cargando limpiezas…' : 'Preparar el reparto'}
+            </Button>
+          )}
 
           <details className="group rounded-2xl border border-[#310984]/10 bg-white">
             <summary

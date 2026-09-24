@@ -21,17 +21,17 @@ assert.ok(visiblePrimaryControls.length <= 5, `initial screen has ${visiblePrima
 
 assert.match(page, /addDays\(getTodayMadrid\(\), 1\)/, 'tomorrow must be the intelligent default');
 assert.match(page, /proposalState\s*\?\s*\(/, 'proposal review must replace the initial cockpit instead of stacking below it');
-assert.match(start, /Preparar reparto con Hermes/, 'the start screen must explain that Hermes prepares a reviewable draft');
+assert.match(start, /Preparar el reparto/, 'the start screen must explain that the app prepares a reviewable draft');
 assert.match(start, /Más filtros y detalles técnicos/, 'non-daily functions must require explicit disclosure');
-assert.match(start, /Alcance parcial/, 'active filters must never look like the whole day was planned');
+assert.match(start, /Los filtros activos dejan fuera/, 'active filters must never look like the whole day was planned');
 assert.doesNotMatch(start, /PlanningWorkflowGuide|PlanningAttentionSummary|PlanningDecisionQueue/, 'the default start screen must not render competing panels');
 
 assert.match(proposal, /Guardar reparto y avisar/, 'the review must expose the final one-step save action');
-assert.match(proposal, /Alcance parcial/, 'proposal review must preserve partial-scope context');
+assert.match(proposal, /Faltan datos: se muestran/, 'proposal review must preserve partial-scope context');
 assert.match(proposal, /Descartar propuesta/, 'the sandbox must expose an explicit reject/discard action');
 assert.doesNotMatch(proposal, /AlertDialog|Confirmar y guardar|Revisar y confirmar/, 'approval must not add a redundant confirmation modal');
 assert.match(proposal, /applyInFlightRef/, 'approval must have an immediate single-flight guard against double click');
-assert.match(proposal, /Sin cubrir/, 'red/uncovered work must be impossible to miss');
+assert.match(proposal, /Sin asignar/, 'red/uncovered work must be impossible to miss');
 assert.match(proposal, /(?:sticky|fixed)/, 'approval and red status must remain visible without a second structural scroll');
 assert.match(proposal, /sessionStorage|localStorage/, 'sandbox edits must autosave in background outside production data');
 
@@ -50,7 +50,7 @@ assert.match(calendar, /Elegir responsable/, 'the second interaction must be cho
 assert.doesNotMatch(calendar, /:\s*'Disponible';/, 'the picker must not claim full availability before safety warnings are recalculated');
 assert.match(calendar, /assignmentRole/, 'traffic-light status must come from the real proposal role');
 assert.match(calendar, /assignmentRole: \(validation\.assignmentRole \|\|[\s\S]*?activeAssignment\?\.roleType\)/, 'reassigning a draft position must refresh its real building-team role');
-assert.match(calendar, /Sin cubrir/, 'uncovered tasks must render as explicit red cards');
+assert.match(calendar, /Sin asignar/, 'uncovered tasks must render as explicit red cards');
 assert.doesNotMatch(calendar, /taskStorageService|multipleTaskAssignmentService|supabase\.from/, 'sandbox editing must remain local until approval');
 
 assert.doesNotMatch(page, /PlanningWorkflowGuide|PlanningCopilotPanel|PlanningDecisionQueue/, 'the daily page must not stack competing planning panels');

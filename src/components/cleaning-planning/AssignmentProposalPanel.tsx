@@ -11,6 +11,7 @@ import { CleanerGroupAssignment } from '@/types/propertyGroups';
 import { minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
 import { PlanningProposalCalendar, PlanningProposalDraftWarning } from './PlanningProposalCalendar';
+import { PlanningSteps } from './PlanningSteps';
 
 interface AssignmentProposalPanelProps {
   draftScopeKey?: string;
@@ -204,15 +205,16 @@ export const AssignmentProposalPanel = ({
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-[#efe9fb] px-3 py-1 text-xs font-semibold text-[#310984]">
-              <Sparkles className="h-3.5 w-3.5" /> Propuesta de Hermes
+              <Sparkles className="h-3.5 w-3.5" /> Propuesta de la app
             </div>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#171321]">Propuesta para {dateLabel}</h1>
-            <p className="mt-1 text-sm text-[#6b627a]">{sedeName ? `${sedeName} · ` : ''}{isPartialScope ? `Alcance parcial: ${tasks.length} de ${totalPendingTaskCount}. ` : ''}Toca una limpieza para cambiar su responsable. Nada se guarda hasta pulsar “Guardar reparto”.</p>
+            <p className="mt-1 text-sm text-[#6b627a]">{sedeName ? `${sedeName} · ` : ''}{isPartialScope ? `Faltan datos: se muestran ${tasks.length} de ${totalPendingTaskCount} limpiezas. ` : ''}Toca una limpieza para cambiar su responsable; con el botón derecho (o el botón ⋮) cambias la hora, la persona o la dejas sin asignar. Nada se guarda hasta pulsar «Guardar reparto».</p>
           </div>
           <Badge variant="outline" className="w-fit border-[#310984]/15 bg-[#faf8ff] px-3 py-1 text-[#310984]">
             {coveredCount} cubierta{coveredCount === 1 ? '' : 's'}
           </Badge>
         </div>
+        <PlanningSteps current={2} className="mt-4" />
       </header>
 
       {(applyError || isStale || blockingWarnings.length > 0) && (
@@ -262,11 +264,11 @@ export const AssignmentProposalPanel = ({
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{coveredCount}</p><p>limpiezas cubiertas</p></div>
             <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{minutesToHoursLabel(draftProposals.reduce((sum, item) => sum + item.durationMinutes, 0))}</p><p>horas repartidas</p></div>
-            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{proposal.summary.globalQuality?.globalScore ?? '—'}</p><p>calidad global</p></div>
+            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{proposal.summary.globalQuality?.globalScore ?? '—'}</p><p>encaje del reparto</p></div>
           </div>
           {proposal.conflicts.length > 0 && (
             <div>
-              <p className="font-semibold text-red-800">Sin cubrir</p>
+              <p className="font-semibold text-red-800">Sin asignar</p>
               <ul className="mt-2 space-y-1 text-red-700">{proposal.conflicts.map((conflict) => <li key={`${conflict.taskId}-${conflict.code}`}>• {conflict.message}</li>)}</ul>
             </div>
           )}

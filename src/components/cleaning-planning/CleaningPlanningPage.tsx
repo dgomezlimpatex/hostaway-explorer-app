@@ -351,7 +351,7 @@ export const CleaningPlanningPage = () => {
     <div className="space-y-5">
       <div className="rounded-2xl border border-[#310984]/10 bg-white p-4 text-sm text-[#6b627a]">
         <p className="font-semibold text-[#171321]">Solo necesitas esto si quieres buscar o revisar detalles.</p>
-        <p className="mt-1">Para preparar el reparto del día, vuelve arriba y pulsa «Preparar reparto con Hermes».</p>
+        <p className="mt-1">Para preparar el reparto del día, vuelve arriba y pulsa «Preparar el reparto».</p>
       </div>
       <PlanningFilters
         date={date}
