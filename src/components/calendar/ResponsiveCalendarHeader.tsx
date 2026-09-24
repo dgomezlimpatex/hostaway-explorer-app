@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, CalendarDays, Plus, ArrowLeft, Users, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Users, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -69,46 +69,34 @@ export const ResponsiveCalendarHeader = ({
     }
   };
 
-  const todayDayNumber = format(new Date(), 'd');
+  // date-fns devuelve los meses en minúscula ("septiembre"); la clase CSS `capitalize`
+  // pondría en mayúscula cada palabra ("24 De Septiembre De 2026"), así que solo
+  // capitalizamos la primera letra.
+  const capitalizeFirst = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
   return (
     <div className="rounded-2xl overflow-hidden shadow-lg border border-border/40">
-      {/* ===== TOP BAR: gradiente morado ===== */}
-      <div className="bg-gradient-to-r from-[hsl(258,70%,28%)] via-[hsl(262,65%,32%)] to-[hsl(268,60%,38%)] text-white px-3 md:px-6 py-3 md:py-4">
-        <div className="flex items-center justify-between gap-2 md:gap-4">
-          {/* Izquierda: back + logo + título + chip fecha hoy */}
-          <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+      {/* ===== BARRA DE TÍTULO Y ACCIONES ===== */}
+      <div className="relative bg-gradient-to-r from-[hsl(258,70%,28%)] via-[hsl(262,65%,32%)] to-[hsl(268,60%,38%)] text-white">
+        {/* Brillo suave para dar profundidad */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_150%_at_0%_0%,rgba(255,255,255,0.18),transparent_60%)]" />
+        <div className="relative flex items-center justify-between gap-2 md:gap-4 px-2 md:px-4 py-2.5 md:py-3">
+          {/* Izquierda: volver + título */}
+          <div className="flex items-center gap-1.5 md:gap-2.5 min-w-0 flex-1">
             <Link to="/" className="shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-white/15 hover:text-white h-9 w-9 md:h-10 md:w-10 rounded-xl"
+                className="text-white/85 hover:bg-white/15 hover:text-white h-9 w-9 rounded-lg"
                 aria-label="Volver al menú"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
 
-            {/* Logo box */}
-            <div className="hidden sm:flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-xl bg-white/15 backdrop-blur-sm font-bold text-sm md:text-base shrink-0">
-              LX
-            </div>
-
-            {/* Chip "Hoy día N" */}
-            <div className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm shrink-0">
-              <CalendarDays className="h-4 w-4" />
-              <span className="text-sm font-semibold">{todayDayNumber}</span>
-            </div>
-
-            {/* Título */}
-            <div className="min-w-0">
-              <h1 className="text-base md:text-xl font-bold truncate leading-tight">
-                {isMobile ? "Calendario" : "Calendario de Limpieza"}
-              </h1>
-              <p className="text-[11px] md:text-xs text-white/70 capitalize truncate">
-                {formatDate()}
-              </p>
-            </div>
+            <h1 className="text-base md:text-lg font-semibold tracking-tight truncate leading-tight">
+              {isMobile ? "Calendario" : "Calendario de Limpieza"}
+            </h1>
           </div>
 
           {/* Derecha: acciones */}
@@ -117,7 +105,8 @@ export const ResponsiveCalendarHeader = ({
               <Button
                 onClick={onNewBatchTask}
                 size={isMobile ? "sm" : "default"}
-                className="gap-1.5 bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm rounded-xl"
+                variant="ghost"
+                className="gap-1.5 h-9 text-white border border-white/25 bg-white/10 hover:bg-white/20 hover:text-white rounded-lg"
               >
                 <Users className="h-4 w-4" />
                 {!isMobile && <span>Múltiples</span>}
@@ -126,7 +115,7 @@ export const ResponsiveCalendarHeader = ({
             <Button
               onClick={onNewTask}
               size={isMobile ? "sm" : "default"}
-              className="gap-1.5 bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm rounded-xl"
+              className="gap-1.5 h-9 bg-white text-[hsl(262,60%,30%)] hover:bg-white/90 hover:text-[hsl(262,60%,30%)] font-semibold rounded-lg shadow-sm"
             >
               <Plus className="h-4 w-4" />
               {!isMobile && <span>Nueva Tarea</span>}
@@ -135,43 +124,44 @@ export const ResponsiveCalendarHeader = ({
         </div>
       </div>
 
-      {/* ===== SUBHEADER: navegación + selector vista ===== */}
-      <div className="bg-card border-t border-border/40 px-3 md:px-6 py-2.5 md:py-3">
+      {/* ===== BARRA DE CONTROL: navegación + fecha + selector de vista ===== */}
+      <div className="bg-card border-t border-border/40 px-2 md:px-4 py-2 md:py-2.5">
         <div className="flex items-center justify-between gap-2 md:gap-4">
-          {/* Navegación centrada */}
-          <div className="flex items-center gap-1 md:gap-2 flex-1 justify-center md:justify-start">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => onNavigateDate('prev')}
-              className="h-9 w-9 rounded-lg"
-              aria-label="Anterior"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+          {/* Navegación y fecha: único sitio donde se muestra la fecha */}
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+            <div className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/40 p-0.5 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onNavigateDate('prev')}
+                className="h-8 w-8 rounded-md text-muted-foreground hover:bg-background hover:text-foreground"
+                aria-label="Anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onGoToToday}
-              className="px-4 h-9 rounded-lg font-medium"
-            >
-              Hoy
-            </Button>
+              <button
+                type="button"
+                onClick={onGoToToday}
+                className="px-3 h-8 text-xs md:text-sm font-semibold rounded-md text-foreground transition-colors hover:bg-background"
+              >
+                Hoy
+              </button>
 
-            <span className="hidden md:inline text-sm font-semibold text-foreground capitalize px-3">
-              {formatDate()}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onNavigateDate('next')}
+                className="h-8 w-8 rounded-md text-muted-foreground hover:bg-background hover:text-foreground"
+                aria-label="Siguiente"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <span className="min-w-0 truncate text-sm md:text-[15px] font-semibold text-foreground">
+              {capitalizeFirst(formatDate())}
             </span>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => onNavigateDate('next')}
-              className="h-9 w-9 rounded-lg"
-              aria-label="Siguiente"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
 
           {/* Selector de vista (segmented control) */}
