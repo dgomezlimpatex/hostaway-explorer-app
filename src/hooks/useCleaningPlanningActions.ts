@@ -29,6 +29,8 @@ export type QuickScheduleChange = {
 export type QuickReassignment = {
   task: Task;
   cleaner: Cleaner;
+  /** Trabajadora que se sustituye; sus compañeras se conservan. */
+  previousCleanerId?: string;
   startTime?: string;
   endTime?: string;
 };
@@ -222,7 +224,7 @@ export const useCleaningPlanningActions = () => {
   });
 
   const reassignTaskMutation = useMutation({
-    mutationFn: async ({ task, cleaner, startTime, endTime }: QuickReassignment) => {
+    mutationFn: async ({ task, cleaner, previousCleanerId, startTime, endTime }: QuickReassignment) => {
       if (task.isRecurringInstance) {
         return materializeRecurringTaskInstance(task, {
           cleaner: cleaner.name,
@@ -231,8 +233,9 @@ export const useCleaningPlanningActions = () => {
           status: 'pending',
         });
       }
-      return taskStorageService.assignTaskWithSchedule(
+      return taskStorageService.reassignTaskKeepingCoworkers(
         task.id,
+        previousCleanerId,
         cleaner.name,
         cleaner.id,
         startTime,

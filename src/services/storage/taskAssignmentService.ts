@@ -142,6 +142,75 @@ export class TaskAssignmentService {
     return updatedTask;
   }
 
+  /**
+   * Reasigna cambiando la trabajadora indicada y conservando a las compañeras cuando esa
+   * trabajadora está de verdad en `task_assignments`. Si no lo está (por ejemplo, una
+   * propuesta que aún no se ha guardado), la limpieza queda con la elegida. Horario y
+   * responsables se aplican en una sola operación con reversión.
+   */
+  async reassignTaskKeepingCoworkers(
+    taskId: string,
+    replacedCleanerId: string | undefined,
+    cleanerName: string,
+    cleanerId: string,
+    startTime?: string,
+    endTime?: string
+  ): Promise<Task> {
+    const currentTask = await taskStorageService.getById(taskId);
+    if (!currentTask) throw new Error('No se encontró la tarea para reasignarla.');
+
+    const previousCleanerIds = await this.getCurrentCleanerIds(taskId, currentTask);
+    const replaceInPlace = Boolean(replacedCleanerId) && previousCleanerIds.includes(replacedCleanerId as string);
+    const nextCleanerIds = replaceInPlace
+      ? Array.from(new Set([...previousCleanerIds.filter((id) => id !== replacedCleanerId), cleanerId]))
+      : [cleanerId];
+    const hasScheduleChange = Boolean(startTime && endTime);
+
+    const assignmentResult = await executeCanonicalTaskAssignmentChange({
+      taskId,
+      nextCleanerIds,
+      previousCleanerIds,
+      nextSchedule: hasScheduleChange ? { startTime: startTime!, endTime: endTime! } : undefined,
+      previousSchedule: hasScheduleChange
+        ? { startTime: currentTask.startTime, endTime: currentTask.endTime }
+        : undefined,
+    }, {
+      setAssignments: (id, cleanerIds) => multipleTaskAssignmentService.setTaskAssignments(id, cleanerIds),
+      updateSchedule: (id, nextStartTime, nextEndTime) => taskStorageService.updateTask(id, {
+        startTime: nextStartTime,
+        endTime: nextEndTime,
+      }),
+    });
+
+    const updatedTask = this.mergeAssignmentResult({
+      ...currentTask,
+      ...(hasScheduleChange ? { startTime, endTime } : {}),
+    }, assignmentResult);
+
+    void recordAiObservedEvent({
+      eventType: 'task_assigned_with_schedule',
+      entityType: 'tasks',
+      entityId: taskId,
+      summary: `Reasignada tarea ${updatedTask.property} a ${cleanerName}`,
+      afterData: {
+        taskId,
+        property: updatedTask.property,
+        date: updatedTask.date,
+        startTime: updatedTask.startTime,
+        endTime: updatedTask.endTime,
+        cleaner: cleanerName,
+        cleanerId,
+        previousCleanerId: replacedCleanerId,
+        keptCleanerIds: replaceInPlace
+          ? previousCleanerIds.filter((id) => id !== replacedCleanerId)
+          : [],
+      },
+      metadata: { source: 'taskAssignmentService.reassignTaskKeepingCoworkers' },
+    });
+
+    return updatedTask;
+  }
+
   async unassignTask(taskId: string): Promise<Task> {
     const currentTask = await taskStorageService.getById(taskId);
     if (!currentTask) throw new Error('No se encontró la tarea para desasignarla.');

@@ -52,6 +52,8 @@ export const taskStorageService = {
     taskAssignmentService.assignTask(taskId, cleanerName, cleanerId),
   assignTaskWithSchedule: (taskId: string, cleanerName: string, cleanerId: string, startTime?: string, endTime?: string) =>
     taskAssignmentService.assignTaskWithSchedule(taskId, cleanerName, cleanerId, startTime, endTime),
+  reassignTaskKeepingCoworkers: (taskId: string, replacedCleanerId: string | undefined, cleanerName: string, cleanerId: string, startTime?: string, endTime?: string) =>
+    taskAssignmentService.reassignTaskKeepingCoworkers(taskId, replacedCleanerId, cleanerName, cleanerId, startTime, endTime),
   unassignTask: (taskId: string) => taskAssignmentService.unassignTask(taskId),
   updateTaskSchedule: (taskId: string, updates: Partial<Task>, originalTask?: Task) => 
     taskAssignmentService.updateTaskSchedule(taskId, updates, originalTask),

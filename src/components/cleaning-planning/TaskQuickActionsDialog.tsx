@@ -94,6 +94,15 @@ export const TaskQuickActionsDialog = ({
     [currentCleanerId, selectableCleaners],
   );
   const currentCleanerLabel = currentCleaner?.name || task?.cleaner || 'Sin responsable';
+  const coworkerCount = useMemo(() => {
+    const assigned = Array.from(new Set(
+      ((task?.assignments || [])
+        .map((assignment) => assignment.cleaner_id)
+        .filter((id): id is string => Boolean(id))),
+    ));
+    const ids = assigned.length > 0 ? assigned : (currentCleanerId ? [currentCleanerId] : []);
+    return ids.filter((id) => id !== currentCleanerId).length;
+  }, [currentCleanerId, task?.assignments]);
 
   const endTime = fromMinutes((toMinutes(startTime) ?? toMinutes(DEFAULT_START)!) + durationMinutes);
   const scheduleChanged = normalizeStart(task?.startTime) !== startTime;
@@ -110,6 +119,7 @@ export const TaskQuickActionsDialog = ({
         await reassignTask({
           task,
           cleaner: selectedCleaner,
+          previousCleanerId: currentCleanerId || undefined,
           startTime,
           endTime,
         });
@@ -207,6 +217,9 @@ export const TaskQuickActionsDialog = ({
               </select>
               <p className="text-xs text-muted-foreground">
                 La disponibilidad y los solapes son avisos; puedes asignar igualmente.
+                {coworkerCount > 0
+                  ? ` Esta limpieza tiene ${coworkerCount + 1} trabajadoras: se cambia solo a la elegida y se mantienen las demás.`
+                  : ''}
               </p>
             </div>
           </div>
