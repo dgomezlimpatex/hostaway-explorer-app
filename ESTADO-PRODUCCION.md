@@ -85,8 +85,22 @@ Environment Variables) y no se versionan.
 5. Backend: Supabase `qyipyygojlfhdghnraus` es **producción**, compartido y sin staging.
 6. Reconstruir para comparar: `npm ci && npm run build`.
 
-## Pendiente de decisión
+## Copia remota y estado de Git
 
-GitHub no contiene esta versión (`main` está en `c1c538d8`, del 14/09). Falta decidir si esta
-copia se publica como nueva rama de `dgomezlimpatex/hostaway-explorer-app` o como repositorio
-nuevo. Hasta entonces, la única copia de la verdad es esta carpeta local.
+Esta version ya esta respaldada en GitHub: rama **`produccion-20260924`** de
+`dgomezlimpatex/hostaway-explorer-app`, con `main` (`c1c538d8`, del 14/09) como padre — `main`
+no se ha tocado. La rama local `produccion-20260924` sigue a `origin/produccion-20260924`, y la
+localizacion de la copia esta limpia (sin diferencias con la rama publicada).
+
+Pendiente para mas adelante: decidir si `main` pasa a ser este estado (por ejemplo fusionando
+esta rama) y unificar el nombre del repositorio.
+
+### Nota de entorno: Git por HTTPS en este equipo
+
+Git fallaba con `schannel: AcquireCredentialsHandle failed: SEC_E_NO_CREDENTIALS` incluso
+contra repositorios publicos. Se resuelve cambiando el backend TLS a OpenSSL:
+
+    git config --global http.sslBackend openssl
+
+En esta copia ya esta aplicado a nivel de repositorio (`git config http.sslBackend openssl`).
+Sin este ajuste, `git fetch` y `git push` no funcionan en este equipo.
