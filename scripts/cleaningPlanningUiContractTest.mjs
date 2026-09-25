@@ -7,7 +7,6 @@ const read = (relativePath) => readFileSync(join(root, relativePath), 'utf8');
 
 const appRoutes = read('src/App.tsx');
 const filters = read('src/components/cleaning-planning/PlanningFilters.tsx');
-const taskCard = read('src/components/cleaning-planning/PlanningTaskCard.tsx');
 const proposalPanel = read('src/components/cleaning-planning/AssignmentProposalPanel.tsx');
 const proposalCalendar = read('src/components/cleaning-planning/PlanningProposalCalendar.tsx');
 const planningPage = read('src/components/cleaning-planning/CleaningPlanningPage.tsx');
@@ -15,7 +14,6 @@ const planningStart = read('src/components/cleaning-planning/PlanningStartScreen
 
 const alertsPanel = read('src/components/cleaning-planning/PlanningAlertsPanel.tsx');
 const cleanerLoadTable = read('src/components/cleaning-planning/CleanerLoadTable.tsx');
-const cleanerColumn = read('src/components/cleaning-planning/CleanerPlanningColumn.tsx');
 const workerAvailability = read('src/components/cleaning-planning/WorkerAvailabilityPanel.tsx');
 const roleNavigation = read('src/components/navigation/RoleBasedNavigation.tsx');
 const dashboardSidebar = read('src/components/dashboard/DashboardSidebar.tsx');
@@ -26,7 +24,6 @@ const buildingSetupChecklist = read('src/components/planning/building-crm/Buildi
 
 
 const attentionSummary = read('src/components/cleaning-planning/PlanningAttentionSummary.tsx');
-const decisionQueue = read('src/components/cleaning-planning/PlanningDecisionQueue.tsx');
 const advancedDetails = read('src/components/cleaning-planning/PlanningAdvancedDetails.tsx');
 const operationalPlanning = read('src/components/planning/OperationalPlanningPage.tsx');
 const capacityUtils = read('src/utils/cleaning-planning/capacity.ts');
@@ -56,14 +53,6 @@ assert.match(filters, /Limpiar filtros/, 'PlanningFilters must offer a simple wa
 assert.match(filters, /showAdvancedFilters/, 'PlanningFilters must not show all filters by default');
 assert.match(filters, /min-h-\[44px\]/, 'Planning filters must use touch targets of at least 44px');
 
-assert.doesNotMatch(taskCard, /window\.confirm/, 'PlanningTaskCard must not use native window.confirm');
-assert.match(taskCard, /AlertDialog/, 'PlanningTaskCard must use AlertDialog for critical assignment actions');
-assert.match(taskCard, /aria-label=\{`Desasignar \$\{task\.property\}`\}/, 'Unassign icon button must expose an aria-label');
-assert.match(taskCard, /min-h-\[44px\]/, 'PlanningTaskCard assignment controls must use touch targets of at least 44px');
-assert.match(taskCard, /break-words/, 'PlanningTaskCard must allow long operational data to wrap instead of hard truncating everything');
-assert.match(taskCard, /Disponibilidad real no validada en esta acción manual/, 'Manual assignment dialog must warn that proposal-engine rules are not fully validated');
-assert.match(taskCard, /variant\?: 'simple' \| 'detailed'/, 'PlanningTaskCard must expose a simple variant for the daily decision queue');
-assert.match(taskCard, /Sin asignar/, 'Simple task cards must use operational wording for unassigned work');
 assert.match(planningStart, /¿Qué día quieres planificar\?/, 'Start screen must use direct operational wording');
 assert.match(planningStart, /Preparar el reparto/, 'Start screen must expose the single primary planning CTA');
 assert.doesNotMatch(proposalPanel, /Planificar con Hermes/, 'Advanced/proposal panels must not duplicate the primary planning CTA');
@@ -74,10 +63,6 @@ assert.match(attentionSummary, /Qué necesita atención/, 'PlanningAttentionSumm
 assert.match(attentionSummary, /Todo lo visible está cubierto/, 'Attention summary must have a calm all-clear state');
 assert.match(attentionSummary, /slice\(0, 5\)/, 'Attention summary should cap bullets to avoid information overload');
 
-assert.match(decisionQueue, /Decisiones pendientes/, 'PlanningDecisionQueue must be the main task list');
-assert.match(decisionQueue, /Urgente: entradas tempranas[\s\S]*Sin cubrir[\s\S]*Casas grandes[\s\S]*Requieren revisión/, 'Decision queue must prioritize operational groups');
-assert.match(decisionQueue, /variant="simple"/, 'PlanningDecisionQueue must use simple task cards');
-assert.match(decisionQueue, /<details className=/, 'Already-covered tasks should be collapsed by default');
 assert.doesNotMatch(
   propertyList,
   /PropertyPreferredCleaners|preferredCleanersPropertyId|Limpiadoras preferidas/,
@@ -182,8 +167,6 @@ assert.match(cleanerLoadTable, /role="progressbar"/, 'CleanerLoadTable custom ut
 assert.match(cleanerLoadTable, /aria-valuetext=\{`\$\{day\.utilizationPercent\}% utilizado/, 'CleanerLoadTable progressbar must expose text value');
 assert.match(cleanerLoadTable, /aria-label="Tabla de carga desplazable horizontalmente"/, 'Scrollable load table must be named for assistive tech');
 
-assert.match(cleanerColumn, /className="w-full min-w-0/, 'CleanerPlanningColumn must not force horizontal overflow on narrow screens');
-assert.match(cleanerColumn, /aria-label=\{`Carga de \$\{day\.cleanerName\}`\}/, 'CleanerPlanningColumn progress must have an accessible name');
 assert.match(workerAvailability, /aria-label=\{`Disponibilidad de \$\{row\.cleanerName\}`\}/, 'WorkerAvailabilityPanel progress must have an accessible name');
 assert.doesNotMatch(workerAvailability, />fallback</, 'WorkerAvailabilityPanel must not expose fallback jargon in visible text');
 

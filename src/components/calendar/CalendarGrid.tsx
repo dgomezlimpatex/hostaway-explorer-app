@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { TimeSlot } from "./TimeSlot";
 import { EnhancedTaskCard } from "./EnhancedTaskCard";
 import { Task, Cleaner } from "@/types/calendar";
+import type { DragState } from "@/hooks/useDragAndDrop";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
 import { getTaskPositionWithOverlap, getEffectiveTaskEndTime } from "@/utils/taskPositioning";
@@ -16,10 +17,10 @@ interface CalendarGridProps {
   assignedTasks: Task[];
   availability: CleanerAvailability[];
   currentDate: Date;
-  dragState: any;
+  dragState: DragState;
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[], timeSlot?: string) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void;
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onTaskClick: (task: Task) => void;
@@ -69,9 +70,9 @@ const CleanerRow = memo(({
   cleanerTasks: Task[];
   availability: CleanerAvailability[];
   currentDate: Date;
-  dragState: any;
+  dragState: DragState;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[], timeSlot?: string) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void;
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onTaskClick: (task: Task) => void;
@@ -176,7 +177,7 @@ const CleanerRow = memo(({
         />
       );
     });
-  }, [timeSlots, cleaner.id, cleaner.name, isTimeSlotOccupied, isTimeSlotAvailable, getHourlyAbsenceForSlot, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
+  }, [timeSlots, cleaner.id, isTimeSlotOccupied, isTimeSlotAvailable, getHourlyAbsenceForSlot, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
 
   // Memoize task elements for this cleaner with overlap detection
   const taskElements = useMemo(() => {
@@ -265,7 +266,7 @@ const CleanerRow = memo(({
         </div>
       );
     });
-  }, [cleanerTasks, cleaner.id, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd, cleanerAssignmentsMap]);
+  }, [cleanerTasks, cleaner, dragState.draggedTask, onTaskClick, onDragStart, onDragEnd, cleanerAssignmentsMap]);
 
    // Maintenance & hourly absence continuous overlay blocks (one per period, not per slot)
    const absenceBlocks = useMemo(() => {

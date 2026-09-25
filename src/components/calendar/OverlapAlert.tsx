@@ -1,9 +1,10 @@
 import React from "react";
 import { AlertTriangle, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Task } from "@/types/calendar";
 
 interface OverlapAlertProps {
-  overlappingTasks: any[];
+  overlappingTasks: Task[];
   cleanerName: string;
 }
 

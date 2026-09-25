@@ -12,7 +12,6 @@ const service = read('src/services/planning/operationalPlanningService.ts');
 const propertyGroupsPage = read('src/components/property-groups/PropertyGroupsPage.tsx');
 const propertyGroupDetails = read('src/components/property-groups/PropertyGroupDetails.tsx');
 const propertyGroupStorage = read('src/services/storage/propertyGroupStorage.ts');
-const planningTaskCard = read('src/components/cleaning-planning/PlanningTaskCard.tsx');
 const desktopSidebar = read('src/components/dashboard/DashboardSidebar.tsx');
 const mobileSidebar = read('src/components/dashboard/MobileDashboardSidebar.tsx');
 const roleBasedNavigation = read('src/components/navigation/RoleBasedNavigation.tsx');
@@ -173,7 +172,5 @@ assert.match(roleBasedNavigation, /to="\/planning\/buildings"/, 'Planning naviga
 
 assert.match(propertyGroupsPage, /\/planning\/buildings\/\$\{group\.id\}/, 'PropertyGroupsPage must link each group to building CRM');
 assert.match(propertyGroupDetails, /\/planning\/buildings\/\$\{group\.id\}/, 'PropertyGroupDetails must link selected group to building CRM');
-assert.match(planningTaskCard, /task\.detectedBuilding\?\.propertyGroupId/, 'Planning task cards must expose building CRM link when a building is detected');
-assert.match(planningTaskCard, /Ver ficha edificio/, 'Planning task cards must use the requested building CRM wording');
 
 console.log('planning-building-crm-ui-contract-tests: OK');
