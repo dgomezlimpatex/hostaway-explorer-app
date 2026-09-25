@@ -77,6 +77,7 @@ interface SmoobuLink {
   task_date: string | null;
   service_kind: string;
   status: string;
+  manually_adjusted: boolean;
 }
 
 interface SmoobuTask {
@@ -188,7 +189,7 @@ export default function SmoobuAdmin() {
     queryFn: async () => {
       const { data, error } = await dbSmoobu
         .from("smoobu_reservation_tasks")
-        .select("id, reservation_id, task_id, task_date, service_kind, status");
+        .select("id, reservation_id, task_id, task_date, service_kind, status, manually_adjusted");
       if (error) throw error;
       return (data ?? []) as unknown as SmoobuLink[];
     },
@@ -580,6 +581,9 @@ export default function SmoobuAdmin() {
                                   <Badge variant={tarea.status === "pending" ? "secondary" : "default"}>
                                     {tarea.status}
                                   </Badge>
+                                  {vinculo?.manually_adjusted && (
+                                    <Badge variant="outline">ajustada a mano</Badge>
+                                  )}
                                   <div className="text-xs text-muted-foreground">
                                     {tarea.start_time?.slice(0, 5)}–{tarea.end_time?.slice(0, 5)} ·{" "}
                                     {tarea.cleaner ?? "sin asignar"}
