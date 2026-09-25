@@ -25,6 +25,8 @@ const checks = [
     /detalleAbierto/.test(page) && /email_enviado/.test(page) && /no hacía falta/.test(page)],
   ['el mapeo se puede pausar y reactivar',
     /is_active: activo/.test(page) && /Pausar/.test(page) && /Reactivar/.test(page)],
+  ['avisa de las limpiezas ajustadas a mano',
+    /manually_adjusted/.test(page) && /ajustada a mano/.test(page)],
   ['muestra estado de la ultima pasada y avisa si se queda vieja',
     /horasSinLeer/.test(page) && /HORAS_AVISO/.test(page) && /Última lectura de Smoobu/.test(page)],
   ['la ruta esta protegida y carga en diferido',
