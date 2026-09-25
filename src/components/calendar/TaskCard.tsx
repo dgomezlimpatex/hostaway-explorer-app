@@ -24,10 +24,10 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
   return (
     <div 
       className={cn(
-        "absolute -top-1 -right-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md",
+        "absolute -top-1 -right-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md text-white",
         allCompleted 
-          ? "bg-surface text-white" 
-          : "bg-surface text-white animate-pulse"
+          ? "bg-ink-3" 
+          : "bg-danger animate-pulse"
       )}
     >
       <ListTodo className="h-3 w-3" />
@@ -47,16 +47,31 @@ export const TaskCard = ({
 }: TaskCardProps) => {
   const { getClientName } = useClientData();
 
-  const getStatusColor = (status: string) => {
+  // Superficie clara con el estado solo en el borde izquierdo y el punto.
+  // 'bg-surface' es blanco: sobre el panel blanco la tarjeta desaparecia.
+  const getStatusAccent = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-surface hover:bg-success";
+        return "border-l-success";
       case "in-progress":
-        return "bg-surface hover:bg-warning";
+        return "border-l-warning";
       case "pending":
-        return "bg-surface hover:bg-danger";
+        return "border-l-danger";
       default:
-        return "bg-gray-500 hover:bg-gray-600";
+        return "border-l-ink-4";
+    }
+  };
+
+  const getStatusDot = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-success";
+      case "in-progress":
+        return "bg-warning";
+      case "pending":
+        return "bg-danger";
+      default:
+        return "bg-ink-4";
     }
   };
 
@@ -101,8 +116,11 @@ export const TaskCard = ({
   return (
     <div 
       className={cn(
-        isRecurring ? "bg-line-soft hover:bg-paper border-2 border-dashed border-line" : getStatusColor(task.status), 
-        "rounded-lg p-2 text-white shadow-lg hover:shadow-xl transition-all duration-200 group relative overflow-visible select-none",
+        "border border-line border-l-4",
+        isRecurring
+          ? "bg-line-soft hover:bg-paper border-dashed"
+          : cn("bg-surface hover:bg-paper", getStatusAccent(task.status)),
+        "rounded-lg p-2 text-ink shadow-sober hover:shadow-md transition-all duration-200 group relative overflow-visible select-none",
         effectiveDraggable && "cursor-move",
         !effectiveDraggable && "cursor-pointer",
         isDragging && "opacity-50 scale-95 rotate-3"
@@ -136,20 +154,27 @@ export const TaskCard = ({
       
       {/* Content */}
       <div className="relative z-10 space-y-1">
-        {/* Property name - pegado a la izquierda */}
-        <div className="font-semibold text-sm leading-tight line-clamp-2 text-left">
-          {displayPropertyName()}
+        <div className="flex items-start gap-1.5">
+          {/* Punto de estado: unico indicador de color dentro de la tarjeta */}
+          <span
+            className={cn("mt-1.5 h-2 w-2 flex-shrink-0 rounded-full", getStatusDot(task.status))}
+            aria-hidden="true"
+          />
+          {/* Property name - pegado a la izquierda */}
+          <div className="flex-1 min-w-0 font-semibold text-sm leading-tight line-clamp-2 text-left">
+            {displayPropertyName()}
+          </div>
         </div>
         
         {/* Cliente - pegado a la izquierda al mismo nivel */}
         {clientName && (
-          <div className="text-xs opacity-90 text-left leading-tight">
+          <div className="text-xs text-ink-2 text-left leading-tight pl-3.5">
             {clientName}
           </div>
         )}
         
         {/* Solo las horas de inicio y fin */}
-        <div className="flex items-center text-xs">
+        <div className="flex items-center text-xs text-ink-2 pl-3.5">
           <Clock className="h-3 w-3 flex-shrink-0 mr-1" />
           <span className="whitespace-nowrap">
             {formatTime(task.startTime)} - {formatTime(task.endTime)}
@@ -158,7 +183,7 @@ export const TaskCard = ({
 
         {/* Address - solo si hay espacio suficiente */}
         {task.address && (
-          <div className="text-xs opacity-70 truncate">
+          <div className="text-xs text-ink-3 truncate pl-3.5">
             📍 {task.address}
           </div>
         )}
