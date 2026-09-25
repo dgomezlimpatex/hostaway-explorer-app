@@ -204,6 +204,12 @@ const syncItems: NavigationItem[] = [
     permission: 'admin-only'
   },
   {
+    title: 'Smoobu',
+    href: '/smoobu',
+    icon: Hotel,
+    permission: 'admin-only'
+  },
+  {
     title: 'Avirato Hotel',
     href: '/integraciones/avirato',
     icon: Hotel,

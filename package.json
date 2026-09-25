@@ -22,6 +22,7 @@
     "test:supervision-domain": "node scripts/supervisionDomainTest.mjs",
     "test:supervision-ui": "node scripts/supervisionUiContractTest.mjs",
     "test:role-modes": "node scripts/roleModeTest.mjs",
+    "test:smoobu-admin-ui": "node scripts/smoobuAdminUiContractTest.mjs",
     "test:worker-fixed-days-off-planning": "node scripts/workerFixedDaysOffPlanningTest.mjs",
     "test:worker-maintenance-conflict": "node scripts/workerMaintenanceConflictTest.mjs",
     "test:worker-task-overlap": "node scripts/workerTaskOverlapTest.mjs",

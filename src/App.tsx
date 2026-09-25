@@ -68,6 +68,7 @@ const ClientPortalsAdmin = React.lazy(() => import("./pages/ClientPortalsAdmin")
 const WorkloadDashboard = React.lazy(() => import("./pages/WorkloadDashboard"));
 const Integraciones = React.lazy(() => import("./pages/Integraciones"));
 const LittleHotelierAdmin = React.lazy(() => import("./pages/LittleHotelierAdmin"));
+const SmoobuAdmin = React.lazy(() => import("./pages/SmoobuAdmin"));
 const AviratoAdmin = React.lazy(() => import("./pages/AviratoAdmin"));
 const CleaningPlanning = React.lazy(() => import("./pages/CleaningPlanning"));
 const StaffingForecastPage = React.lazy(() => import("./pages/StaffingForecastPage"));
@@ -337,6 +338,9 @@ function App() {
                     } />
                     <Route path="/little-hotelier" element={
                       <RoleProtectedRoute requiredModule="admin"><LittleHotelierAdmin /></RoleProtectedRoute>
+                    } />
+                    <Route path="/smoobu" element={
+                      <RoleProtectedRoute requiredModule="admin"><SmoobuAdmin /></RoleProtectedRoute>
                     } />
                     <Route path="/integraciones/avirato" element={
                       <RoleProtectedRoute requiredModule="admin"><AviratoAdmin /></RoleProtectedRoute>
