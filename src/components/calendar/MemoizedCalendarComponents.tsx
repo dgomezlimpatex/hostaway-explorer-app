@@ -4,6 +4,7 @@ import { WorkersColumn } from './WorkersColumn';
 import { TimelineHeader } from './TimelineHeader';
 import { UnassignedTasks } from './UnassignedTasks';
 import { Task, Cleaner } from '@/types/calendar';
+import type { DragState } from '@/hooks/useDragAndDrop';
 import { CleanerAvailability } from '@/hooks/useCleanerAvailability';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
 
@@ -14,10 +15,10 @@ export const MemoizedCalendarGrid = memo<{
   assignedTasks: Task[];
   availability: CleanerAvailability[];
   currentDate: Date;
-  dragState: any;
+  dragState: DragState;
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[], timeSlot?: string) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void;
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onTaskClick: (task: Task) => void;

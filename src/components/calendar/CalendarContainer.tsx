@@ -22,12 +22,8 @@ import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
 import { buildTaskAssignmentsMap, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
+import type { DragState } from "@/hooks/useDragAndDrop";
 
-type CalendarDragState = {
-  isDragging: boolean;
-  draggedTask?: Task | null;
-  dragOffset?: { x: number; y: number };
-};
 
 type RecurringCalendarTask = Task & {
   isRecurringInstance?: boolean;
@@ -56,7 +52,7 @@ export interface CalendarContainerProps {
   selectedTask: Task | null;
   isTaskModalOpen: boolean;
   setIsTaskModalOpen: (open: boolean) => void;
-  dragState: CalendarDragState;
+  dragState: DragState;
   handleDragStart: (e: React.DragEvent, task: Task) => void;
   handleDragEnd: (e: React.DragEvent) => void;
   handleDragOver: (e: React.DragEvent) => void;

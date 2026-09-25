@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 interface WorkersColumnProps {
   cleaners: Cleaner[];
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[]) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: Cleaner[]) => void;
   absenceStatus?: Record<string, WorkerAbsenceStatus>;
   isDragging?: boolean;
   preferredCleanerIds?: Set<string>;

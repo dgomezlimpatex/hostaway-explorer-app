@@ -321,11 +321,11 @@ const CleaningCalendar = () => {
             isTaskModalOpen={isTaskModalOpen}
             setIsTaskModalOpen={setIsTaskModalOpen}
             currentDate={currentDate}
-            onCreateTask={() => {}} // No-op for cleaners
-            onBatchCreateTasks={() => {}} // No-op for cleaners
+            onCreateTask={async () => {}} // No-op for cleaners
+            onBatchCreateTasks={async () => {}} // No-op for cleaners
             onUpdateTask={handleUpdateTask}
-            onDeleteTask={() => {}} // Cleaners can't delete tasks
-            onUnassignTask={() => {}} // Cleaners can't unassign tasks
+            onDeleteTask={async () => {}} // Cleaners can't delete tasks
+            onUnassignTask={async () => {}} // Cleaners can't unassign tasks
           />
         </>
       );
@@ -421,11 +421,11 @@ const CleaningCalendar = () => {
           isTaskModalOpen={isTaskModalOpen}
           setIsTaskModalOpen={setIsTaskModalOpen}
           currentDate={currentDate}
-          onCreateTask={() => {}} // No-op for cleaners
-          onBatchCreateTasks={() => {}} // No-op for cleaners
+          onCreateTask={async () => {}} // No-op for cleaners
+          onBatchCreateTasks={async () => {}} // No-op for cleaners
           onUpdateTask={handleUpdateTask}
-          onDeleteTask={() => {}} // Cleaners can't delete tasks
-          onUnassignTask={() => {}} // Cleaners can't unassign tasks
+          onDeleteTask={async () => {}} // Cleaners can't delete tasks
+          onUnassignTask={async () => {}} // Cleaners can't unassign tasks
         />
       </>
     );
