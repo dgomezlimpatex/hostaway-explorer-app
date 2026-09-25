@@ -177,7 +177,7 @@ const CleanerRow = memo(({
         />
       );
     });
-  }, [timeSlots, cleaner.id, isTimeSlotOccupied, isTimeSlotAvailable, getHourlyAbsenceForSlot, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
+  }, [timeSlots, cleaner.id, cleaner.name, isTimeSlotOccupied, isTimeSlotAvailable, getHourlyAbsenceForSlot, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
 
   // Memoize task elements for this cleaner with overlap detection
   const taskElements = useMemo(() => {
@@ -266,7 +266,7 @@ const CleanerRow = memo(({
         </div>
       );
     });
-  }, [cleanerTasks, cleaner, dragState.draggedTask, onTaskClick, onDragStart, onDragEnd, cleanerAssignmentsMap]);
+  }, [cleanerTasks, cleaner.id, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd, cleanerAssignmentsMap]);
 
    // Maintenance & hourly absence continuous overlay blocks (one per period, not per slot)
    const absenceBlocks = useMemo(() => {
