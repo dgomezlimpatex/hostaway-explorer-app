@@ -1290,20 +1290,20 @@ export const PlanningProposalCalendar = ({
         >
           <span className="font-semibold text-ink">Cómo leer el tablero</span>
           <span className="inline-flex items-center gap-2">
-            <i aria-hidden="true" className="h-3 w-4 rounded border border-emerald-300 bg-emerald-50" />
-            Lo propone la app
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-success bg-tint-success" />
+            Verde: lo propone la app
           </span>
           <span className="inline-flex items-center gap-2">
-            <i aria-hidden="true" className="h-3 w-4 rounded border border-amber-300 bg-amber-50" />
-            Lo he cambiado yo
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-warning bg-tint-warning" />
+            Amarillo: lo he cambiado yo
           </span>
           <span className="inline-flex items-center gap-2">
-            <i aria-hidden="true" className="h-3 w-4 rounded border border-slate-300 bg-slate-100" />
-            Ya estaba asignada
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-info bg-tint-info" />
+            Azul: ya estaba asignada
           </span>
           <span className="inline-flex items-center gap-2">
-            <i aria-hidden="true" className="h-3 w-4 rounded border border-red-300 bg-red-50" />
-            Sin asignar
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-danger bg-tint-danger" />
+            Rojo: conflicto de horario
           </span>
           <span className="hidden md:ml-auto md:inline">
             Toca o arrastra una limpieza para moverla. Con el botón derecho (o el botón ⋮) cambias la hora, la persona o la dejas sin asignar.
@@ -1311,17 +1311,17 @@ export const PlanningProposalCalendar = ({
         </div>
 
         <div data-planning-board className="hidden min-h-[620px] items-start gap-3 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
-          <aside aria-label="Tareas sin asignar" data-planning-unassigned className="sticky top-4 flex max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-lg border border-red-200 bg-paper shadow-sm lg:col-start-1 lg:row-start-1">
-            <div className="flex items-center justify-between border-b border-red-100 px-4 py-3">
+          <aside aria-label="Tareas sin asignar" data-planning-unassigned className="sticky top-4 flex max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-lg border border-danger bg-tint-danger shadow-sm lg:col-start-1 lg:row-start-1">
+            <div className="flex items-center justify-between border-b border-danger px-4 py-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-red-600">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-danger">
                   Sin asignar
                 </p>
                 <p className="text-sm font-semibold text-ink">
                   Arrastra al horario
                 </p>
               </div>
-              <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-red-600 px-2 text-xs font-bold text-white">
+              <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-danger px-2 text-xs font-bold text-white">
                 {unassignedTasks.length}
               </span>
             </div>
@@ -1336,7 +1336,7 @@ export const PlanningProposalCalendar = ({
                   <div
                     key={task.id}
                     data-dnd-unassigned-tray-item
-                    className={`rounded-md border bg-white p-2 shadow-sm ${selectedTask?.taskId === task.id && selectedTask.proposalIndex === undefined ? 'border-[#310984] ring-2 ring-brand/10' : 'border-red-200'}`}
+                    className={`rounded-md border bg-surface p-2 shadow-sm ${selectedTask?.taskId === task.id && selectedTask.proposalIndex === undefined ? 'border-brand ring-2 ring-brand' : 'border-danger'}`}
                   >
                     <div className="flex items-start gap-1">
                       <button
@@ -1525,18 +1525,21 @@ export const PlanningProposalCalendar = ({
                                 selectedTask?.taskId === item.taskId &&
                                 selectedTask.proposalIndex ===
                                   item.proposalIndex;
-                              const statusColor =
-                                item.source === 'existing'
-                                  ? '#71717A'
+                              // Color por origen (y rojo cuando hay conflicto de horario), para
+                              // distinguir de un vistazo quién creó cada limpieza.
+                              const statusTone = overlaps
+                                ? { bg: 'bg-tint-danger', border: 'border-danger', rule: '#B42318' }
+                                : item.source === 'existing'
+                                  ? { bg: 'bg-tint-info', border: 'border-info', rule: '#3A5A8C' }
                                   : item.source === 'manual'
-                                    ? '#B54708'
-                                    : '#310984';
+                                    ? { bg: 'bg-tint-warning', border: 'border-warning', rule: '#B54708' }
+                                    : { bg: 'bg-tint-success', border: 'border-success', rule: '#027A48' };
                               return (
                                 <div
                                   key={item.id}
                                   title={`${item.task.propertyCode || item.task.property} · ${fromMinutes(item.startMinute)}-${fromMinutes(item.endMinute)}${overlaps ? ' · Coincide en horario con otra tarea de este trabajador' : ''}`}
-                                  className={`absolute flex ${width < 140 ? 'flex-col' : ''} h-[84px] overflow-hidden rounded-md border border-line bg-surface shadow-sober ${selected ? 'ring-2 ring-brand ring-offset-1' : ''}`}
-                                  style={{ left, width, top: 8 + lane * 92, borderLeft: `3px solid ${statusColor}` }}
+                                  className={`absolute flex ${width < 140 ? 'flex-col' : ''} h-[84px] overflow-hidden rounded-md border ${statusTone.border} ${statusTone.bg} shadow-sober ${selected ? 'ring-2 ring-brand ring-offset-1' : ''}`}
+                                  style={{ left, width, top: 8 + lane * 92, borderLeft: `4px solid ${statusTone.rule}` }}
                                   onContextMenu={(event) => {
                                     event.preventDefault();
                                     setQuickActionsTaskId(item.taskId);

@@ -38,6 +38,11 @@ export default {
 					DEFAULT: 'hsl(var(--primary))'
 				},
 				danger: 'hsl(var(--state-danger))',
+				info: 'hsl(var(--state-info))',
+				'tint-success': 'hsl(var(--tint-success))',
+				'tint-warning': 'hsl(var(--tint-warning))',
+				'tint-info': 'hsl(var(--tint-info))',
+				'tint-danger': 'hsl(var(--tint-danger))',
 				warning: 'hsl(var(--state-warning))',
 				success: 'hsl(var(--state-success))',
 				border: 'hsl(var(--border))',
