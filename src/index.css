@@ -923,3 +923,102 @@ textarea:focus {
     animation-iteration-count: 1;
   }
 }
+
+/* Feedback de guardado del planificador: avance visual aproximado, nunca porcentaje real. */
+@keyframes plannerSaveFill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(0.86); }
+}
+
+.planner-save-progress {
+  transform: scaleX(0.72);
+  transform-origin: left center;
+  animation: plannerSaveFill 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Al abrir los detalles, el contenido aparece con una transición corta y espacial. */
+@keyframes plannerDisclosureIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.planner-accordion [data-radix-accordion-content][data-state='open'] > .planner-disclosure-content {
+  animation: plannerDisclosureIn 180ms ease-out both;
+}
+
+/* El paso de preparación al tablero comparte la misma cabecera en navegadores compatibles. */
+.planner-stage-hero { view-transition-name: planner-stage-hero; }
+
+::view-transition-old(root) { animation: 220ms ease-out both plannerStageFadeOut; }
+::view-transition-new(root) { animation: 310ms ease-out both plannerStageFadeIn; }
+::view-transition-old(planner-stage-hero),
+::view-transition-new(planner-stage-hero) {
+  animation-duration: 480ms;
+  animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+}
+@keyframes plannerStageFadeOut { to { opacity: 0; } }
+@keyframes plannerStageFadeIn { from { opacity: 0; } }
+
+/* Solo el modal abierto desde una tarjeta viaja desde esa posición; Radix conserva el foco y Escape. */
+@keyframes plannerPlaceFromCard {
+  from {
+    opacity: .38;
+    transform: translate(-50%, -50%) translate(var(--planner-origin-x), var(--planner-origin-y)) scale(var(--planner-origin-scale));
+  }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.planner-placement-dialog[data-state='open'].planner-placement-from-card {
+  animation: plannerPlaceFromCard 560ms cubic-bezier(.22, 1, .36, 1) both;
+  transform-origin: center center;
+}
+@keyframes plannerPlaceClose {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(.96); }
+}
+.planner-placement-dialog[data-state='closed'] {
+  animation: plannerPlaceClose 180ms ease-in both !important;
+}
+
+@media (max-width: 639px) {
+  .planner-placement-dialog {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    max-height: 92dvh;
+    border-radius: 1.25rem 1.25rem 0 0;
+    transform: none;
+  }
+  @keyframes plannerPlaceSheet {
+    from { opacity: .55; transform: translateY(32px) scale(.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .planner-placement-dialog[data-state='open'].planner-placement-from-card {
+    animation: plannerPlaceSheet 340ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+  @keyframes plannerPlaceSheetOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(24px); }
+  }
+  .planner-placement-dialog[data-state='closed'] {
+    animation: plannerPlaceSheetOut 180ms ease-in both !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  .planner-save-progress,
+  .planner-accordion [data-radix-accordion-content],
+  .planner-accordion .planner-disclosure-content,
+  .planner-placement-dialog[data-state='open'],
+  .planner-placement-dialog[data-state='closed'],
+  .planner-placement-overlay,
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(planner-stage-hero),
+  ::view-transition-new(planner-stage-hero) {
+    animation: none !important;
+  }
+}

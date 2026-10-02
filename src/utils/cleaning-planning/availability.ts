@@ -61,6 +61,7 @@ const extraordinaryWindowsForCleanerDate = (tasks: Task[], cleanerId: string, da
     startTime: task.startTime,
     endTime: task.endTime,
     reason: `Servicio extraordinario: ${task.property || task.type}`,
+    kind: 'extraordinary' as const,
   }));
 
 const timeToMinutesValue = (time?: string | null): number | null => {
@@ -94,6 +95,7 @@ const assignedTaskWindowsForCleanerDate = (tasks: Task[], cleanerId: string, dat
       startTime: task.startTime,
       endTime: minutesToTimeValue(startMinutes + durationMinutes),
       reason: `Tarea ya asignada: ${task.property || task.type}`,
+      kind: 'assigned_task' as const,
     }];
   });
 
@@ -138,7 +140,7 @@ export const buildEffectiveAvailabilityForDate = ({
       isAvailable: false,
       source: 'fixed_day_off',
       availableWindows: [],
-      blockedWindows: [{ reason: 'Día libre fijo' }],
+      blockedWindows: [{ reason: 'Día libre fijo', kind: 'fixed_day_off' }],
       availableMinutes: 0,
       assignedMinutes,
       remainingMinutes: 0,
@@ -153,7 +155,7 @@ export const buildEffectiveAvailabilityForDate = ({
       isAvailable: false,
       source: 'absence',
       availableWindows: [],
-      blockedWindows: [{ reason: fullDayAbsence.notes || 'Ausencia de jornada completa' }],
+      blockedWindows: [{ reason: fullDayAbsence.notes || 'Ausencia de jornada completa', kind: 'absence' }],
       availableMinutes: 0,
       assignedMinutes,
       remainingMinutes: 0,
@@ -174,15 +176,20 @@ export const buildEffectiveAvailabilityForDate = ({
         startTime: absence.startTime || undefined,
         endTime: absence.endTime || undefined,
         reason: absence.notes || 'Ausencia parcial',
+        kind: 'absence' as const,
       })),
     ...dayMaintenance.map((maintenance) => ({
       startTime: maintenance.startTime,
       endTime: maintenance.endTime,
       reason: maintenance.scheduleType === 'unavailability' ? 'No disponible' : maintenance.locationName ? `Mantenimiento: ${maintenance.locationName}` : 'Mantenimiento fijo',
+      kind: maintenance.scheduleType === 'unavailability' ? 'unavailability' as const : 'maintenance' as const,
     })),
     ...extraordinaryWindows,
   ];
-  const blockedWindows = [...unavailableWindows, ...assignedTaskWindows];
+  const weeklyUnavailableWindows = cleanerWeeklyAvailability && !cleanerWeeklyAvailability.is_available
+    ? [{ reason: 'No disponible según horario semanal', kind: 'weekly_unavailability' as const }]
+    : [];
+  const blockedWindows = [...unavailableWindows, ...assignedTaskWindows, ...weeklyUnavailableWindows];
 
   const restrictions = dayMaintenance.filter(item => item.scheduleType === 'unavailability');
   // Personal restrictions reduce the usable time window, not hours worked or

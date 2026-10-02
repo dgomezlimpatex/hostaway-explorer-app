@@ -1,4 +1,7 @@
 /** Only actual time conflicts create additional lanes. */
+export const PLANNING_CARD_HEIGHT = 112;
+export const PLANNING_LANE_STEP = 120;
+
 export function planningTaskLanes<T extends { id: string; startMinute: number; endMinute: number }>(
   items: T[], start: number, pixelsPerMinute: number,
 ) {
@@ -12,5 +15,5 @@ export function planningTaskLanes<T extends { id: string; startMinute: number; e
     const overlaps = items.some(other => other.id !== item.id && item.startMinute < other.endMinute && other.startMinute < item.endMinute);
     return { item, left, width, lane, overlaps };
   });
-  return { cards, height: Math.max(1, laneEnds.length) * 84 + 8 };
+  return { cards, height: Math.max(1, laneEnds.length) * PLANNING_LANE_STEP + 8 };
 }

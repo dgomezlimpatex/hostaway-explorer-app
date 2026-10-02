@@ -107,6 +107,12 @@ interface SmoobuRun {
   detalle: Array<{ reserva?: string; salida?: string; ok?: boolean; respuesta?: string }> | null;
 }
 
+function etiquetaEstadoCorreo(run: SmoobuRun): string {
+  if (run.email_enviado) return "enviado";
+  const necesitabaCorreo = run.altas + run.actualizaciones + run.canceladas + run.errores > 0;
+  return necesitabaCorreo ? "no confirmado" : "no hacía falta";
+}
+
 interface SmoobuRequest {
   id: string;
   pedida_por_nombre: string | null;
@@ -488,7 +494,7 @@ export default function SmoobuAdmin() {
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   onClick={() => pedirSincronizacion.mutate()}
-                  disabled={pedirSincronizacion.isPending || Boolean(peticionPendiente)}
+                  disabled={pedirSincronizacion.isPending || Boolean(peticionPendiente) || Boolean(peticionEnCurso)}
                 >
                   <RefreshCw className={`mr-2 h-4 w-4 ${pedirSincronizacion.isPending ? "animate-spin" : ""}`} />
                   Sincronizar ahora
@@ -664,7 +670,7 @@ export default function SmoobuAdmin() {
                             </TableCell>
                             <TableCell className="whitespace-nowrap">{segundos(p.duracion_ms)}</TableCell>
                             <TableCell className="text-xs text-muted-foreground">
-                              {p.email_enviado ? "enviado" : "no hacía falta"}
+                              {etiquetaEstadoCorreo(p)}
                             </TableCell>
                             <TableCell>
                               <Button

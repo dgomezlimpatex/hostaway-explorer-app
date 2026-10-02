@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { addDays } from 'date-fns';
 import { useCleaningPlanning } from '@/hooks/useCleaningPlanning';
 import { useCleaningPlanningActions } from '@/hooks/useCleaningPlanningActions';
@@ -20,6 +21,8 @@ import { isOperationalCleaner } from '@/utils/cleaningPlanning';
 import { getTodayMadrid, formatMadridDate } from '@/utils/date';
 import { PlanningDayNavigation } from './PlanningDayNavigation';
 import { Button } from '@/components/ui/button';
+import { CheckCircle2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { buildAssignmentProposal } from '@/utils/cleaning-planning/proposalEngine';
 import { applyBuildingOperationalWindow } from '@/utils/cleaning-planning/buildingOperationalWindow';
 import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
@@ -194,6 +197,8 @@ export const CleaningPlanningPage = () => {
   const [proposalState, setProposalState] = useState<ProposalState | null>(null);
   const [calendarNavigation, setCalendarNavigation] = useState(false);
   const [isSavingDay, setIsSavingDay] = useState(false);
+  const [isSavedConfirmationOpen, setIsSavedConfirmationOpen] = useState(false);
+  const [savedTaskIds, setSavedTaskIds] = useState<string[]>([]);
   const dayProposals = useRef(new Map<string, ProposalState>());
   const { planning, range, effectiveAvailability, isLoading, isError, refetch } = useCleaningPlanning({ date, preset });
   const { cleaners, refetch: refetchCleaners } = useCleaners();
@@ -294,7 +299,23 @@ export const CleaningPlanningPage = () => {
       availability: effectiveAvailability,
       cleanerGroupAssignments: buildingData.cleanerAssignments,
     });
-    setProposalState({ result: nextProposal, contextKey: proposalContextKey, tasksSnapshot: filteredUnassignedTasks });
+    const showProposal = () => {
+      flushSync(() => setProposalState({ result: nextProposal, contextKey: proposalContextKey, tasksSnapshot: filteredUnassignedTasks }));
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    };
+    const focusHeading = () => {
+      // No quitar el foco a quien ya empezó a navegar mientras terminaba la transición.
+      if (document.activeElement === document.body || document.activeElement === document.documentElement) {
+        document.querySelector<HTMLElement>('[data-planner-proposal-title]')?.focus({ preventScroll: true });
+      }
+    };
+    if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // Mantiene continuidad entre la cabecera de preparación y el tablero, sin retrasar la propuesta.
+      void document.startViewTransition(showProposal).finished.then(focusHeading, focusHeading);
+    } else {
+      showProposal();
+      focusHeading();
+    }
     return nextProposal;
   };
 
@@ -340,8 +361,12 @@ export const CleaningPlanningPage = () => {
       freshTasks: freshTasksResult.data,
     });
     dayProposals.current.delete(dayKey);
-    setProposalState(null);
     await Promise.all([buildingDataQuery.refetch(), refetchCleaners()]);
+    setSavedTaskIds(proposalsToApply.map((item) => item.taskId));
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 160));
+    }
+    setIsSavedConfirmationOpen(true);
     } finally {
       setIsSavingDay(false);
     }
@@ -405,6 +430,7 @@ export const CleaningPlanningPage = () => {
             sedeName={activeSede?.nombre}
             isPartialScope={hasPartialScope}
             totalPendingTaskCount={enhancedUnassignedTasks.length}
+            savedTaskIds={savedTaskIds}
             onApply={handleApplyProposal}
             onClear={() => {dayProposals.current.delete(dayKey);setProposalState(null);setCalendarNavigation(false);}}
           />
@@ -432,6 +458,43 @@ export const CleaningPlanningPage = () => {
           advancedContent={advancedContent}
         />
       )}
+      <Dialog
+        open={isSavedConfirmationOpen}
+        onOpenChange={(open) => {
+          setIsSavedConfirmationOpen(open);
+          if (!open) {
+            setSavedTaskIds([]);
+            setProposalState(null);
+            setCalendarNavigation(false);
+          }
+        }}
+      >
+        <DialogContent className="planner-success-dialog max-w-sm rounded-2xl border-line shadow-xl [&>button.absolute]:hidden">
+          <DialogHeader className="items-center text-center">
+            <span aria-hidden="true" className="mb-2 grid h-14 w-14 place-items-center rounded-full bg-line-soft text-brand">
+              <CheckCircle2 className="h-7 w-7" />
+            </span>
+            <DialogTitle>¡Reparto guardado!</DialogTitle>
+            <DialogDescription>
+              Los cambios se han aplicado correctamente. Al continuar volverás al resumen del día.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              className="min-h-[44px] w-full bg-brand text-white hover:bg-ink"
+              onClick={() => {
+                setIsSavedConfirmationOpen(false);
+                setSavedTaskIds([]);
+                setProposalState(null);
+                setCalendarNavigation(false);
+              }}
+            >
+              Volver al día
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

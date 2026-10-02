@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEventHandler, type MouseEventHandler, type ReactElement, type ReactNode, type TouchEventHandler } from 'react';
 import { usePlanningCalendarWeek } from '@/hooks/usePlanningCalendarWeek';
 import { planningCalendarWeeklyHours } from '@/utils/planningCalendarWeeklyHours';
-import { planningTaskLanes } from '@/utils/planningTaskLanes';
+import { PLANNING_CARD_HEIGHT, PLANNING_LANE_STEP, planningTaskLanes } from '@/utils/planningTaskLanes';
 import {
   DndContext,
   KeyboardSensor,
@@ -20,8 +20,8 @@ import {
   Building2,
   CheckCircle2,
   Clock,
-  GripVertical,
-  MoreVertical,
+  PencilLine,
+  Sparkles,
   RotateCcw,
   ShieldAlert,
 } from 'lucide-react';
@@ -36,6 +36,7 @@ import {
 import { Cleaner } from '@/types/calendar';
 import {
   AssignmentProposal,
+  BlockedAvailabilityWindow,
   CleaningPlanningTask,
   EffectiveWorkerAvailability,
 } from '@/types/cleaningPlanning';
@@ -73,6 +74,7 @@ interface PlanningProposalCalendarProps {
   activeCleanerAssignments?: CleanerGroupAssignment[];
   excludedCleanerAssignments?: CleanerGroupAssignment[];
   isStale?: boolean;
+  savedTaskIds?: string[];
   onDraftProposalsChange: (proposals: AssignmentProposal[]) => void;
   onDraftWarningsChange: (warnings: PlanningProposalDraftWarning[]) => void;
 }
@@ -99,41 +101,68 @@ interface CalendarItem {
   assignmentRole?: AssignmentProposal['assignmentRole'];
 }
 
-const PIXELS_PER_MINUTE = 1.4;
+const PIXELS_PER_MINUTE = 2.4;
 const SNAP_MINUTES = 15;
 const QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES * PIXELS_PER_MINUTE;
 const UNASSIGNED_PLACEMENT_ID = '__unassigned__';
 
-const DraggableHandle = ({
+type PlannerTaskCardStatus = 'conflict' | 'saved' | 'assigned' | 'manual' | 'proposal' | 'unassigned';
+type PlannerTaskCardTone = {
+  status: PlannerTaskCardStatus;
+  surface: string;
+  foreground: string;
+  iconSurface: string;
+  iconForeground: string;
+};
+
+const PLANNER_TASK_CARD_TONES: Record<PlannerTaskCardStatus, PlannerTaskCardTone> = {
+  conflict: { status: 'conflict', surface: 'bg-danger', foreground: 'text-white', iconSurface: 'bg-black/15', iconForeground: 'text-white' },
+  saved: { status: 'saved', surface: 'bg-success', foreground: 'text-white', iconSurface: 'bg-black/15', iconForeground: 'text-white' },
+  assigned: { status: 'assigned', surface: 'bg-info', foreground: 'text-white', iconSurface: 'bg-black/15', iconForeground: 'text-white' },
+  manual: { status: 'manual', surface: 'bg-warning', foreground: 'text-white', iconSurface: 'bg-black/15', iconForeground: 'text-white' },
+  proposal: { status: 'proposal', surface: 'bg-success', foreground: 'text-white', iconSurface: 'bg-black/15', iconForeground: 'text-white' },
+  unassigned: { status: 'unassigned', surface: 'bg-warning', foreground: 'text-white', iconSurface: 'bg-black/15', iconForeground: 'text-white' },
+};
+
+const getPlannerTaskCardTone = (
+  source: CalendarItem['source'],
+  { conflict = false, saved = false }: { conflict?: boolean; saved?: boolean } = {},
+): PlannerTaskCardTone => {
+  if (conflict) return PLANNER_TASK_CARD_TONES.conflict;
+  if (saved) return PLANNER_TASK_CARD_TONES.saved;
+  if (source === 'existing') return PLANNER_TASK_CARD_TONES.assigned;
+  if (source === 'manual') return PLANNER_TASK_CARD_TONES.manual;
+  return PLANNER_TASK_CARD_TONES.proposal;
+};
+
+type PlannerDraggableBindings = Omit<ReturnType<typeof useDraggable>, 'listeners'> & {
+  onMouseDown?: MouseEventHandler<HTMLElement>;
+  onTouchStart?: TouchEventHandler<HTMLElement>;
+  onKeyDown?: KeyboardEventHandler<HTMLElement>;
+};
+
+const PlannerDraggable = ({
   id,
   payload,
   disabled,
-  compact = false,
+  children,
 }: {
   id: string;
   payload: DragPayload;
   disabled?: boolean;
-  compact?: boolean;
+  children: (bindings: PlannerDraggableBindings) => ReactElement;
 }) => {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { listeners, ...bindings } = useDraggable({
     id,
     data: payload,
     disabled,
   });
-  return (
-    <button
-      ref={setNodeRef}
-      type="button"
-      aria-label="Arrastrar para cambiar responsable u horario"
-      data-dnd-handle
-      className={`${compact ? 'h-5 w-full shrink-0' : 'min-h-[36px] min-w-[32px] shrink-0 p-1'} touch-none rounded-lg text-brand hover:bg-line-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${isDragging ? 'opacity-40' : ''}`}
-      onClick={(event) => event.stopPropagation()}
-      {...listeners}
-      {...attributes}
-    >
-      <GripVertical className="mx-auto h-4 w-4" />
-    </button>
-  );
+  return children({
+    ...bindings,
+    onMouseDown: listeners?.onMouseDown as MouseEventHandler<HTMLElement> | undefined,
+    onTouchStart: listeners?.onTouchStart as TouchEventHandler<HTMLElement> | undefined,
+    onKeyDown: listeners?.onKeyDown as KeyboardEventHandler<HTMLElement> | undefined,
+  });
 };
 
 const CleanerDropZone = ({
@@ -212,6 +241,208 @@ const fromMinutes = (value: number): string => {
   return `${Math.floor(clamped / 60)
     .toString()
     .padStart(2, '0')}:${(clamped % 60).toString().padStart(2, '0')}`;
+};
+
+type AvailabilityBandKind =
+  | 'available'
+  | 'estimated'
+  | 'absence'
+  | 'fixed_day_off'
+  | 'weekly_unavailability'
+  | 'unavailability'
+  | 'maintenance'
+  | 'no_availability';
+
+interface AvailabilityBand {
+  key: string;
+  kind: AvailabilityBandKind;
+  label: string;
+  reason: string;
+  startMinute?: number;
+  endMinute?: number;
+}
+
+const parseAvailabilityTime = (time?: string): number | undefined => {
+  const match = time?.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return undefined;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 24 || minutes < 0 || minutes > 59 || (hours === 24 && minutes > 0)) return undefined;
+  return hours * 60 + minutes;
+};
+
+const getBlockedAvailabilityKind = (
+  window: BlockedAvailabilityWindow,
+): AvailabilityBandKind => {
+  if (window.kind && window.kind !== 'assigned_task' && window.kind !== 'extraordinary') return window.kind;
+  const reason = window.reason.toLocaleLowerCase('es-ES');
+  if (reason.includes('mantenimiento')) return 'maintenance';
+  if (reason.includes('ausencia')) return 'absence';
+  if (reason.includes('día libre')) return 'fixed_day_off';
+  if (reason.includes('horario semanal')) return 'weekly_unavailability';
+  return 'unavailability';
+};
+
+const getAvailabilityBands = (
+  availability?: EffectiveWorkerAvailability,
+): AvailabilityBand[] => {
+  if (!availability) return [];
+  const bands: AvailabilityBand[] = availability.availableWindows.flatMap((window, index) => {
+    const startMinute = parseAvailabilityTime(window.startTime);
+    const endMinute = parseAvailabilityTime(window.endTime);
+    if (startMinute === undefined || endMinute === undefined || endMinute <= startMinute) return [];
+    const estimated = availability.source === 'contract_fallback';
+    return [{
+      key: 'available-' + index,
+      kind: estimated ? 'estimated' : 'available',
+      label: estimated ? 'Estimado' : 'Disponible',
+      reason: (estimated ? 'Horario estimado ' : 'Horario disponible ') + window.startTime + '–' + window.endTime,
+      startMinute,
+      endMinute,
+    }];
+  });
+  const labels: Record<AvailabilityBandKind, string> = {
+    available: 'Disponible',
+    estimated: 'Estimado',
+    absence: 'Ausencia',
+    fixed_day_off: 'Día libre',
+    weekly_unavailability: 'No disponible',
+    unavailability: 'No disponible',
+    maintenance: 'Mantenimiento',
+    no_availability: 'Sin horario',
+  };
+  const blockedBands: AvailabilityBand[] = availability.blockedWindows
+    .filter((window) => window.kind !== 'assigned_task' && window.kind !== 'extraordinary')
+    .map((window, index) => {
+      const kind = getBlockedAvailabilityKind(window);
+      return {
+        key: 'blocked-' + index,
+        kind,
+        label: labels[kind],
+        reason: window.reason,
+        startMinute: parseAvailabilityTime(window.startTime),
+        endMinute: parseAvailabilityTime(window.endTime),
+      };
+    });
+
+  const hasFullDayBlock = blockedBands.some((band) => band.startMinute === undefined || band.endMinute === undefined);
+  if (!availability.isAvailable && availability.availableWindows.length === 0 && !hasFullDayBlock) {
+    const reason = availability.source === 'weekly'
+      ? 'No disponible según horario semanal'
+      : availability.source === 'contract_fallback'
+        ? 'No hay disponibilidad estimada para hoy'
+        : 'Sin disponibilidad para hoy';
+    blockedBands.unshift({
+      key: 'no-availability',
+      kind: 'no_availability',
+      label: labels.no_availability,
+      reason,
+    });
+  }
+  const allDayBlocks = blockedBands.filter((band) => band.startMinute === undefined || band.endMinute === undefined);
+  const timedBlocks = blockedBands.filter((band) => band.startMinute !== undefined && band.endMinute !== undefined);
+  return [...bands, ...allDayBlocks, ...timedBlocks];
+};
+
+const getAvailabilitySummary = (
+  availability?: EffectiveWorkerAvailability,
+): string => {
+  if (!availability) return 'Disponibilidad no cargada';
+  const bands = getAvailabilityBands(availability);
+  const windows = bands
+    .filter((band) => band.kind === 'available' || band.kind === 'estimated')
+    .map((band) => fromMinutes(band.startMinute!) + '–' + fromMinutes(band.endMinute!));
+  const blocks = bands.filter((band) => band.kind !== 'available' && band.kind !== 'estimated');
+  if (availability.source === 'fixed_day_off') return 'Día libre fijo';
+  if (availability.source === 'absence' && !availability.isAvailable) return 'Ausencia · no disponible';
+  if (windows.length === 0) return blocks[0]?.label || 'Sin disponibilidad hoy';
+  const prefix = availability.source === 'contract_fallback' ? 'Horario estimado ' : 'Horario ';
+  const blockSummary = blocks.map((band) => {
+    const timeRange = band.startMinute !== undefined && band.endMinute !== undefined
+      ? ' ' + fromMinutes(band.startMinute) + '–' + fromMinutes(band.endMinute)
+      : '';
+    return band.label + timeRange;
+  });
+  return prefix + windows.join(', ') + (blockSummary.length ? ' · ' + blockSummary.join(', ') : '');
+};
+
+const WorkerAvailabilityBands = ({
+  availability,
+  bounds,
+  compact = false,
+}: {
+  availability?: EffectiveWorkerAvailability;
+  bounds: { start: number; end: number };
+  compact?: boolean;
+}) => {
+  const bands = getAvailabilityBands(availability);
+  const span = Math.max(1, bounds.end - bounds.start);
+  const accessibleSummary = availability
+    ? getAvailabilitySummary(availability)
+    : 'Disponibilidad no cargada';
+  const colors: Record<AvailabilityBandKind, string> = {
+    available: 'border-emerald-600/50 bg-emerald-200/65 text-emerald-950',
+    estimated: 'border-violet-500/60 bg-violet-200/60 text-violet-950',
+    absence: 'border-rose-600/70 bg-rose-200/75 text-rose-950',
+    fixed_day_off: 'border-slate-500/70 bg-slate-300/80 text-slate-900',
+    weekly_unavailability: 'border-slate-500/70 bg-slate-300/80 text-slate-900',
+    unavailability: 'border-slate-500/70 bg-slate-300/80 text-slate-900',
+    maintenance: 'border-amber-600/70 bg-amber-200/80 text-amber-950',
+    no_availability: 'border-slate-500/70 bg-slate-300/80 text-slate-900',
+  };
+  const patterns: Partial<Record<AvailabilityBandKind, string>> = {
+    estimated: 'repeating-linear-gradient(135deg, rgba(139,92,246,.16) 0 3px, transparent 3px 8px)',
+    absence: 'repeating-linear-gradient(135deg, rgba(225,29,72,.18) 0 3px, transparent 3px 8px)',
+    fixed_day_off: 'repeating-linear-gradient(135deg, rgba(71,85,105,.16) 0 3px, transparent 3px 8px)',
+    weekly_unavailability: 'repeating-linear-gradient(135deg, rgba(71,85,105,.16) 0 3px, transparent 3px 8px)',
+    unavailability: 'repeating-linear-gradient(135deg, rgba(71,85,105,.16) 0 3px, transparent 3px 8px)',
+    no_availability: 'repeating-linear-gradient(135deg, rgba(71,85,105,.16) 0 3px, transparent 3px 8px)',
+  };
+  return (
+    <div
+      role="img"
+      aria-label={accessibleSummary}
+      data-worker-availability
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      {availability && (
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-slate-50/35"
+          style={{ backgroundImage: 'repeating-linear-gradient(135deg, rgba(100,116,139,.12) 0 2px, transparent 2px 8px)' }}
+        />
+      )}
+      {bands.map((band) => {
+        const start = band.startMinute === undefined ? bounds.start : Math.max(bounds.start, band.startMinute);
+        const end = band.endMinute === undefined ? bounds.end : Math.min(bounds.end, band.endMinute);
+        if (end <= start) return null;
+        const leftPercent = Math.max(0, ((start - bounds.start) / span) * 100);
+        const widthPercent = Math.min(100 - leftPercent, ((end - start) / span) * 100);
+        const labelText = band.startMinute !== undefined && band.endMinute !== undefined
+          ? band.label + ' ' + fromMinutes(band.startMinute) + '–' + fromMinutes(band.endMinute)
+          : band.label;
+        return (
+          <div
+            key={band.key}
+            aria-hidden="true"
+            title={band.reason}
+            className={'absolute inset-y-0 overflow-hidden border-x ' + colors[band.kind]}
+            style={{
+              left: leftPercent + '%',
+              width: widthPercent + '%',
+              backgroundImage: patterns[band.kind],
+            }}
+          >
+            {!compact && widthPercent >= 6 && (
+              <span className="absolute left-1 top-1 max-w-[calc(100%-0.5rem)] truncate text-[10px] font-bold leading-tight">
+                {labelText}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 const getTaskStart = (
@@ -419,9 +650,11 @@ export const PlanningProposalCalendar = ({
   activeCleanerAssignments = [],
   excludedCleanerAssignments = [],
   isStale,
+  savedTaskIds = [],
   onDraftProposalsChange,
   onDraftWarningsChange,
 }: PlanningProposalCalendarProps) => {
+  const savedTaskIdSet = useMemo(() => new Set(savedTaskIds), [savedTaskIds]);
   const dates = useMemo(
     () => selectedDay ? [selectedDay] : uniqueDates(calendarTasks, draftProposals),
     [calendarTasks, draftProposals, selectedDay],
@@ -432,6 +665,10 @@ export const PlanningProposalCalendar = ({
   const timelineScrollRef = useRef<HTMLDivElement>(null);
   const mobileTrayRef = useRef<HTMLDivElement>(null);
   const [reassignment, setReassignment] = useState<SelectedTask | null>(null);
+  const [reassignmentOrigin, setReassignmentOrigin] = useState<{ x: number; y: number; scale: number } | null>(null);
+  const pendingEditSnapshotRef = useRef<{ taskId: string; proposals: AssignmentProposal[]; wasEdited: boolean } | null>(null);
+  const reassignmentTriggerRef = useRef<HTMLElement | null>(null);
+  const reassignmentTriggerTaskIdRef = useRef('');
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [placementCleanerId, setPlacementCleanerId] = useState('');
   const [placementStartTime, setPlacementStartTime] = useState('09:00');
@@ -512,15 +749,30 @@ export const PlanningProposalCalendar = ({
     draftProposals.forEach((proposal, proposalIndex) => {
       const task = taskById.get(proposal.taskId);
       if (!task) return;
-      const isManualChange = Boolean(
-        originalProposals[proposalIndex] &&
-        originalProposals[proposalIndex].cleanerId !== proposal.cleanerId,
-      );
+      const isExistingAssignmentDraft = proposal.reasons.includes('Asignación existente editable durante la revisión');
+      const originalProposal = originalProposals.find((candidate) => (
+        candidate.taskId === proposal.taskId
+        && candidate.assignmentIndex === proposal.assignmentIndex
+      ));
+      const unchangedExistingAssignment = isExistingAssignmentDraft
+        && getAssignedCleanerIds(task, cleaners).includes(proposal.cleanerId)
+        && proposal.proposedStartTime === task.startTime
+        && proposal.proposedEndTime === task.endTime;
+      const isManualChange = isExistingAssignmentDraft
+        ? !unchangedExistingAssignment
+        : proposal.reasons.includes('Asignación manual durante la revisión') || Boolean(originalProposal && (
+          originalProposal.cleanerId !== proposal.cleanerId
+          || originalProposal.proposedStartTime !== proposal.proposedStartTime
+          || originalProposal.proposedEndTime !== proposal.proposedEndTime
+        ));
+      const source = isExistingAssignmentDraft
+        ? unchangedExistingAssignment ? 'existing' : 'manual'
+        : isManualChange ? 'manual' : 'hermes';
       items.push({
         id: `draft:${proposal.taskId}:${proposalIndex}`,
         taskId: proposal.taskId,
         proposalIndex,
-        source: isManualChange ? 'manual' : 'hermes',
+        source,
         task,
         cleanerId: proposal.cleanerId,
         cleanerName: proposal.cleanerName,
@@ -627,7 +879,7 @@ export const PlanningProposalCalendar = ({
     [calendarTasks, cleaners, draftedTaskIds, selectedDate],
   );
 
-  // Clic derecho (o botón ⋮) sobre una limpieza asignada: ajuste rápido de hora y responsable.
+  // Clic derecho sobre una limpieza asignada: ajuste rápido de hora y responsable.
   const quickActionsTask = quickActionsTaskId
     ? taskById.get(quickActionsTaskId) || null
     : null;
@@ -649,8 +901,17 @@ export const PlanningProposalCalendar = ({
   }, [calendarItems, quickActionsTask]);
 
   const bounds = useMemo(() => {
-    const starts = dayItems.map((item) => item.startMinute);
-    const ends = dayItems.map((item) => item.endMinute);
+    const availabilityWindows = effectiveAvailability
+      .filter((item) => item.date === selectedDate && visibleCleaners.some((cleaner) => cleaner.id === item.cleanerId))
+      .flatMap((item) => [...item.availableWindows, ...item.blockedWindows]);
+    const availabilityStarts = availabilityWindows
+      .map((window) => parseAvailabilityTime(window.startTime))
+      .filter((minute): minute is number => minute !== undefined);
+    const availabilityEnds = availabilityWindows
+      .map((window) => parseAvailabilityTime(window.endTime))
+      .filter((minute): minute is number => minute !== undefined);
+    const starts = [...dayItems.map((item) => item.startMinute), ...availabilityStarts];
+    const ends = [...dayItems.map((item) => item.endMinute), ...availabilityEnds];
     return {
       start: Math.max(
         0,
@@ -664,7 +925,7 @@ export const PlanningProposalCalendar = ({
           60,
       ),
     };
-  }, [dayItems]);
+  }, [dayItems, effectiveAvailability, selectedDate, visibleCleaners]);
   const timelineWidth = Math.max(
     760,
     (bounds.end - bounds.start) * PIXELS_PER_MINUTE,
@@ -840,10 +1101,20 @@ export const PlanningProposalCalendar = ({
       },
     };
   };
-  const openReassignment = (taskId: string, proposalIndex?: number, sourceCleanerId?: string) => {
+  const openReassignment = (taskId: string, proposalIndex?: number, sourceCleanerId?: string, sourceElement?: HTMLElement) => {
     if (isStale) return;
     const task = taskById.get(taskId);
     if (!task) return;
+    reassignmentTriggerRef.current = sourceElement ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    reassignmentTriggerTaskIdRef.current = taskId;
+    const card = sourceElement?.closest<HTMLElement>('[data-planner-task-card]') ?? sourceElement;
+    const rect = card?.getBoundingClientRect();
+    setReassignmentOrigin(rect?.width && rect.height ? {
+      x: Math.max(-window.innerWidth * 0.6, Math.min(window.innerWidth * 0.6, rect.left + rect.width / 2 - window.innerWidth / 2)),
+      y: Math.max(-window.innerHeight * 0.6, Math.min(window.innerHeight * 0.6, rect.top + rect.height / 2 - window.innerHeight / 2)),
+      scale: Math.max(0.28, Math.min(0.9, rect.width / Math.min(window.innerWidth - 32, 448))),
+    } : null);
+    pendingEditSnapshotRef.current = null;
     let nextProposalIndex = proposalIndex;
     if (proposalIndex === undefined) {
       const existingCleanerIds = getAssignedCleanerIds(task, cleaners);
@@ -861,11 +1132,13 @@ export const PlanningProposalCalendar = ({
             ),
         ),
       ];
-      nextProposalIndex = next.findIndex(
+      const foundProposalIndex = next.findIndex(
         (proposal) =>
           proposal.taskId === taskId &&
           proposal.cleanerId === (sourceCleanerId || existingCleanerIds[0] || task.cleanerId),
       );
+      nextProposalIndex = foundProposalIndex >= 0 ? foundProposalIndex : undefined;
+      pendingEditSnapshotRef.current = { taskId, proposals: draftProposals, wasEdited: editedExistingTaskIds.has(taskId) };
       setEditedExistingTaskIds((current) => new Set(current).add(taskId));
       onDraftProposalsChange(next);
     }
@@ -953,6 +1226,7 @@ export const PlanningProposalCalendar = ({
         message: `${task.property} queda sin asignar.`,
         previous,
       });
+      pendingEditSnapshotRef.current = null;
       setReassignment(null);
       return;
     }
@@ -1062,6 +1336,7 @@ export const PlanningProposalCalendar = ({
       message: `${task.property} colocada con ${cleaner.name} a las ${startTime}.`,
       previous,
     });
+    pendingEditSnapshotRef.current = null;
     setReassignment(null);
   };
 
@@ -1199,9 +1474,9 @@ export const PlanningProposalCalendar = ({
           </div>
         )}
 
-        {/* En móvil, la bandeja de sin asignar queda al final: este aviso fijo evita perderla. */}
-        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-paper/95 px-3 py-2 text-sm shadow-sm backdrop-blur lg:hidden">
-          <span className={unassignedTasks.length > 0 ? 'font-semibold text-red-800' : 'font-semibold text-emerald-700'}>
+        {/* El contador permanece visible; las pendientes se muestran antes de la lista móvil. */}
+        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 rounded-lg border border-line bg-paper/95 px-3 py-2 text-sm shadow-sm backdrop-blur lg:hidden">
+          <span className={unassignedTasks.length > 0 ? 'font-semibold text-ink' : 'font-semibold text-emerald-700'}>
             {unassignedTasks.length > 0
               ? `${unassignedTasks.length} limpieza${unassignedTasks.length === 1 ? '' : 's'} sin asignar`
               : 'Todo asignado este día'}
@@ -1209,13 +1484,83 @@ export const PlanningProposalCalendar = ({
           {unassignedTasks.length > 0 && (
             <button
               type="button"
-              className="shrink-0 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-800"
-              onClick={() => mobileTrayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="min-h-11 shrink-0 rounded-lg border border-line bg-white px-3 py-2 text-xs font-semibold text-brand transition-colors hover:bg-line-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand motion-reduce:transition-none"
+              onClick={() => mobileTrayRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })}
             >
               Ver sin asignar
             </button>
           )}
         </div>
+
+        {unassignedTasks.length > 0 && (
+          <section ref={mobileTrayRef} aria-label="Limpiezas sin asignar" className="scroll-mt-20 rounded-xl border border-line bg-paper p-3 lg:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="flex items-center gap-2 text-sm font-bold text-ink"><AlertTriangle aria-hidden="true" className="h-4 w-4" /> Por resolver ({unassignedTasks.length})</h3>
+              <span className="text-xs font-medium text-ink-3">Antes de guardar</span>
+            </div>
+            <div id="planning-mobile-unassigned" className="mt-3 grid gap-2 sm:grid-cols-2">
+              {unassignedTasks.map((task) => (
+                <PlannerDraggable
+                  key={task.id}
+                  id={`unassigned-mobile:${task.id}`}
+                  payload={{ taskId: task.id }}
+                  disabled={isStale}
+                >
+                  {({ attributes, onMouseDown, onTouchStart, onKeyDown, setNodeRef, setActivatorNodeRef, isDragging }) => (
+                    <article
+                      ref={setNodeRef}
+                      data-planner-task-card
+                      data-planner-task-id={task.id}
+                      data-planner-status="unassigned"
+                      onMouseDown={onMouseDown}
+                      onTouchStart={onTouchStart}
+                      className={`${!isStale ? 'touch-none cursor-grab' : ''} rounded-xl border border-white/45 bg-warning p-3 text-white shadow-sober transition-[background-color,border-color,box-shadow] duration-200 hover:shadow-md motion-reduce:transition-none ${isDragging ? 'opacity-40' : ''} ${selectedTask?.taskId === task.id && selectedTask.proposalIndex === undefined ? 'ring-2 ring-brand ring-offset-1' : ''}`}
+                    >
+                      <button
+                        ref={setActivatorNodeRef}
+                        {...attributes}
+                        type="button"
+                        data-planner-primary-action
+                        className="min-h-[44px] min-w-0 w-full py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        onKeyDown={(event) => {
+                          if (event.code !== 'Enter') onKeyDown?.(event);
+                        }}
+                        onClick={(event) => openReassignment(task.id, undefined, undefined, event.currentTarget)}
+                      >
+                        <p className="truncate text-sm font-bold text-white">{task.propertyCode || task.property}</p>
+                        <p className="mt-1 flex items-center gap-1 truncate text-xs text-white"><Building2 aria-hidden="true" className="h-3 w-3 shrink-0" />{task.detectedBuilding?.propertyGroupName || 'Edificio sin configurar'}</p>
+                        <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-white"><Clock aria-hidden="true" className="h-3 w-3" />{task.displayStartTime}-{task.displayEndTime}</p>
+                      </button>
+                    </article>
+                  )}
+                </PlannerDraggable>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <details open className="rounded-xl border border-line bg-paper p-3 lg:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+            <span>Disponibilidad del equipo</span>
+            <span className="text-xs font-medium text-ink-3">{fromMinutes(bounds.start)}–{fromMinutes(bounds.end)}</span>
+          </summary>
+          <p className="mt-1 text-xs text-ink-3">El tramado gris marca las horas fuera de horario. Los colores señalan ausencias y mantenimientos.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {visibleCleaners.map((cleaner) => {
+              const availability = effectiveAvailability.find((item) => item.date === selectedDate && item.cleanerId === cleaner.id);
+              const summary = getAvailabilitySummary(availability);
+              return (
+                <div key={cleaner.id} className="min-w-0 rounded-lg border border-line bg-white p-2">
+                  <p className="truncate text-xs font-bold text-ink">{cleaner.name}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-ink-3" title={summary}>{summary}</p>
+                  <div className="relative mt-2 h-7 overflow-hidden rounded-md border border-line bg-white">
+                    <WorkerAvailabilityBands availability={availability} bounds={bounds} compact />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </details>
 
         <div
           className="space-y-2 lg:hidden"
@@ -1223,64 +1568,74 @@ export const PlanningProposalCalendar = ({
         >
           {dayItems
             .sort((left, right) => left.startMinute - right.startMinute)
-            .map((item) => (
-              <div
+            .map((item) => {
+              const tone = getPlannerTaskCardTone(item.source, {
+                conflict: dayBlockingWarnings.some((warning) => warning.taskId === item.taskId),
+                saved: savedTaskIdSet.has(item.taskId),
+              });
+              return (
+              <PlannerDraggable
                 key={item.id}
-                className="flex min-h-[72px] items-center rounded-lg border border-line bg-white p-2 shadow-sm"
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  setQuickActionsTaskId(item.taskId);
-                }}
+                id={`mobile:${item.id}`}
+                payload={{ taskId: item.taskId, proposalIndex: item.proposalIndex, sourceCleanerId: item.cleanerId }}
+                disabled={!item.editable || isStale}
               >
-                <button
-                  type="button"
-                  disabled={!item.editable || isStale}
-                  className="min-w-0 flex-1 p-2 text-left"
-                  onClick={() =>
-                    item.editable &&
-                    openReassignment(item.taskId, item.proposalIndex, item.cleanerId)
-                  }
-                >
-                  <span
-                    className={`text-xs font-semibold ${item.source === 'hermes' ? 'text-emerald-700' : item.source === 'manual' ? 'text-amber-700' : 'text-slate-600'}`}
-                  >
-                    ●{' '}
-                    {item.source === 'hermes'
-                      ? 'Propuesta de la app'
-                      : item.source === 'manual'
-                        ? 'Revisada'
-                        : 'Ya asignada'}
-                  </span>
-                  <span className="mt-1 block font-bold text-ink">
-                    {item.task.property}
-                  </span>
-                  <span className="mt-1 block text-xs text-ink-3">
-                    {fromMinutes(item.startMinute)}-
-                    {fromMinutes(item.endMinute)} · {item.cleanerName}
-                  </span>
-                </button>
-                {item.editable && (
-                  <DraggableHandle
-                    id={`mobile:${item.id}`}
-                    payload={{
-                      taskId: item.taskId,
-                      proposalIndex: item.proposalIndex,
-                      sourceCleanerId: item.cleanerId,
+                {({ attributes, onMouseDown, onTouchStart, onKeyDown, setNodeRef, setActivatorNodeRef, isDragging }) => (
+                  <article
+                    ref={setNodeRef}
+                    data-planner-task-card
+                    data-planner-task-id={item.taskId}
+                    data-planner-status={tone.status}
+                    onMouseDown={onMouseDown}
+                    onTouchStart={onTouchStart}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      setQuickActionsTaskId(item.taskId);
                     }}
-                    disabled={isStale}
-                  />
+                    className={`${item.editable && !isStale ? 'touch-none cursor-grab' : ''} flex min-h-[86px] items-center rounded-xl border border-white/45 p-2 ${tone.surface} ${tone.foreground} shadow-sober transition-[background-color,border-color,box-shadow] duration-150 hover:shadow-md motion-reduce:transition-none ${isDragging ? 'opacity-40' : ''}`}
+                  >
+                    <button
+                      ref={setActivatorNodeRef}
+                      {...attributes}
+                      type="button"
+                      data-planner-primary-action
+                      disabled={!item.editable || isStale}
+                      className="min-h-[60px] min-w-0 flex-1 rounded-lg p-2 text-left text-white transition-colors duration-150 hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none"
+                      onKeyDown={(event) => {
+                        if (event.code !== 'Enter') onKeyDown?.(event);
+                      }}
+                      onClick={(event) =>
+                        item.editable &&
+                        openReassignment(item.taskId, item.proposalIndex, item.cleanerId, event.currentTarget)
+                      }
+                    >
+                      <span
+                        className={`flex items-center gap-1 text-xs font-semibold ${tone.foreground}`}
+                      >
+                        {savedTaskIdSet.has(item.taskId)
+                          ? <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+                          : <span aria-hidden="true">●</span>}
+                        {savedTaskIdSet.has(item.taskId)
+                          ? 'Reparto guardado'
+                          : item.source === 'hermes'
+                            ? 'Propuesta de la app'
+                            : item.source === 'manual'
+                              ? 'Revisada'
+                              : 'Ya asignada'}
+                      </span>
+                      <span className={`mt-1 block font-bold ${tone.foreground}`}>
+                        {item.task.property}
+                      </span>
+                      <span className={`mt-1 block text-xs ${tone.foreground}`}>
+                        {fromMinutes(item.startMinute)}-
+                        {fromMinutes(item.endMinute)} · {item.cleanerName}
+                      </span>
+                    </button>
+                  </article>
                 )}
-                <button
-                  type="button"
-                  aria-label={`Acciones rápidas de ${item.task.property}`}
-                  data-quick-actions
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-md text-brand hover:bg-line-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  onClick={() => setQuickActionsTaskId(item.taskId)}
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
+              </PlannerDraggable>
+              );
+            })}
         </div>
 
         {/* Leyenda y ayuda: sin esto, los colores y las dos formas de mover una limpieza no se entienden. */}
@@ -1290,42 +1645,42 @@ export const PlanningProposalCalendar = ({
         >
           <span className="font-semibold text-ink">Cómo leer el tablero</span>
           <span className="inline-flex items-center gap-2">
-            <i aria-hidden="true" className="h-3 w-4 rounded border border-success bg-tint-success" />
-            Verde: lo propone la app
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-white/40 bg-success" />
+            Verde: propuesta de la app o guardado
           </span>
           <span className="inline-flex items-center gap-2">
-            <i aria-hidden="true" className="h-3 w-4 rounded border border-warning bg-tint-warning" />
-            Amarillo: lo he cambiado yo
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-white/40 bg-warning" />
+            Ámbar: cambio manual o sin asignar
           </span>
           <span className="inline-flex items-center gap-2">
-            <i aria-hidden="true" className="h-3 w-4 rounded border border-info bg-tint-info" />
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-white/40 bg-info" />
             Azul: ya estaba asignada
           </span>
           <span className="inline-flex items-center gap-2">
-            <i aria-hidden="true" className="h-3 w-4 rounded border border-danger bg-tint-danger" />
+            <i aria-hidden="true" className="h-3 w-4 rounded border border-white/40 bg-danger" />
             Rojo: conflicto de horario
           </span>
           <span className="hidden md:ml-auto md:inline">
-            Toca o arrastra una limpieza para moverla. Con el botón derecho (o el botón ⋮) cambias la hora, la persona o la dejas sin asignar.
+            Toca o arrastra una limpieza para moverla. Con el botón derecho cambias la hora, la persona o la dejas sin asignar.
           </span>
         </div>
 
-        <div data-planning-board className="hidden min-h-[620px] items-start gap-3 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
-          <aside aria-label="Tareas sin asignar" data-planning-unassigned className="sticky top-4 flex max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-lg border border-danger bg-tint-danger shadow-sm lg:col-start-1 lg:row-start-1">
-            <div className="flex items-center justify-between border-b border-danger px-4 py-3">
+        <div data-planning-board className="hidden min-h-[620px] min-w-0 items-start gap-3 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
+          <aside aria-label="Tareas sin asignar" data-planning-unassigned className="sticky top-4 flex min-w-0 max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-xl border border-line bg-paper shadow-sm lg:col-start-1 lg:row-start-1">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-danger">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">
                   Sin asignar
                 </p>
                 <p className="text-sm font-semibold text-ink">
                   Arrastra al horario
                 </p>
               </div>
-              <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-danger px-2 text-xs font-bold text-white">
+              <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-warning px-2 text-xs font-bold text-white">
                 {unassignedTasks.length}
               </span>
             </div>
-            <div data-planning-unassigned-list className="grid min-h-0 gap-2 overflow-y-auto overscroll-contain p-3">
+            <div data-planning-unassigned-list className="grid min-h-0 min-w-0 gap-2 overflow-x-hidden overflow-y-auto overscroll-contain p-3">
               {unassignedTasks.length === 0 ? (
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-center text-sm text-emerald-800">
                   <CheckCircle2 className="mx-auto mb-2 h-5 w-5" /> Todo
@@ -1333,37 +1688,50 @@ export const PlanningProposalCalendar = ({
                 </div>
               ) : (
                 unassignedTasks.map((task) => (
-                  <div
+                  <PlannerDraggable
                     key={task.id}
-                    data-dnd-unassigned-tray-item
-                    className={`rounded-md border bg-surface p-2 shadow-sm ${selectedTask?.taskId === task.id && selectedTask.proposalIndex === undefined ? 'border-brand ring-2 ring-brand' : 'border-danger'}`}
+                    id={`unassigned:${task.id}`}
+                    payload={{ taskId: task.id }}
+                    disabled={isStale}
                   >
-                    <div className="flex items-start gap-1">
-                      <button
-                        type="button"
-                        className="min-w-0 flex-1 p-1 text-left"
-                        onClick={() => openReassignment(task.id)}
+                    {({ attributes, onMouseDown, onTouchStart, onKeyDown, setNodeRef, setActivatorNodeRef, isDragging }) => (
+                      <article
+                        ref={setNodeRef}
+                        data-planner-task-card
+                        data-planner-task-id={task.id}
+                        data-dnd-unassigned-tray-item
+                        data-planner-status="unassigned"
+                        onMouseDown={onMouseDown}
+                        onTouchStart={onTouchStart}
+                        className={`${!isStale ? 'touch-none cursor-grab' : ''} w-full min-w-0 rounded-xl border border-white/45 bg-warning p-3 text-white shadow-sober transition-[background-color,border-color,box-shadow] duration-200 hover:shadow-md motion-reduce:transition-none ${isDragging ? 'opacity-40' : ''} ${selectedTask?.taskId === task.id && selectedTask.proposalIndex === undefined ? 'ring-2 ring-brand ring-offset-1' : ''}`}
                       >
-                        <p className="truncate text-sm font-bold text-ink">
-                          {task.propertyCode || task.property}
-                        </p>
-                        <p className="mt-1 flex items-center gap-1 truncate text-xs text-ink-3">
-                          <Building2 className="h-3 w-3" />{' '}
-                          {task.detectedBuilding?.propertyGroupName ||
-                            'Edificio sin configurar'}
-                        </p>
-                        <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-red-700">
-                          <Clock className="h-3 w-3" /> {task.displayStartTime}-
-                          {task.displayEndTime}
-                        </p>
-                      </button>
-                      <DraggableHandle
-                        id={`unassigned:${task.id}`}
-                        payload={{ taskId: task.id }}
-                        disabled={isStale}
-                      />
-                    </div>
-                  </div>
+                        <div className="flex min-w-0 items-start gap-2">
+                          <button
+                            ref={setActivatorNodeRef}
+                            {...attributes}
+                            type="button"
+                            data-planner-primary-action
+                            className="min-h-[44px] min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                            onKeyDown={(event) => {
+                              if (event.code !== 'Enter') onKeyDown?.(event);
+                            }}
+                            onClick={(event) => openReassignment(task.id, undefined, undefined, event.currentTarget)}
+                          >
+                            <span className="block truncate text-sm font-bold text-white">
+                              {task.propertyCode || task.property}
+                            </span>
+                            <span className="mt-1 flex items-center gap-1 truncate text-xs text-white">
+                              <Building2 aria-hidden="true" className="h-3 w-3 shrink-0" />
+                              {task.detectedBuilding?.propertyGroupName || 'Edificio sin configurar'}
+                            </span>
+                            <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-white">
+                              <Clock aria-hidden="true" className="h-3 w-3" /> {task.displayStartTime}-{task.displayEndTime}
+                            </span>
+                          </button>
+                        </div>
+                      </article>
+                    )}
+                  </PlannerDraggable>
                 ))
               )}
             </div>
@@ -1377,9 +1745,15 @@ export const PlanningProposalCalendar = ({
               <div>
                 <h3 className="font-bold text-ink">Equipo y horario</h3>
                 <p className="text-xs text-ink-3">
-                  Mueve horizontalmente para ajustar la hora o cambia de fila
-                  para reasignar.
+                  Mueve horizontalmente para ajustar la hora o cambia de fila para reasignar.
                 </p>
+                <div aria-label="Leyenda de disponibilidad" className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-[11px] text-ink-3">
+                  <span className="inline-flex items-center gap-1.5"><i aria-hidden="true" className="h-3 w-4 rounded border border-emerald-600/50 bg-emerald-200/70" />Horario disponible</span>
+                  <span className="inline-flex items-center gap-1.5"><i aria-hidden="true" className="h-3 w-4 rounded border border-slate-400 bg-slate-100" style={{ backgroundImage: 'repeating-linear-gradient(135deg, rgba(100,116,139,.24) 0 2px, transparent 2px 6px)' }} />Fuera de horario</span>
+                  <span className="inline-flex items-center gap-1.5"><i aria-hidden="true" className="h-3 w-4 rounded border border-amber-600/70 bg-amber-200/80" />Mantenimiento</span>
+                  <span className="inline-flex items-center gap-1.5"><i aria-hidden="true" className="h-3 w-4 rounded border border-rose-600/70 bg-rose-200/75" />Ausencia o bloqueo</span>
+                  <span className="inline-flex items-center gap-1.5"><i aria-hidden="true" className="h-3 w-4 rounded border border-violet-500/60 bg-violet-200/60" />Horario estimado</span>
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <p className="text-xs font-semibold text-ink-3">15 min</p>
@@ -1483,7 +1857,12 @@ export const PlanningProposalCalendar = ({
                                 : `${hoursLabel(assignedHours)} / ${contractHours > 0 ? hoursLabel(contractHours) : '—'} h · semana`}
                             </p>
                             {weeklyReady && contractHours === 0 && <p className="text-xs text-ink-3">Sin horas de contrato</p>}
-                            {availability?.isAvailable === false && <p className="text-xs text-red-600">No disponible hoy</p>}
+                            <p
+                              title={getAvailabilitySummary(availability)}
+                              className={'truncate text-[11px] ' + (!availability ? 'text-ink-3' : availability.isAvailable ? 'text-ink-3' : 'font-semibold text-rose-700')}
+                            >
+                              {getAvailabilitySummary(availability)}
+                            </p>
                             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#eeeaf5]">
                               <div
                                 className={`h-full rounded-full ${assignedHours > contractHours && contractHours > 0 ? 'bg-red-500' : capacityPercent >= 85 ? 'bg-amber-500' : 'bg-emerald-500'}`}
@@ -1503,11 +1882,13 @@ export const PlanningProposalCalendar = ({
                             style={{
                               height: layout.height,
                               width: timelineWidth,
+                              backgroundColor: availability ? '#f8fafc' : '#ffffff',
                               backgroundImage:
                                 'linear-gradient(to right, rgba(49,9,132,0.045) 1px, transparent 1px), linear-gradient(to right, rgba(49,9,132,0.12) 1px, transparent 1px)',
                               backgroundSize: `${QUARTER_HOUR_GRID_SIZE}px 100%, ${60 * PIXELS_PER_MINUTE}px 100%`,
                             }}
                           >
+                            <WorkerAvailabilityBands availability={availability} bounds={bounds} />
                             {dragHover?.cleanerId === cleaner.id && (
                               <div
                                 data-dnd-quarter-hover
@@ -1525,80 +1906,78 @@ export const PlanningProposalCalendar = ({
                                 selectedTask?.taskId === item.taskId &&
                                 selectedTask.proposalIndex ===
                                   item.proposalIndex;
-                              // Color por origen (y rojo cuando hay conflicto de horario), para
-                              // distinguir de un vistazo quién creó cada limpieza.
-                              const statusTone = overlaps
-                                ? { bg: 'bg-tint-danger', border: 'border-danger', rule: '#B42318' }
-                                : item.source === 'existing'
-                                  ? { bg: 'bg-tint-info', border: 'border-info', rule: '#3A5A8C' }
-                                  : item.source === 'manual'
-                                    ? { bg: 'bg-tint-warning', border: 'border-warning', rule: '#B54708' }
-                                    : { bg: 'bg-tint-success', border: 'border-success', rule: '#027A48' };
+                              // Rojo para conflictos; al guardar, la tarjeta propuesta vira a verde con check.
+                              const isSaved = savedTaskIdSet.has(item.taskId);
+                              const statusTone = getPlannerTaskCardTone(item.source, { conflict: overlaps, saved: isSaved });
+                              const StatusIcon = overlaps
+                                ? AlertTriangle
+                                : isSaved
+                                  ? CheckCircle2
+                                  : item.source === 'existing'
+                                    ? CheckCircle2
+                                    : item.source === 'manual'
+                                      ? PencilLine
+                                      : Sparkles;
                               return (
-                                <div
+                                <PlannerDraggable
                                   key={item.id}
-                                  title={`${item.task.propertyCode || item.task.property} · ${fromMinutes(item.startMinute)}-${fromMinutes(item.endMinute)}${overlaps ? ' · Coincide en horario con otra tarea de este trabajador' : ''}`}
-                                  className={`absolute flex ${width < 140 ? 'flex-col' : ''} h-[84px] overflow-hidden rounded-md border ${statusTone.border} ${statusTone.bg} shadow-sober ${selected ? 'ring-2 ring-brand ring-offset-1' : ''}`}
-                                  style={{ left, width, top: 8 + lane * 92, borderLeft: `4px solid ${statusTone.rule}` }}
-                                  onContextMenu={(event) => {
-                                    event.preventDefault();
-                                    setQuickActionsTaskId(item.taskId);
-                                  }}
+                                  id={`desktop:${item.id}`}
+                                  payload={{ taskId: item.taskId, proposalIndex: item.proposalIndex, sourceCleanerId: item.cleanerId }}
+                                  disabled={!item.editable || isStale}
                                 >
-                                  <button
-                                    type="button"
-                                    aria-label={`Acciones rápidas de ${item.task.property}`}
-                                    data-quick-actions
-                                    className="absolute right-1 top-1 z-20 grid h-6 w-6 place-items-center rounded-md bg-white/85 text-brand shadow-sm hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      setQuickActionsTaskId(item.taskId);
-                                    }}
-                                  >
-                                    <MoreVertical className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="min-h-0 min-w-0 flex-1 overflow-hidden p-1 text-left"
-                                    onClick={() =>
-                                      openReassignment(
-                                        item.taskId,
-                                        item.proposalIndex,
-                                        item.cleanerId,
-                                      )
-                                    }
-                                  >
-                                    <p className="flex items-center gap-1 text-[15px] font-semibold leading-tight text-ink">
-                                      {overlaps && <AlertTriangle aria-label="Solapamiento de horario" className="h-3 w-3 shrink-0 text-amber-700" />}
-                                      <span className="truncate" title={item.task.propertyCode || item.task.property}>
-                                      {item.task.propertyCode ||
-                                        item.task.property}
-                                      </span>
-                                    </p>
-                                    <p className={`${width < 140 ? 'hidden' : ''} mt-1 truncate text-xs text-ink-3`}>
-                                      {item.task.detectedBuilding
-                                        ?.propertyGroupName ||
-                                        item.task.property}
-                                    </p>
-                                    <p className="mt-1 flex items-center gap-1 text-xs font-semibold">
-                                      <Clock className="h-3 w-3" />{' '}
-                                      {fromMinutes(item.startMinute)}-
-                                      {fromMinutes(item.endMinute)}
-                                    </p>
-                                  </button>
-                                  {item.editable && (
-                                    <DraggableHandle
-                                      id={`desktop:${item.id}`}
-                                      compact={width < 140}
-                                      payload={{
-                                        taskId: item.taskId,
-                                        proposalIndex: item.proposalIndex,
-                                        sourceCleanerId: item.cleanerId,
+                                  {({ attributes, onMouseDown, onTouchStart, onKeyDown, setNodeRef, setActivatorNodeRef, isDragging }) => (
+                                    <div
+                                      ref={setNodeRef}
+                                      data-planner-task-card
+                                      data-planner-task-id={item.taskId}
+                                      data-planner-status={statusTone.status}
+                                      title={`${item.task.propertyCode || item.task.property} · ${fromMinutes(item.startMinute)}-${fromMinutes(item.endMinute)}${overlaps ? ' · Coincide en horario con otra tarea de este trabajador' : ''}`}
+                                      onMouseDown={onMouseDown}
+                                      onTouchStart={onTouchStart}
+                                      className={`absolute flex ${width < 180 ? 'flex-col' : ''} ${item.editable && !isStale ? 'touch-none cursor-grab' : ''} overflow-hidden rounded-lg border border-white/45 border-l-[6px] border-l-white/90 ${statusTone.surface} ${statusTone.foreground} shadow-md transition-[background-color,border-color,box-shadow,transform] duration-150 ease-out hover:-translate-y-0.5 hover:shadow-lg motion-reduce:transition-none ${isDragging ? 'opacity-40' : ''} ${selected ? 'ring-2 ring-brand ring-offset-1' : ''}`}
+                                      style={{ left, width, height: PLANNING_CARD_HEIGHT, top: 8 + lane * PLANNING_LANE_STEP }}
+                                      onContextMenu={(event) => {
+                                        event.preventDefault();
+                                        setQuickActionsTaskId(item.taskId);
                                       }}
-                                      disabled={isStale}
-                                    />
+                                    >
+                                      <button
+                                        ref={setActivatorNodeRef}
+                                        {...attributes}
+                                        type="button"
+                                        data-planner-primary-action
+                                        className={`min-h-0 min-w-0 flex-1 overflow-hidden text-left text-white transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none ${width < 180 ? 'px-1 pb-1 pt-7' : 'p-2'}`}
+                                        onKeyDown={(event) => {
+                                          if (event.code !== 'Enter') onKeyDown?.(event);
+                                        }}
+                                        onClick={(event) =>
+                                          openReassignment(
+                                            item.taskId,
+                                            item.proposalIndex,
+                                            item.cleanerId,
+                                            event.currentTarget,
+                                          )
+                                        }
+                                      >
+                                        <p className={`flex items-center gap-1.5 font-bold leading-tight ${statusTone.foreground} ${width < 180 ? 'text-sm' : 'text-base'}`}>
+                                          <span aria-hidden="true" className={`grid h-5 w-5 shrink-0 place-items-center rounded-md ${statusTone.iconSurface} ${statusTone.iconForeground} ${width < 180 ? 'absolute left-1 top-1' : ''}`}>
+                                            <StatusIcon className="h-3.5 w-3.5" />
+                                          </span>
+                                          <span className="truncate" title={item.task.propertyCode || item.task.property}>
+                                            {item.task.propertyCode || item.task.property}
+                                          </span>
+                                        </p>
+                                        <p className={`${width < 150 ? 'hidden' : ''} mt-1 truncate text-xs ${statusTone.foreground}`}>
+                                          {item.task.detectedBuilding?.propertyGroupName || item.task.property}
+                                        </p>
+                                        <span className={`mt-1 inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-md bg-black/15 ${width < 130 ? 'px-1' : 'px-1.5'} py-0.5 ${width < 150 ? 'text-[10px]' : 'text-xs'} font-semibold text-white ${width < 180 ? 'mt-0' : ''}`} title={`${fromMinutes(item.startMinute)}–${fromMinutes(item.endMinute)}`}>
+                                          <Clock aria-hidden="true" className={`h-3 w-3 shrink-0 ${width < 150 ? 'hidden' : ''}`} />
+                                          {fromMinutes(item.startMinute)}–{fromMinutes(item.endMinute)}
+                                        </span>
+                                      </button>
+                                    </div>
                                   )}
-                                </div>
+                                </PlannerDraggable>
                               );
                             })}
                           </div>
@@ -1613,31 +1992,6 @@ export const PlanningProposalCalendar = ({
 
         </div>
 
-        {unassignedTasks.length > 0 && (
-          <div ref={mobileTrayRef} className="scroll-mt-24 rounded-lg border border-red-200 bg-red-50 p-3 lg:hidden">
-            <p className="flex items-center gap-2 text-sm font-semibold text-red-900">
-              <AlertTriangle className="h-4 w-4" /> Sin asignar
-            </p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              {unassignedTasks.map((task) => (
-                <button
-                  key={task.id}
-                  type="button"
-                  className="rounded-md border border-red-200 bg-white p-3 text-left text-xs text-red-800"
-                  onClick={() => openReassignment(task.id)}
-                >
-                  <span className="font-semibold text-red-900">
-                    {task.property}
-                  </span>
-                  <span className="mt-1 block">
-                    {task.displayStartTime}-{task.displayEndTime} ·{' '}
-                    {task.detectedBuilding?.propertyGroupName || 'sin edificio'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
         {warnings.length === 0 && manualChangeCount === 0 && (
           <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> El reparto no
@@ -1648,18 +2002,56 @@ export const PlanningProposalCalendar = ({
 
       <Dialog
         open={Boolean(reassignment)}
-        onOpenChange={(open) => !open && setReassignment(null)}
+        onOpenChange={(open) => {
+          if (open) return;
+          // Cerrar sin confirmar no convierte una asignación existente en borrador.
+          const snapshot = pendingEditSnapshotRef.current;
+          if (snapshot) {
+            pendingEditSnapshotRef.current = null;
+            onDraftProposalsChange(snapshot.proposals);
+            if (!snapshot.wasEdited) {
+              setEditedExistingTaskIds((current) => {
+                const next = new Set(current);
+                next.delete(snapshot.taskId);
+                return next;
+              });
+            }
+          }
+          setReassignment(null);
+        }}
       >
-        <DialogContent className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-md overflow-hidden p-0">
-          <DialogHeader className="border-b border-line p-5 pb-4 text-left">
+        <DialogContent
+          data-planner-placement-dialog
+          overlayClassName="planner-placement-overlay bg-black/60 backdrop-blur-[2px]"
+          onCloseAutoFocus={(event) => {
+            // La tarjeta puede remontarse al cancelar un borrador: recupera su acción equivalente.
+            const replacementCard = Array.from(document.querySelectorAll<HTMLElement>('[data-planner-task-card]'))
+              .find((card) => card.dataset.plannerTaskId === reassignmentTriggerTaskIdRef.current && card.getClientRects().length > 0);
+            const focusTarget = reassignmentTriggerRef.current?.isConnected
+              ? reassignmentTriggerRef.current
+              : replacementCard?.querySelector<HTMLElement>('[data-planner-primary-action]');
+            if (focusTarget) {
+              event.preventDefault();
+              focusTarget.focus({ preventScroll: true });
+            }
+          }}
+          className={`planner-placement-dialog flex max-h-[85dvh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden p-0 ${reassignmentOrigin ? 'planner-placement-from-card' : ''}`}
+          style={reassignmentOrigin ? {
+            '--planner-origin-x': `${reassignmentOrigin.x}px`,
+            '--planner-origin-y': `${reassignmentOrigin.y}px`,
+            '--planner-origin-scale': reassignmentOrigin.scale,
+          } as CSSProperties : undefined}
+        >
+          <DialogHeader className="shrink-0 border-b border-line bg-paper p-5 pb-4 text-left">
             <DialogTitle>Colocar tarea</DialogTitle>
             <DialogDescription>
               {reassignmentTask
                 ? `${reassignmentTask.property} · ${reassignmentTask.displayStartTime}-${reassignmentTask.displayEndTime}`
                 : 'Selecciona una responsable.'}
+              <span className="mt-1 block font-medium text-brand">Se guardará al pulsar «Guardar reparto».</span>
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[60dvh] space-y-4 overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
             <div>
               <label
                 htmlFor="placement-start-time"
@@ -1684,7 +2076,8 @@ export const PlanningProposalCalendar = ({
             {reassignment?.proposalIndex !== undefined && (
               <button
                 type="button"
-                className={`flex min-h-[52px] w-full items-center justify-between rounded-lg border px-4 py-3 text-left ${placementCleanerId === UNASSIGNED_PLACEMENT_ID ? 'border-red-500 bg-red-50' : 'border-red-200 bg-white'}`}
+                aria-pressed={placementCleanerId === UNASSIGNED_PLACEMENT_ID}
+                className={`flex min-h-[52px] w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand motion-reduce:transition-none ${placementCleanerId === UNASSIGNED_PLACEMENT_ID ? 'border-red-500 bg-red-50 ring-1 ring-red-500' : 'border-red-200 bg-white hover:bg-red-50'}`}
                 onClick={() => setPlacementCleanerId(UNASSIGNED_PLACEMENT_ID)}
               >
                 <span className="font-semibold text-red-900">Sin asignar</span>
@@ -1697,7 +2090,8 @@ export const PlanningProposalCalendar = ({
               <button
                 key={cleaner.id}
                 type="button"
-                className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left ${placementCleanerId === cleaner.id ? 'border-[#310984] bg-[#f4efff]' : 'border-line bg-white'}`}
+                aria-pressed={placementCleanerId === cleaner.id}
+                className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand motion-reduce:transition-none ${placementCleanerId === cleaner.id ? 'border-brand bg-line-soft ring-1 ring-brand' : 'border-line bg-white hover:border-brand/40 hover:bg-paper'}`}
                 onClick={() => setPlacementCleanerId(cleaner.id)}
               >
                 <span className="font-semibold text-ink">
@@ -1722,9 +2116,11 @@ export const PlanningProposalCalendar = ({
                   </div>
                 ) : null;
               })()}
+          </div>
+          <div className="shrink-0 border-t border-line bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.05)]">
             <Button
               type="button"
-              className="min-h-[44px] w-full bg-brand text-white hover:bg-ink"
+              className="min-h-[48px] w-full bg-brand text-white hover:bg-ink"
               disabled={
                 !placementCleanerId ||
                 (placementCleanerId !== UNASSIGNED_PLACEMENT_ID &&
@@ -1734,13 +2130,13 @@ export const PlanningProposalCalendar = ({
             >
               {placementCleanerId === UNASSIGNED_PLACEMENT_ID
                 ? 'Dejar sin asignar'
-                : 'Aplicar cambio'}
+                : 'Aplicar al borrador'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Ajuste rápido sobre una limpieza ya asignada (clic derecho o botón ⋮) */}
+      {/* Ajuste rápido sobre una limpieza ya asignada (clic derecho) */}
       <TaskQuickActionsDialog
         open={Boolean(quickActionsTask)}
         onOpenChange={(nextOpen) => {

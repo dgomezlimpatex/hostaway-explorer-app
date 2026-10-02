@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Clock, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ export interface TaskQuickActionsDialogProps {
 const SNAP_MINUTES = 15;
 const DEFAULT_START = '09:00';
 const DEFAULT_DURATION_MINUTES = 60;
+const NO_CLEANER_VALUE = '__planning_no_cleaner__';
 
 const toMinutes = (value?: string | null): number | null => {
   const match = /^(\d{1,2}):(\d{2})$/.exec((value || '').trim());
@@ -198,23 +200,34 @@ export const TaskQuickActionsDialog = ({
               <label htmlFor="quick-action-cleaner" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Asignar a
               </label>
-              <select
-                id="quick-action-cleaner"
-                value={cleanerId}
+              <Select
+                value={cleanerId || NO_CLEANER_VALUE}
                 disabled={isSavingQuickAction}
-                onChange={(event) => setCleanerId(event.target.value)}
-                className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onValueChange={(value) => setCleanerId(value === NO_CLEANER_VALUE ? '' : value)}
               >
-                {!currentCleanerId && <option value="">Sin responsable</option>}
-                {currentCleanerId && !currentCleaner && (
-                  <option value={currentCleanerId}>{currentCleanerLabel} (asignada ahora)</option>
-                )}
-                {selectableCleaners.map((cleaner) => (
-                  <option key={cleaner.id} value={cleaner.id}>
-                    {cleaner.name}{cleanerHint(cleaner)}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  id="quick-action-cleaner"
+                  className="min-h-[44px] w-full transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand motion-reduce:transition-none"
+                  aria-label="Asignar responsable"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper" className="planner-worker-select-content">
+                  {!currentCleanerId && <SelectItem value={NO_CLEANER_VALUE}>Sin responsable</SelectItem>}
+                  {currentCleanerId && !currentCleaner && (
+                    <SelectItem value={currentCleanerId}>{currentCleanerLabel} (asignada ahora)</SelectItem>
+                  )}
+                  {selectableCleaners.map((cleaner) => (
+                    <SelectItem
+                      key={cleaner.id}
+                      value={cleaner.id}
+                      className="min-h-[40px] transition-[background-color,color] duration-150 data-[highlighted]:bg-brand/10 data-[highlighted]:text-brand data-[state=checked]:bg-brand/10 data-[state=checked]:text-brand motion-reduce:transition-none"
+                    >
+                      {cleaner.name}{cleanerHint(cleaner)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
                 La disponibilidad y los solapes son avisos; puedes asignar igualmente.
                 {coworkerCount > 0
@@ -265,11 +278,13 @@ export const TaskQuickActionsDialog = ({
             </Button>
             <Button
               type="button"
-              className="min-h-[44px] bg-brand text-white hover:bg-ink"
+              aria-busy={isSavingQuickAction}
+              className="relative isolate min-h-[44px] overflow-hidden bg-ink text-white hover:bg-black"
               disabled={!hasChanges || isSavingQuickAction}
               onClick={handleSave}
             >
-              {isSavingQuickAction ? 'Guardando…' : 'Guardar cambios'}
+              {isSavingQuickAction && <span aria-hidden="true" className="planner-save-progress absolute inset-0 bg-white/20" />}
+              <span className="relative z-10">{isSavingQuickAction ? 'Guardando…' : 'Guardar cambios'}</span>
             </Button>
           </div>
         </DialogFooter>

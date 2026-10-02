@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, ChevronDown, RefreshCw, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, RefreshCw, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { addDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Sede } from '@/types/sede';
 import { formatMadridDate } from '@/utils/date';
 import { PlanningSteps } from './PlanningSteps';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface PlanningStartScreenProps {
   date: Date;
@@ -60,9 +61,9 @@ export const PlanningStartScreen = ({
       : `${pendingTaskCount} limpieza${pendingTaskCount === 1 ? '' : 's'} pendiente${pendingTaskCount === 1 ? '' : 's'} de repartir.`;
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-3xl items-start justify-center py-4 md:items-center md:py-8">
-      <section className="w-full overflow-hidden rounded-lg border border-line bg-white shadow-sober">
-        <div className="border-b border-line bg-gradient-to-br from-[#faf8ff] to-white p-5 md:p-8">
+    <main className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-3xl items-start justify-center px-3 py-5 md:items-center md:px-0 md:py-8">
+      <section className="w-full overflow-hidden rounded-2xl border border-line bg-white shadow-lg">
+        <div className="planner-stage-hero border-b border-line bg-gradient-to-br from-brand/5 via-white to-white p-6 md:p-9">
           <div className="inline-flex items-center gap-2 rounded-full bg-line-soft px-3 py-1 text-xs font-semibold text-brand">
             <Sparkles className="h-3.5 w-3.5" /> Planificación de limpiezas
           </div>
@@ -191,18 +192,19 @@ export const PlanningStartScreen = ({
             </Button>
           )}
 
-          <details className="group rounded-lg border border-line bg-white">
-            <summary
-              data-planning-initial-control
-              className="flex min-h-[46px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-brand outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
-            >
-              Más filtros y detalles técnicos
-              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="space-y-5 border-t border-line bg-paper p-4 md:p-5">
-              {advancedContent}
-            </div>
-          </details>
+          <Accordion type="single" collapsible className="planner-accordion rounded-lg border border-line bg-white">
+            <AccordionItem value="advanced-planning-details" className="border-b-0">
+              <AccordionTrigger
+                data-planning-initial-control
+                className="min-h-[48px] gap-3 px-4 py-3 text-left text-sm font-semibold text-brand no-underline hover:no-underline focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+              >
+                Más filtros y detalles técnicos
+              </AccordionTrigger>
+              <AccordionContent className="planner-disclosure-content border-t border-line bg-paper px-4 text-sm md:px-5">
+                {advancedContent}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </section>
     </main>
