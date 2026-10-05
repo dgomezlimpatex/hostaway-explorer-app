@@ -202,7 +202,7 @@ export const EnhancedTaskCard = React.memo(({
       )}
     >
       {/* Icono de estado destacado (esquina superior derecha) */}
-      <TaskStatusBadge status={task.status} className="absolute top-1 right-1 z-20" />
+      <TaskStatusBadge status={task.calendarStatus ?? task.status} className="absolute top-1 right-1 z-20" />
 
       {/* Header con horas */}
       <div className="flex items-center gap-1 mb-0.5 opacity-80 pr-8">
@@ -268,7 +268,7 @@ export const EnhancedTaskCard = React.memo(({
                 {formatTime(task.startTime)} - {formatTime(task.endTime)}
               </p>
               <p className="text-xs">
-                <TaskStatusBadge status={task.status} showLabel />
+                <TaskStatusBadge status={task.calendarStatus ?? task.status} showLabel />
               </p>
               {clientName && <p className="text-xs">{clientName}</p>}
               {task.address && (
@@ -297,7 +297,7 @@ export const EnhancedTaskCard = React.memo(({
                     {formatTime(task.startTime)} - {formatTime(task.endTime)}
                   </p>
                   <p className="text-xs">
-                    <TaskStatusBadge status={task.status} showLabel />
+                    <TaskStatusBadge status={task.calendarStatus ?? task.status} showLabel />
                   </p>
                   {clientName && <p className="text-xs">{clientName}</p>}
                   {task.address && (

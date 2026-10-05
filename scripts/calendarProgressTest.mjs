@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {build} from 'esbuild';
+const repo=path.resolve(import.meta.dirname,'..');
+const temp=fs.mkdtempSync(path.join(os.tmpdir(),'limpatex-calendar-progress-'));
+const started={cleaner_id:'c1',overall_status:'in_progress',start_time:'2026-10-05T07:00:00Z'};
+const done={...started,overall_status:'completed',end_time:'2026-10-05T08:00:00Z'};
+try {
+  await build({entryPoints:[path.join(repo,'src/utils/calendarTaskStatus.ts')],bundle:true,platform:'node',format:'esm',outfile:path.join(temp,'status.mjs')});
+  const {getCalendarTaskStatus:s}=await import(pathToFileURL(path.join(temp,'status.mjs')));
+  assert.equal(s('pending',[],['c1']),'pending');
+  assert.equal(s('pending',[{overall_status:'pending'}],['c1']),'pending');
+  assert.equal(s('pending',[started],['c1']),'in-progress');
+  assert.equal(s('pending',[{...started,overall_status:'pending'}],['c1']),'in-progress');
+  assert.equal(s('pending',[{overall_status:'pending',start_time:'invalid'}],['c1']),'pending');
+  assert.equal(s('pending',[done],['c1']),'completed');
+  assert.equal(s('completed',[done,{...started,cleaner_id:'c2'}],['c1','c2']),'in-progress');
+  assert.equal(s('completed',[done],['c1','c2']),'in-progress');
+  assert.equal(s('pending',[done,{...done,cleaner_id:'c2'}],['c1','c2']),'completed');
+  assert.equal(s('pending',[{...started,cleaner_id:'removed'}],['c1']),'pending');
+  assert.equal(s('pending',[{...done,overall_status:'needs_review'}],['c1']),'completed');
+  assert.equal(s('pending',[{...started,overall_status:'needs_review'}],['c1']),'in-progress');
+  assert.equal(s('completed',[]),'completed');
+  assert.equal(s('cancelled',[started]),'cancelled');
+  const fixture={id:'t1',date:'2026-10-05',status:'pending',cleaner_id:'c1',task_reports:[],task_assignments:[]};
+  globalThis.calendarFixture=fixture;
+  globalThis.calendarSelect='';
+  await build({entryPoints:[path.join(repo,'src/services/storage/taskStorage.ts')],bundle:true,platform:'node',format:'esm',outfile:path.join(temp,'storage.mjs'),tsconfig:path.join(repo,'tsconfig.app.json'),plugins:[{name:'offline',setup(b){
+    b.onResolve({filter:/integrations\/supabase\/client$/},()=>({path:'supabase-mock',namespace:'mock'}));
+    b.onResolve({filter:/services\/aiObservedEvents$/},()=>({path:'ai-mock',namespace:'mock'}));
+    b.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:args.path==='ai-mock'?'export const recordAiObservedEvent=()=>{};':`export const supabase={from(){const q={select(s){globalThis.calendarSelect=s;return q;},gte(){return q;},lte(){return q;},eq(){return q;},order(){return q;},limit(){return Promise.resolve({data:[globalThis.calendarFixture],error:null});}};return q;}};`,loader:'js'}));
+  }}]});
+  const {taskStorageService}=await import(pathToFileURL(path.join(temp,'storage.mjs')));
+  const read=()=>taskStorageService.getTasks({sedeId:'s1',dateFrom:'2026-10-05',dateTo:'2026-10-05'});
+  assert.equal((await read())[0].calendarStatus,'pending');
+  fixture.task_reports=[started];
+  const task=(await read())[0];
+  assert.equal(task.calendarStatus,'in-progress');
+  assert.equal(task.status,'pending');
+  assert(globalThis.calendarSelect.includes('task_reports(cleaner_id, overall_status, start_time, end_time)'));
+  fixture.task_reports=[done];
+  assert.equal((await read())[0].calendarStatus,'completed');
+  console.log('PASS: report progress, shared completion, storage pending -> in progress -> completed; no network or writes.');
+}finally{fs.rmSync(temp,{recursive:true,force:true});}

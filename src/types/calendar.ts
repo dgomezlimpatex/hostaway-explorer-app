@@ -69,6 +69,7 @@ export interface Task extends BaseEntity {
   checkOut: string;
   type: string;
   status: 'pending' | 'in-progress' | 'completed';
+  calendarStatus?: string; // Derived from reports; never persisted as task status.
   cleaner?: string;
   cleanerId?: string;
   assignments?: TaskAssignment[];

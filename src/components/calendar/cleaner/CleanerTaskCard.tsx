@@ -110,7 +110,7 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
       <div className="relative z-10">
         <div className="space-y-4">
           <div className="space-y-2">
-            <TaskStatusBadge status={task.status} showLabel />
+            <TaskStatusBadge status={task.calendarStatus ?? task.status} showLabel />
             <h3 className="text-2xl font-bold leading-tight">
               {task.property}
             </h3>

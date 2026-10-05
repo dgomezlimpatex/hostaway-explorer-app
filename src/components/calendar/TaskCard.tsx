@@ -143,7 +143,7 @@ export const TaskCard = ({
       {/* Content */}
       <div className="relative z-10 space-y-1">
         <div className="flex items-start gap-1.5">
-          <TaskStatusBadge status={task.status} />
+          <TaskStatusBadge status={task.calendarStatus ?? task.status} />
           {/* Property name - pegado a la izquierda */}
           <div className="flex-1 min-w-0 font-semibold text-sm leading-tight line-clamp-2 text-left">
             {displayPropertyName()}

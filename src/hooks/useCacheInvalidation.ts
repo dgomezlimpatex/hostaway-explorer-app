@@ -100,6 +100,10 @@ export const useCacheInvalidation = () => {
     const sedeId = activeSede?.id;
     
     queryClient.invalidateQueries({ queryKey: ['task-reports'] });
+    queryClient.invalidateQueries({ queryKey: ['task-report'] });
+    queryClient.invalidateQueries({ queryKey: ['groupedTaskReports'] });
+    queryClient.invalidateQueries({ queryKey: ['groupedTaskReport'] });
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
     if (sedeId) {
       queryClient.invalidateQueries({ queryKey: ['task-reports', sedeId] });
     }

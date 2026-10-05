@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Task, ViewType } from '@/types/calendar';
 import { taskStorageService } from '@/services/taskStorage';
 import { useAuth } from '@/hooks/useAuth';
@@ -70,6 +70,7 @@ export const useOptimizedTasks = ({
     ];
   }, [currentDate, currentView, activeSedeId, cleanerView, currentCleanerId, dateRange]);
 
+  const tasksEnabled = canQueryTasks && (!cleanerView || currentCleanerId !== null);
   const query = useQuery({
     queryKey,
     queryFn: async () => {
@@ -119,10 +120,22 @@ export const useOptimizedTasks = ({
     },
     staleTime: 30_000,
     gcTime: 5 * 60_000,
-    enabled: canQueryTasks && (!cleanerView || currentCleanerId !== null),
-    refetchOnWindowFocus: true,
+    enabled: tasksEnabled,
+    refetchOnWindowFocus: 'always',
     refetchOnMount: true,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
+
+  const {refetch} = query;
+  useEffect(() => {
+    if (!tasksEnabled) return;
+    const refresh = () => {
+      if (!document.hidden) void refetch();
+    };
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, [tasksEnabled, refetch]);
   
   const { data: tasks = [], isLoading, error } = query;
 

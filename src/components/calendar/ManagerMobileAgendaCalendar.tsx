@@ -46,7 +46,7 @@ function AgendaTaskCard({ task, onTaskClick }: { task: Task; onTaskClick: (task:
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-start justify-between gap-2">
             <h3 className="line-clamp-2 text-sm font-semibold text-ink">{task.property}</h3>
-            <TaskStatusBadge status={task.status} showLabel />
+            <TaskStatusBadge status={task.calendarStatus ?? task.status} showLabel />
           </div>
           <div className="space-y-1 text-xs text-muted-foreground">
             <p className="flex items-center gap-1.5">
