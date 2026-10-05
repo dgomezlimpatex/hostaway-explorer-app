@@ -20,7 +20,7 @@ Solo propuestas del propietario, desde este repositorio y ramas `codex/`, con la
 
 La rama main exige la comprobación `limpatex/verified-candidate` y estar actualizada. El coordinador sube a la rama de la propuesta únicamente la combinación comprobada, la incorpora y despliega desde el commit incorporado. Nunca hace force-push de main. Una cola compartida evita publicaciones simultáneas.
 
-Antes de publicar comprueba la huella de fuente de producción y ambos alias. Construye en Vercel sin mover dominios; vuelve a comprobar producción antes de promover. Después verifica los dos dominios y sus assets. Una publicación externa detiene el circuito hasta reconciliar su fuente.
+Antes de publicar comprueba la huella de fuente de producción y ambos alias. Solicita la construcción sin asignar dominios y vuelve a comprobar producción antes de promover. Si Vercel asigna su alias automático durante la construcción, solo acepta el deployment propio, READY y con commit y huella previstos; cualquier publicación ajena detiene el circuito. Después de promover verifica los dos dominios y sus assets.
 
 ## Operación
 
@@ -30,6 +30,7 @@ Antes de publicar comprueba la huella de fuente de producción y ambos alias. Co
 - Consultar resultados en GitHub Actions. Un fallo de validación conserva main y producción. Si la incorporación termina pero Vercel falla, main puede quedar por delante; revisar/reanudar esa publicación antes de nuevas entregas, sin volver a incorporar la propuesta cerrada.
 - El secreto Vercel se guarda cifrado en GitHub y se limita al proyecto. No copiarlo al repo, al cliente ni a variables VITE.
 - La publicación usa la API del proyecto y el commit exacto de GitHub. Si una entrega quedó incorporada sin publicar, el workflow `limpatex-recover.yml` puede reanudarla por número de PR: exige validación previa, la misma fuente de aplicación y producción sin cambios; no incorpora otra vez la propuesta.
+- Si la misma entrega ya está publicada y solo faltó confirmar el resultado, la recuperación comprueba su commit, fuente, ambos dominios y assets sin crear otro despliegue.
 - No se aplican SQL ni se despliegan funciones de Supabase. Una vista previa utiliza el backend compartido si la app se conecta; las pruebas de esta cola no inician sesión.
 - Los chats que ya estaban abiertos pueden conservar instrucciones antiguas. Deben adoptar este circuito antes de entregar; la configuración no les envía mensajes ni interrumpe su trabajo.
 

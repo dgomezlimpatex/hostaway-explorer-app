@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 import {canonicalTsx, checkCss} from './guard.mjs';
-import {eligible, assertProduction, deploymentBody} from './controller.mjs';
+import {eligible, assertProduction, deploymentBody, assertTransition, entryAssets} from './controller.mjs';
 const code = 'export const View = () => <button className="p-2" onClick={() => save(1)}>Guardar</button>;';
 test('permite textos y clases sin alterar acciones',()=>assert.equal(canonicalTsx(ts,code),canonicalTsx(ts,code.replace('p-2','p-4').replace('Guardar','Aceptar'))));
 test('bloquea cambios de acciones y argumentos',()=>assert.notEqual(canonicalTsx(ts,code),canonicalTsx(ts,code.replace('save(1)','save(2)'))));
@@ -49,4 +49,14 @@ test('fija el commit de GitHub y construye sin mover los dominios',()=>{
   assert.equal(body.autoAssignCustomDomains,false);
   assert.equal(body.meta.limpatexSourceFingerprint,'source');
   assert.throws(()=>deploymentBody('main','source',cfg));
+});
+test('acepta el alias propio y conserva el bloqueo de publicaciones ajenas',()=>{
+  const current={...deployment,id:'own',meta:{limpatexCommit:'commit',limpatexSourceFingerprint:'new'}};
+  assertTransition([deployment,current],current,'base','commit','new',cfg);
+  assert.throws(()=>assertTransition([deployment,{...current,id:'foreign'}],current,'base','commit','new',cfg));
+  assert.throws(()=>assertTransition([deployment,current],current,'base','wrong','new',cfg));
+});
+test('detecta assets relativos a raíz y absolutos',()=>{
+  assert.deepEqual(entryAssets('<script src="/assets/index-a.js"></script><link href="/assets/index-b.css">'),['/assets/index-a.js','/assets/index-b.css']);
+  assert.deepEqual(entryAssets('<script src="https://example.org/assets/a.js"></script>'),['https://example.org/assets/a.js']);
 });

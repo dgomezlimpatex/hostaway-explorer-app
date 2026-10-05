@@ -35,20 +35,24 @@ jobs:
           PR_NUMBER: ${{ inputs.pr_number }}
         run: node control/automation/delivery/controller.mjs recover
       - id: deploy
+        if: steps.source.outputs.verifyOnly != 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
           RELEASE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
         run: node control/automation/delivery/controller.mjs create-deployment
       - name: Recheck before promotion
+        if: steps.source.outputs.verifyOnly != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
           RELEASE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
           PRODUCTION_FINGERPRINT: ${{ steps.source.outputs.productionFingerprint }}
+          RELEASE_URL: ${{ steps.deploy.outputs.url }}
         run: node control/automation/delivery/controller.mjs pre-deploy control
       - name: Promote only the previously tested source
+        if: steps.source.outputs.verifyOnly != 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           RELEASE_URL: ${{ steps.deploy.outputs.url }}
@@ -58,7 +62,7 @@ jobs:
       - name: Verify both canonical domains and assets
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          RELEASE_URL: ${{ steps.deploy.outputs.url }}
+          RELEASE_URL: ${{ steps.deploy.outputs.url || steps.source.outputs.url }}
           RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
           RELEASE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
         run: node control/automation/delivery/controller.mjs verify-deployment
