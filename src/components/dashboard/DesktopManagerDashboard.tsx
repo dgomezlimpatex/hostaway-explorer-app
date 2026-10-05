@@ -1,16 +1,10 @@
 import React, { Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import {
-  AlertTriangle,
   ArrowRight,
-  CheckCircle2,
-  Clock3,
   Layers3,
   Plus,
   Route,
-  Users,
 } from 'lucide-react';
 
 import { SedeSelector } from '@/components/sede/SedeSelector';
@@ -53,21 +47,6 @@ interface DesktopManagerDashboardProps {
   linenWidget: React.ReactNode;
 }
 
-const statusConfig = {
-  completed: {
-    label: 'Completada',
-    className: 'border-line bg-surface text-success',
-  },
-  'in-progress': {
-    label: 'En curso',
-    className: 'border-line bg-surface text-ink-2',
-  },
-  pending: {
-    label: 'Pendiente',
-    className: 'border-line bg-surface text-warning',
-  },
-};
-
 const ComponentLoader = () => (
   <div className="flex min-h-[180px] items-center justify-center">
     <LoadingSpinner size="sm" />
@@ -76,11 +55,8 @@ const ComponentLoader = () => (
 
 const DesktopManagerDashboard = ({
   attentionWidget,
-  todayTasks,
-  unassignedTasks,
   pendingIncidents,
   incidentStats,
-  onTaskClick,
   onOpenCreateModal,
   onOpenBatchModal,
   showRouteV2,
@@ -92,13 +68,6 @@ const DesktopManagerDashboard = ({
   const navigate = useNavigate();
 
   const activeIncidents = (incidentStats?.open ?? 0) + (incidentStats?.in_progress ?? 0);
-
-  const sortedTodayTasks = [...todayTasks].sort((a, b) => a.startTime.localeCompare(b.startTime));
-  const nextTasks = sortedTodayTasks.filter((task) => task.status !== 'completed').slice(0, 8);
-  const urgentUnassigned = unassignedTasks
-    .filter((task) => task.status !== 'completed')
-    .sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`))
-    .slice(0, 5);
 
   const actionCards = [
     {
@@ -160,185 +129,78 @@ const DesktopManagerDashboard = ({
         </section>
 
         {attentionWidget}
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        {showWorkloadWidget ? (
+          <Suspense fallback={<ComponentLoader />}>{workloadWidget}</Suspense>
+        ) : (
+          <section className="rounded-lg border border-line bg-white p-4 text-sm text-ink-3 shadow-sm">
+            Sin acceso al control de horas.
+          </section>
+        )}
+
+        <div className="grid gap-6 xl:grid-cols-2">
           <section className="rounded-lg border border-line bg-white shadow-sm">
-            <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
+            <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-2">
-                  Agenda inmediata
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-danger">
+                  Incidencias
                 </p>
-                <h2 className="mt-1 text-xl font-semibold text-ink">Tareas de hoy</h2>
+                <h2 className="mt-1 text-xl font-semibold text-ink">Revisión operativa</h2>
               </div>
-              <Button variant="outline" onClick={() => navigate('/calendar')}>
-                Ver calendario
+              {pendingIncidents > 0 && (
+                <Badge variant="destructive" className="rounded-full">
+                  {pendingIncidents} pendientes
+                </Badge>
+              )}
+            </div>
+            <div className="space-y-3 p-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-line bg-surface p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-danger">
+                    Pendientes
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold tabular-nums text-danger">
+                    {pendingIncidents}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-line bg-surface p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+                    Activas
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">
+                    {activeIncidents}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-line bg-surface p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+                    En curso
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">
+                    {incidentStats?.in_progress ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-line bg-surface p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-success">
+                    Resueltas
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">
+                    {incidentStats?.resolved ?? 0}
+                  </p>
+                </div>
+              </div>
+              <Button variant="outline" className="w-full" onClick={() => navigate('/cleaning-reports')}>
+                Revisar incidencias
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
-
-            <div className="p-4">
-              {nextTasks.length === 0 ? (
-                <div className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-dashed border-line bg-paper text-center">
-                  <CheckCircle2 className="h-10 w-10 text-success" />
-                  <p className="mt-3 text-base font-semibold text-ink">Dia bajo control</p>
-                  <p className="mt-1 text-sm text-ink-3">No quedan tareas pendientes para hoy.</p>
-                </div>
-              ) : (
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {nextTasks.map((task) => {
-                    const status = statusConfig[task.status];
-
-                    return (
-                      <button
-                        key={task.id}
-                        type="button"
-                        onClick={() => onTaskClick(task)}
-                        className="group rounded-lg border border-line bg-white p-4 text-left transition hover:border-line hover:bg-surface/40 hover:shadow-sm"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-base font-semibold text-ink">
-                              {task.propertyCode || task.property}
-                            </p>
-                            <p className="mt-1 truncate text-sm text-ink-3">{task.property}</p>
-                          </div>
-                          <Badge variant="outline" className={cn('shrink-0', status.className)}>
-                            {status.label}
-                          </Badge>
-                        </div>
-
-                        <div className="mt-4 grid gap-2 text-sm text-ink-3 sm:grid-cols-2">
-                          <span className="flex items-center gap-2">
-                            <Clock3 className="h-4 w-4 text-ink-4" />
-                            {task.startTime} - {task.endTime}
-                          </span>
-                          <span className="flex min-w-0 items-center gap-2">
-                            <Users className="h-4 w-4 text-ink-4" />
-                            <span className="truncate">{task.cleaner || 'Sin asignar'}</span>
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </section>
 
-          <aside className="space-y-6">
-            <section className="rounded-lg border border-line bg-white shadow-sm">
-              <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-danger">
-                    Incidencias
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold text-ink">Revisión operativa</h2>
-                </div>
-                {pendingIncidents > 0 && (
-                  <Badge variant="destructive" className="rounded-full">
-                    {pendingIncidents} pendientes
-                  </Badge>
-                )}
-              </div>
-              <div className="space-y-3 p-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg border border-line bg-surface p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-danger">
-                      Pendientes
-                    </p>
-                    <p className="mt-1 text-2xl font-semibold tabular-nums text-danger">
-                      {pendingIncidents}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-line bg-surface p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">
-                      Activas
-                    </p>
-                    <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">
-                      {activeIncidents}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-line bg-surface p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">
-                      En curso
-                    </p>
-                    <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">
-                      {incidentStats?.in_progress ?? 0}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-line bg-surface p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-success">
-                      Resueltas
-                    </p>
-                    <p className="mt-1 text-2xl font-semibold tabular-nums text-ink">
-                      {incidentStats?.resolved ?? 0}
-                    </p>
-                  </div>
-                </div>
-                <Button variant="outline" className="w-full" onClick={() => navigate('/cleaning-reports')}>
-                  Revisar incidencias
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
+          {showLinenWidget ? (
+            <Suspense fallback={<ComponentLoader />}>{linenWidget}</Suspense>
+          ) : (
+            <section className="rounded-lg border border-line bg-white p-4 text-sm text-ink-3 shadow-sm">
+              Sin acceso al control de mudas.
             </section>
-
-            <section className="rounded-lg border border-line bg-white shadow-sm">
-              <div className="border-b border-line px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-warning">
-                  Riesgo operativo
-                </p>
-                <h2 className="mt-1 text-xl font-semibold text-ink">Sin asignar</h2>
-              </div>
-              <div className="p-4">
-                {urgentUnassigned.length === 0 ? (
-                  <div className="rounded-lg border border-line bg-surface p-4 text-sm text-success">
-                    Todas las tareas visibles tienen responsable asignado.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {urgentUnassigned.map((task) => (
-                      <button
-                        key={task.id}
-                        type="button"
-                        onClick={() => onTaskClick(task)}
-                        className="w-full rounded-lg border border-line bg-surface/70 p-3 text-left transition hover:bg-paper"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-ink">
-                              {task.propertyCode || task.property}
-                            </p>
-                            <p className="mt-1 text-xs text-ink-3">
-                              {format(new Date(task.date), 'EEE d MMM', { locale: es })} · {task.startTime}
-                            </p>
-                          </div>
-                          <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-                        </div>
-                      </button>
-                    ))}
-                    <Button variant="outline" className="w-full" onClick={() => navigate('/calendar')}>
-                      Revisar calendario
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {showWorkloadWidget ? (
-              <Suspense fallback={<ComponentLoader />}>{workloadWidget}</Suspense>
-            ) : (
-              <section className="rounded-lg border border-line bg-white p-4 text-sm text-ink-3 shadow-sm">
-                Sin acceso al control de horas.
-              </section>
-            )}
-
-            {showLinenWidget ? (
-              <Suspense fallback={<ComponentLoader />}>{linenWidget}</Suspense>
-            ) : (
-              <section className="rounded-lg border border-line bg-white p-4 text-sm text-ink-3 shadow-sm">
-                Sin acceso al control de mudas.
-              </section>
-            )}
-          </aside>
+          )}
         </div>
       </div>
     </div>
