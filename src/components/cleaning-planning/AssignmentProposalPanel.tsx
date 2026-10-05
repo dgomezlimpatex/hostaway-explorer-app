@@ -29,6 +29,7 @@ interface AssignmentProposalPanelProps {
   isPartialScope?: boolean;
   totalPendingTaskCount?: number;
   savedTaskIds?: string[];
+  onTaskSaved?: (taskId: string) => void;
   onApply: (draftProposals: AssignmentProposal[]) => Promise<void>;
   onClear: () => void;
 }
@@ -70,6 +71,7 @@ export const AssignmentProposalPanel = ({
   isPartialScope = false,
   totalPendingTaskCount = 0,
   savedTaskIds = [],
+  onTaskSaved,
   onApply,
   onClear,
 }: AssignmentProposalPanelProps) => {
@@ -287,6 +289,7 @@ export const AssignmentProposalPanel = ({
           excludedCleanerAssignments={excludedCleanerAssignments}
           isStale={isStale}
           savedTaskIds={savedTaskIds}
+          onTaskSaved={onTaskSaved}
           onDraftProposalsChange={handleDraftProposalsChange}
           onDraftWarningsChange={handleDraftWarningsChange}
         />

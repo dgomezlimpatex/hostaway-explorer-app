@@ -1,3 +1,4 @@
+import { buildProposalContextKey, canAcceptSavedTaskContext } from '@/utils/cleaning-planning/proposalContext';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { addDays } from 'date-fns';
@@ -65,33 +66,6 @@ type ProposalState = {
   contextKey: string;
   tasksSnapshot: CleaningPlanningTask[];
 };
-
-const buildProposalContextKey = ({
-  activeSedeId,
-  cleanerIds,
-  availability,
-  filters,
-  range,
-  tasks,
-}: {
-  activeSedeId?: string;
-  cleanerIds: string[];
-  availability: Array<{ cleanerId: string; date: string; remainingMinutes: number; isAvailable: boolean }>;
-  filters: CleaningPlanningFilters;
-  range: { startDate: string; endDate: string };
-  tasks: CleaningPlanningTask[];
-}): string => JSON.stringify({
-  activeSedeId: activeSedeId || 'sin-sede',
-  cleanerIds: [...cleanerIds].sort(),
-  availability: availability
-    .map((item) => `${item.cleanerId}:${item.date}:${item.isAvailable ? 1 : 0}:${item.remainingMinutes}`)
-    .sort(),
-  filters,
-  range,
-  tasks: tasks
-    .map((task) => `${task.id}:${task.date}:${task.startTime}:${task.endTime}:${task.durationMinutes}:${task.cleanerId || 'sin-asignar'}:${(task.assignments || []).map((assignment) => assignment.cleaner_id).sort().join(',') || 'sin-multi'}:${task.detectedBuilding?.propertyGroupId || 'sin-edificio'}`)
-    .sort(),
-});
 
 const buildIndividualBuilding = (task: CleaningPlanningTask, codePrefix: string): DetectedBuilding => {
   const label = task.propertyCode || task.property || codePrefix || task.propertyId || task.id;
@@ -194,6 +168,7 @@ export const CleaningPlanningPage = () => {
   const [date, setDate] = useState(() => addDays(getTodayMadrid(), 1));
   const [preset, setPreset] = useState<PlanningRangePreset>('today');
   const [filters, setFilters] = useState<CleaningPlanningFilters>(defaultFilters);
+  const [savedQuickTaskId, setSavedQuickTaskId] = useState<string | null>(null);
   const [proposalState, setProposalState] = useState<ProposalState | null>(null);
   const [calendarNavigation, setCalendarNavigation] = useState(false);
   const [isSavingDay, setIsSavingDay] = useState(false);
@@ -261,8 +236,15 @@ export const CleaningPlanningPage = () => {
     availability: effectiveAvailability,
     filters,
     range,
-    tasks: filteredUnassignedTasks,
-  }), [activeSede?.id, effectiveAvailability, filters, filteredUnassignedTasks, operationalCleaners, range]);
+    tasks: filteredTasks,
+  }), [activeSede?.id, effectiveAvailability, filters, filteredTasks, operationalCleaners, range]);
+  useEffect(() => {
+    if (!savedQuickTaskId || !proposalState || isError) return;
+    if (canAcceptSavedTaskContext(proposalState.contextKey, proposalContextKey, savedQuickTaskId)) {
+      setProposalState(current => current ? { ...current, contextKey: proposalContextKey } : current);
+      setSavedQuickTaskId(null);
+    }
+  }, [savedQuickTaskId, proposalState, proposalContextKey, isError]);
   const proposal = proposalState?.result || null;
   const proposalTasks = proposalState?.tasksSnapshot || filteredUnassignedTasks;
   const hasPartialScope = filteredUnassignedTasks.length !== enhancedUnassignedTasks.length;
@@ -431,6 +413,7 @@ export const CleaningPlanningPage = () => {
             isPartialScope={hasPartialScope}
             totalPendingTaskCount={enhancedUnassignedTasks.length}
             savedTaskIds={savedTaskIds}
+            onTaskSaved={setSavedQuickTaskId}
             onApply={handleApplyProposal}
             onClear={() => {dayProposals.current.delete(dayKey);setProposalState(null);setCalendarNavigation(false);}}
           />

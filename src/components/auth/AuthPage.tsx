@@ -38,11 +38,7 @@ export const AuthPage = () => {
     const { error } = await signIn(loginForm.email, loginForm.password);
     
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        setError('Email o contraseña incorrectos');
-      } else {
-        setError('Error al iniciar sesión: ' + error.message);
-      }
+      setError(error.message);
     } else {
       navigate('/');
     }

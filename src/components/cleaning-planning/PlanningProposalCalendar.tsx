@@ -75,6 +75,7 @@ interface PlanningProposalCalendarProps {
   excludedCleanerAssignments?: CleanerGroupAssignment[];
   isStale?: boolean;
   savedTaskIds?: string[];
+  onTaskSaved?: (taskId: string) => void;
   onDraftProposalsChange: (proposals: AssignmentProposal[]) => void;
   onDraftWarningsChange: (warnings: PlanningProposalDraftWarning[]) => void;
 }
@@ -651,6 +652,7 @@ export const PlanningProposalCalendar = ({
   excludedCleanerAssignments = [],
   isStale,
   savedTaskIds = [],
+  onTaskSaved,
   onDraftProposalsChange,
   onDraftWarningsChange,
 }: PlanningProposalCalendarProps) => {
@@ -1216,6 +1218,20 @@ export const PlanningProposalCalendar = ({
       : undefined;
     if (!directPlacement || !task || !cleanerId) return;
     const previous = draftProposals.map((proposal) => ({ ...proposal }));
+    if (cleanerId === UNASSIGNED_PLACEMENT_ID && getAssignedCleanerIds(task, cleaners).length > 0) {
+      // A saved assignment must actually be removed, not merely hidden in the draft.
+      const snapshot = pendingEditSnapshotRef.current;
+      if (snapshot) {
+        onDraftProposalsChange(snapshot.proposals);
+        if (!snapshot.wasEdited) setEditedExistingTaskIds(current => {
+          const next = new Set(current); next.delete(task.id); return next;
+        });
+      }
+      pendingEditSnapshotRef.current = null;
+      setReassignment(null);
+      setQuickActionsTaskId(task.id);
+      return;
+    }
     if (cleanerId === UNASSIGNED_PLACEMENT_ID) {
       onDraftProposalsChange(
         draftProposals.filter(
@@ -1307,7 +1323,10 @@ export const PlanningProposalCalendar = ({
         ? base.map((proposal, index) =>
             index === targetIndex
               ? { ...proposal, ...fields }
-              : proposal,
+              : proposal.taskId === task.id
+                ? { ...proposal, proposedStartTime: fields.proposedStartTime,
+                    proposedEndTime: fields.proposedEndTime, durationMinutes }
+                : proposal,
           )
         : [
             ...base,
@@ -2159,6 +2178,7 @@ export const PlanningProposalCalendar = ({
             return next;
           });
           setQuickActionsTaskId(null);
+          onTaskSaved?.(taskId);
         }}
       />
     </DndContext>
