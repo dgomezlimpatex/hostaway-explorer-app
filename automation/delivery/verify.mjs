@@ -4,8 +4,8 @@ import {execFileSync, spawnSync} from 'node:child_process';
 import {verifyPresentation, fingerprint} from './guard.mjs';
 
 const repo = path.resolve(process.argv[2]);
-const base = process.argv[3];
-const head = process.argv[4];
+const base = execFileSync('git',['-C',repo,'rev-parse',process.argv[3]],{encoding:'utf8'}).trim();
+const head = execFileSync('git',['-C',repo,'rev-parse',process.argv[4]],{encoding:'utf8'}).trim();
 const resultFile = path.resolve(process.argv[5]);
 const git = args => execFileSync('git', ['-C', repo, ...args], {encoding: 'utf8'}).trim();
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
