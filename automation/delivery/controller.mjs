@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {fingerprint} from './guard.mjs';
@@ -98,12 +99,30 @@ async function preDeploy() {
 }
 export function deploymentBody(commit, sourceFingerprint, cfg = config) {
   assert.match(commit, /^[a-f0-9]{40}$/);
-  return {name:'gestion_limpatex', project:cfg.projectId, target:'production', autoAssignCustomDomains:false,
-    gitSource:{type:'github', repoId:1003841679, ref:commit, sha:commit},
+  return {name:'gestion_limpatex', project:cfg.projectId, target:'production', source:'cli', autoAssignCustomDomains:false,
+    gitMetadata:{remoteUrl:`https://github.com/${cfg.repository}.git`, commitSha:commit, commitRef:cfg.baseBranch, dirty:'false', ci:'true', ciType:'github-actions'},
     meta:{limpatexCommit:commit, limpatexSourceFingerprint:sourceFingerprint}};
 }
 async function createDeployment() {
-  const d = await vc('/v13/deployments', 'POST', deploymentBody(process.env.RELEASE_COMMIT, process.env.RELEASE_FINGERPRINT));
+  const repo=path.resolve(process.argv[3] || 'control');
+  assert.equal(git(repo,['rev-parse','HEAD']),process.env.RELEASE_COMMIT);
+  assert.equal(git(repo,['status','--porcelain']), '', 'El código de publicación debe estar limpio');
+  assert.equal(fingerprint(repo),process.env.RELEASE_FINGERPRINT);
+  const names=execFileSync('git',['-C',repo,'ls-files','-z'],{encoding:'utf8'}).split('\0').filter(Boolean);
+  const files=names.map(file=>{const data=fs.readFileSync(path.join(repo,file));return {file, data, size:data.length, sha:crypto.createHash('sha1').update(data).digest('hex')};});
+  let next=0;
+  await Promise.all(Array.from({length:8},async()=>{
+    while(next<files.length){
+      const file=files[next++];
+      const response=await fetch(`https://api.vercel.com/v2/files?teamId=${config.teamId}`,{method:'POST',headers:{Authorization:`Bearer ${process.env.VERCEL_TOKEN}`,'Content-Type':'application/octet-stream','Content-Length':String(file.size),'x-vercel-digest':file.sha},body:file.data});
+      if(!response.ok) throw new Error(`No se pudo subir el archivo de fuente: ${response.status}`);
+      await response.arrayBuffer();
+    }
+  }));
+  console.log(`Fuente del commit subida: ${files.length} archivos.`);
+  const settings=JSON.parse(fs.readFileSync(path.join(repo,'vercel.json'),'utf8'));
+  const body={...settings,...deploymentBody(process.env.RELEASE_COMMIT,process.env.RELEASE_FINGERPRINT),files:files.map(({file,sha,size})=>({file,sha,size}))};
+  const d = await vc('/v13/deployments', 'POST', body);
   output('url', 'https://' + d.url);
   console.log(`Deployment creado: ${d.id}. Los dominios siguen en la versión anterior.`);
   let previous;

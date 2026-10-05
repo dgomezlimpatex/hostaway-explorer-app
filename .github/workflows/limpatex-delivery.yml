@@ -147,7 +147,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           RELEASE_COMMIT: ${{ steps.merge.outputs.commit }}
           RELEASE_FINGERPRINT: ${{ steps.merge.outputs.fingerprint }}
-        run: node control/automation/delivery/controller.mjs create-deployment
+        run: node control/automation/delivery/controller.mjs create-deployment release
       - name: Recheck before promotion
         env:
           GH_TOKEN: ${{ github.token }}
