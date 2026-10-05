@@ -60,7 +60,7 @@ export function cachedFileHashes(nodes) {
   return hashes;
 }
 async function request(url, method = 'GET', body, token = process.env.GH_TOKEN) {
-  const response = await fetch(url, {method, headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
+  const response = await fetch(url, {method, headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined,signal:AbortSignal.timeout(30000)});
   const text = await response.text();
   if (!response.ok) throw new Error(`API ${method} ${new URL(url).pathname}: ${response.status} ${text.slice(0,300)}`);
   return text ? JSON.parse(text) : null;
@@ -304,6 +304,7 @@ async function promoteDeployment() {
   throw new Error('No se confirmó el cambio de los dos dominios');
 }
 async function recover() {
+  await assertManualReleasesClosed();
   const pr=await gh(`/pulls/${Number(process.env.PR_NUMBER)}`);
   assert(pr.merged && eligible({...pr,state:'open'}), 'Solo recuperar una entrega autorizada ya incorporada');
   const statuses=(await gh(`/commits/${pr.head.sha}/status`)).statuses;
