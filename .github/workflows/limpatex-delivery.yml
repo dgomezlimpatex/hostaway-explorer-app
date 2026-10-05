@@ -15,6 +15,7 @@ on:
         default: true
 permissions:
   contents: read
+  deployments: read
 concurrency:
   group: limpatex-production-delivery
   queue: max
@@ -31,6 +32,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
           path: control
           persist-credentials: false
       - uses: actions/setup-node@v4
