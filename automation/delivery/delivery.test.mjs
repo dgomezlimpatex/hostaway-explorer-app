@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 import {canonicalTsx, checkCss} from './guard.mjs';
-import {eligible, assertProduction, deploymentBody, assertTransition, entryAssets} from './controller.mjs';
+import {eligible, assertProduction, deploymentBody, assertTransition, entryAssets, cachedFileHashes} from './controller.mjs';
 const code = 'export const View = () => <button className="p-2" onClick={() => save(1)}>Guardar</button>;';
 test('permite textos y clases sin alterar acciones',()=>assert.equal(canonicalTsx(ts,code),canonicalTsx(ts,code.replace('p-2','p-4').replace('Guardar','Aceptar'))));
 test('bloquea cambios de acciones y argumentos',()=>assert.notEqual(canonicalTsx(ts,code),canonicalTsx(ts,code.replace('save(1)','save(2)'))));
@@ -59,4 +59,9 @@ test('acepta el alias propio y conserva el bloqueo de publicaciones ajenas',()=>
 test('detecta assets relativos a raíz y absolutos',()=>{
   assert.deepEqual(entryAssets('<script src="/assets/index-a.js"></script><link href="/assets/index-b.css">'),['/assets/index-a.js','/assets/index-b.css']);
   assert.deepEqual(entryAssets('<script src="https://example.org/assets/a.js"></script>'),['https://example.org/assets/a.js']);
+});
+test('reutiliza por contenido exacto y no por nombre de archivo',()=>{
+  const known='a'.repeat(40); const unknown='b'.repeat(40);
+  const hashes=cachedFileHashes([{type:'directory',name:'src',children:[{type:'file',name:'view.tsx',uid:known},{type:'directory',uid:unknown}]}]);
+  assert(hashes.has(known)); assert(!hashes.has(unknown)); assert(!hashes.has('view.tsx'));
 });
