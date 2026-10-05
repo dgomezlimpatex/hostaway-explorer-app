@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
-import {verifyPresentation} from './guard.mjs';
+import {verifyDelivery} from './scope.mjs';
 const config=JSON.parse(fs.readFileSync(new URL('./config.json',import.meta.url)));
 const git=args=>execFileSync('git',args,{encoding:'utf8',maxBuffer:30e6}).trim();
 const title=process.argv[2];
@@ -12,7 +12,7 @@ if(!branch.startsWith('codex/')) throw new Error('Entregar desde una rama codex/
 if(git(['remote','get-url','origin'])!==`https://github.com/${config.repository}.git`) throw new Error('Remoto inesperado');
 git(['fetch','origin','main']);
 const ancestor=git(['merge-base','origin/main','HEAD']);
-verifyPresentation(process.cwd(),ancestor,'HEAD');
+const delivery=verifyDelivery(process.cwd(),ancestor,'HEAD');
 const creds=execFileSync('git',['credential','fill'],{input:'protocol=https\nhost=github.com\n\n',encoding:'utf8'});
 const password=creds.split('\n').find(x=>x.startsWith('password='))?.slice(9);
 if(!password) throw new Error('Falta autenticación GitHub');
@@ -24,8 +24,9 @@ async function api(endpoint,method='GET',body){
 }
 git(['push','--set-upstream','origin',branch]);
 const existing=await api(`/pulls?state=open&head=${config.owner}:${encodeURIComponent(branch)}&base=main`);
-const body=fs.readFileSync(bodyFile,'utf8').trim()+'\n\nDelivery-Scope: presentation\n';
+const body=fs.readFileSync(bodyFile,'utf8').trim()+`\n\nDelivery-Scope: ${delivery.scope}\n`;
 const pr=existing[0] || await api('/pulls','POST',{title,body,base:'main',head:branch,draft:false});
+if(existing[0]) await api(`/pulls/${pr.number}`,'PATCH',{title,body});
 await api(`/issues/${pr.number}/labels`,'POST',{labels:[config.label]});
 // workflow_dispatch explicitly starts a run even when an API token suppressed an event.
 await api('/actions/workflows/limpatex-delivery.yml/dispatches','POST',{ref:'main',inputs:{pr_number:String(pr.number),dry_run:'false'}});

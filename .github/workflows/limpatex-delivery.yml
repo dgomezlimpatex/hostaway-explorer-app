@@ -70,7 +70,7 @@ jobs:
           git -C candidate config user.email 'dgomezlimpatex@users.noreply.github.com'
           git -C candidate switch -c validated-candidate
           git -C candidate merge --no-ff --no-edit "$BASE"
-      - name: Install unchanged dependencies
+      - name: Install approved dependencies
         run: |
           npm ci --ignore-scripts --prefix control
           npm ci --ignore-scripts --prefix candidate

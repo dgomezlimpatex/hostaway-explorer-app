@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
-import {verifyPresentation, fingerprint} from './guard.mjs';
+import {fingerprint} from './guard.mjs';
+import {verifyDelivery} from './scope.mjs';
+import {runOffline} from './offline.mjs';
 
 const repo = path.resolve(process.argv[2]);
 const base = execFileSync('git',['-C',repo,'rev-parse',process.argv[3]],{encoding:'utf8'}).trim();
@@ -30,14 +32,15 @@ function noNewDiagnostics(before, after, project) {
   }
 }
 function lintDiagnostics(paths) {
-  const targets=paths.filter(p=>p.endsWith('.tsx'));
+  const targets=paths.filter(p=>/\.[tj]sx?$/.test(p) && fs.existsSync(path.join(repo,p)));
   if (!targets.length) return [];
   const result=command(process.execPath,['node_modules/eslint/bin/eslint.js','--format','json',...targets]);
   let data;
   try { data=JSON.parse(result.stdout); } catch { throw new Error('No se pudo ejecutar lint focalizado'); }
   return data.flatMap(file=>file.messages.filter(m=>m.severity===2).map(m=>`${path.relative(repo,file.filePath).replaceAll('\\','/')}: ${m.ruleId}: ${m.message}`)).sort();
 }
-const paths = verifyPresentation(repo, base, head);
+const delivery = verifyDelivery(repo, base, head);
+const paths = delivery.paths;
 git(['checkout', '--detach', base]);
 const baseline = {app: checkTypes('tsconfig.app.json'), node: checkTypes('tsconfig.node.json'), lint:lintDiagnostics(paths)};
 git(['checkout', '--detach', head]);
@@ -45,8 +48,12 @@ const current = {app: checkTypes('tsconfig.app.json'), node: checkTypes('tsconfi
 noNewDiagnostics(baseline.app, current.app, 'app');
 noNewDiagnostics(baseline.node, current.node, 'node');
 noNewDiagnostics(baseline.lint,current.lint,'lint focalizado');
+for (const file of delivery.tests) {
+  const tested=runOffline(repo,file);
+  if(tested.status!==0) throw new Error(`Prueba funcional falló: ${file}\n${tested.stdout}${tested.stderr}`);
+}
 const build = command(npm, ['run', 'build']);
 if (build.status !== 0) throw new Error('Build falló:\n' + build.stdout + build.stderr);
-const result = {base, head, tree: git(['rev-parse', 'HEAD^{tree}']), paths, baselineErrors: baseline.app.filter(x=>/error TS\d+/.test(x)).length, currentErrors: current.app.filter(x=>/error TS\d+/.test(x)).length, fingerprint: fingerprint(repo)};
+const result = {scope:delivery.scope,tests:delivery.tests,base, head, tree: git(['rev-parse', 'HEAD^{tree}']), paths, baselineErrors: baseline.app.filter(x=>/error TS\d+/.test(x)).length, currentErrors: current.app.filter(x=>/error TS\d+/.test(x)).length, fingerprint: fingerprint(repo)};
 fs.writeFileSync(resultFile, JSON.stringify(result, null, 2));
 console.log(JSON.stringify(result));
