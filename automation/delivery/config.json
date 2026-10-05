@@ -2,7 +2,7 @@
   "repository": "dgomezlimpatex/hostaway-explorer-app",
   "owner": "dgomezlimpatex",
   "baseBranch": "main",
-  "label": "limpatex:auto-presentation",
+  "label": "limpatex:auto-delivery",
   "statusContext": "limpatex/verified-candidate",
   "projectId": "prj_ArBhKZEr9xPqgcIoyioylFc9BMk7",
   "teamId": "team_CfqG1o5AGI4f0ZwEWv6k8qQc",
@@ -12,5 +12,5 @@
   ],
   "initialDeployment": "dpl_FwYM4PPRvVrh1TJ1ztMMWbnUzM8q",
   "initialFingerprint": "b12201bedceccd68eb09cb2b6c983190239f0fe2ef8b0fffc0d3a418167bf194",
-  "scope": "presentation"
+  "scope": "application"
 }

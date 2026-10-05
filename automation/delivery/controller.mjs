@@ -13,8 +13,8 @@ const github = `https://api.github.com/repos/${config.repository}`;
 export function eligible(pr, cfg = config) {
   return pr.state === 'open' && !pr.draft && pr.user.login === cfg.owner && pr.base.ref === cfg.baseBranch
     && pr.head.repo?.full_name === cfg.repository && pr.head.ref.startsWith('codex/')
-    && pr.labels.some(label => label.name === cfg.label)
-    && /(?:^|\n)Delivery-Scope: presentation(?:\r?\n|$)/.test(pr.body || '');
+    && pr.labels.some(label => [cfg.label, 'limpatex:auto-presentation'].includes(label.name))
+    && /(?:^|\n)Delivery-Scope: (?:presentation|application)(?:\r?\n|$)/.test(pr.body || '');
 }
 export function assertProduction(deployments, baseFingerprint, cfg = config) {
   for (const d of deployments) {
