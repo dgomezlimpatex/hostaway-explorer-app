@@ -43,8 +43,9 @@ test('admite publicaciones del coordinador con la huella comprobada',()=>{
 test('fija el commit de GitHub y construye sin mover los dominios',()=>{
   const commit='a'.repeat(40); const body=deploymentBody(commit,'source',cfg);
   assert.equal(body.project,cfg.projectId);
-  assert.equal(body.gitSource.sha,commit);
-  assert.equal(body.gitSource.ref,commit);
+  assert.equal(body.gitMetadata.commitSha,commit);
+  assert.equal(body.source,'cli');
+  assert.equal(body.gitSource,undefined);
   assert.equal(body.autoAssignCustomDomains,false);
   assert.equal(body.meta.limpatexSourceFingerprint,'source');
   assert.throws(()=>deploymentBody('main','source',cfg));
