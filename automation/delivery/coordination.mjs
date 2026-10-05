@@ -1,14 +1,20 @@
 import assert from 'node:assert/strict';
 
-export async function waitForMergeability({snapshot,head,base,authorized,sleep=ms=>new Promise(r=>setTimeout(r,ms)),attempts=31}) {
+export async function waitForMergeability({snapshot,head,previousHead,base,authorized,sleep=ms=>new Promise(r=>setTimeout(r,ms)),attempts=31}) {
+  let observed=false;
   for(let i=0;i<attempts;i++) {
-    const {pr,main,status}=await snapshot();
+    const {pr,main,status,branchHead}=await snapshot();
     assert(authorized(pr),'La propuesta dejó de estar autorizada');
-    assert.equal(pr.head.sha,head,'La propuesta cambió durante la espera de GitHub');
+    assert.equal(branchHead,head,'La rama cambió durante la espera de GitHub');
+    const propagated=pr.head.sha===head;
+    assert(propagated || !observed && previousHead && pr.head.sha===previousHead,'La propuesta cambió durante la espera de GitHub');
+    observed ||= propagated;
     assert.equal(main,base,'Main avanzó durante la espera de GitHub; validar otra vez');
-    assert.equal(status,'success','La validación vigente dejó de ser correcta');
-    assert.notEqual(pr.mergeable,false,'GitHub detectó un conflicto; volver a validar la propuesta');
-    if(pr.mergeable===true && pr.mergeable_state==='clean') return;
+    assert(status===undefined || status==='pending' || status==='success','La validación vigente dejó de ser correcta');
+    if(propagated) assert.notEqual(pr.mergeable,false,'GitHub detectó un conflicto; volver a validar la propuesta');
+    // "unstable" includes unrelated/older optional checks. Required protection
+    // remains enforced by GitHub's merge endpoint and the exact status above.
+    if(propagated && status==='success' && pr.mergeable===true && ['clean','unstable'].includes(pr.mergeable_state)) return;
     if(i===attempts-1) throw new Error('GitHub no terminó de preparar la fusión en dos minutos; conservar la propuesta y reintentar');
     await sleep(4000);
   }
