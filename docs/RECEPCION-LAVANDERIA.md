@@ -1,6 +1,8 @@
 # Recepción diaria de ropa limpia
 
-Implementación completa preparada en `codex/laundry-daily-receipts-20261005`, sobre la base `08a3990`. **No está activada en producción.** No se ha aplicado SQL, publicado la app, desplegado funciones ni enviado correos reales.
+Implementación en `codex/laundry-daily-receipts-20261005`, reconciliada con `main` (`bbf7cde9`). Dani autorizó la activación el 05/10/2026: «Subelo a producción». La entrega revisada se registra en [PR 16](https://github.com/dgomezlimpatex/hostaway-explorer-app/pull/16), fuera del filtro automático de presentación/aplicación.
+
+Supabase ya tiene la migración específica y `laundry-receipts` activa. El recuperador cada cinco minutos respondió HTTP 200 con cero trabajos pendientes. La publicación de la interfaz se comprueba por commit, huella y ambos dominios antes de darla por terminada. No se han confirmado cantidades ficticias ni enviado correos reales. La configuración inicial de almacén, nueve productos y empleados corresponde a administración; el primer envío real se verifica con una recepción real.
 
 ## Uso
 
@@ -60,14 +62,14 @@ Estas pruebas no demuestran concurrencia nativa entre conexiones PostgreSQL inde
 - Tipos reales de aplicación: los mismos 102 diagnósticos que la base, sin diagnósticos añadidos. Tipos Node y comprobación Deno de la función correctos.
 - Lint de los archivos de aplicación modificados y `git diff --check` correctos. PGlite se añade únicamente como dependencia de desarrollo para las pruebas aisladas.
 - El build emite avisos de CSS, Browserslist y tamaño de chunks; no bloquean la compilación. No se afirma que el conjunto global de TypeScript esté libre de errores.
-- Cambios conservados en la rama local de esta tarea, sin commit/push, PR ni publicación. Las demás copias y sus índices no se han modificado.
+- Cambios propios confirmados y subidos en la rama de esta tarea, con PR 16. Las demás copias y sus índices no se han modificado.
 
-## Activación — requiere autorización específica
+## Activación — autorizada el 05/10/2026
 
 1. Reconciliar la rama con GitHub/main y la fuente vigente de producción. Preservar trabajo ajeno y comprobar ambos dominios. Esta función **no pasa por la cola automática de presentación** ni se debe etiquetar como presentación.
 2. Verificar en lectura las tablas stock/PIN y dependencias actuales. El 05/10 se comprobaron sus columnas y las funciones de inventario: el stock limpio central procede de `stock_levels`; no se usa `inventory_*`. No aplicar paquetes anteriores de inventario ni el circuito físico pendiente del 02/10.
 3. Aplicar únicamente `supabase/migrations/20261005164100_laundry_daily_receipts.sql`, revisada con la migración y las pruebas locales. No ejecutar `supabase db push` sobre todo el historial.
-4. Desplegar únicamente la nueva función `laundry-receipts`, con sus tres archivos compartidos importados y `verify_jwt=false`. La autorización se valida dentro del handler. Comprobar que los secretos del proveedor ya existen y que el remitente está habilitado, sin imprimir sus valores.
+4. Desplegar únicamente la nueva función `laundry-receipts`, con sus cinco archivos compartidos importados y `verify_jwt=false`. La autorización se valida dentro del handler. Comprobar que los secretos del proveedor ya existen y que el remitente está habilitado, sin imprimir sus valores.
 5. Publicar el frontend mediante el circuito autorizado para cambios funcionales y verificar `gestionlimpatex.vercel.app` y `gestionlimpatex-limpatex.vercel.app`.
 6. Configurar los productos y empleados desde administración. La persona responsable debe verificar las correspondencias de los nueve materiales y el almacén físico; el sistema no las adivina.
 7. Para recuperación automática, provisionar en Vault `laundry_receipts_recovery_service_role` por un canal seguro y aplicar `scripts/activateLaundryReceiptRecovery.sql`. Verificar pg_cron/pg_net antes. Solo programa el nuevo job `laundry-receipt-email-recovery` cada cinco minutos; no modifica jobs existentes. La acción `drain` acepta exclusivamente la service role.
