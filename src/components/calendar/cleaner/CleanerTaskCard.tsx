@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Task } from '@/types/calendar';
 import { MapPin, Calendar, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TaskStatusBadge } from '../TaskStatusBadge';
 import {
   getEffectiveTaskDurationMinutes,
   getEffectiveTaskEndTime,
@@ -109,6 +110,7 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
       <div className="relative z-10">
         <div className="space-y-4">
           <div className="space-y-2">
+            <TaskStatusBadge status={task.status} showLabel />
             <h3 className="text-2xl font-bold leading-tight">
               {task.property}
             </h3>

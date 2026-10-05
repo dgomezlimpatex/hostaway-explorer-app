@@ -2,6 +2,7 @@ import { Clock, GripVertical, ListTodo, RefreshCw } from "lucide-react";
 import { Task } from "@/hooks/useCalendarData";
 import { cn } from "@/lib/utils";
 import { useClientData } from "@/hooks/useClientData";
+import { TaskStatusBadge } from './TaskStatusBadge';
 
 interface TaskCardProps {
   task: Task;
@@ -59,19 +60,6 @@ export const TaskCard = ({
         return "border-l-danger";
       default:
         return "border-l-ink-4";
-    }
-  };
-
-  const getStatusDot = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-success";
-      case "in-progress":
-        return "bg-warning";
-      case "pending":
-        return "bg-danger";
-      default:
-        return "bg-ink-4";
     }
   };
 
@@ -155,11 +143,7 @@ export const TaskCard = ({
       {/* Content */}
       <div className="relative z-10 space-y-1">
         <div className="flex items-start gap-1.5">
-          {/* Punto de estado: unico indicador de color dentro de la tarjeta */}
-          <span
-            className={cn("mt-1.5 h-2 w-2 flex-shrink-0 rounded-full", getStatusDot(task.status))}
-            aria-hidden="true"
-          />
+          <TaskStatusBadge status={task.status} />
           {/* Property name - pegado a la izquierda */}
           <div className="flex-1 min-w-0 font-semibold text-sm leading-tight line-clamp-2 text-left">
             {displayPropertyName()}

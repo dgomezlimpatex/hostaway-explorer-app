@@ -257,7 +257,7 @@ const CleanerRow = memo(({
           />
           {isSplit && (
             <div
-              className="absolute top-0.5 right-0.5 z-20 px-1.5 py-0.5 rounded-full bg-background/90 border border-border text-[9px] font-bold text-foreground shadow-sm pointer-events-none"
+              className="absolute bottom-2 right-0.5 z-20 px-1.5 py-0.5 rounded-full bg-background/90 border border-border text-[9px] font-bold text-foreground shadow-sm pointer-events-none"
               title={`Dividido entre ${count} personas`}
             >
               ÷{count}

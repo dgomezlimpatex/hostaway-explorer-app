@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { formatMadridDate } from '@/utils/date';
 import { countTasksByAssignedCleaner, isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import type { Cleaner, Task } from '@/types/calendar';
+import { TaskStatusBadge } from './TaskStatusBadge';
 
 interface ManagerMobileAgendaCalendarProps {
   currentDate: Date;
@@ -34,24 +35,7 @@ interface ManagerMobileAgendaCalendarProps {
 
 type AgendaFilter = 'all' | 'unassigned' | string;
 
-const statusMeta = {
-  completed: {
-    label: 'OK',
-    className: 'bg-line-soft text-success border-line',
-  },
-  'in-progress': {
-    label: 'En curso',
-    className: 'bg-line-soft text-ink-2 border-line',
-  },
-  pending: {
-    label: 'Pendiente',
-    className: 'bg-line-soft text-warning border-line',
-  },
-} satisfies Record<Task['status'], { label: string; className: string }>;
-
 function AgendaTaskCard({ task, onTaskClick }: { task: Task; onTaskClick: (task: Task) => void }) {
-  const meta = statusMeta[task.status];
-
   return (
     <button
       type="button"
@@ -62,9 +46,7 @@ function AgendaTaskCard({ task, onTaskClick }: { task: Task; onTaskClick: (task:
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-start justify-between gap-2">
             <h3 className="line-clamp-2 text-sm font-semibold text-ink">{task.property}</h3>
-            <Badge variant="outline" className={cn('shrink-0 text-[10px]', meta.className)}>
-              {meta.label}
-            </Badge>
+            <TaskStatusBadge status={task.status} showLabel />
           </div>
           <div className="space-y-1 text-xs text-muted-foreground">
             <p className="flex items-center gap-1.5">
