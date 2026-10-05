@@ -42,9 +42,7 @@ interface DesktopManagerDashboardProps {
   onOpenBatchModal: () => void;
   showRouteV2: boolean;
   showWorkloadWidget: boolean;
-  showLinenWidget: boolean;
   workloadWidget: React.ReactNode;
-  linenWidget: React.ReactNode;
 }
 
 const ComponentLoader = () => (
@@ -61,9 +59,7 @@ const DesktopManagerDashboard = ({
   onOpenBatchModal,
   showRouteV2,
   showWorkloadWidget,
-  showLinenWidget,
   workloadWidget,
-  linenWidget,
 }: DesktopManagerDashboardProps) => {
   const navigate = useNavigate();
 
@@ -137,7 +133,7 @@ const DesktopManagerDashboard = ({
           </section>
         )}
 
-        <div className="grid gap-6 xl:grid-cols-2">
+        <div className="space-y-6">
           <section className="rounded-lg border border-line bg-white shadow-sm">
             <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
               <div>
@@ -194,13 +190,6 @@ const DesktopManagerDashboard = ({
             </div>
           </section>
 
-          {showLinenWidget ? (
-            <Suspense fallback={<ComponentLoader />}>{linenWidget}</Suspense>
-          ) : (
-            <section className="rounded-lg border border-line bg-white p-4 text-sm text-ink-3 shadow-sm">
-              Sin acceso al control de mudas.
-            </section>
-          )}
         </div>
       </div>
     </div>

@@ -16,7 +16,6 @@ import DesktopManagerDashboard from './DesktopManagerDashboard';
 import { MobileManagerDashboard } from './MobileManagerDashboard';
 import { AttentionWidget } from '@/features/attention/AttentionWidget';
 
-const LinenControlWidget = lazy(() => import('./components/LinenControlWidget').then((module) => ({ default: module.LinenControlWidget })));
 const WorkloadWidget = lazy(() => import('@/components/workload/WorkloadWidget'));
 
 const ComponentLoader = () => (
@@ -123,15 +122,9 @@ export const ManagerDashboard = () => {
           onOpenBatchModal={handleOpenBatchModal}
           showRouteV2={showRouteV2}
           showWorkloadWidget={canAccessModule('workers')}
-          showLinenWidget={canAccessModule('reports')}
           workloadWidget={
             <Suspense fallback={<ComponentLoader />}>
               <WorkloadWidget />
-            </Suspense>
-          }
-          linenWidget={
-            <Suspense fallback={<ComponentLoader />}>
-              <LinenControlWidget />
             </Suspense>
           }
         />
@@ -176,9 +169,7 @@ export const ManagerDashboard = () => {
         onOpenBatchModal={handleOpenBatchModal}
         showRouteV2={showRouteV2}
         showWorkloadWidget={canAccessModule('workers')}
-        showLinenWidget={canAccessModule('reports')}
         workloadWidget={<WorkloadWidget />}
-        linenWidget={<LinenControlWidget />}
       />
 
       <CreateTaskModal

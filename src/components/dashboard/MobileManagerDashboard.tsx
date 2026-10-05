@@ -49,9 +49,7 @@ interface MobileManagerDashboardProps {
   onOpenBatchModal: () => void;
   showRouteV2: boolean;
   showWorkloadWidget: boolean;
-  showLinenWidget: boolean;
   workloadWidget?: ReactNode;
-  linenWidget?: ReactNode;
 }
 
 const statusMeta = {
@@ -118,9 +116,7 @@ export function MobileManagerDashboard({
   onOpenBatchModal,
   showRouteV2,
   showWorkloadWidget,
-  showLinenWidget,
   workloadWidget,
-  linenWidget,
 }: MobileManagerDashboardProps) {
   const navigate = useNavigate();
   const visibleTasks = todayTasks.slice(0, 8);
@@ -308,10 +304,9 @@ export function MobileManagerDashboard({
           </Card>
         )}
 
-        {(showWorkloadWidget || showLinenWidget) && (
+        {showWorkloadWidget && (
           <section className="space-y-3">
             {showWorkloadWidget && workloadWidget}
-            {showLinenWidget && linenWidget}
           </section>
         )}
       </div>
