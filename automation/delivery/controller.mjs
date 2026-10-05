@@ -25,6 +25,18 @@ export function assertProduction(deployments, baseFingerprint, cfg = config) {
   }
   assert.equal(deployments[0].id, deployments[1].id, 'Los dominios sirven versiones distintas');
 }
+export function assertTransition(deployments, expected, baseFingerprint, commit, sourceFingerprint, cfg = config) {
+  assert.equal(expected.projectId,cfg.projectId); assert.equal(expected.readyState,'READY');
+  assert.equal(expected.meta?.limpatexCommit,commit); assert.equal(expected.meta?.limpatexSourceFingerprint,sourceFingerprint);
+  if(deployments.every(d=>d.id!==expected.id)) return assertProduction(deployments,baseFingerprint,cfg);
+  for(const d of deployments){
+    if(d.id===expected.id){ assert.equal(d.projectId,cfg.projectId); assert.equal(d.readyState,'READY'); }
+    else assertProduction([d,d],baseFingerprint,cfg);
+  }
+}
+export function entryAssets(html) {
+  return [...html.matchAll(/(?:src|href)="([^" ]*\/assets\/[^" ]+\.(?:js|css))"/g)].map(m=>m[1]);
+}
 async function request(url, method = 'GET', body, token = process.env.GH_TOKEN) {
   const response = await fetch(url, {method, headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
   const text = await response.text();
@@ -95,7 +107,12 @@ async function preDeploy() {
   assert.equal(git(repo, ['rev-parse', 'HEAD']), sha);
   assert.equal(fingerprint(repo), process.env.RELEASE_FINGERPRINT);
   const control = path.join(workspace, 'control');
-  assertProduction(await live(), process.env.PRODUCTION_FINGERPRINT || fingerprint(control));
+  const deployments=await live();
+  const baseFingerprint=process.env.PRODUCTION_FINGERPRINT || fingerprint(control);
+  if(process.env.RELEASE_URL){
+    const expected=await vc(`/v13/deployments/${process.env.RELEASE_URL.replace(/^https?:\/\//,'').replace(/\/$/,'')}`);
+    assertTransition(deployments,expected,baseFingerprint,sha,process.env.RELEASE_FINGERPRINT);
+  } else assertProduction(deployments,baseFingerprint);
 }
 export function deploymentBody(commit, sourceFingerprint, cfg = config) {
   assert.match(commit, /^[a-f0-9]{40}$/);
@@ -165,7 +182,20 @@ async function recover() {
   git(repo,['checkout','--detach',`${pr.merge_commit_sha}^`]);
   const productionFingerprint=fingerprint(repo);
   git(repo,['checkout','--detach',main]);
-  assertProduction(await live(),productionFingerprint);
+  const deployments=await live();
+  if(deployments.every(d=>d.meta?.limpatexSourceFingerprint===currentFingerprint)){
+    assertProduction(deployments,currentFingerprint);
+    const deployedCommit=deployments[0].meta.limpatexCommit;
+    assert.match(deployedCommit,/^[a-f0-9]{40}$/);
+    git(repo,['merge-base','--is-ancestor',deployedCommit,main]);
+    git(repo,['checkout','--detach',deployedCommit]);
+    assert.equal(fingerprint(repo),currentFingerprint);
+    git(repo,['checkout','--detach',main]);
+    output('verifyOnly','true'); output('url','https://'+deployments[0].url);
+    output('commit',deployedCommit); output('fingerprint',currentFingerprint);
+    return;
+  }
+  assertProduction(deployments,productionFingerprint);
   output('commit',main); output('fingerprint',currentFingerprint); output('productionFingerprint',productionFingerprint);
 }
 async function verifyDeployment() {
@@ -182,7 +212,7 @@ async function verifyDeployment() {
     const response = await fetch('https://' + domain, {cache:'no-store'});
     assert.equal(response.status,200);
     const html = await response.text();
-    const assets = [...html.matchAll(/(?:src|href)="([^" ]+\/assets\/[^" ]+\.(?:js|css))"/g)].map(m=>m[1]);
+    const assets = entryAssets(html);
     assert(assets.length >= 2, 'Faltan assets de la aplicación');
     for (const asset of assets) assert.equal((await fetch(new URL(asset,'https://'+domain))).status,200);
     pages.push(assets.sort().join('\n'));
