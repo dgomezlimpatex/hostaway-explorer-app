@@ -5,20 +5,17 @@ import { es } from 'date-fns/locale';
 import {
   AlertTriangle,
   ArrowRight,
-  CalendarDays,
   CheckCircle2,
   Clock3,
   Layers3,
   Plus,
   Route,
-  Sparkles,
   Users,
 } from 'lucide-react';
 
 import { SedeSelector } from '@/components/sede/SedeSelector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { cn } from '@/lib/utils';
 import { Task } from '@/types/calendar';
@@ -77,13 +74,10 @@ const ComponentLoader = () => (
   </div>
 );
 
-const formatPercent = (value: number) => `${value > 0 ? '+' : ''}${value}%`;
-
 const DesktopManagerDashboard = ({
   attentionWidget,
   todayTasks,
   unassignedTasks,
-  monthlyMetrics,
   pendingIncidents,
   incidentStats,
   onTaskClick,
@@ -97,10 +91,6 @@ const DesktopManagerDashboard = ({
 }: DesktopManagerDashboardProps) => {
   const navigate = useNavigate();
 
-  const completedToday = todayTasks.filter((task) => task.status === 'completed').length;
-  const inProgressToday = todayTasks.filter((task) => task.status === 'in-progress').length;
-  const pendingToday = todayTasks.filter((task) => task.status === 'pending').length;
-  const progressToday = todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0;
   const activeIncidents = (incidentStats?.open ?? 0) + (incidentStats?.in_progress ?? 0);
 
   const sortedTodayTasks = [...todayTasks].sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -119,7 +109,7 @@ const DesktopManagerDashboard = ({
       className: 'border-line bg-surface text-ink-2 hover:bg-paper',
     },
     {
-      title: 'Tareas multiples',
+      title: 'Tareas múltiples',
       description: 'Planificar en lote',
       icon: Layers3,
       onClick: onOpenBatchModal,
@@ -134,136 +124,37 @@ const DesktopManagerDashboard = ({
     }] : []),
   ];
 
-  const healthCards = [
-    {
-      label: 'Tareas hoy',
-      value: todayTasks.length,
-      detail: `${completedToday} completadas`,
-      icon: CalendarDays,
-      accent: 'text-ink-2 bg-surface border-line',
-    },
-    {
-      label: 'Sin asignar',
-      value: unassignedTasks.length,
-      detail: unassignedTasks.length > 0 ? 'requieren revision' : 'todo cubierto',
-      icon: Users,
-      accent: unassignedTasks.length > 0 ? 'text-warning bg-surface border-line' : 'text-success bg-surface border-line',
-    },
-    {
-      label: 'Incidencias',
-      value: pendingIncidents,
-      detail: pendingIncidents > 0 ? 'pendientes' : 'sin alertas',
-      icon: AlertTriangle,
-      accent: pendingIncidents > 0 ? 'text-danger bg-surface border-line' : 'text-success bg-surface border-line',
-    },
-    {
-      label: 'Mes actual',
-      value: monthlyMetrics.currentMonth,
-      detail: `${formatPercent(monthlyMetrics.percentageChange)} vs mes pasado`,
-      icon: CheckCircle2,
-      accent: monthlyMetrics.isPositive ? 'text-success bg-surface border-line' : 'text-danger bg-surface border-line',
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-paper px-6 py-6">
       <div className="mx-auto max-w-[1500px] space-y-6">
-        <section className="rounded-lg border border-line bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-3xl">
-              <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-2">
-                <Sparkles className="h-4 w-4" />
-                Centro de mando operativo
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-ink">
-                Dashboard de gestion
-              </h1>
-              <p className="mt-1 text-sm text-ink-3">
-                {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-line bg-surface/70 p-3">
+        <section aria-label="Sede activa y acciones" className="rounded-lg border border-line bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="shrink-0">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-2">
                 Sede activa
               </p>
               <SedeSelector />
             </div>
-          </div>
 
-          <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {healthCards.map((card) => {
-                const Icon = card.icon;
+            <div className="flex flex-wrap gap-2">
+              {actionCards.map((action) => {
+                const Icon = action.icon;
 
                 return (
-                  <div key={card.label} className={cn('rounded-lg border p-3', card.accent)}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-75">
-                          {card.label}
-                        </p>
-                        <p className="mt-1 text-2xl font-semibold tabular-nums">{card.value}</p>
-                        <p className="mt-0.5 text-xs font-medium opacity-80">{card.detail}</p>
-                      </div>
-                      <Icon className="h-4 w-4 opacity-80" />
-                    </div>
-                  </div>
+                  <button
+                    key={action.title}
+                    type="button"
+                    onClick={action.onClick}
+                    className={cn(
+                      'flex min-h-12 items-center gap-2 rounded-lg border px-4 py-3 text-left text-sm font-semibold transition-colors',
+                      action.className,
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{action.title}</span>
+                  </button>
                 );
               })}
-            </div>
-
-            <div className="rounded-lg bg-ink p-4 text-white">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-200">
-                    Pulso del dia
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold">{progressToday}% completado</h2>
-                </div>
-                <div className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-right">
-                  <p className="text-xl font-semibold tabular-nums">{completedToday}/{todayTasks.length}</p>
-                  <p className="text-[11px] text-ink-4">tareas</p>
-                </div>
-              </div>
-
-              <Progress value={progressToday} className="mt-3 h-1.5 bg-white/15 [&>div]:bg-line" />
-
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-lg bg-white/10 px-3 py-2">
-                  <p className="text-lg font-semibold tabular-nums">{pendingToday}</p>
-                  <p className="text-[11px] text-ink-4">pendientes</p>
-                </div>
-                <div className="rounded-lg bg-white/10 px-3 py-2">
-                  <p className="text-lg font-semibold tabular-nums">{inProgressToday}</p>
-                  <p className="text-[11px] text-ink-4">en curso</p>
-                </div>
-                <div className="rounded-lg bg-white/10 px-3 py-2">
-                  <p className="text-lg font-semibold tabular-nums">{urgentUnassigned.length}</p>
-                  <p className="text-[11px] text-ink-4">criticas</p>
-                </div>
-              </div>
-
-              <div className={cn('mt-3 grid gap-2', showRouteV2 ? 'grid-cols-2' : 'grid-cols-3')}>
-                {actionCards.map((action) => {
-                  const Icon = action.icon;
-
-                  return (
-                    <button
-                      key={action.title}
-                      type="button"
-                      onClick={action.onClick}
-                      className={cn(
-                        'flex min-h-12 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors',
-                        action.className,
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{action.title}</span>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
           </div>
         </section>
