@@ -62,3 +62,21 @@ Ejemplo de revisión externa (el script añade version, scope y digest):
 ```
 
 El filtro admite código de aplicación, recursos públicos, documentación y pruebas Node. Bloquea rutas y patrones evidentes de efectos reservados, credenciales, dependencias y configuración. Esta detección es conservadora: puede rechazar un cambio inocuo y no demuestra por sí sola la ausencia de todos los efectos indirectos. La revisión honesta del agente es obligatoria; build y pruebas no garantizan ausencia de errores. Un archivo protegido no se renombra para eludirlo. Las revisiones y pruebas quedan en GitHub para trazabilidad; Dani no tiene que redactarlas ni ejecutar comandos.
+
+## Publicaciones con revisión específica: reservar el mismo turno
+
+También usan la cola `limpatex-production-delivery`, mediante `limpatex-reviewed-release.yml`. Dani conserva las autorizaciones específicas; esta coordinación no autoriza SQL, datos, seguridad ni correos por sí sola. El agente realiza estos pasos:
+
+1. Preparar la PR propia, basada en main vigente, revisar el paquete completo y ejecutar las pruebas pertinentes, incluidos backend y casos operativos locales si corresponde. Guardar la autorización específica y resultados en la PR/auditoría sin secretos ni datos reales. Esperar CI correcto y registrar `limpatex/verified-candidate` success en el head exacto solo después de la revisión real. No cambiar ese head después de reservar.
+2. Guardar una nota breve de la autorización específica fuera del repo. Ejecutar `node automation/delivery/reserve.mjs start ruta-reserva.json NUMERO_PR autorizacion.txt`. El archivo de reserva queda fuera de Git. Ejecutar `check ruta-reserva.json` hasta que responda `active`. Si la PR dejó de estar al día mientras esperaba, reconciliar, comprobar de nuevo y reservar con su nuevo head. `waiting` NO es permiso para tocar producción.
+3. Con el turno activo, repetir `check` inmediatamente antes de cada operación productiva. Ejecutar únicamente las operaciones que ya tengan autorización específica. Incorporar la PR con su código revisado y protección vigente. La reserva expira treinta minutos después de concederse: no operar con una reserva caducada. Los cambios de datos requieren su propia recuperación; no se revierten automáticamente.
+4. Ejecutar `node automation/delivery/reserve.mjs ready ruta-reserva.json`. Exige PR incorporada, mismo head validado y main igual al commit incorporado. El workflow construye ese commit, promueve y verifica ambos dominios y assets; solo entonces cierra el turno. El chat NO publica Vercel por su cuenta. Seguir el workflow y comunicar el resultado real.
+5. Si se abandona antes de ready, usar `cancel ruta-reserva.json` y revisar el estado antes de continuar. Un fallo, cancelación o expiración deja una reserva sin cierre correcto y bloquea entregas nuevas. Tras terminar el workflow y revisar/reparar los estados de backend, main y producción, guardar un informe de auditoría sin PII y ejecutar `reconcile ruta-reserva.json informe.md`. Registra su hash y libera la reserva; no realiza reparaciones, migraciones ni rollback automáticamente. No declarar reconciliado un efecto pendiente.
+
+Los cambios realizados por herramientas ajenas a este protocolo no pueden bloquearse físicamente desde GitHub. Las instrucciones obligan a los chats a reservar turno; si alguien publica por fuera, se mantiene la comprobación de deriva y el bloqueo. No ampliar credenciales para intentar impedirlo.
+
+## Espera automática por una publicación identificada
+
+Antes de validar, se fija main. Si los dos dominios aún no coinciden con su fuente, solo se espera cuando su fuente actual corresponde a commits antecesores verificados y Vercel contiene un deployment del proyecto con ese main y su huella exacta, en estado QUEUED/INITIALIZING/BUILDING/READY. Reconsulta cada diez segundos hasta diez minutos y continúa sola cuando ambos dominios coinciden. No crea, promueve ni sustituye deployments durante esa espera.
+
+Si main avanza, la versión es desconocida, el deployment falla/se cancela o vence la espera, se detiene conservando la propuesta. Reservas manuales interrumpidas también bloquean nuevas entregas aunque la huella de frontend coincida: hay que revisar posibles efectos de backend. La espera reconoce publicaciones en curso; no inventa que una diferencia arbitraria sea segura.

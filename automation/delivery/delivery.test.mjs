@@ -8,6 +8,41 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {validateReview, reservedEffects, changeDigest, verifyDelivery} from './scope.mjs';
 import {runOffline} from './offline.mjs';
+import {productionDecision,waitForProduction,assertManualPr,assertReadyRelease,reservationSignal} from './coordination.mjs';
+
+const oldLive={id:'old',projectId:'project',readyState:'READY',source:'old'};
+const moving={main:'commit',live:[oldLive,oldLive],knownLive:true,target:{projectId:'project',readyState:'BUILDING',meta:{limpatexCommit:'commit',limpatexSourceFingerprint:'new'}}};
+test('espera solo publicaciones identificadas; rechaza deriva, fallo y main nuevo',()=>{
+  assert.equal(productionDecision(moving,'commit','new','project'),'wait');
+  for(const snapshot of [{...moving,knownLive:false},{...moving,target:null},{...moving,main:'other'},{...moving,target:{...moving.target,readyState:'ERROR'}},{...moving,target:{...moving.target,meta:{limpatexCommit:'other',limpatexSourceFingerprint:'new'}}}]) assert.throws(()=>productionDecision(snapshot,'commit','new','project'));
+});
+test('la espera reintenta sin escribir y termina cuando ambos dominios coinciden',async()=>{
+  let reads=0,waits=0;
+  const live={...oldLive,id:'new',source:'new'};
+  await waitForProduction({commit:'commit',source:'new',project:'project',snapshot:async()=>++reads===1?moving:{main:'commit',live:[live,live]},sleep:async()=>{waits++;},log:()=>{}});
+  assert.equal(reads,2);assert.equal(waits,1);
+  await assert.rejects(waitForProduction({commit:'commit',source:'new',project:'project',snapshot:async()=>moving,sleep:async()=>{},attempts:2,log:()=>{}}),/diez minutos/);
+  await assert.rejects(waitForProduction({commit:'commit',source:'new',project:'project',snapshot:async()=>({...moving,knownLive:false}),sleep:async()=>{throw new Error('No debe esperar');},log:()=>{}}),/inesperada/);
+});
+test('reserva exige propuesta propia, commit exacto y validación vigente',()=>{
+  const pr={state:'open',draft:false,user:{login:'dani'},head:{sha:'head',ref:'codex/reviewed',repo:{full_name:'dani/app'}},base:{ref:'main'}};
+  assertManualPr(pr,'dani','dani/app','head');
+  assert.throws(()=>assertManualPr(pr,'outsider','dani/app','head'));
+  assert.throws(()=>assertManualPr(pr,'dani','dani/app','changed'));
+  assert.throws(()=>assertReadyRelease(pr,'head','main',[],'verified'));
+  const merged={...pr,merged:true,merge_commit_sha:'main'};
+  assert.equal(assertReadyRelease(merged,'head','main',[{context:'verified',state:'success'}],'verified'),'main');
+  assert.throws(()=>assertReadyRelease(merged,'head','main',[{context:'verified',state:'failure'},{context:'verified',state:'success'}],'verified'));
+  const signal={creator:{login:'dani'},state:'in_progress',description:'Limpatex ready:'+'a'.repeat(40)};
+  assert.equal(reservationSignal(signal,'dani').commit,'a'.repeat(40));
+  assert.equal(reservationSignal(signal,'outsider'),null);
+});
+test('automática, recuperación y revisada comparten cola sin cancelarse',()=>{
+  for(const name of ['limpatex-delivery','limpatex-recover','limpatex-reviewed-release']) {
+    const yaml=fs.readFileSync(new URL(`../../.github/workflows/${name}.yml`,import.meta.url),'utf8');
+    assert.match(yaml,/group: limpatex-production-delivery/);assert.match(yaml,/queue: max/);assert.match(yaml,/cancel-in-progress: false/);
+  }
+});
 import {eligible, assertProduction, deploymentBody, assertTransition, entryAssets, cachedFileHashes, verifyPage} from './controller.mjs';
 const code = 'export const View = () => <button className="p-2" onClick={() => save(1)}>Guardar</button>;';
 test('permite textos y clases sin alterar acciones',()=>assert.equal(canonicalTsx(ts,code),canonicalTsx(ts,code.replace('p-2','p-4').replace('Guardar','Aceptar'))));

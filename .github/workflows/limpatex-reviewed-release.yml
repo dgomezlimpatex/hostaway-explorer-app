@@ -1,0 +1,96 @@
+name: Limpatex reviewed release
+run-name: Reviewed PR ${{ inputs.pr_number }} / ${{ inputs.claim }}
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR revisada con autorización específica'
+        required: true
+      head_sha:
+        description: 'Commit exacto revisado de la PR'
+        required: true
+      claim:
+        description: 'Identificador de reserva generado por Codex'
+        required: true
+      authorization:
+        description: 'Autorización específica de Dani, sin secretos ni datos personales'
+        required: true
+permissions:
+  contents: read
+  deployments: write
+concurrency:
+  group: limpatex-production-delivery
+  queue: max
+  cancel-in-progress: false
+jobs:
+  reviewed-release:
+    if: vars.LIMPATEX_DELIVERY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          path: control
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - id: hold
+        name: Reserve shared queue before manual production operations
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: node control/automation/delivery/controller.mjs manual-hold
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.hold.outputs.commit }}
+          path: release
+          persist-credentials: false
+      - name: Confirm reviewed source and previous production
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_COMMIT: ${{ steps.hold.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.hold.outputs.fingerprint }}
+          PRODUCTION_FINGERPRINT: ${{ steps.hold.outputs.productionFingerprint }}
+        run: node control/automation/delivery/controller.mjs pre-deploy release
+      - id: deploy
+        name: Build exactly the reviewed commit
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_COMMIT: ${{ steps.hold.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.hold.outputs.fingerprint }}
+        run: node control/automation/delivery/controller.mjs create-deployment release
+      - name: Recheck before promotion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_COMMIT: ${{ steps.hold.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.hold.outputs.fingerprint }}
+          PRODUCTION_FINGERPRINT: ${{ steps.hold.outputs.productionFingerprint }}
+          RELEASE_URL: ${{ steps.deploy.outputs.url }}
+        run: node control/automation/delivery/controller.mjs pre-deploy release
+      - name: Promote reviewed deployment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_URL: ${{ steps.deploy.outputs.url }}
+          RELEASE_COMMIT: ${{ steps.hold.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.hold.outputs.fingerprint }}
+        run: node control/automation/delivery/controller.mjs promote-deployment
+      - name: Verify both domains and assets
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_URL: ${{ steps.deploy.outputs.url }}
+          RELEASE_COMMIT: ${{ steps.hold.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.hold.outputs.fingerprint }}
+        run: node control/automation/delivery/controller.mjs verify-deployment
+      - name: Close reservation with real outcome
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESERVATION_ID: ${{ steps.hold.outputs.reservation }}
+          RELEASE_RESULT: ${{ job.status }}
+        run: node control/automation/delivery/controller.mjs manual-close

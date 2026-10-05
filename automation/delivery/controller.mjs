@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {fingerprint} from './guard.mjs';
+import {waitForProduction,assertManualPr,assertReadyRelease,reservationSignal} from './coordination.mjs';
 
 const config = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
 const command = process.argv[2];
@@ -59,7 +60,7 @@ export function cachedFileHashes(nodes) {
   return hashes;
 }
 async function request(url, method = 'GET', body, token = process.env.GH_TOKEN) {
-  const response = await fetch(url, {method, headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
+  const response = await fetch(url, {method, headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined,signal:AbortSignal.timeout(30000)});
   const text = await response.text();
   if (!response.ok) throw new Error(`API ${method} ${new URL(url).pathname}: ${response.status} ${text.slice(0,300)}`);
   return text ? JSON.parse(text) : null;
@@ -70,12 +71,55 @@ const git = (repo, args) => execFileSync('git', ['-C', repo, ...args], {encoding
 function output(key, value) { fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`); }
 async function live() { return Promise.all(config.domains.map(d => vc(`/v13/deployments/${d}`))); }
 async function currentMain() { return (await gh(`/git/ref/heads/${config.baseBranch}`)).object.sha; }
+async function assertManualReleasesClosed() {
+  for(let page=1;page<=10;page++) {
+    const markers=await gh(`/deployments?environment=limpatex-release-reservation&per_page=100&page=${page}`);
+    for(const marker of markers.filter(m=>m.payload?.kind==='limpatex-manual-v1')) {
+      const latest=(await gh(`/deployments/${marker.id}/statuses`))[0];
+      assert(['success','inactive'].includes(latest?.state),`Reserva manual ${marker.id} sin cerrar correctamente; revisar backend, GitHub y Vercel antes de nuevas entregas`);
+    }
+    if(markers.length<100) return;
+  }
+  throw new Error('Demasiadas reservas para comprobar: revisar el historial antes de publicar');
+}
+async function awaitProduction(repo,main) {
+  const desired=fingerprint(repo),sources=new Map([[main,desired]]);
+  async function known(d) {
+    if(d.projectId!==config.projectId || d.readyState!=='READY') return false;
+    if(d.id===config.initialDeployment && !d.meta?.limpatexSourceFingerprint) return true;
+    const commit=d.meta?.limpatexCommit;
+    if(!/^[a-f0-9]{40}$/.test(commit || '')) return false;
+    try {
+      git(repo,['fetch','origin',commit]);git(repo,['merge-base','--is-ancestor',commit,main]);
+      if(!sources.has(commit)) {
+        try {git(repo,['checkout','--detach',commit]);sources.set(commit,fingerprint(repo));}
+        finally {git(repo,['checkout','--detach',main]);}
+      }
+      return sources.get(commit)===d.meta?.limpatexSourceFingerprint;
+    } catch {return false;}
+  }
+  await waitForProduction({commit:main,source:desired,project:config.projectId,snapshot:async()=>{
+    const deployments=await live();
+    const items=deployments.map(d=>({...d,source:d.meta?.limpatexSourceFingerprint || (d.id===config.initialDeployment?config.initialFingerprint:null)}));
+    if(items.every(d=>d.source===desired) && items[0].id===items[1].id) return {main:await currentMain(),live:items};
+    let knownLive=true;
+    for(const d of deployments) if(!await known(d)) knownLive=false;
+    if(!knownLive) return {main:await currentMain(),live:items,knownLive:false};
+    const list=await request(`https://api.vercel.com/v6/deployments?projectId=${config.projectId}&teamId=${config.teamId}&limit=20`,'GET',undefined,process.env.VERCEL_TOKEN);
+    const latest=list.deployments.find(d=>d.meta?.limpatexCommit===main && d.meta?.limpatexSourceFingerprint===desired);
+    const target=latest?await vc(`/v13/deployments/${latest.uid}`):null;
+    return {main:await currentMain(),live:items,knownLive,target};
+  }});
+}
 async function select() {
+  await assertManualReleasesClosed();
   const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH));
   const number = Number(event.inputs?.pr_number || event.pull_request?.number || 0);
   // A recovery/manual dispatch without a PR checks configuration and does not publish.
   if (!number) {
-    assertProduction(await live(), fingerprint(path.join(workspace, 'control')));
+    const repo=path.join(workspace,'control');
+    const main=await currentMain();git(repo,['fetch','origin',main]);git(repo,['checkout','--detach',main]);
+    await awaitProduction(repo,main);
     output('eligible', 'false');
     console.log('Conexiones y base de producción verificadas. Sin PR: no hay publicación.');
     return;
@@ -86,8 +130,68 @@ async function select() {
   const repo = path.join(workspace, 'control');
   git(repo, ['fetch', 'origin', main]);
   git(repo, ['checkout', '--detach', main]);
-  assertProduction(await live(), fingerprint(repo));
+  await awaitProduction(repo,main);
+  const latest=await gh(`/pulls/${number}`);
+  if(!eligible(latest)) {output('eligible','false');return;}
+  assert.equal(latest.head.sha,pr.head.sha,'La propuesta cambió durante la espera; reintentar su versión nueva');
   output('eligible', 'true'); output('number', number); output('head', pr.head.sha); output('base', main);
+}
+async function manualHold() {
+  const event=JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH));
+  const input=event.inputs;
+  assert.equal(process.env.GITHUB_ACTOR,config.owner,'Solo Dani puede reservar una entrega revisada');
+  assert.match(input.claim,/^[a-f0-9-]{36}$/);
+  assert.match(input.head_sha,/^[a-f0-9]{40}$/);
+  assert(typeof input.authorization==='string' && input.authorization.trim().length>=20 && input.authorization.length<=500,'Registrar autorización específica sin secretos');
+  const number=Number(input.pr_number),pr=await gh(`/pulls/${number}`);
+  assertManualPr(pr,config.owner,config.repository,input.head_sha);
+  assert(!pr.merged,'Reservar antes de incorporar o tocar producción');
+  await assertManualReleasesClosed();
+  const repo=path.join(workspace,'control'),main=await currentMain();
+  git(repo,['fetch','origin',main]);git(repo,['checkout','--detach',main]);await awaitProduction(repo,main);
+  git(repo,['fetch','origin',input.head_sha]);
+  git(repo,['merge-base','--is-ancestor',main,input.head_sha]);
+  const reviewedStatuses=(await gh(`/commits/${input.head_sha}/status`)).statuses;
+  assert.equal(reviewedStatuses.find(s=>s.context===config.statusContext)?.state,'success','Revisar y validar el commit exacto antes de reservar');
+  const reviewedChecks=(await gh(`/commits/${input.head_sha}/check-runs`)).check_runs;
+  assert.equal(reviewedChecks.find(c=>c.name==='delivery-checks')?.conclusion,'success','Faltan comprobaciones vigentes de la propuesta revisada');
+  const source=fingerprint(repo),expiresAt=Date.now()+30*60*1000;
+  const reservation=await gh('/deployments','POST',{ref:main,auto_merge:false,required_contexts:[],environment:'limpatex-release-reservation',transient_environment:true,production_environment:false,payload:{kind:'limpatex-manual-v1',claim:input.claim,number,head:input.head_sha,base:main,source,expiresAt,runId:process.env.GITHUB_RUN_ID,authorization:input.authorization}});
+  output('reservation',reservation.id);
+  const url=`https://github.com/${config.repository}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+  await gh(`/deployments/${reservation.id}/statuses`,'POST',{state:'in_progress',description:'Limpatex reservation active',log_url:url,auto_inactive:false});
+  console.log(`Turno manual ${reservation.id} disponible durante treinta minutos. No concede permisos adicionales.`);
+  while(Date.now()<expiresAt) {
+    const statuses=await gh(`/deployments/${reservation.id}/statuses`);
+    const signal=reservationSignal(statuses[0],config.owner);
+    if(signal?.cancel) throw new Error('La conversación canceló la reserva manual');
+    if(signal?.commit) {
+      const current=await gh(`/pulls/${number}`),head=current.head.sha;
+      assertManualPr(current,config.owner,config.repository,input.head_sha);
+      const currentMainSha=await currentMain();
+      const checks=(await gh(`/commits/${head}/status`)).statuses;
+      assertReadyRelease(current,input.head_sha,currentMainSha,checks,config.statusContext);
+      assert.equal(currentMainSha,signal.commit);
+      git(repo,['fetch','origin',currentMainSha]);
+      // Inspect source without replacing the trusted control scripts for later steps.
+      let targetSource;
+      try {git(repo,['checkout','--detach',currentMainSha]);targetSource=fingerprint(repo);}
+      finally {git(repo,['checkout','--detach',main]);}
+      assertProduction(await live(),source);
+      output('commit',currentMainSha);output('fingerprint',targetSource);output('productionFingerprint',source);
+      return;
+    }
+    const current=await gh(`/pulls/${number}`);assertManualPr(current,config.owner,config.repository,input.head_sha);
+    const actualMain=await currentMain();
+    assert(actualMain===main || current.merged && actualMain===current.merge_commit_sha,'Otra entrega cambió main durante la reserva');
+    assertProduction(await live(),source);
+    await new Promise(r=>setTimeout(r,10000));
+  }
+  throw new Error('La reserva manual expiró; detener operaciones, revisar el estado real y reservar de nuevo');
+}
+async function manualClose() {
+  const id=Number(process.env.RESERVATION_ID);if(!id) return;
+  await gh(`/deployments/${id}/statuses`,'POST',{state:process.env.RELEASE_RESULT==='success'?'success':'failure',description:process.env.RELEASE_RESULT==='success'?'Publicación revisada y dominios comprobados':'Reserva interrumpida: revisar GitHub, Vercel y backend antes de continuar',auto_inactive:false});
 }
 async function merge() {
   const result = JSON.parse(fs.readFileSync(path.join(workspace, 'artifacts', 'verification.json')));
@@ -200,6 +304,7 @@ async function promoteDeployment() {
   throw new Error('No se confirmó el cambio de los dos dominios');
 }
 async function recover() {
+  await assertManualReleasesClosed();
   const pr=await gh(`/pulls/${Number(process.env.PR_NUMBER)}`);
   assert(pr.merged && eligible({...pr,state:'open'}), 'Solo recuperar una entrega autorizada ya incorporada');
   const statuses=(await gh(`/commits/${pr.head.sha}/status`)).statuses;
@@ -254,5 +359,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   else if (command === 'create-deployment') await createDeployment();
   else if (command === 'promote-deployment') await promoteDeployment();
   else if (command === 'recover') await recover();
+  else if (command === 'manual-hold') await manualHold();
+  else if (command === 'manual-close') await manualClose();
   else throw new Error('Comando desconocido');
 }

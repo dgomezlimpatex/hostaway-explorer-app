@@ -106,3 +106,12 @@ Dani autoriza permanentemente los commits propios, push de ramas codex/, PR, int
 - Mantener build, tipos de aplicación y Node sin errores nuevos, lint focalizado, pruebas funcionales pertinentes y navegador. La entrada de navegador sin sesión no demuestra todo el flujo autenticado: el agente debe verificar la función solicitada con mocks/datos locales antes de entregar.
 - Conflictos, pruebas fallidas, revisión obsoleta o producción ajena detienen la entrega; resolverlos conservando trabajos y repetir comprobaciones. Autorización no equivale a saltarse verificaciones.
 - Los chats antiguos deben actualizar sus instrucciones y reconciliar su base antes de entregar. Solo comunicar publicado tras comprobar workflow y ambos dominios.
+
+## Coordinación de publicaciones revisadas — 2026-10-05
+
+Dani autoriza coordinar las entregas automáticas y las publicaciones con revisión específica en una cola común. Leer el apartado de reserva en docs/ENTREGA-AUTOMATICA.md.
+
+- Una publicación revisada debe reservar turno con automation/delivery/reserve.mjs ANTES de incorporar a main, ejecutar operaciones productivas autorizadas o publicar. No tocar producción mientras check indique waiting. La reserva no concede autorización para SQL, datos, seguridad, comunicaciones ni otros efectos reservados.
+- Con el turno activo, comprobar su vigencia antes de cada operación productiva, ejecutar solo el alcance específicamente autorizado, validar el commit exacto e incorporar con protección. El comando ready entrega la publicación Vercel al workflow revisado; no desplegar directamente desde el chat ni liberar el turno antes de verificar ambos dominios.
+- La reserva dura treinta minutos para las operaciones locales. Si expira, se cancela o falla: detener operaciones, revisar efectos parciales de backend/GitHub/Vercel y reconciliar; el circuito bloquea nuevas entregas hasta cerrar correctamente la reserva. No reintentar escrituras ni revertir datos automáticamente.
+- La ruta automática espera hasta diez minutos exclusivamente por deployments identificados de la base actual. Errores, cancelaciones, cambios inesperados o ausencia de publicación conocida mantienen el bloqueo. No eludir comprobaciones por esperar ni incorporar otras PR durante un turno ajeno.
