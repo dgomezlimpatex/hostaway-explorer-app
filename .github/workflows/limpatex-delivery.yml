@@ -166,7 +166,10 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           RELEASE_URL: ${{ steps.deploy.outputs.url }}
-        run: vercel promote "$RELEASE_URL" --yes --scope limpatex --token "$VERCEL_TOKEN"
+        run: |
+          vercel promote "$RELEASE_URL" --yes --scope limpatex --token "$VERCEL_TOKEN"
+          vercel alias set "$RELEASE_URL" gestionlimpatex.vercel.app --scope limpatex --token "$VERCEL_TOKEN"
+          vercel alias set "$RELEASE_URL" gestionlimpatex-limpatex.vercel.app --scope limpatex --token "$VERCEL_TOKEN"
       - name: Verify both canonical domains and assets
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

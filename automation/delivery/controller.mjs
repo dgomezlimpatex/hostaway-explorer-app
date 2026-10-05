@@ -59,6 +59,15 @@ async function merge() {
   const result = JSON.parse(fs.readFileSync(path.join(workspace, 'artifacts', 'verification.json')));
   const number = Number(process.env.PR_NUMBER);
   const pr = await gh(`/pulls/${number}`);
+  if (pr.merged && pr.merge_commit_sha) {
+    assert(eligible({...pr, state:'open'}), 'La propuesta no conserva su autorización');
+    assert.equal(await currentMain(), pr.merge_commit_sha, 'Main avanzó después de la incorporación');
+    const mergedCommit = await gh(`/git/commits/${pr.merge_commit_sha}`);
+    assert.equal(mergedCommit.tree.sha, result.tree, 'El código incorporado difiere del candidato validado');
+    assertProduction(await live(), fingerprint(path.join(workspace, 'control')));
+    output('commit', pr.merge_commit_sha); output('fingerprint', result.fingerprint);
+    return;
+  }
   assert(eligible(pr), 'La propuesta dejó de estar autorizada');
   assert.equal(pr.head.sha, process.env.PR_HEAD, 'La propuesta recibió cambios después de validar');
   assert.equal(await currentMain(), result.base, 'Main avanzó: volver a ejecutar sobre la base nueva');
