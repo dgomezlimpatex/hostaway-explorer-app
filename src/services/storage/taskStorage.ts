@@ -113,6 +113,7 @@ const taskStorageConfig = {
     date: row.date,
     clienteId: row.cliente_id,
     propertyId: row.propiedad_id,
+    sedeId: row.sede_id,
     duration: row.duracion,
     cost: row.coste,
     paymentMethod: row.metodo_pago,

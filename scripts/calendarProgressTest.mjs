@@ -25,7 +25,7 @@ try {
   assert.equal(s('pending',[{...started,overall_status:'needs_review'}],['c1']),'in-progress');
   assert.equal(s('completed',[]),'completed');
   assert.equal(s('cancelled',[started]),'cancelled');
-  const fixture={id:'t1',date:'2026-10-05',status:'pending',cleaner_id:'c1',task_reports:[],task_assignments:[]};
+  const fixture={id:'t1',date:'2026-10-05',sede_id:'s1',start_time:'09:00',end_time:'10:00',duracion:1,status:'pending',cleaner_id:'c1',task_reports:[],task_assignments:[]};
   globalThis.calendarFixture=fixture;
   globalThis.calendarSelect='';
   await build({entryPoints:[path.join(repo,'src/services/storage/taskStorage.ts')],bundle:true,platform:'node',format:'esm',outfile:path.join(temp,'storage.mjs'),tsconfig:path.join(repo,'tsconfig.app.json'),plugins:[{name:'offline',setup(b){
@@ -35,7 +35,14 @@ try {
   }}]});
   const {taskStorageService}=await import(pathToFileURL(path.join(temp,'storage.mjs')));
   const read=()=>taskStorageService.getTasks({sedeId:'s1',dateFrom:'2026-10-05',dateTo:'2026-10-05'});
-  assert.equal((await read())[0].calendarStatus,'pending');
+  const initialTask=(await read())[0];
+  assert.equal(initialTask.calendarStatus,'pending');
+  assert.equal(initialTask.sedeId,'s1');
+  await build({entryPoints:[path.join(repo,'src/features/attention/domain.ts')],bundle:true,platform:'node',format:'esm',outfile:path.join(temp,'attention.mjs'),tsconfig:path.join(repo,'tsconfig.app.json')});
+  const {buildAttention}=await import(pathToFileURL(path.join(temp,'attention.mjs')));
+  const at=new Date('2026-10-05T12:00:00+02:00');
+  assert.equal(buildAttention([initialTask],[],'s1',at).groups[0].alerts[0].kind,'missing-report');
+  assert.equal(buildAttention([initialTask],[],'s2',at).groups.length,0);
   fixture.task_reports=[started];
   const task=(await read())[0];
   assert.equal(task.calendarStatus,'in-progress');
