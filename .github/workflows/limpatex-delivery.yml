@@ -87,7 +87,7 @@ jobs:
       - name: Verify app entry in a browser without login
         run: |
           cd candidate
-          npx --no-install playwright install --with-deps chromium
+          npx --no-install playwright install chromium
           cd ..
           python3 -m http.server 8080 --directory candidate/dist > /tmp/limpatex-browser-server.log 2>&1 &
           node control/automation/delivery/smoke.mjs http://127.0.0.1:8080 candidate
@@ -121,8 +121,6 @@ jobs:
         with:
           name: verified-candidate
           path: artifacts
-      - name: Install pinned deploy CLI
-        run: npm install --global vercel@59.26.0
       - id: merge
         name: Incorporate only the verified candidate
         env:
@@ -145,16 +143,11 @@ jobs:
         run: node control/automation/delivery/controller.mjs pre-deploy release
       - id: deploy
         name: Build deployment without moving production aliases
-        working-directory: release
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: team_CfqG1o5AGI4f0ZwEWv6k8qQc
-          VERCEL_PROJECT_ID: prj_ArBhKZEr9xPqgcIoyioylFc9BMk7
           RELEASE_COMMIT: ${{ steps.merge.outputs.commit }}
           RELEASE_FINGERPRINT: ${{ steps.merge.outputs.fingerprint }}
-        run: |
-          URL=$(vercel deploy --prod --skip-domain --yes --scope limpatex --token "$VERCEL_TOKEN" --meta "limpatexCommit=$RELEASE_COMMIT" --meta "limpatexSourceFingerprint=$RELEASE_FINGERPRINT")
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
+        run: node control/automation/delivery/controller.mjs create-deployment
       - name: Recheck before promotion
         env:
           GH_TOKEN: ${{ github.token }}
@@ -166,10 +159,9 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           RELEASE_URL: ${{ steps.deploy.outputs.url }}
-        run: |
-          vercel promote "$RELEASE_URL" --yes --scope limpatex --token "$VERCEL_TOKEN"
-          vercel alias set "$RELEASE_URL" gestionlimpatex.vercel.app --scope limpatex --token "$VERCEL_TOKEN"
-          vercel alias set "$RELEASE_URL" gestionlimpatex-limpatex.vercel.app --scope limpatex --token "$VERCEL_TOKEN"
+          RELEASE_COMMIT: ${{ steps.merge.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.merge.outputs.fingerprint }}
+        run: node control/automation/delivery/controller.mjs promote-deployment
       - name: Verify both canonical domains and assets
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

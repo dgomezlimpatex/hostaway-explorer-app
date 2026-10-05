@@ -29,6 +29,7 @@ Antes de publicar comprueba la huella de fuente de producción y ambos alias. Co
 - `dry_run=true` comprueba una propuesta sin incorporar ni desplegar.
 - Consultar resultados en GitHub Actions. Un fallo de validación conserva main y producción. Si la incorporación termina pero Vercel falla, main puede quedar por delante; revisar/reanudar esa publicación antes de nuevas entregas, sin volver a incorporar la propuesta cerrada.
 - El secreto Vercel se guarda cifrado en GitHub y se limita al proyecto. No copiarlo al repo, al cliente ni a variables VITE.
+- La publicación usa la API del proyecto y el commit exacto de GitHub. Si una entrega quedó incorporada sin publicar, el workflow `limpatex-recover.yml` puede reanudarla por número de PR: exige validación previa, la misma fuente de aplicación y producción sin cambios; no incorpora otra vez la propuesta.
 - No se aplican SQL ni se despliegan funciones de Supabase. Una vista previa utiliza el backend compartido si la app se conecta; las pruebas de esta cola no inician sesión.
 - Los chats que ya estaban abiertos pueden conservar instrucciones antiguas. Deben adoptar este circuito antes de entregar; la configuración no les envía mensajes ni interrumpe su trabajo.
 

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 import {canonicalTsx, checkCss} from './guard.mjs';
-import {eligible, assertProduction} from './controller.mjs';
+import {eligible, assertProduction, deploymentBody} from './controller.mjs';
 const code = 'export const View = () => <button className="p-2" onClick={() => save(1)}>Guardar</button>;';
 test('permite textos y clases sin alterar acciones',()=>assert.equal(canonicalTsx(ts,code),canonicalTsx(ts,code.replace('p-2','p-4').replace('Guardar','Aceptar'))));
 test('bloquea cambios de acciones y argumentos',()=>assert.notEqual(canonicalTsx(ts,code),canonicalTsx(ts,code.replace('save(1)','save(2)'))));
@@ -39,4 +39,13 @@ test('comprueba base de producción y ambos alias',()=>{
 test('admite publicaciones del coordinador con la huella comprobada',()=>{
   const d={...deployment,id:'new',meta:{limpatexSourceFingerprint:'new-source'}};
   assertProduction([d,d],'new-source',cfg);
+});
+test('fija el commit de GitHub y construye sin mover los dominios',()=>{
+  const commit='a'.repeat(40); const body=deploymentBody(commit,'source',cfg);
+  assert.equal(body.project,cfg.projectId);
+  assert.equal(body.gitSource.sha,commit);
+  assert.equal(body.gitSource.ref,commit);
+  assert.equal(body.autoAssignCustomDomains,false);
+  assert.equal(body.meta.limpatexSourceFingerprint,'source');
+  assert.throws(()=>deploymentBody('main','source',cfg));
 });

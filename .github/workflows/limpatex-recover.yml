@@ -1,0 +1,64 @@
+name: Limpatex delivery recovery
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR ya incorporada y validada cuya publicación falló'
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: limpatex-production-delivery
+  queue: max
+  cancel-in-progress: false
+jobs:
+  recover:
+    if: vars.LIMPATEX_DELIVERY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          path: control
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - id: source
+        name: Confirm previously tested source and unchanged production
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: node control/automation/delivery/controller.mjs recover
+      - id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
+        run: node control/automation/delivery/controller.mjs create-deployment
+      - name: Recheck before promotion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
+          PRODUCTION_FINGERPRINT: ${{ steps.source.outputs.productionFingerprint }}
+        run: node control/automation/delivery/controller.mjs pre-deploy control
+      - name: Promote only the previously tested source
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_URL: ${{ steps.deploy.outputs.url }}
+          RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
+        run: node control/automation/delivery/controller.mjs promote-deployment
+      - name: Verify both canonical domains and assets
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_URL: ${{ steps.deploy.outputs.url }}
+          RELEASE_COMMIT: ${{ steps.source.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.source.outputs.fingerprint }}
+        run: node control/automation/delivery/controller.mjs verify-deployment
