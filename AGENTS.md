@@ -94,3 +94,15 @@ Dani ha autorizado preparar y activar el circuito de entrega automática con Git
 - No usar este circuito para SQL, Edge Functions, datos, permisos, seguridad, sincronizaciones ni notificaciones sin autorización específica.
 - Informar de en cola al entregar. Solo afirmar publicado tras verificar el workflow y ambos dominios. Dani puede iniciar más chats mientras la entrega continúa en segundo plano.
 - Los worktrees y chats antiguos deben leer estas instrucciones actualizadas antes de entregar. No publicar ramas antiguas sin reconciliar su base.
+
+
+## Ampliación de entrega automática — 2026-10-05
+
+Dani autoriza permanentemente los commits propios, push de ramas codex/, PR, integración y publicación de los cambios visuales y funcionales que solicite, incluidas nuevas pantallas, funciones y cálculos locales. No pedir confirmación adicional para esas entregas. Esta ampliación prevalece sobre los límites de presentación y publicación manual anteriores; no autoriza mejoras no solicitadas ni cambios pendientes antiguos por el mero hecho de existir.
+
+- Leer docs/ENTREGA-AUTOMATICA.md y usar la cola protegida; no publicar directamente desde cada chat.
+- Las entregas funcionales requieren revisión ligada al diff exacto en .delivery/requests/<tarea>.json y pruebas focalizadas que la cola repite sin red. El agente prepara la revisión, no Dani. No declarar efectos falsos ni eludir bloqueos.
+- Siguen fuera: operaciones sobre datos reales, SQL/esquema y funciones Supabase, permisos, seguridad, autenticación, sincronizaciones/PMS, comunicaciones reales, gastos y configuración de infraestructura. Preparar su resultado revisable y obtener autorización específica si no existe ya para ese alcance. No activar código con estos efectos bajo la etiqueta automática.
+- Mantener build, tipos de aplicación y Node sin errores nuevos, lint focalizado, pruebas funcionales pertinentes y navegador. La entrada de navegador sin sesión no demuestra todo el flujo autenticado: el agente debe verificar la función solicitada con mocks/datos locales antes de entregar.
+- Conflictos, pruebas fallidas, revisión obsoleta o producción ajena detienen la entrega; resolverlos conservando trabajos y repetir comprobaciones. Autorización no equivale a saltarse verificaciones.
+- Los chats antiguos deben actualizar sus instrucciones y reconciliar su base antes de entregar. Solo comunicar publicado tras comprobar workflow y ambos dominios.

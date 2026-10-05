@@ -1,0 +1,21 @@
+{
+  "request": "Dani solicita ampliar la entrega automática a funcionalidades y comprobar el circuito completo",
+  "reason": "Prueba del código real de horarios en memoria; añade solo un test sin modificar la app ni activar efectos externos",
+  "verification": "Orden semanal, horarios particulares, horario vacío, invertido, igual y formato inválido. Se repite sin red en CI",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/deliveryApplicationTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "3fead318abf1b496222acc331aab76cbc882560bd4341d934f6662a6e64f0e9a"
+}

@@ -13,8 +13,8 @@ const github = `https://api.github.com/repos/${config.repository}`;
 export function eligible(pr, cfg = config) {
   return pr.state === 'open' && !pr.draft && pr.user.login === cfg.owner && pr.base.ref === cfg.baseBranch
     && pr.head.repo?.full_name === cfg.repository && pr.head.ref.startsWith('codex/')
-    && pr.labels.some(label => label.name === cfg.label)
-    && /(?:^|\n)Delivery-Scope: presentation(?:\r?\n|$)/.test(pr.body || '');
+    && pr.labels.some(label => [cfg.label, 'limpatex:auto-presentation'].includes(label.name))
+    && /(?:^|\n)Delivery-Scope: (?:presentation|application)(?:\r?\n|$)/.test(pr.body || '');
 }
 export function assertProduction(deployments, baseFingerprint, cfg = config) {
   for (const d of deployments) {
@@ -36,6 +36,19 @@ export function assertTransition(deployments, expected, baseFingerprint, commit,
 }
 export function entryAssets(html) {
   return [...html.matchAll(/(?:src|href)="([^" ]*\/assets\/[^" ]+\.(?:js|css))"/g)].map(m=>m[1]);
+}
+export async function verifyPage(domain, http=fetch) {
+  const response=await http('https://'+domain,{cache:'no-store',signal:AbortSignal.timeout(30000)});
+  assert.equal(response.status,200);
+  const assets=entryAssets(await response.text());
+  assert(assets.length>=2,'Faltan assets de la aplicación');
+  for(const asset of assets) {
+    const loaded=await http(new URL(asset,'https://'+domain),{signal:AbortSignal.timeout(30000)});
+    assert.equal(loaded.status,200);
+    // Drain each body: leaving large bundles unread can keep the process alive.
+    await loaded.arrayBuffer();
+  }
+  return assets.sort().join('\n');
 }
 export function cachedFileHashes(nodes) {
   const hashes=new Set();
@@ -228,13 +241,7 @@ async function verifyDeployment() {
   }
   const pages = [];
   for (const domain of config.domains) {
-    const response = await fetch('https://' + domain, {cache:'no-store'});
-    assert.equal(response.status,200);
-    const html = await response.text();
-    const assets = entryAssets(html);
-    assert(assets.length >= 2, 'Faltan assets de la aplicación');
-    for (const asset of assets) assert.equal((await fetch(new URL(asset,'https://'+domain))).status,200);
-    pages.push(assets.sort().join('\n'));
+    pages.push(await verifyPage(domain));
   }
   assert.equal(pages[0],pages[1]);
   console.log(JSON.stringify({deployment:expected.id, commit:process.env.RELEASE_COMMIT, domains:config.domains, assetsVerified:true}));
