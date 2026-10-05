@@ -250,7 +250,7 @@ export const TaskQuickActionsDialog = ({
           <p className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
             Se guarda al momento sobre la tarea.
             {hasOpenProposal
-              ? ' Tienes una propuesta de reparto abierta: quedará marcada como desactualizada y habrá que regenerarla.'
+              ? ' El reparto abierto se revisará con los nuevos datos; los cambios externos pueden requerir volver a planificar.'
               : ''}
           </p>
         </div>
