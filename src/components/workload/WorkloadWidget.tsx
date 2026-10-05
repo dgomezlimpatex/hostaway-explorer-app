@@ -19,6 +19,10 @@ const hours = (value: number) => new Intl.NumberFormat('es-ES', { maximumFractio
 
 export const WorkloadWidget = () => {
   const { data, isLoading, error, startDate, endDate } = useDashboardWeeklyWorkload();
+  const orderedWorkers = [
+    ...data.filter(worker => worker.contractHours > 0),
+    ...data.filter(worker => worker.contractHours <= 0),
+  ];
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -40,7 +44,7 @@ export const WorkloadWidget = () => {
           <p className="py-4 text-sm text-muted-foreground">No hay trabajadores activos en esta sede.</p>
         ) : (
           <div className="space-y-4">
-            {data.map(worker => (
+            {orderedWorkers.map(worker => (
               <div key={worker.cleanerId} className="grid items-center gap-2 sm:grid-cols-[minmax(160px,240px)_minmax(0,1fr)_auto]">
                 <span className="break-words text-sm font-medium">{worker.cleanerName}</span>
                 <Progress value={Math.min(worker.percentage, 100)} className="h-2" indicatorClassName={colors[worker.dashboardStatus].bar}

@@ -47,6 +47,6 @@ noNewDiagnostics(baseline.node, current.node, 'node');
 noNewDiagnostics(baseline.lint,current.lint,'lint focalizado');
 const build = command(npm, ['run', 'build']);
 if (build.status !== 0) throw new Error('Build falló:\n' + build.stdout + build.stderr);
-const result = {base, head, tree: git(['rev-parse', 'HEAD^{tree}']), paths, baselineErrors: baseline.app.length, currentErrors: current.app.length, fingerprint: fingerprint(repo)};
+const result = {base, head, tree: git(['rev-parse', 'HEAD^{tree}']), paths, baselineErrors: baseline.app.filter(x=>/error TS\d+/.test(x)).length, currentErrors: current.app.filter(x=>/error TS\d+/.test(x)).length, fingerprint: fingerprint(repo)};
 fs.writeFileSync(resultFile, JSON.stringify(result, null, 2));
 console.log(JSON.stringify(result));
