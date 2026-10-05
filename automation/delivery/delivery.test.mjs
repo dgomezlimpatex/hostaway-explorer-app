@@ -11,12 +11,17 @@ import {runOffline} from './offline.mjs';
 import {productionDecision,waitForProduction,waitForMergeability,assertManualPr,assertReadyRelease,reservationSignal} from './coordination.mjs';
 
 test('espera el cálculo de fusión sin aceptar cambios ni validaciones antiguas',async()=>{
-  const ready={pr:{head:{sha:'head'},mergeable:true,mergeable_state:'clean'},main:'base',status:'success'};
+  const ready={pr:{head:{sha:'head'},mergeable:true,mergeable_state:'clean'},branchHead:'head',main:'base',status:'success'};
   let calls=0,waits=0;
-  const options={head:'head',base:'base',authorized:()=>true,sleep:async()=>{waits++;}};
-  await waitForMergeability({...options,snapshot:async()=>++calls===1?{...ready,pr:{...ready.pr,mergeable:null,mergeable_state:'unknown'}}:ready});
-  assert.equal(calls,2);assert.equal(waits,1);
-  for(const value of [{...ready,main:'other'},{...ready,status:'failure'},{...ready,pr:{...ready.pr,head:{sha:'other'}}},{...ready,pr:{...ready.pr,mergeable:false}}]) {
+  const options={head:'head',previousHead:'old',base:'base',authorized:()=>true,sleep:async()=>{waits++;}};
+  await waitForMergeability({...options,snapshot:async()=>++calls===1?{...ready,pr:{...ready.pr,head:{sha:'old'}}}:calls===2?{...ready,pr:{...ready.pr,mergeable:null,mergeable_state:'unknown'}}:ready});
+  assert.equal(calls,3);assert.equal(waits,2);
+  let statusCalls=0;
+  await waitForMergeability({...options,snapshot:async()=>({...ready,status:++statusCalls===1?undefined:statusCalls===2?'pending':'success'})});
+  assert.equal(statusCalls,3);
+  let regression=0;
+  await assert.rejects(waitForMergeability({...options,snapshot:async()=>({...ready,pr:{...ready.pr,head:{sha:++regression===1?'head':'old'},mergeable:null}})}),/propuesta cambió/);
+  for(const value of [{...ready,branchHead:'other'},{...ready,main:'other'},{...ready,status:'failure'},{...ready,pr:{...ready.pr,head:{sha:'other'}}},{...ready,pr:{...ready.pr,mergeable:false}}]) {
     await assert.rejects(waitForMergeability({...options,snapshot:async()=>value}));
   }
   await assert.rejects(waitForMergeability({...options,authorized:()=>false,snapshot:async()=>ready}));

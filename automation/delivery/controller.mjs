@@ -220,10 +220,11 @@ async function merge() {
   // Push only the tested merge into this PR branch. Strict protection rejects a base race.
   git(repo, ['push', 'origin', `${sha}:refs/heads/${pr.head.ref}`, `--force-with-lease=refs/heads/${pr.head.ref}:${pr.head.sha}`]);
   await gh(`/statuses/${sha}`, 'POST', {state:'success', context:config.statusContext, description:`Presentación verificada sobre ${result.base.slice(0,7)}`, target_url:`https://github.com/${config.repository}/actions/runs/${process.env.GITHUB_RUN_ID}`});
-  await waitForMergeability({head:sha,base:result.base,authorized:eligible,snapshot:async()=>{
+  await waitForMergeability({head:sha,previousHead:pr.head.sha,base:result.base,authorized:eligible,snapshot:async()=>{
     const current=await gh(`/pulls/${number}`);
     const statuses=await gh(`/commits/${sha}/statuses`);
-    return {pr:current,main:await currentMain(),status:statuses.find(s=>s.context===config.statusContext)?.state};
+    const branch=await gh(`/git/ref/heads/${pr.head.ref}`);
+    return {pr:current,branchHead:branch.object.sha,main:await currentMain(),status:statuses.find(s=>s.context===config.statusContext)?.state};
   }});
   assertProduction(await live(), fingerprint(repo));
   const merged = await gh(`/pulls/${number}/merge`, 'PUT', {sha, merge_method:'squash'});
