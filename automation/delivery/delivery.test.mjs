@@ -8,7 +8,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {validateReview, reservedEffects, changeDigest, verifyDelivery} from './scope.mjs';
 import {runOffline} from './offline.mjs';
-import {eligible, assertProduction, deploymentBody, assertTransition, entryAssets, cachedFileHashes} from './controller.mjs';
+import {eligible, assertProduction, deploymentBody, assertTransition, entryAssets, cachedFileHashes, verifyPage} from './controller.mjs';
 const code = 'export const View = () => <button className="p-2" onClick={() => save(1)}>Guardar</button>;';
 test('permite textos y clases sin alterar acciones',()=>assert.equal(canonicalTsx(ts,code),canonicalTsx(ts,code.replace('p-2','p-4').replace('Guardar','Aceptar'))));
 test('bloquea cambios de acciones y argumentos',()=>assert.notEqual(canonicalTsx(ts,code),canonicalTsx(ts,code.replace('save(1)','save(2)'))));
@@ -103,6 +103,13 @@ test('acepta el alias propio y conserva el bloqueo de publicaciones ajenas',()=>
 test('detecta assets relativos a raíz y absolutos',()=>{
   assert.deepEqual(entryAssets('<script src="/assets/index-a.js"></script><link href="/assets/index-b.css">'),['/assets/index-a.js','/assets/index-b.css']);
   assert.deepEqual(entryAssets('<script src="https://example.org/assets/a.js"></script>'),['https://example.org/assets/a.js']);
+});
+test('acota peticiones y consume todos los bundles; rechaza recursos fallidos',async()=>{
+  let bodies=0,calls=0;
+  const http=async(url,options)=>{assert(options.signal);calls++;return String(url).endsWith('.js') || String(url).endsWith('.css') ? {status:200,arrayBuffer:async()=>{bodies++;return new ArrayBuffer(0);}} : {status:200,text:async()=>'<script src="/assets/a.js"></script><link href="/assets/b.css">'};};
+  assert.equal(await verifyPage('example.org',http),'/assets/a.js\n/assets/b.css');
+  assert.equal(calls,3);assert.equal(bodies,2);
+  await assert.rejects(verifyPage('example.org',async()=>({status:503})),/503/);
 });
 test('reutiliza por contenido exacto y no por nombre de archivo',()=>{
   const known='a'.repeat(40); const unknown='b'.repeat(40);
