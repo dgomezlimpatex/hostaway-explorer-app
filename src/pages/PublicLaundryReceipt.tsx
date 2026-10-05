@@ -230,14 +230,14 @@ export default function PublicLaundryReceipt() {
   const unsubmitted = Object.values(inputs).some((value) => value !== "");
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900">
-      <div className="mx-auto max-w-xl space-y-5">
+    <main className="min-h-screen bg-slate-50 px-3 py-3 text-slate-900">
+      <div className="relative mx-auto max-w-xl space-y-2">
         <header>
-          <p className="text-xs font-semibold tracking-wide text-primary">
+          <p className="hidden">
             APP GESTIÓN LIMPATEX
           </p>
-          <h1 className="mt-2 text-2xl font-bold">Recepción de ropa limpia</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="pr-24 text-lg font-bold leading-7 sm:text-xl">Inventario de lencería</h1>
+          <p className="hidden">
             Cuenta por tandas y confirma al terminar.
           </p>
         </header>
@@ -278,7 +278,7 @@ export default function PublicLaundryReceipt() {
           </form>
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs leading-4 text-slate-600 [&_button]:hidden">
               <span>{state?.workerName || access.workerName}</span>
               <Button
                 variant="ghost"
@@ -363,9 +363,9 @@ export default function PublicLaundryReceipt() {
             )}
             {state && (
               <>
-                <section className="rounded-xl border bg-white p-4">
-                  <h2 className="font-semibold">{state.warehouseName}</h2>
-                  <p className="text-sm">Recuento del {state.date}</p>
+                <section className="contents">
+                  <h2 className="hidden">{state.warehouseName}</h2>
+                  <p className="absolute right-0 top-0 !mt-0 text-xs leading-7 text-slate-500"> {state.date}</p>
                   {date && (
                     <Button
                       variant="outline"
@@ -412,7 +412,7 @@ export default function PublicLaundryReceipt() {
                   </Button>
                 ) : (
                   <>
-                    <p className="text-sm text-slate-600" role="status">
+                    <p className="hidden" role="status">
                       {changed
                         ? "Borrador · el stock cambia al confirmar"
                         : `Confirmado · versión ${state.receipt.latest_version}`}
@@ -426,18 +426,18 @@ export default function PublicLaundryReceipt() {
                     {RECEIPT_MATERIALS.map(([key, label]) => (
                       <section
                         key={key}
-                        className="rounded-2xl border bg-white p-4"
+                        className="rounded-xl border bg-white p-3"
                       >
-                        <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="mb-2 flex items-center justify-between gap-3">
                           <label
                             htmlFor={`count-${key}`}
-                            className="font-semibold"
+                            className="text-sm font-semibold leading-5"
                           >
                             {label}
                           </label>
                           <output
                             aria-label={`Total ${label}`}
-                            className="text-3xl font-bold tabular-nums text-primary"
+                            className="text-2xl font-bold leading-7 tabular-nums text-primary"
                           >
                             {state.receipt!.counts[key]}
                           </output>
@@ -462,10 +462,10 @@ export default function PublicLaundryReceipt() {
                                 return next;
                               });
                             }}
-                            className="h-12 min-w-0 text-lg"
+                            className="h-11 min-w-0 text-base"
                           />
                           <Button
-                            className="h-12 px-5"
+                            className="h-11 px-4"
                             disabled={locked || !inputs[key]}
                             onClick={() => quantityAction(key, "add")}
                           >
@@ -474,7 +474,7 @@ export default function PublicLaundryReceipt() {
                         </div>
                         <Button
                           variant="ghost"
-                          className="mt-1 text-sm"
+                          className="hidden"
                           disabled={
                             locked ||
                             inputs[key] === undefined ||
