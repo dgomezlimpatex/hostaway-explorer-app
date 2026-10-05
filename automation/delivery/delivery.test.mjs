@@ -19,6 +19,8 @@ test('espera el cálculo de fusión sin aceptar cambios ni validaciones antiguas
   let statusCalls=0;
   await waitForMergeability({...options,snapshot:async()=>({...ready,status:++statusCalls===1?undefined:statusCalls===2?'pending':'success'})});
   assert.equal(statusCalls,3);
+  await waitForMergeability({...options,snapshot:async()=>({...ready,pr:{...ready.pr,mergeable_state:'unstable'}})});
+  await assert.rejects(waitForMergeability({...options,attempts:2,snapshot:async()=>({...ready,pr:{...ready.pr,mergeable_state:'blocked'}})}),/dos minutos/);
   let regression=0;
   await assert.rejects(waitForMergeability({...options,snapshot:async()=>({...ready,pr:{...ready.pr,head:{sha:++regression===1?'head':'old'},mergeable:null}})}),/propuesta cambió/);
   for(const value of [{...ready,branchHead:'other'},{...ready,main:'other'},{...ready,status:'failure'},{...ready,pr:{...ready.pr,head:{sha:'other'}}},{...ready,pr:{...ready.pr,mergeable:false}}]) {

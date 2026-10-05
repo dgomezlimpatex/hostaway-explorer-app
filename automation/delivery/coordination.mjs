@@ -12,7 +12,9 @@ export async function waitForMergeability({snapshot,head,previousHead,base,autho
     assert.equal(main,base,'Main avanzó durante la espera de GitHub; validar otra vez');
     assert(status===undefined || status==='pending' || status==='success','La validación vigente dejó de ser correcta');
     if(propagated) assert.notEqual(pr.mergeable,false,'GitHub detectó un conflicto; volver a validar la propuesta');
-    if(propagated && status==='success' && pr.mergeable===true && pr.mergeable_state==='clean') return;
+    // "unstable" includes unrelated/older optional checks. Required protection
+    // remains enforced by GitHub's merge endpoint and the exact status above.
+    if(propagated && status==='success' && pr.mergeable===true && ['clean','unstable'].includes(pr.mergeable_state)) return;
     if(i===attempts-1) throw new Error('GitHub no terminó de preparar la fusión en dos minutos; conservar la propuesta y reintentar');
     await sleep(4000);
   }
