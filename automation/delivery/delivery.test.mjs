@@ -8,7 +8,20 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {validateReview, reservedEffects, changeDigest, verifyDelivery} from './scope.mjs';
 import {runOffline} from './offline.mjs';
-import {productionDecision,waitForProduction,assertManualPr,assertReadyRelease,reservationSignal} from './coordination.mjs';
+import {productionDecision,waitForProduction,waitForMergeability,assertManualPr,assertReadyRelease,reservationSignal} from './coordination.mjs';
+
+test('espera el cálculo de fusión sin aceptar cambios ni validaciones antiguas',async()=>{
+  const ready={pr:{head:{sha:'head'},mergeable:true,mergeable_state:'clean'},main:'base',status:'success'};
+  let calls=0,waits=0;
+  const options={head:'head',base:'base',authorized:()=>true,sleep:async()=>{waits++;}};
+  await waitForMergeability({...options,snapshot:async()=>++calls===1?{...ready,pr:{...ready.pr,mergeable:null,mergeable_state:'unknown'}}:ready});
+  assert.equal(calls,2);assert.equal(waits,1);
+  for(const value of [{...ready,main:'other'},{...ready,status:'failure'},{...ready,pr:{...ready.pr,head:{sha:'other'}}},{...ready,pr:{...ready.pr,mergeable:false}}]) {
+    await assert.rejects(waitForMergeability({...options,snapshot:async()=>value}));
+  }
+  await assert.rejects(waitForMergeability({...options,authorized:()=>false,snapshot:async()=>ready}));
+  await assert.rejects(waitForMergeability({...options,attempts:2,snapshot:async()=>({...ready,pr:{...ready.pr,mergeable:null}})}),/dos minutos/);
+});
 
 const oldLive={id:'old',projectId:'project',readyState:'READY',source:'old'};
 const moving={main:'commit',live:[oldLive,oldLive],knownLive:true,target:{projectId:'project',readyState:'BUILDING',meta:{limpatexCommit:'commit',limpatexSourceFingerprint:'new'}}};

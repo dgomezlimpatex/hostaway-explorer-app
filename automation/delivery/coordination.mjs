@@ -1,5 +1,19 @@
 import assert from 'node:assert/strict';
 
+export async function waitForMergeability({snapshot,head,base,authorized,sleep=ms=>new Promise(r=>setTimeout(r,ms)),attempts=31}) {
+  for(let i=0;i<attempts;i++) {
+    const {pr,main,status}=await snapshot();
+    assert(authorized(pr),'La propuesta dejó de estar autorizada');
+    assert.equal(pr.head.sha,head,'La propuesta cambió durante la espera de GitHub');
+    assert.equal(main,base,'Main avanzó durante la espera de GitHub; validar otra vez');
+    assert.equal(status,'success','La validación vigente dejó de ser correcta');
+    assert.notEqual(pr.mergeable,false,'GitHub detectó un conflicto; volver a validar la propuesta');
+    if(pr.mergeable===true && pr.mergeable_state==='clean') return;
+    if(i===attempts-1) throw new Error('GitHub no terminó de preparar la fusión en dos minutos; conservar la propuesta y reintentar');
+    await sleep(4000);
+  }
+}
+
 export function productionDecision(snapshot, commit, source, project) {
   assert.equal(snapshot.main,commit,'Main avanzó durante la espera; validar otra vez sobre la base nueva');
   const aligned=snapshot.live.length===2 && snapshot.live.every(d=>d.projectId===project && d.readyState==='READY' && d.source===source) && snapshot.live[0].id===snapshot.live[1].id;
