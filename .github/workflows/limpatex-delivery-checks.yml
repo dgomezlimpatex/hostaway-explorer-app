@@ -1,0 +1,32 @@
+name: Limpatex delivery checks
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  delivery-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - name: Delivery guard and controller tests
+        run: node --test automation/delivery/delivery.test.mjs
+      - name: Syntax checks
+        run: |
+          node --check automation/delivery/controller.mjs
+          node --check automation/delivery/verify.mjs
+          node --check automation/delivery/submit.mjs
+      - name: Production build
+        run: npm run build
+      - name: Browser smoke without login or writes
+        run: |
+          npx --no-install playwright install --with-deps chromium
+          python3 -m http.server 8080 --directory dist > /tmp/limpatex-browser-server.log 2>&1 &
+          node automation/delivery/smoke.mjs http://127.0.0.1:8080 .

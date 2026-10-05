@@ -16,7 +16,7 @@ export type ProposalBatchReasonCode =
   | 'already_assigned'
   | 'stale_task';
 
-export type ProposalBatchItemStatus = 'ready' | 'blocked';
+export type ProposalBatchItemStatus = 'ready' | 'blocked' | 'unchanged';
 
 export interface ProposalBatchValidationItem {
   taskId: string;
@@ -231,14 +231,21 @@ export const validateProposalBatchForApply = ({
       return buildBlockedItem(plan, 'stale_task', 'La asignación actual de la tarea cambió desde que se generó la propuesta.');
     }
 
-    if (sameCleanerSet(plan.cleanerIds, freshCleanerIds)
-      && (plan.proposedStartTime ?? freshTask.startTime) === freshTask.startTime
-      && (plan.proposedEndTime ?? freshTask.endTime) === freshTask.endTime) {
-      return buildBlockedItem(plan, 'already_assigned', 'La propuesta no cambia la asignación actual de la tarea.');
-    }
-
     if (!sameOperationalWindow(expectedTask, freshTask)) {
       return buildBlockedItem(plan, 'stale_task', 'La fecha u horario de la tarea cambió desde que se generó la propuesta.');
+    }
+
+    if (sameCleanerSet(plan.cleanerIds, freshCleanerIds)
+      && plan.proposedStartTime === freshTask.startTime
+      && plan.proposedEndTime === freshTask.endTime) {
+      return {
+        taskId: plan.taskId,
+        cleanerIds: plan.cleanerIds,
+        cleanerNames: plan.cleanerNames,
+        status: 'unchanged',
+        reasonCode: 'already_assigned',
+        message: 'Esta tarea ya tiene la asignación y el horario propuestos; no requiere cambios.',
+      };
     }
 
     return {
@@ -251,6 +258,7 @@ export const validateProposalBatchForApply = ({
   });
 
   const readyItems = items.filter((item) => item.status === 'ready');
+  const blockedItems = items.filter((item) => item.status === 'blocked');
   const readyPlans = taskPlans
     .filter((plan) => readyItems.some((item) => item.taskId === plan.taskId))
     .map((plan) => {
@@ -263,7 +271,7 @@ export const validateProposalBatchForApply = ({
       };
     });
 
-  const blockedTasks = items.length - readyItems.length;
+  const blockedTasks = blockedItems.length;
 
   return {
     canApply: blockedTasks === 0 && readyPlans.length > 0,

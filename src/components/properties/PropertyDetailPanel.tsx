@@ -37,7 +37,7 @@ export function PropertyDetailPanel({ property, clientName, active }: { property
   };
 
   return (
-    <CrmDetailFrame title={property.nombre} subtitle={`${property.codigo || 'Sin código'} · ${clientName}`} avatar={<Home className="h-6 w-6" />} status={active ? 'Activa' : 'Inactiva'} metricLabel="Duración del servicio" metricValue={propertyDuration(property.duracionServicio)}
+    <CrmDetailFrame variant="properties" title={property.nombre} subtitle={<><span>{property.codigo || 'Sin código'}</span><span aria-hidden="true">·</span><span>{clientName}</span></>} avatar={<Home aria-hidden="true" className="h-6 w-6" />} status={active ? 'Activa' : 'Inactiva'} metricLabel="Duración del servicio" metricValue={propertyDuration(property.duracionServicio)}
       actions={<>
           <Button onClick={() => setEditing(true)} className="rounded-xl"><Edit className="mr-2 h-4 w-4" />Editar propiedad</Button>
           <Button variant="outline" onClick={() => setAssigning(true)} className="rounded-xl bg-white"><CheckSquare className="mr-2 h-4 w-4" />Asignar checklist</Button>
@@ -48,7 +48,7 @@ export function PropertyDetailPanel({ property, clientName, active }: { property
         </div></>}
       tabs={[
         { id: 'profile', label: 'Ficha', content: <><div className="flex items-start gap-2 text-sm text-slate-600"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#310984]" /><p className="whitespace-pre-line break-words">{property.direccion || 'Sin dirección'}</p></div><section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-          <h3 className="flex items-center gap-2 text-sm font-black"><Clock className="h-4 w-4 text-[#310984]" />Servicio y horarios</h3>
+          <h3 className="flex items-center gap-2 text-sm font-semibold"><Clock aria-hidden="true" className="h-4 w-4 text-[#310984]" />Servicio y horarios</h3>
           <dl className="grid grid-cols-2 gap-4 ">
             <DetailField label="Duración estimada">{propertyDuration(property.duracionServicio)}</DetailField>
             <DetailField label="Coste del servicio">{(property.costeServicio || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</DetailField>
@@ -56,7 +56,7 @@ export function PropertyDetailPanel({ property, clientName, active }: { property
             <DetailField label="Check-in">{property.checkInPredeterminado?.slice(0, 5) || 'Sin indicar'}</DetailField>
           </dl>
         </section><section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-          <h3 className="flex items-center gap-2 text-sm font-black"><Home className="h-4 w-4 text-[#310984]" />Características</h3>
+          <h3 className="flex items-center gap-2 text-sm font-semibold"><Home aria-hidden="true" className="h-4 w-4 text-[#310984]" />Características</h3>
           <dl className="grid grid-cols-2 gap-4  sm:grid-cols-3">
             <DetailField label="Camas en total">{propertyBedCount(property)}</DetailField>
             <DetailField label="Baños">{property.numeroBanos || 0}</DetailField>
@@ -68,7 +68,7 @@ export function PropertyDetailPanel({ property, clientName, active }: { property
         </section></> },
         { id: 'consumption', label: 'Consumos', content: <PropertyConsumptionsPanel property={property} onEdit={() => setEditing(true)} /> },
         { id: 'cleaning', label: 'Limpiezas', content: <><section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-          <h3 className="flex items-center gap-2 text-sm font-black"><CalendarDays className="h-4 w-4 text-[#310984]" />Limpiezas</h3>
+          <h3 className="flex items-center gap-2 text-sm font-semibold"><CalendarDays aria-hidden="true" className="h-4 w-4 text-[#310984]" />Limpiezas</h3>
           {schedule.isError ? <div role="alert" className="mt-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">No se han podido cargar las fechas.<Button variant="ghost" size="sm" onClick={() => void schedule.refetch()}>Reintentar</Button></div> : (
             <dl className="grid gap-4  sm:grid-cols-2">
               <DetailField label="Última limpieza">{schedule.isLoading ? 'Cargando…' : cleaningDate(cleaning?.lastCleaning)}</DetailField>
@@ -77,7 +77,7 @@ export function PropertyDetailPanel({ property, clientName, active }: { property
           )}
         </section></> },
         { id: 'checklist', label: 'Checklist', content: <><section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-          <h3 className="flex items-center gap-2 text-sm font-black"><CheckSquare className="h-4 w-4 text-[#310984]" />Checklist e indicaciones</h3>
+          <h3 className="flex items-center gap-2 text-sm font-semibold"><CheckSquare aria-hidden="true" className="h-4 w-4 text-[#310984]" />Checklist e indicaciones</h3>
           <div className="overflow-hidden  [&_div]:flex-wrap [&_span]:break-words"><PropertyChecklistInfo propertyId={property.id} /></div>
           <p className="whitespace-pre-line break-words  text-sm text-slate-600">{property.notas || 'Sin notas para esta propiedad.'}</p>
           <p className="text-xs text-slate-500">En «Editar propiedad» puedes gestionar el personal preferente.</p>

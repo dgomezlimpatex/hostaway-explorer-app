@@ -1,8 +1,12 @@
 import type { ReactNode } from 'react';
-import { AlertTriangle, CalendarDays, ChevronDown, RefreshCw, Sparkles } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, RefreshCw, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { addDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Sede } from '@/types/sede';
 import { formatMadridDate } from '@/utils/date';
+import { PlanningSteps } from './PlanningSteps';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface PlanningStartScreenProps {
   date: Date;
@@ -48,6 +52,8 @@ export const PlanningStartScreen = ({
   const hasSeveralSedes = availableSedes.length > 1;
   const hasBlockingError = isError || buildingDataError;
   const hasPartialScope = pendingTaskCount !== totalPendingTaskCount;
+  const nothingToPlan = !isLoading && !hasBlockingError && totalPendingTaskCount === 0;
+  const hiddenByFilters = !isLoading && !hasBlockingError && totalPendingTaskCount > 0 && pendingTaskCount === 0;
   const statusMessage = isLoading
     ? 'Cargando las limpiezas…'
     : pendingTaskCount === 0
@@ -55,25 +61,26 @@ export const PlanningStartScreen = ({
       : `${pendingTaskCount} limpieza${pendingTaskCount === 1 ? '' : 's'} pendiente${pendingTaskCount === 1 ? '' : 's'} de repartir.`;
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-3xl items-start justify-center py-4 md:items-center md:py-8">
-      <section className="w-full overflow-hidden rounded-3xl border border-[#310984]/10 bg-white shadow-xl shadow-[#310984]/8">
-        <div className="border-b border-[#310984]/10 bg-gradient-to-br from-[#faf8ff] to-white p-5 md:p-8">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[#efe9fb] px-3 py-1 text-xs font-semibold text-[#310984]">
+    <main className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-3xl items-start justify-center px-3 py-5 md:items-center md:px-0 md:py-8">
+      <section className="w-full overflow-hidden rounded-2xl border border-line bg-white shadow-lg">
+        <div className="planner-stage-hero border-b border-line bg-gradient-to-br from-brand/5 via-white to-white p-6 md:p-9">
+          <div className="inline-flex items-center gap-2 rounded-full bg-line-soft px-3 py-1 text-xs font-semibold text-brand">
             <Sparkles className="h-3.5 w-3.5" /> Planificación de limpiezas
           </div>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#171321] md:text-3xl">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink md:text-3xl">
             ¿Qué día quieres planificar?
           </h1>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-[#6b627a] md:text-base">
-            Hermes prepara el reparto. Tú lo revisas antes de guardarlo.
+          <p className="mt-2 max-w-xl text-sm leading-6 text-ink-3 md:text-base">
+            La app prepara el reparto y tú lo revisas. Nada se guarda hasta que pulses «Guardar reparto».
           </p>
+          <PlanningSteps current={1} className="mt-5" />
         </div>
 
         <div className="space-y-5 p-5 md:p-8">
           <div className={hasSeveralSedes ? 'grid gap-4 sm:grid-cols-2' : 'grid gap-4'}>
             <label className="space-y-2">
-              <span className="flex items-center gap-2 text-sm font-semibold text-[#171321]">
-                <CalendarDays className="h-4 w-4 text-[#310984]" /> Día
+              <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <CalendarDays className="h-4 w-4 text-brand" /> Día
               </span>
               <input
                 data-planning-initial-control
@@ -84,13 +91,13 @@ export const PlanningStartScreen = ({
                   const nextDate = parsePlanningDate(event.target.value);
                   if (nextDate) onDateChange(nextDate);
                 }}
-                className="min-h-[48px] w-full rounded-xl border border-[#310984]/15 bg-white px-3 text-base text-[#171321] outline-none transition focus-visible:ring-2 focus-visible:ring-[#310984] focus-visible:ring-offset-2"
+                className="min-h-[48px] w-full rounded-md border border-line bg-white px-3 text-base text-ink outline-none transition focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               />
             </label>
 
             {hasSeveralSedes && (
               <label className="space-y-2">
-                <span className="text-sm font-semibold text-[#171321]">Sede</span>
+                <span className="text-sm font-semibold text-ink">Sede</span>
                 <select
                   data-planning-initial-control
                   aria-label="Sede que quieres planificar"
@@ -99,7 +106,7 @@ export const PlanningStartScreen = ({
                     const nextSede = availableSedes.find((sede) => sede.id === event.target.value);
                     if (nextSede) onSedeChange(nextSede);
                   }}
-                  className="min-h-[48px] w-full rounded-xl border border-[#310984]/15 bg-white px-3 text-base text-[#171321] outline-none transition focus-visible:ring-2 focus-visible:ring-[#310984] focus-visible:ring-offset-2"
+                  className="min-h-[48px] w-full rounded-md border border-line bg-white px-3 text-base text-ink outline-none transition focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                 >
                   {availableSedes.map((sede) => <option key={sede.id} value={sede.id}>{sede.nombre}</option>)}
                 </select>
@@ -107,16 +114,18 @@ export const PlanningStartScreen = ({
             )}
           </div>
 
-          <div className="rounded-2xl border border-[#310984]/10 bg-[#faf8ff] px-4 py-3 text-sm text-[#6b627a]">
-            <p className="font-medium text-[#171321]">{scopeLabel} · {activeSede?.nombre || 'Sin sede seleccionada'}</p>
+          <div className="rounded-lg border border-line bg-paper px-4 py-3 text-sm text-ink-3">
+            <p className="font-medium text-ink">{scopeLabel} · {activeSede?.nombre || 'Sin sede seleccionada'}</p>
             <p className="mt-1">{statusMessage}</p>
-            {hasPartialScope && (
-              <p className="mt-1 font-semibold text-amber-800">Alcance parcial · {pendingTaskCount} de {totalPendingTaskCount} limpiezas sin asignar.</p>
+            {hasPartialScope && !hiddenByFilters && (
+              <p className="mt-1 font-semibold text-amber-800">
+                Los filtros activos dejan fuera {totalPendingTaskCount - pendingTaskCount} de {totalPendingTaskCount} limpiezas sin asignar.
+              </p>
             )}
           </div>
 
           {hasBlockingError && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>{isError ? 'No pudimos cargar las limpiezas.' : 'Faltan datos de equipos.'} Reintenta antes de planificar.</p>
@@ -133,29 +142,69 @@ export const PlanningStartScreen = ({
             </div>
           )}
 
-          <Button
-            data-planning-initial-control
-            type="button"
-            className="min-h-[50px] w-full bg-[#310984] text-base font-semibold text-white hover:bg-[#26066a]"
-            disabled={!canGenerateProposal || hasBlockingError || isLoading}
-            onClick={onGenerateProposal}
-          >
-            <Sparkles className="mr-2 h-5 w-5" />
-            {isLoading ? 'Cargando limpiezas…' : 'Preparar reparto con Hermes'}
-          </Button>
-
-          <details className="group rounded-2xl border border-[#310984]/10 bg-white">
-            <summary
-              data-planning-initial-control
-              className="flex min-h-[46px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-[#310984] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#310984]"
-            >
-              Más filtros y detalles técnicos
-              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="space-y-5 border-t border-[#310984]/10 bg-[#faf8ff] p-4 md:p-5">
-              {advancedContent}
+          {hiddenByFilters && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="font-semibold">Los filtros activos dejan fuera todas las limpiezas de este día.</p>
+              <p className="mt-1">
+                Este día tiene {totalPendingTaskCount} limpieza{totalPendingTaskCount === 1 ? '' : 's'} pendiente{totalPendingTaskCount === 1 ? '' : 's'}, pero ningún resultado pasa el filtro.
+                Abre «Más filtros y detalles técnicos» y pulsa «Limpiar filtros» para verlas todas.
+              </p>
             </div>
-          </details>
+          )}
+
+          {nothingToPlan ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+              <p className="flex items-center gap-2 font-semibold">
+                <CheckCircle2 className="h-5 w-5 shrink-0" /> Todo repartido para este día
+              </p>
+              <p className="mt-1 text-sm text-emerald-800">
+                No quedan limpiezas sin asignar en {activeSede?.nombre || 'la sede activa'}. Puedes pasar al día siguiente o ver el día en el calendario.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+
+                  type="button"
+                  variant="outline"
+                  className="min-h-[44px] border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100 hover:text-emerald-900"
+                  onClick={() => onDateChange(addDays(date, 1))}
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" /> Ir al día siguiente
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="min-h-[44px] border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100 hover:text-emerald-900"
+                >
+                  <Link to="/calendar">Ver el día en el calendario</Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              data-planning-initial-control
+              type="button"
+              className="min-h-[50px] w-full bg-brand text-base font-semibold text-white hover:bg-ink"
+              disabled={!canGenerateProposal || hasBlockingError || isLoading}
+              onClick={onGenerateProposal}
+            >
+              <Sparkles className="mr-2 h-5 w-5" />
+              {isLoading ? 'Cargando limpiezas…' : 'Preparar el reparto'}
+            </Button>
+          )}
+
+          <Accordion type="single" collapsible className="planner-accordion rounded-lg border border-line bg-white">
+            <AccordionItem value="advanced-planning-details" className="border-b-0">
+              <AccordionTrigger
+                data-planning-initial-control
+                className="min-h-[48px] gap-3 px-4 py-3 text-left text-sm font-semibold text-brand no-underline hover:no-underline focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+              >
+                Más filtros y detalles técnicos
+              </AccordionTrigger>
+              <AccordionContent className="planner-disclosure-content border-t border-line bg-paper px-4 text-sm md:px-5">
+                {advancedContent}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </section>
     </main>

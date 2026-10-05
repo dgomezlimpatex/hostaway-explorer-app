@@ -25,7 +25,7 @@ interface CleanerMobileCalendarProps {
 const TaskSkeletonLoader = memo(() => (
   <div className="space-y-3">
     {[1, 2, 3].map((i) => (
-      <div key={i} className="p-6 rounded-3xl bg-muted/50">
+      <div key={i} className="p-6 rounded-lg bg-muted/50">
         <Skeleton className="h-8 w-3/4 mb-4" />
         <Skeleton className="h-4 w-1/2 mb-3" />
         <div className="flex justify-between">

@@ -1,0 +1,187 @@
+name: Limpatex delivery
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled, ready_for_review]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR de presentación; vacío solo comprueba conexiones'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Validar sin incorporar ni publicar'
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: limpatex-production-delivery
+  queue: max
+  cancel-in-progress: false
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      eligible: ${{ steps.select.outputs.eligible }}
+      number: ${{ steps.select.outputs.number }}
+      head: ${{ steps.select.outputs.head }}
+      base: ${{ steps.select.outputs.base }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: control
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: node control/automation/delivery/controller.mjs select
+  validate:
+    needs: select
+    if: needs.select.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      tree: ${{ steps.result.outputs.tree }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.select.outputs.base }}
+          path: control
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.select.outputs.head }}
+          fetch-depth: 0
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prepare candidate on latest main
+        env:
+          BASE: ${{ needs.select.outputs.base }}
+        run: |
+          git -C candidate config user.name 'Limpatex delivery'
+          git -C candidate config user.email 'dgomezlimpatex@users.noreply.github.com'
+          git -C candidate switch -c validated-candidate
+          git -C candidate merge --no-ff --no-edit "$BASE"
+      - name: Install unchanged dependencies
+        run: |
+          npm ci --ignore-scripts --prefix control
+          npm ci --ignore-scripts --prefix candidate
+      - name: Test delivery guard
+        run: node --test control/automation/delivery/delivery.test.mjs
+      - name: Verify scope, app types, focused lint and build
+        env:
+          BASE: ${{ needs.select.outputs.base }}
+        run: |
+          mkdir artifacts
+          HEAD=$(git -C candidate rev-parse HEAD)
+          node control/automation/delivery/verify.mjs candidate "$BASE" "$HEAD" artifacts/verification.json
+          git -C candidate bundle create ../artifacts/candidate.bundle validated-candidate
+      - name: Verify app entry in a browser without login
+        run: |
+          cd candidate
+          npx --no-install playwright install --with-deps chromium
+          cd ..
+          python3 -m http.server 8080 --directory candidate/dist > /tmp/limpatex-browser-server.log 2>&1 &
+          node control/automation/delivery/smoke.mjs http://127.0.0.1:8080 candidate
+      - id: result
+        run: node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('artifacts/verification.json'));fs.appendFileSync(process.env.GITHUB_OUTPUT,'tree='+d.tree+'\n')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-candidate
+          path: artifacts/
+          retention-days: 7
+  publish:
+    needs: [select, validate]
+    if: needs.select.outputs.eligible == 'true' && github.event.inputs.dry_run != 'true' && vars.LIMPATEX_DELIVERY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: write
+      deployments: write
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.select.outputs.base }}
+          fetch-depth: 0
+          path: control
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: verified-candidate
+          path: artifacts
+      - name: Install pinned deploy CLI
+        run: npm install --global vercel@59.26.0
+      - id: merge
+        name: Incorporate only the verified candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          PR_NUMBER: ${{ needs.select.outputs.number }}
+          PR_HEAD: ${{ needs.select.outputs.head }}
+        run: node control/automation/delivery/controller.mjs merge
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.merge.outputs.commit }}
+          path: release
+          persist-credentials: false
+      - name: Check source and production again
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_COMMIT: ${{ steps.merge.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.merge.outputs.fingerprint }}
+        run: node control/automation/delivery/controller.mjs pre-deploy release
+      - id: deploy
+        name: Build deployment without moving production aliases
+        working-directory: release
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_CfqG1o5AGI4f0ZwEWv6k8qQc
+          VERCEL_PROJECT_ID: prj_ArBhKZEr9xPqgcIoyioylFc9BMk7
+          RELEASE_COMMIT: ${{ steps.merge.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.merge.outputs.fingerprint }}
+        run: |
+          URL=$(vercel deploy --prod --skip-domain --yes --scope limpatex --token "$VERCEL_TOKEN" --meta "limpatexCommit=$RELEASE_COMMIT" --meta "limpatexSourceFingerprint=$RELEASE_FINGERPRINT")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+      - name: Recheck before promotion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_COMMIT: ${{ steps.merge.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.merge.outputs.fingerprint }}
+        run: node control/automation/delivery/controller.mjs pre-deploy release
+      - name: Promote validated release
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          vercel promote "$RELEASE_URL" --yes --scope limpatex --token "$VERCEL_TOKEN"
+          vercel alias set "$RELEASE_URL" gestionlimpatex.vercel.app --scope limpatex --token "$VERCEL_TOKEN"
+          vercel alias set "$RELEASE_URL" gestionlimpatex-limpatex.vercel.app --scope limpatex --token "$VERCEL_TOKEN"
+      - name: Verify both canonical domains and assets
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RELEASE_URL: ${{ steps.deploy.outputs.url }}
+          RELEASE_COMMIT: ${{ steps.merge.outputs.commit }}
+          RELEASE_FINGERPRINT: ${{ steps.merge.outputs.fingerprint }}
+        run: node control/automation/delivery/controller.mjs verify-deployment
+      - name: Delivery summary
+        env:
+          RELEASE_URL: ${{ steps.deploy.outputs.url }}
+          RELEASE_COMMIT: ${{ steps.merge.outputs.commit }}
+        run: |
+          echo "Publicado $RELEASE_COMMIT" >> "$GITHUB_STEP_SUMMARY"
+          echo "$RELEASE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Verificados gestionlimpatex.vercel.app y gestionlimpatex-limpatex.vercel.app" >> "$GITHUB_STEP_SUMMARY"

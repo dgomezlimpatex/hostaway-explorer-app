@@ -1,0 +1,4 @@
+# Preservar los bytes exactos de los ficheros recuperados de producción:
+# nada de conversiones automáticas de fin de línea (el árbol de origen se
+# descargó tal cual se subió al deployment).
+* -text

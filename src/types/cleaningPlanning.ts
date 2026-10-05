@@ -51,10 +51,20 @@ export interface AvailabilityWindow {
   endTime: string;
 }
 
+export type BlockedAvailabilityWindowKind =
+  | 'absence'
+  | 'fixed_day_off'
+  | 'weekly_unavailability'
+  | 'unavailability'
+  | 'maintenance'
+  | 'extraordinary'
+  | 'assigned_task';
+
 export interface BlockedAvailabilityWindow {
   startTime?: string;
   endTime?: string;
   reason: string;
+  kind?: BlockedAvailabilityWindowKind;
 }
 
 export interface EffectiveWorkerAvailability {

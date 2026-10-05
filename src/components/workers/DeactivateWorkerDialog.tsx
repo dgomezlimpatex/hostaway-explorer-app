@@ -144,7 +144,7 @@ export const DeactivateWorkerDialog: React.FC<DeactivateWorkerDialogProps> = ({
 
                   <div className="border-t border-yellow-200 pt-2 text-sm text-yellow-900">
                     <strong>Al confirmar, estas {count} tarea{count === 1 ? '' : 's'} quedarán sin asignar</strong>{' '}
-                    y volverán a estar visibles para reasignarlas manualmente o con Hermes.
+                    y volverán a estar visibles para reasignarlas manualmente o desde el Planificador diario.
                   </div>
                 </div>
               )}

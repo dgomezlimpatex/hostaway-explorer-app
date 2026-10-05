@@ -8,13 +8,13 @@ interface PlanningAdvancedDetailsProps {
 }
 
 export const PlanningAdvancedDetails = ({ children }: PlanningAdvancedDetailsProps) => (
-  <Card className="border-[#310984]/10 bg-white text-[#171321] shadow-lg shadow-[#310984]/6">
+  <Card className="border-line bg-white text-ink shadow-sober">
     <CardContent className="p-0">
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="advanced-details" className="border-none">
-          <AccordionTrigger className="min-h-[56px] px-5 text-left text-base font-semibold text-[#171321] hover:no-underline">
+          <AccordionTrigger className="min-h-[56px] px-5 text-left text-base font-semibold text-ink hover:no-underline">
             <span className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-[#310984]" />
+              <BarChart3 className="h-5 w-5 text-brand" />
               Ver disponibilidad, carga y diagnóstico técnico
             </span>
           </AccordionTrigger>

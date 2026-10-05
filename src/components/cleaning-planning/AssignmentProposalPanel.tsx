@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronDown, Clock3, Sparkles, XCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Clock3, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSidebar } from '@/components/ui/sidebar';
 import { Cleaner } from '@/types/calendar';
@@ -11,6 +10,8 @@ import { CleanerGroupAssignment } from '@/types/propertyGroups';
 import { minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
 import { PlanningProposalCalendar, PlanningProposalDraftWarning } from './PlanningProposalCalendar';
+import { PlanningSteps } from './PlanningSteps';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface AssignmentProposalPanelProps {
   draftScopeKey?: string;
@@ -27,6 +28,8 @@ interface AssignmentProposalPanelProps {
   sedeName?: string;
   isPartialScope?: boolean;
   totalPendingTaskCount?: number;
+  savedTaskIds?: string[];
+  onTaskSaved?: (taskId: string) => void;
   onApply: (draftProposals: AssignmentProposal[]) => Promise<void>;
   onClear: () => void;
 }
@@ -67,6 +70,8 @@ export const AssignmentProposalPanel = ({
   sedeName,
   isPartialScope = false,
   totalPendingTaskCount = 0,
+  savedTaskIds = [],
+  onTaskSaved,
   onApply,
   onClear,
 }: AssignmentProposalPanelProps) => {
@@ -144,11 +149,14 @@ export const AssignmentProposalPanel = ({
       .map((task) => task.id));
   }, [draftProposals, calendarTasks]);
   const coveredCount = coveredTaskIds.size;
+  const pendingTaskIds = useMemo(() => new Set(tasks.map((task) => task.id)), [tasks]);
+  const coveredPendingCount = Array.from(coveredTaskIds).filter((taskId) => pendingTaskIds.has(taskId)).length;
+  const editedExistingCount = coveredCount - coveredPendingCount;
   const completeDraftProposals = useMemo(
     () => draftProposals.filter((item) => coveredTaskIds.has(item.taskId)),
     [coveredTaskIds, draftProposals],
   );
-  const uncoveredCount = Math.max(0, (proposal?.summary.totalUnassignedTasks || 0) - coveredCount);
+  const uncoveredCount = Math.max(0, (proposal?.summary.totalUnassignedTasks || 0) - coveredPendingCount);
   const blockingWarnings = draftWarnings.filter((warning) => (
     warning.severity === 'blocking'
     && (!warning.taskId || coveredTaskIds.has(warning.taskId))
@@ -199,24 +207,56 @@ export const AssignmentProposalPanel = ({
 
   const hasBlockingIssue = isStale || blockingWarnings.length > 0;
   return (
-    <main className="space-y-4 pb-24 md:space-y-5 md:pb-28" aria-busy={isApplying}>
-      <header className="rounded-3xl border border-[#310984]/10 bg-white p-4 shadow-lg shadow-[#310984]/8 md:p-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#efe9fb] px-3 py-1 text-xs font-semibold text-[#310984]">
-              <Sparkles className="h-3.5 w-3.5" /> Propuesta de Hermes
-            </div>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[#171321]">Propuesta para {dateLabel}</h1>
-            <p className="mt-1 text-sm text-[#6b627a]">{sedeName ? `${sedeName} · ` : ''}{isPartialScope ? `Alcance parcial: ${tasks.length} de ${totalPendingTaskCount}. ` : ''}Toca una limpieza para cambiar su responsable. Nada se guarda hasta pulsar “Guardar reparto”.</p>
+    <main className="space-y-4 pb-48 md:space-y-5 md:pb-32" aria-busy={isApplying}>
+      <header className="planner-stage-hero overflow-hidden rounded-2xl border border-line bg-white shadow-sober">
+        <div className="grid gap-5 p-5 md:gap-6 md:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand">
+              <span aria-hidden="true" className="h-px w-5 shrink-0 bg-brand/60" />
+              <span className="truncate">{sedeName || 'Planificación diaria'}</span>
+            </p>
+            <h1 data-planner-proposal-title tabIndex={-1} className="mt-2 text-balance text-2xl font-semibold tracking-tight text-ink focus:outline-none md:text-3xl">
+              {selectedDay ? `Reparto del ${dateLabel}` : `Reparto · ${dateLabel}`}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-3">
+              {isPartialScope && <span className="font-medium text-warning">Vista parcial: {tasks.length} de {totalPendingTaskCount} limpiezas. </span>}
+              El borrador se guarda al confirmar; los ajustes rápidos se aplican al momento.
+            </p>
           </div>
-          <Badge variant="outline" className="w-fit border-[#310984]/15 bg-[#faf8ff] px-3 py-1 text-[#310984]">
-            {coveredCount} cubierta{coveredCount === 1 ? '' : 's'}
-          </Badge>
+
+          <div role="group" aria-label="Estado del reparto" className="flex flex-wrap items-center gap-y-3 border-t border-line pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+            <div className="pr-5">
+              <p className="text-2xl font-semibold leading-none tracking-tight tabular-nums text-success">{coveredPendingCount}</p>
+              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3">Cubiertas</p>
+            </div>
+            {editedExistingCount > 0 && (
+              <div className="border-l border-line px-5">
+                <p className="text-2xl font-semibold leading-none tracking-tight tabular-nums text-ink">{editedExistingCount}</p>
+                <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3">Ajustadas</p>
+              </div>
+            )}
+            {uncoveredCount > 0 && (
+              <div className="border-l border-line px-5">
+                <p className="text-2xl font-semibold leading-none tracking-tight tabular-nums text-warning">{uncoveredCount}</p>
+                <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3">Sin asignar</p>
+              </div>
+            )}
+            {blockingWarnings.length > 0 && (
+              <div className="border-l border-line px-5 pr-0">
+                <p className="text-2xl font-semibold leading-none tracking-tight tabular-nums text-danger">{blockingWarnings.length}</p>
+                <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3">Bloqueos</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-line-soft px-5 md:px-7">
+          <PlanningSteps current={2} compact className="py-3" />
         </div>
       </header>
 
       {(applyError || isStale || blockingWarnings.length > 0) && (
-        <section className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-900" aria-live="polite">
+        <section className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-900" aria-live="polite">
           {applyError ? (
             <div className="flex items-start gap-2">
               <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
@@ -248,56 +288,70 @@ export const AssignmentProposalPanel = ({
           activeCleanerAssignments={activeCleanerAssignments}
           excludedCleanerAssignments={excludedCleanerAssignments}
           isStale={isStale}
+          savedTaskIds={savedTaskIds}
+          onTaskSaved={onTaskSaved}
           onDraftProposalsChange={handleDraftProposalsChange}
           onDraftWarningsChange={handleDraftWarningsChange}
         />
       </div>
 
-      <details className="group rounded-2xl border border-[#310984]/10 bg-white shadow-sm">
-        <summary className="flex min-h-[48px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-[#310984] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#310984]">
-          Ver detalles del plan
-          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="space-y-4 border-t border-[#310984]/10 p-4 text-sm text-[#6b627a]">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{coveredCount}</p><p>limpiezas cubiertas</p></div>
-            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{minutesToHoursLabel(draftProposals.reduce((sum, item) => sum + item.durationMinutes, 0))}</p><p>horas repartidas</p></div>
-            <div className="rounded-xl bg-[#faf8ff] p-3"><p className="font-semibold text-[#171321]">{proposal.summary.globalQuality?.globalScore ?? '—'}</p><p>calidad global</p></div>
-          </div>
-          {proposal.conflicts.length > 0 && (
-            <div>
-              <p className="font-semibold text-red-800">Sin cubrir</p>
-              <ul className="mt-2 space-y-1 text-red-700">{proposal.conflicts.map((conflict) => <li key={`${conflict.taskId}-${conflict.code}`}>• {conflict.message}</li>)}</ul>
+      <Accordion type="single" collapsible className="planner-accordion rounded-lg border border-line bg-white shadow-sm">
+        <AccordionItem value="proposal-details" className="border-b-0">
+          <AccordionTrigger className="min-h-[48px] gap-3 px-4 py-3 text-left text-sm font-semibold text-brand no-underline hover:no-underline focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand">
+            Ver detalles del plan
+          </AccordionTrigger>
+          <AccordionContent className="planner-disclosure-content border-t border-line px-4 text-sm text-ink-3">
+            <div className="space-y-4 pt-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-md bg-paper p-3"><p className="font-semibold text-ink">{coveredCount}</p><p>limpiezas cubiertas</p></div>
+                <div className="rounded-md bg-paper p-3"><p className="font-semibold text-ink">{minutesToHoursLabel(draftProposals.reduce((sum, item) => sum + item.durationMinutes, 0))}</p><p>horas repartidas</p></div>
+                <div className="rounded-md bg-paper p-3"><p className="font-semibold text-ink">{proposal.summary.globalQuality?.globalScore ?? '—'}</p><p>encaje del reparto</p></div>
+              </div>
+              {proposal.conflicts.length > 0 && (
+                <div>
+                  <p className="font-semibold text-red-800">Sin asignar</p>
+                  <ul className="mt-2 space-y-1 text-red-700">{proposal.conflicts.map((conflict) => <li key={`${conflict.taskId}-${conflict.code}`}>• {conflict.message}</li>)}</ul>
+                </div>
+              )}
+              {softWarnings.length > 0 && (
+                <div><p className="font-semibold text-amber-900">Avisos operativos</p><ul className="mt-2 space-y-1 text-amber-800">{softWarnings.map((warning) => <li key={warning.id}>• {warning.message}</li>)}</ul></div>
+              )}
+              <div className="flex items-start gap-2 rounded-md bg-paper p-3">
+                <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                <p>Tus cambios se guardan en este navegador hasta guardar el reparto o descartar.</p>
+              </div>
             </div>
-          )}
-          {softWarnings.length > 0 && (
-            <div><p className="font-semibold text-amber-900">Avisos operativos</p><ul className="mt-2 space-y-1 text-amber-800">{softWarnings.map((warning) => <li key={warning.id}>• {warning.message}</li>)}</ul></div>
-          )}
-          <div className="flex items-start gap-2 rounded-xl bg-[#faf8ff] p-3">
-            <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-[#310984]" />
-            <p>Tus cambios se guardan en este navegador hasta guardar el reparto o descartar.</p>
-          </div>
-        </div>
-      </details>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[#310984]/10 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(49,9,132,0.12)] backdrop-blur transition-[left] duration-200 md:p-4"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(49,9,132,0.12)] backdrop-blur transition-[left] duration-200 md:p-4"
         style={{ left: isMobile ? 0 : sidebarState === 'expanded' ? '18rem' : '4rem' }}
       >
         <div className="mx-auto flex w-full max-w-[1920px] flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <Button type="button" variant="outline" className="min-h-[48px] border-[#310984]/15 text-[#310984]" disabled={isApplying} onClick={handleDiscard}>
+          <Button type="button" variant="outline" className="min-h-[48px] border-line text-brand" disabled={isApplying} onClick={handleDiscard}>
             Descartar propuesta
           </Button>
           <div className="flex flex-col gap-2 sm:items-end">
-            <p className="text-xs font-semibold text-[#6b627a]">
+            <p className="text-xs font-semibold text-ink-3">
               Se guardarán {coveredCount} limpieza{coveredCount === 1 ? '' : 's'}{uncoveredCount > 0 ? ` · ${uncoveredCount} quedarán sin responsable` : ''}. Después se iniciarán los avisos.
             </p>
-            <Button type="button" className="min-h-[50px] bg-[#310984] px-6 text-base font-semibold text-white hover:bg-[#26066a]" disabled={!canApply} onClick={handleApply}>
-              {isApplying
-                ? 'Guardando reparto…'
-                : uncoveredCount > 0
-                  ? `Guardar ${coveredCount} y avisar`
-                  : 'Guardar reparto y avisar'}
+            <Button
+              type="button"
+              aria-busy={isApplying}
+              className="relative isolate min-h-[50px] overflow-hidden bg-ink px-6 text-base font-semibold text-white hover:bg-black"
+              disabled={!canApply}
+              onClick={handleApply}
+            >
+              {isApplying && <span aria-hidden="true" className="planner-save-progress absolute inset-0 bg-white/20" />}
+              <span className="relative z-10">
+                {isApplying
+                  ? 'Guardando reparto…'
+                  : uncoveredCount > 0
+                    ? `Guardar ${coveredCount} y avisar`
+                    : 'Guardar reparto y avisar'}
+              </span>
             </Button>
           </div>
         </div>

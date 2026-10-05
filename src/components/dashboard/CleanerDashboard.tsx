@@ -81,7 +81,7 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
               className="h-11 w-11 shrink-0 object-contain drop-shadow-[0_8px_16px_rgba(49,9,132,0.14)]"
             />
             <span className="hidden min-w-0 sm:block">
-              <span className="block truncate text-sm font-black tracking-[-0.02em] text-[#24123f]">Limpatex</span>
+              <span className="block truncate text-sm font-black tracking-[-0.02em] text-ink">Limpatex</span>
               <span className="block truncate text-[11px] font-medium text-[#817493]">Espacio de limpieza</span>
             </span>
           </Link>
@@ -126,7 +126,7 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
                 </div>
                 <Link
                   to="/tasks"
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white px-3.5 py-2 text-xs font-bold text-[#4d218f] shadow-sm transition-colors hover:bg-[#f5f0ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white px-3.5 py-2 text-xs font-bold text-[#4d218f] shadow-sm transition-colors hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                 >
                   Ver tareas de hoy
                   <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -179,18 +179,18 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
             className="cleaner-calendar-card cleaner-page-enter group relative flex min-h-[210px] flex-col justify-between overflow-hidden rounded-[1.75rem] p-5 outline-none transition-transform duration-200 focus-visible:ring-2 focus-visible:ring-[#6d40ca] focus-visible:ring-offset-2 sm:p-7 hover:-translate-y-1"
           >
             <div className="relative z-10 flex items-start justify-between gap-4">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/65 text-[#54308f] shadow-sm">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/65 text-brand shadow-sm">
                 <CalendarDays className="h-6 w-6" aria-hidden="true" />
               </span>
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/45 text-[#54308f] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/45 text-brand transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
                 <ArrowUpRight className="h-5 w-5" aria-hidden="true" />
               </span>
             </div>
             <div className="relative z-10 mt-10">
               <p className="cleaner-section-kicker text-[#765da8]">Tu planificación</p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-[-0.045em] text-[#24123f]">Mi calendario</h2>
+              <h2 className="mt-1 text-2xl font-semibold tracking-[-0.045em] text-ink">Mi calendario</h2>
               <p className="mt-2 max-w-xs text-sm leading-5 text-[#716581]">Consulta tu semana y llega a cada servicio con tiempo.</p>
-              <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#54308f]">
+              <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-brand">
                 Abrir calendario
                 <span className="h-px w-7 bg-[#a28bcf] transition-all duration-200 group-hover:w-10" aria-hidden="true" />
               </span>
@@ -204,7 +204,7 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
         </div>
 
         <aside className="cleaner-reminder flex items-start gap-3 rounded-2xl px-4 py-4 sm:items-center sm:px-5" aria-label="Recordatorio">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f1eaff] text-[#6a42b6]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-paper text-[#6a42b6]">
             <Info className="h-5 w-5" aria-hidden="true" />
           </span>
           <div>

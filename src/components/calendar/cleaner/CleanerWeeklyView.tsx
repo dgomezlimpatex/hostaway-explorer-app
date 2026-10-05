@@ -74,7 +74,7 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
               spellCheck={false}
               onClick={() => onSelectDate(day)}
               className={cn(
-                "flex flex-col items-center py-2 px-1 rounded-xl transition-all duration-200",
+                "flex flex-col items-center py-2 px-1 rounded-md transition-all duration-200",
                 selected && "bg-primary text-primary-foreground shadow-lg scale-105",
                 !selected && today && "bg-primary/20 ring-2 ring-primary/50",
                 !selected && !today && "hover:bg-muted/50"
@@ -101,13 +101,13 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
                 {pending > 0 && (
                   <div className={cn(
                     "w-2 h-2 rounded-full",
-                    selected ? "bg-amber-200" : "bg-amber-500"
+                    selected ? "bg-line-soft" : "bg-surface"
                   )} />
                 )}
                 {completed > 0 && (
                   <div className={cn(
                     "w-2 h-2 rounded-full",
-                    selected ? "bg-green-200" : "bg-green-500"
+                    selected ? "bg-line-soft" : "bg-surface"
                   )} />
                 )}
               </div>

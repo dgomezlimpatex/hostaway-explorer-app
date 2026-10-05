@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { TimeSlot } from "./TimeSlot";
 import { EnhancedTaskCard } from "./EnhancedTaskCard";
 import { Task, Cleaner } from "@/types/calendar";
+import type { DragState } from "@/hooks/useDragAndDrop";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
 import { getTaskPositionWithOverlap, getEffectiveTaskEndTime } from "@/utils/taskPositioning";
@@ -16,10 +17,10 @@ interface CalendarGridProps {
   assignedTasks: Task[];
   availability: CleanerAvailability[];
   currentDate: Date;
-  dragState: any;
+  dragState: DragState;
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[], timeSlot?: string) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void;
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onTaskClick: (task: Task) => void;
@@ -69,9 +70,9 @@ const CleanerRow = memo(({
   cleanerTasks: Task[];
   availability: CleanerAvailability[];
   currentDate: Date;
-  dragState: any;
+  dragState: DragState;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[], timeSlot?: string) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void;
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onTaskClick: (task: Task) => void;
@@ -225,7 +226,7 @@ const CleanerRow = memo(({
             // Let drag events pass through to the underlying TimeSlot so the
             // user can drop a task on top of an existing one (cascade insert).
             isAnyDragging && !isBeingDragged && "pointer-events-none",
-            position.hasOverlap && "border-2 border-red-400 border-dashed shadow-lg"
+            position.hasOverlap && "border-2 border-danger border-dashed shadow-lg"
           )}
           style={{
             left: position.left,
@@ -256,7 +257,7 @@ const CleanerRow = memo(({
           />
           {isSplit && (
             <div
-              className="absolute top-0.5 right-0.5 z-20 px-1.5 py-0.5 rounded-full bg-background/90 border border-border text-[9px] font-bold text-foreground shadow-sm pointer-events-none"
+              className="absolute bottom-2 right-0.5 z-20 px-1.5 py-0.5 rounded-full bg-background/90 border border-border text-[9px] font-bold text-foreground shadow-sm pointer-events-none"
               title={`Dividido entre ${count} personas`}
             >
               ÷{count}
@@ -357,7 +358,7 @@ const CleanerRow = memo(({
        className={cn(
          "h-16 relative transition-all duration-200 flex border-b border-border",
          !isAbsent && !isPreferred && !isDimmed && (index % 2 === 0 ? "bg-background hover:bg-accent/50" : "bg-muted/30 hover:bg-accent/50"),
-         isPreferred && "bg-yellow-50/60 ring-1 ring-inset ring-yellow-300",
+         isPreferred && "bg-surface/60 ring-1 ring-inset ring-warning",
          isDimmed && "opacity-40"
        )}
        style={isAbsent ? {

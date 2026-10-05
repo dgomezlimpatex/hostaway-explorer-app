@@ -1,15 +1,15 @@
 
 import { useState, useCallback, useMemo } from 'react';
-import { Task } from '@/types/calendar';
+import { Task, Cleaner } from '@/types/calendar';
 
-interface DragState {
+export interface DragState {
   draggedTask: Task | null;
   isDragging: boolean;
   dragOffset: { x: number; y: number };
   draggedFromPosition?: { cleanerId: string; timeSlot: string };
 }
 
-export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string, cleaners: any[], timeSlot?: string) => void) => {
+export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void) => {
   const [dragState, setDragState] = useState<DragState>({
     draggedTask: null,
     isDragging: false,
@@ -62,7 +62,7 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent, cleanerId: string, cleaners: any[], timeSlot?: string) => {
+  const handleDrop = useCallback((e: React.DragEvent, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => {
     e.preventDefault();
     e.stopPropagation();
     

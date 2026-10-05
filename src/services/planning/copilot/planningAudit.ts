@@ -20,7 +20,7 @@ export const recordPlanningCopilotApply = ({
     entityType: 'planning_proposal',
     sedeId: activeSedeId || null,
     source: 'hermes-planning-copilot',
-    summary: `Hermes planning copilot applied ${validation.summary.readyTasks} tasks / ${validation.summary.totalAssignments} assignments after human confirmation.`,
+    summary: `Reparto aplicado desde el planificador diario: ${validation.summary.readyTasks} limpiezas / ${validation.summary.totalAssignments} asignaciones tras confirmacion humana.`,
     beforeData: {
       scope,
       proposalCount: proposals.length,

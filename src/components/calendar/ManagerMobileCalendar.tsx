@@ -51,9 +51,9 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
   
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-500';
-      case 'in-progress': return 'bg-blue-500'; 
-      case 'pending': return 'bg-yellow-500';
+      case 'completed': return 'bg-surface';
+      case 'in-progress': return 'bg-surface'; 
+      case 'pending': return 'bg-surface';
       default: return 'bg-gray-500';
     }
   };
@@ -142,9 +142,9 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Unassigned tasks section */}
         {unassignedTasks.length > 0 && (
-          <Card className="border-orange-200 bg-orange-50">
+          <Card className="border-line bg-surface">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg text-orange-800 flex items-center">
+              <CardTitle className="text-lg text-warning flex items-center">
                 <Calendar className="h-5 w-5 mr-2" />
                 Tareas Sin Asignar ({unassignedTasks.length})
               </CardTitle>
@@ -157,7 +157,7 @@ export const ManagerMobileCalendar: React.FC<ManagerMobileCalendarProps> = ({
                     console.log('Clicked unassigned task:', task.id);
                     onTaskClick(task);
                   }}
-                  className="p-3 bg-white rounded-lg border border-orange-200 shadow-sm active:scale-95 transition-transform cursor-pointer"
+                  className="p-3 bg-white rounded-lg border border-line shadow-sm active:scale-95 transition-transform cursor-pointer"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

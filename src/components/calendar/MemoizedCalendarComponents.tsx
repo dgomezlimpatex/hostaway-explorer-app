@@ -4,6 +4,7 @@ import { WorkersColumn } from './WorkersColumn';
 import { TimelineHeader } from './TimelineHeader';
 import { UnassignedTasks } from './UnassignedTasks';
 import { Task, Cleaner } from '@/types/calendar';
+import type { DragState } from '@/hooks/useDragAndDrop';
 import { CleanerAvailability } from '@/hooks/useCleanerAvailability';
 import { usePerformanceOptimization } from '@/hooks/usePerformanceOptimization';
 
@@ -14,10 +15,10 @@ export const MemoizedCalendarGrid = memo<{
   assignedTasks: Task[];
   availability: CleanerAvailability[];
   currentDate: Date;
-  dragState: any;
+  dragState: DragState;
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: any[], timeSlot?: string) => void;
+  onDrop: (e: React.DragEvent, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void;
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onTaskClick: (task: Task) => void;
@@ -104,11 +105,11 @@ export const MemoizedUnassignedTasks = memo<{
     return (
       <div className="w-80 flex-shrink-0">
         <div className="bg-card rounded-lg border shadow-sm p-4">
-          <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-700 font-medium">
+          <div className="text-center p-4 bg-surface border border-line rounded-lg">
+            <p className="text-warning font-medium">
               ⚡ Lista de Tareas Optimizada
             </p>
-            <p className="text-yellow-600 text-sm mt-1">
+            <p className="text-warning text-sm mt-1">
               {tasks.length} tareas sin asignar
             </p>
           </div>

@@ -11,7 +11,7 @@ function isExplicitlyEnabled(value: string | boolean | undefined): boolean {
 }
 
 /**
- * Flags del cliente para el rollout de Planificación Hermes v2.
+ * Flags del cliente para el rollout de la Planificación v2.
  * Ambos quedan apagados cuando Vite no inyecta una habilitación explícita.
  */
 export function getPlanningBatchClientFlags(

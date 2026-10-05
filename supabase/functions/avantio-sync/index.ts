@@ -1,6 +1,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { SyncOrchestrator } from './sync-orchestrator.ts';
 import { ResponseBuilder } from './response-builder.ts';
+import { avantioFutureDays } from './avantio-api.ts';
+import { taskCreationHorizonDays } from './reservation-validator.ts';
+import { resolveDaysAhead } from '../_shared/syncHorizon.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,7 +35,15 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
     // Parse trigger metadata from request body (cron sends triggered_by/schedule_name)
-    let triggerMeta: { triggered_by?: string; schedule_name?: string; schedule_id?: string; source?: string } = {};
+    let triggerMeta: {
+      triggered_by?: string;
+      schedule_name?: string;
+      schedule_id?: string;
+      source?: string;
+      /** Horizonte de lectura/creación que puede pedir la invocación (pase trimestral). */
+      daysAhead?: number;
+      taskHorizonDays?: number;
+    } = {};
     try {
       if (req.headers.get('content-type')?.includes('application/json')) {
         const body = await req.json();
@@ -72,7 +83,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    const orchestrator = new SyncOrchestrator(supabaseUrl, supabaseServiceKey);
+    // Horizonte por invocación: los pases diarios no lo envían y siguen con los
+    // valores históricos (30 días de lectura y 30 de creación de tarea).
+    const daysAhead = resolveDaysAhead(triggerMeta.daysAhead, avantioFutureDays());
+    const taskHorizonDays = resolveDaysAhead(triggerMeta.taskHorizonDays, taskCreationHorizonDays());
+
+    const orchestrator = new SyncOrchestrator(supabaseUrl, supabaseServiceKey, { daysAhead, taskHorizonDays });
 
     // Initialize sync log SYNCHRONOUSLY so we can return its ID immediately
     await orchestrator.initializeSyncLog(triggerMeta);

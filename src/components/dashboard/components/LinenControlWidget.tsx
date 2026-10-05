@@ -45,7 +45,7 @@ export const LinenControlWidget = () => {
               className="flex items-center justify-between text-xs"
             >
               <span className="font-mono font-medium">{property.propertyCode}</span>
-              <span className={property.status === 'overdue' ? 'text-red-600' : 'text-amber-600'}>
+              <span className={property.status === 'overdue' ? 'text-danger' : 'text-warning'}>
                 {property.status === 'overdue' ? 'Atrasado' : 'Pendiente'}
               </span>
             </div>

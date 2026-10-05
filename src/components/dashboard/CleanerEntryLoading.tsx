@@ -1,7 +1,7 @@
 export const CleanerEntryLoading = () => {
   return (
     <main
-      className="flex min-h-screen items-center justify-center bg-[#fbfaff] px-5 py-8"
+      className="flex min-h-screen items-center justify-center bg-paper px-5 py-8"
       aria-label="Cargando"
       role="status"
     >

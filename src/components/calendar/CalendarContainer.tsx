@@ -22,12 +22,8 @@ import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
 import { buildTaskAssignmentsMap, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
+import type { DragState } from "@/hooks/useDragAndDrop";
 
-type CalendarDragState = {
-  isDragging: boolean;
-  draggedTask?: Task | null;
-  dragOffset?: { x: number; y: number };
-};
 
 type RecurringCalendarTask = Task & {
   isRecurringInstance?: boolean;
@@ -56,7 +52,7 @@ export interface CalendarContainerProps {
   selectedTask: Task | null;
   isTaskModalOpen: boolean;
   setIsTaskModalOpen: (open: boolean) => void;
-  dragState: CalendarDragState;
+  dragState: DragState;
   handleDragStart: (e: React.DragEvent, task: Task) => void;
   handleDragEnd: (e: React.DragEvent) => void;
   handleDragOver: (e: React.DragEvent) => void;
@@ -437,12 +433,12 @@ const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
   const totalOverlaps = entries.reduce((acc, [, arr]) => acc + arr.length, 0);
 
   return (
-    <div className="mb-2 flex-shrink-0 border border-red-200 bg-red-50/60 dark:bg-red-950/20 dark:border-red-900/50 rounded-md text-sm">
+    <div className="mb-2 flex-shrink-0 border border-line bg-paper dark:bg-red-950/20 dark:border-red-900/50 rounded-md text-sm">
       <div className="flex items-center gap-2 px-3 py-2">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-2 flex-1 min-w-0 text-left text-red-800 dark:text-red-200 hover:opacity-80"
+          className="flex items-center gap-2 flex-1 min-w-0 text-left text-danger dark:text-red-200 hover:opacity-80"
         >
           {expanded ? (
             <ChevronDown className="h-4 w-4 flex-shrink-0" />
@@ -458,7 +454,7 @@ const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="text-red-600/70 hover:text-red-700 dark:text-red-400/70 dark:hover:text-red-300 flex-shrink-0"
+          className="text-danger/70 hover:text-danger dark:text-red-400/70 dark:hover:text-red-300 flex-shrink-0"
           aria-label="Ocultar avisos"
         >
           <X className="h-4 w-4" />

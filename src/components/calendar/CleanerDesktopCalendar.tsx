@@ -60,7 +60,7 @@ export const CleanerDesktopCalendar: React.FC<CleanerDesktopCalendarProps> = ({
             </div>
             
             {todayTasks.length === 0 ? (
-              <div className="text-center py-16 bg-gradient-to-br from-muted/20 to-muted/40 rounded-3xl border border-border/50">
+              <div className="text-center py-16 bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg border border-border/50">
                 <div className="text-6xl mb-4">📅</div>
                 <p className="text-2xl font-medium mb-3 text-foreground">No tienes tareas para hoy</p>
                 <p className="text-lg text-muted-foreground">Disfruta de tu día libre</p>

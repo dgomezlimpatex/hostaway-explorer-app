@@ -1,4 +1,9 @@
 
+@import "@fontsource/manrope/latin-600.css";
+@import "@fontsource/manrope/latin-700.css";
+@import "@fontsource/source-sans-3/latin-400.css";
+@import "@fontsource/source-sans-3/latin-600.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -37,28 +42,40 @@
     --info: 199 89% 48%;
     --info-foreground: 210 40% 98%;
 
-    /* Dashboard colors from palette */
-    --dashboard-blue: 216 83% 56%;
-    --dashboard-purple: 260 73% 71%;
-    --dashboard-magenta: 301 65% 55%;
-    --dashboard-turquoise: 188 65% 75%;
-    --dashboard-light-purple: 263 42% 66%;
-    --dashboard-violet: 257 64% 68%;
 
+
+    /* Sistema sobrio (2026-09-24): superficies neutras, un solo acento de marca,
+       estados desaturados. Ver DECISIONES de Engineer. */
+    --paper: 240 5% 97%;
+    --surface: 0 0% 100%;
+    --line: 240 6% 90%;
+    --line-soft: 240 6% 96%;
+    --ink: 240 6% 10%;
+    --ink-2: 240 5% 34%;
+    --ink-3: 240 4% 46%;
+    --ink-4: 240 5% 65%;
+    --state-danger: 4 72% 40%;
+    --state-info: 217 45% 38%;
+    --tint-success: 145 40% 95%;
+    --tint-warning: 36 70% 94%;
+    --tint-info: 214 45% 95%;
+    --tint-danger: 4 60% 95%;
+    --state-warning: 26 91% 37%;
+    --state-success: 158 74% 24%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
 
-    --radius: 1rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 259 87% 14%;
-    --sidebar-foreground: 252 100% 98%;
-    --sidebar-primary: 187 78% 84%;
-    --sidebar-primary-foreground: 259 87% 18%;
-    --sidebar-accent: 259 62% 22%;
-    --sidebar-accent-foreground: 252 100% 98%;
-    --sidebar-border: 259 47% 24%;
-    --sidebar-ring: 187 78% 72%;
+    --sidebar-background: 240 4% 12%;
+    --sidebar-foreground: 240 6% 90%;
+    --sidebar-primary: 259 87% 28%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 4% 16%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 4% 18%;
+    --sidebar-ring: 259 80% 62%;
   }
 
   .dark {
@@ -144,6 +161,20 @@
   html {
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer components {
+  .properties-page {
+    font-family: "Source Sans 3", sans-serif;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  .properties-page h1,
+  .properties-page h2,
+  .properties-page h3 {
+    font-family: Manrope, sans-serif;
   }
 }
 
@@ -890,5 +921,104 @@ textarea:focus {
   .laundry-bag-complete-badge {
     animation-duration: 0.18s;
     animation-iteration-count: 1;
+  }
+}
+
+/* Feedback de guardado del planificador: avance visual aproximado, nunca porcentaje real. */
+@keyframes plannerSaveFill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(0.86); }
+}
+
+.planner-save-progress {
+  transform: scaleX(0.72);
+  transform-origin: left center;
+  animation: plannerSaveFill 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Al abrir los detalles, el contenido aparece con una transición corta y espacial. */
+@keyframes plannerDisclosureIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.planner-accordion [data-radix-accordion-content][data-state='open'] > .planner-disclosure-content {
+  animation: plannerDisclosureIn 180ms ease-out both;
+}
+
+/* El paso de preparación al tablero comparte la misma cabecera en navegadores compatibles. */
+.planner-stage-hero { view-transition-name: planner-stage-hero; }
+
+::view-transition-old(root) { animation: 220ms ease-out both plannerStageFadeOut; }
+::view-transition-new(root) { animation: 310ms ease-out both plannerStageFadeIn; }
+::view-transition-old(planner-stage-hero),
+::view-transition-new(planner-stage-hero) {
+  animation-duration: 480ms;
+  animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+}
+@keyframes plannerStageFadeOut { to { opacity: 0; } }
+@keyframes plannerStageFadeIn { from { opacity: 0; } }
+
+/* Solo el modal abierto desde una tarjeta viaja desde esa posición; Radix conserva el foco y Escape. */
+@keyframes plannerPlaceFromCard {
+  from {
+    opacity: .38;
+    transform: translate(-50%, -50%) translate(var(--planner-origin-x), var(--planner-origin-y)) scale(var(--planner-origin-scale));
+  }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.planner-placement-dialog[data-state='open'].planner-placement-from-card {
+  animation: plannerPlaceFromCard 560ms cubic-bezier(.22, 1, .36, 1) both;
+  transform-origin: center center;
+}
+@keyframes plannerPlaceClose {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(.96); }
+}
+.planner-placement-dialog[data-state='closed'] {
+  animation: plannerPlaceClose 180ms ease-in both !important;
+}
+
+@media (max-width: 639px) {
+  .planner-placement-dialog {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    max-height: 92dvh;
+    border-radius: 1.25rem 1.25rem 0 0;
+    transform: none;
+  }
+  @keyframes plannerPlaceSheet {
+    from { opacity: .55; transform: translateY(32px) scale(.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .planner-placement-dialog[data-state='open'].planner-placement-from-card {
+    animation: plannerPlaceSheet 340ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+  @keyframes plannerPlaceSheetOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(24px); }
+  }
+  .planner-placement-dialog[data-state='closed'] {
+    animation: plannerPlaceSheetOut 180ms ease-in both !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  .planner-save-progress,
+  .planner-accordion [data-radix-accordion-content],
+  .planner-accordion .planner-disclosure-content,
+  .planner-placement-dialog[data-state='open'],
+  .planner-placement-dialog[data-state='closed'],
+  .planner-placement-overlay,
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(planner-stage-hero),
+  ::view-transition-new(planner-stage-hero) {
+    animation: none !important;
   }
 }

@@ -81,9 +81,9 @@ export const TimeSlot = memo(({
       className={cn(
         "relative min-w-[50px] w-[50px] h-16 border-r border-gray-200 transition-colors flex-shrink-0",
         // Available slots
-        isAvailable && !hourlyAbsence && allowDrop && "hover:bg-blue-50 cursor-pointer",
+        isAvailable && !hourlyAbsence && allowDrop && "hover:bg-surface cursor-pointer",
         // Unavailable slots - show with different styling
-        !isAvailable && !hourlyAbsence && "bg-red-50 border-red-200",
+        !isAvailable && !hourlyAbsence && "bg-surface border-line",
         // Occupied slots
         showAsOccupied && !hourlyAbsence && "bg-gray-100"
       )}
@@ -97,14 +97,14 @@ export const TimeSlot = memo(({
 
       {/* Drop indicator - show when dragging over available slot */}
       {allowDrop && !hourlyAbsence && (
-        <div className="absolute inset-0 border-2 border-dashed border-blue-400 bg-blue-50 opacity-0 transition-opacity duration-200 pointer-events-none drop-indicator" />
+        <div className="absolute inset-0 border-2 border-dashed border-brand bg-surface opacity-0 transition-opacity duration-200 pointer-events-none drop-indicator" />
       )}
       
       {/* Unavailable indicator */}
       {!isAvailable && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-full h-0.5 bg-red-300 transform rotate-45"></div>
-          <div className="w-full h-0.5 bg-red-300 transform -rotate-45 absolute"></div>
+          <div className="w-full h-0.5 bg-danger transform rotate-45"></div>
+          <div className="w-full h-0.5 bg-danger transform -rotate-45 absolute"></div>
         </div>
       )}
       

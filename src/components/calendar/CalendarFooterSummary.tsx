@@ -38,7 +38,7 @@ export const CalendarFooterSummary = ({ tasks, cleaners }: CalendarFooterSummary
   const remaining = stats.clientIds.length - visibleClientIds.length;
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card shadow-sm px-3 md:px-5 py-2.5 md:py-3">
+    <div className="rounded-md border border-border/50 bg-card shadow-sm px-3 md:px-5 py-2.5 md:py-3">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         {/* Resumen numérico */}
         <div className="flex items-center gap-4 md:gap-6 flex-wrap">

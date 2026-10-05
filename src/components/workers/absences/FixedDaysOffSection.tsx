@@ -37,7 +37,8 @@ export const FixedDaysOffSection: React.FC<FixedDaysOffSectionProps> = ({
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Días Libres Fijos</CardTitle>
         <CardDescription>
-          Marca los días de la semana en los que este trabajador no trabaja regularmente
+          <span className="block">Marca los días de la semana en los que este trabajador no trabaja regularmente</span>
+          <span className="mt-1 block">Las tareas ya asignadas se conservan; el día libre orienta la planificación automática y permite asignaciones manuales de emergencia.</span>
         </CardDescription>
       </CardHeader>
       <CardContent>

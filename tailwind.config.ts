@@ -19,6 +19,32 @@ export default {
 		},
 		extend: {
 			colors: {
+				'surface-dark': '#1C1C1F',
+				'surface-dark-2': '#26262B',
+				'line-dark': '#2A2A2F',
+				'ink-light': '#E4E4E7',
+				'ink-light-2': '#A1A1AA',
+				paper: 'hsl(var(--paper))',
+				surface: 'hsl(var(--surface))',
+				line: 'hsl(var(--line))',
+				'line-soft': 'hsl(var(--line-soft))',
+				ink: {
+					DEFAULT: 'hsl(var(--ink))',
+					2: 'hsl(var(--ink-2))',
+					3: 'hsl(var(--ink-3))',
+					4: 'hsl(var(--ink-4))'
+				},
+				brand: {
+					DEFAULT: 'hsl(var(--primary))'
+				},
+				danger: 'hsl(var(--state-danger))',
+				info: 'hsl(var(--state-info))',
+				'tint-success': 'hsl(var(--tint-success))',
+				'tint-warning': 'hsl(var(--tint-warning))',
+				'tint-info': 'hsl(var(--tint-info))',
+				'tint-danger': 'hsl(var(--tint-danger))',
+				warning: 'hsl(var(--state-warning))',
+				success: 'hsl(var(--state-success))',
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -62,6 +88,9 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				}
+			},
+			boxShadow: {
+				sober: '0 1px 2px rgba(24, 24, 27, 0.04), 0 1px 3px rgba(24, 24, 27, 0.06)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

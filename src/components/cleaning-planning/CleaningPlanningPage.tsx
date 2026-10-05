@@ -1,4 +1,6 @@
+import { buildProposalContextKey, canAcceptSavedTaskContext } from '@/utils/cleaning-planning/proposalContext';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { addDays } from 'date-fns';
 import { useCleaningPlanning } from '@/hooks/useCleaningPlanning';
 import { useCleaningPlanningActions } from '@/hooks/useCleaningPlanningActions';
@@ -20,6 +22,8 @@ import { isOperationalCleaner } from '@/utils/cleaningPlanning';
 import { getTodayMadrid, formatMadridDate } from '@/utils/date';
 import { PlanningDayNavigation } from './PlanningDayNavigation';
 import { Button } from '@/components/ui/button';
+import { CheckCircle2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { buildAssignmentProposal } from '@/utils/cleaning-planning/proposalEngine';
 import { applyBuildingOperationalWindow } from '@/utils/cleaning-planning/buildingOperationalWindow';
 import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
@@ -62,33 +66,6 @@ type ProposalState = {
   contextKey: string;
   tasksSnapshot: CleaningPlanningTask[];
 };
-
-const buildProposalContextKey = ({
-  activeSedeId,
-  cleanerIds,
-  availability,
-  filters,
-  range,
-  tasks,
-}: {
-  activeSedeId?: string;
-  cleanerIds: string[];
-  availability: Array<{ cleanerId: string; date: string; remainingMinutes: number; isAvailable: boolean }>;
-  filters: CleaningPlanningFilters;
-  range: { startDate: string; endDate: string };
-  tasks: CleaningPlanningTask[];
-}): string => JSON.stringify({
-  activeSedeId: activeSedeId || 'sin-sede',
-  cleanerIds: [...cleanerIds].sort(),
-  availability: availability
-    .map((item) => `${item.cleanerId}:${item.date}:${item.isAvailable ? 1 : 0}:${item.remainingMinutes}`)
-    .sort(),
-  filters,
-  range,
-  tasks: tasks
-    .map((task) => `${task.id}:${task.date}:${task.startTime}:${task.endTime}:${task.durationMinutes}:${task.cleanerId || 'sin-asignar'}:${(task.assignments || []).map((assignment) => assignment.cleaner_id).sort().join(',') || 'sin-multi'}:${task.detectedBuilding?.propertyGroupId || 'sin-edificio'}`)
-    .sort(),
-});
 
 const buildIndividualBuilding = (task: CleaningPlanningTask, codePrefix: string): DetectedBuilding => {
   const label = task.propertyCode || task.property || codePrefix || task.propertyId || task.id;
@@ -191,9 +168,12 @@ export const CleaningPlanningPage = () => {
   const [date, setDate] = useState(() => addDays(getTodayMadrid(), 1));
   const [preset, setPreset] = useState<PlanningRangePreset>('today');
   const [filters, setFilters] = useState<CleaningPlanningFilters>(defaultFilters);
+  const [savedQuickTaskId, setSavedQuickTaskId] = useState<string | null>(null);
   const [proposalState, setProposalState] = useState<ProposalState | null>(null);
   const [calendarNavigation, setCalendarNavigation] = useState(false);
   const [isSavingDay, setIsSavingDay] = useState(false);
+  const [isSavedConfirmationOpen, setIsSavedConfirmationOpen] = useState(false);
+  const [savedTaskIds, setSavedTaskIds] = useState<string[]>([]);
   const dayProposals = useRef(new Map<string, ProposalState>());
   const { planning, range, effectiveAvailability, isLoading, isError, refetch } = useCleaningPlanning({ date, preset });
   const { cleaners, refetch: refetchCleaners } = useCleaners();
@@ -256,8 +236,15 @@ export const CleaningPlanningPage = () => {
     availability: effectiveAvailability,
     filters,
     range,
-    tasks: filteredUnassignedTasks,
-  }), [activeSede?.id, effectiveAvailability, filters, filteredUnassignedTasks, operationalCleaners, range]);
+    tasks: filteredTasks,
+  }), [activeSede?.id, effectiveAvailability, filters, filteredTasks, operationalCleaners, range]);
+  useEffect(() => {
+    if (!savedQuickTaskId || !proposalState || isError) return;
+    if (canAcceptSavedTaskContext(proposalState.contextKey, proposalContextKey, savedQuickTaskId)) {
+      setProposalState(current => current ? { ...current, contextKey: proposalContextKey } : current);
+      setSavedQuickTaskId(null);
+    }
+  }, [savedQuickTaskId, proposalState, proposalContextKey, isError]);
   const proposal = proposalState?.result || null;
   const proposalTasks = proposalState?.tasksSnapshot || filteredUnassignedTasks;
   const hasPartialScope = filteredUnassignedTasks.length !== enhancedUnassignedTasks.length;
@@ -294,7 +281,23 @@ export const CleaningPlanningPage = () => {
       availability: effectiveAvailability,
       cleanerGroupAssignments: buildingData.cleanerAssignments,
     });
-    setProposalState({ result: nextProposal, contextKey: proposalContextKey, tasksSnapshot: filteredUnassignedTasks });
+    const showProposal = () => {
+      flushSync(() => setProposalState({ result: nextProposal, contextKey: proposalContextKey, tasksSnapshot: filteredUnassignedTasks }));
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    };
+    const focusHeading = () => {
+      // No quitar el foco a quien ya empezó a navegar mientras terminaba la transición.
+      if (document.activeElement === document.body || document.activeElement === document.documentElement) {
+        document.querySelector<HTMLElement>('[data-planner-proposal-title]')?.focus({ preventScroll: true });
+      }
+    };
+    if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // Mantiene continuidad entre la cabecera de preparación y el tablero, sin retrasar la propuesta.
+      void document.startViewTransition(showProposal).finished.then(focusHeading, focusHeading);
+    } else {
+      showProposal();
+      focusHeading();
+    }
     return nextProposal;
   };
 
@@ -340,8 +343,12 @@ export const CleaningPlanningPage = () => {
       freshTasks: freshTasksResult.data,
     });
     dayProposals.current.delete(dayKey);
-    setProposalState(null);
     await Promise.all([buildingDataQuery.refetch(), refetchCleaners()]);
+    setSavedTaskIds(proposalsToApply.map((item) => item.taskId));
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 160));
+    }
+    setIsSavedConfirmationOpen(true);
     } finally {
       setIsSavingDay(false);
     }
@@ -349,9 +356,9 @@ export const CleaningPlanningPage = () => {
 
   const advancedContent = (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-[#310984]/10 bg-white p-4 text-sm text-[#6b627a]">
-        <p className="font-semibold text-[#171321]">Solo necesitas esto si quieres buscar o revisar detalles.</p>
-        <p className="mt-1">Para preparar el reparto del día, vuelve arriba y pulsa «Preparar reparto con Hermes».</p>
+      <div className="rounded-lg border border-line bg-white p-4 text-sm text-ink-3">
+        <p className="font-semibold text-ink">Solo necesitas esto si quieres buscar o revisar detalles.</p>
+        <p className="mt-1">Para preparar el reparto del día, vuelve arriba y pulsa «Preparar el reparto».</p>
       </div>
       <PlanningFilters
         date={date}
@@ -385,7 +392,7 @@ export const CleaningPlanningPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#f7f5fb] p-3 text-[#171321] md:p-6">
+    <div className="min-h-screen bg-paper p-3 text-ink md:p-6">
       {(proposalState || calendarNavigation) && <div className="mx-auto w-full max-w-[1920px]"><PlanningDayNavigation date={date} disabled={isApplyingProposal || isSavingDay} onChange={handleCalendarDateChange} /></div>}
       {proposalState ? (
         <div className="mx-auto w-full max-w-[1920px]">
@@ -405,12 +412,14 @@ export const CleaningPlanningPage = () => {
             sedeName={activeSede?.nombre}
             isPartialScope={hasPartialScope}
             totalPendingTaskCount={enhancedUnassignedTasks.length}
+            savedTaskIds={savedTaskIds}
+            onTaskSaved={setSavedQuickTaskId}
             onApply={handleApplyProposal}
             onClear={() => {dayProposals.current.delete(dayKey);setProposalState(null);setCalendarNavigation(false);}}
           />
         </div>
       ) : calendarNavigation ? (
-        <div className="mx-auto max-w-[1920px] rounded-2xl border bg-white p-8" role="status">
+        <div className="mx-auto max-w-[1920px] rounded-lg border bg-white p-8" role="status">
           {isError || buildingDataQuery.isError ? <><p>No se pudo cargar este día. Tu borrador anterior se conserva.</p><Button variant="outline" onClick={()=>{void refetch();void buildingDataQuery.refetch();}}>Reintentar</Button></> : 'Cargando calendario…'}
         </div>
       ) : (
@@ -432,6 +441,43 @@ export const CleaningPlanningPage = () => {
           advancedContent={advancedContent}
         />
       )}
+      <Dialog
+        open={isSavedConfirmationOpen}
+        onOpenChange={(open) => {
+          setIsSavedConfirmationOpen(open);
+          if (!open) {
+            setSavedTaskIds([]);
+            setProposalState(null);
+            setCalendarNavigation(false);
+          }
+        }}
+      >
+        <DialogContent className="planner-success-dialog max-w-sm rounded-2xl border-line shadow-xl [&>button.absolute]:hidden">
+          <DialogHeader className="items-center text-center">
+            <span aria-hidden="true" className="mb-2 grid h-14 w-14 place-items-center rounded-full bg-line-soft text-brand">
+              <CheckCircle2 className="h-7 w-7" />
+            </span>
+            <DialogTitle>¡Reparto guardado!</DialogTitle>
+            <DialogDescription>
+              Los cambios se han aplicado correctamente. Al continuar volverás al resumen del día.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              className="min-h-[44px] w-full bg-brand text-white hover:bg-ink"
+              onClick={() => {
+                setIsSavedConfirmationOpen(false);
+                setSavedTaskIds([]);
+                setProposalState(null);
+                setCalendarNavigation(false);
+              }}
+            >
+              Volver al día
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

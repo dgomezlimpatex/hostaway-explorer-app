@@ -50,7 +50,7 @@ export const BuildingSetupChecklist = ({ profile, proposal, onGenerateProposal }
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#310984]/70">Personalización del edificio</p>
             <CardTitle className="mt-1 text-xl tracking-tight">Deja {buildingName} listo para automatizar</CardTitle>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-[#6b627a]">
-              Esta ficha debe responder tres cosas: qué propiedades tiene, qué equipo puede hacerlas y si Hermes ya puede proponer un reparto revisable.
+              Esta ficha debe responder tres cosas: qué propiedades tiene, qué equipo puede hacerlas y si la app ya puede proponer un reparto revisable.
             </p>
           </div>
           <Button type="button" className="w-full bg-[#310984] text-white hover:bg-[#4c1bb0] lg:w-auto" onClick={onGenerateProposal}>
@@ -70,7 +70,7 @@ export const BuildingSetupChecklist = ({ profile, proposal, onGenerateProposal }
               </div>
               <p className="mt-1 text-xs leading-5 opacity-85">
                 {missingDurationProperties.length > 0
-                  ? `${missingDurationProperties.length} propiedad${missingDurationProperties.length === 1 ? '' : 'es'} sin duración. Hermes no debe inventar horas.`
+                  ? `${missingDurationProperties.length} propiedad${missingDurationProperties.length === 1 ? '' : 'es'} sin duración. La app no debe inventar horas.`
                   : `Todas tienen duración operativa. Carga total: ${formatCrmHours(profile.summary.serviceMinutes)}.`}
               </p>
               {firstMissingProperty && (
@@ -120,7 +120,7 @@ export const BuildingSetupChecklist = ({ profile, proposal, onGenerateProposal }
               <p className="mt-1 text-xs leading-5 opacity-85">
                 {!proposal
                   ? pendingTasks.length > 0
-                    ? 'Prueba una propuesta aquí sin guardar cambios y aplica luego desde Hermes Planificación.'
+                    ? 'Prueba una propuesta aquí sin guardar cambios y aplica luego desde el Planificador diario.'
                     : 'No hay limpiezas confirmadas pendientes de asignar en este rango.'
                   : conflictCount > 0
                     ? `${proposedCount} listas y ${conflictCount} necesitan decisión manual.`

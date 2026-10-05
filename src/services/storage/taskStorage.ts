@@ -2,6 +2,7 @@ import { Task } from '@/types/calendar';
 import { BaseStorageService } from './baseStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { formatMadridDate } from '@/utils/date';
+import { getCalendarTaskStatus, type CalendarProgressReport } from '@/utils/calendarTaskStatus';
 import { recordAiObservedEvent } from '@/services/aiObservedEvents';
 import {
   canCleanerAccessTaskByAssignments,
@@ -35,9 +36,7 @@ type TaskPropertyRow = {
   direccion?: string | null;
 };
 
-type TaskReportRow = {
-  overall_status?: string | null;
-};
+type TaskReportRow = CalendarProgressReport;
 
 type TaskAssignmentRow = {
   id: string;
@@ -61,6 +60,7 @@ type TaskDBRow = {
   end_time: string;
   type: string;
   status: string;
+  calendarStatus?: string;
   check_out: string;
   check_in: string;
   cleaner?: string | null;
@@ -105,6 +105,7 @@ const taskStorageConfig = {
     endTime: row.end_time,
     type: row.type,
     status: row.status as 'pending' | 'in-progress' | 'completed',
+    calendarStatus: row.calendarStatus,
     checkOut: row.check_out,
     checkIn: row.check_in,
     cleaner: row.cleaner,
@@ -112,6 +113,7 @@ const taskStorageConfig = {
     date: row.date,
     clienteId: row.cliente_id,
     propertyId: row.propiedad_id,
+    sedeId: row.sede_id,
     duration: row.duracion,
     cost: row.coste,
     paymentMethod: row.metodo_pago,
@@ -222,7 +224,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       .select(`
         *,
         properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
-        task_reports(overall_status),
+        task_reports(cleaner_id, overall_status, start_time, end_time),
         task_assignments!inner(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
       `)
       .eq('task_assignments.cleaner_id', cleanerId)
@@ -251,7 +253,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       .select(`
         *,
         properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
-        task_reports(overall_status),
+        task_reports(cleaner_id, overall_status, start_time, end_time),
         task_assignments(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
       `)
       .eq('cleaner_id', cleanerId)
@@ -365,6 +367,8 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
 
     return taskStorageConfig.mapFromDB({
       ...task,
+      calendarStatus: getCalendarTaskStatus(task.status, task.task_reports || [],
+        task.task_assignments?.length ? task.task_assignments.map(a => a.cleaner_id) : [task.cleaner_id || '']),
       status: finalStatus,
       cleaner: cleanerName,
       cleaner_id: cleanerIdValue,
@@ -422,7 +426,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       .select(`
         *,
         properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
-        task_reports(overall_status),
+        task_reports(cleaner_id, overall_status, start_time, end_time),
         task_assignments(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
       `)
       .gte('date', dateFrom)
@@ -509,7 +513,7 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       .select(`
         *,
         properties!tasks_propiedad_id_fkey(codigo, duracion_servicio, nombre, direccion),
-        task_reports(overall_status),
+        task_reports(cleaner_id, overall_status, start_time, end_time),
         task_assignments(id, task_id, cleaner_id, cleaner_name, assigned_at, assigned_by, created_at, updated_at)
       `)
       .gte('date', options.dateFrom)
