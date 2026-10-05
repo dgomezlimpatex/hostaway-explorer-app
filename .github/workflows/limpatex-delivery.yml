@@ -87,7 +87,7 @@ jobs:
       - name: Verify app entry in a browser without login
         run: |
           cd candidate
-          npx --no-install playwright install --with-deps chromium
+          npx --no-install playwright install chromium
           cd ..
           python3 -m http.server 8080 --directory candidate/dist > /tmp/limpatex-browser-server.log 2>&1 &
           node control/automation/delivery/smoke.mjs http://127.0.0.1:8080 candidate

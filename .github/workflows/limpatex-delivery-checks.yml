@@ -27,6 +27,6 @@ jobs:
         run: npm run build
       - name: Browser smoke without login or writes
         run: |
-          npx --no-install playwright install --with-deps chromium
+          npx --no-install playwright install chromium
           python3 -m http.server 8080 --directory dist > /tmp/limpatex-browser-server.log 2>&1 &
           node automation/delivery/smoke.mjs http://127.0.0.1:8080 .
