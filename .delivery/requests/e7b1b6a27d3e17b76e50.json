@@ -1,0 +1,21 @@
+{
+  "request": "Añadir una pantalla final de recuento para editar las cantidades o confirmar el envío, solicitada por Dani.",
+  "reason": "Reorganiza la interfaz de operaciones ya disponibles. La entrada en revisión solo cambia el estado local; Guardar corrección reutiliza set con revisión vigente y Confirmar reutiliza confirm. No cambia contratos, existencias por diferencia, proveedor, destinatarios, permisos ni sesiones.",
+  "verification": "Componente real probado sin red: nueve totales, validación, edición pendiente, revisión desactualizada, bloqueo al guardar y confirmación sin envío automático. Flujo móvil/escritorio completo con la compilación real, SQL aislado y Resend simulado: abrir revisión no añade versiones/stock; una corrección confirmada ajusta únicamente la diferencia. Excel, recuperación, continuidad e historial correctos. Build, lint y tipos Node correctos; mismos 102 errores de aplicación, ninguno nuevo. Prueba de navegador con fixtures locales; no demuestra sesiones reales ni entrega al buzón.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/laundryReceiptReviewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "a65fefeceea60099904ca83b25aa45e48aaa8446e4e990e9767408b3242296bd"
+}
