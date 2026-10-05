@@ -37,6 +37,14 @@ export function assertTransition(deployments, expected, baseFingerprint, commit,
 export function entryAssets(html) {
   return [...html.matchAll(/(?:src|href)="([^" ]*\/assets\/[^" ]+\.(?:js|css))"/g)].map(m=>m[1]);
 }
+export function cachedFileHashes(nodes) {
+  const hashes=new Set();
+  for(const node of nodes){
+    if(node.type==='file' && /^[a-f0-9]{40}$/.test(node.uid || '')) hashes.add(node.uid);
+    for(const hash of cachedFileHashes(node.children || [])) hashes.add(hash);
+  }
+  return hashes;
+}
 async function request(url, method = 'GET', body, token = process.env.GH_TOKEN) {
   const response = await fetch(url, {method, headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
   const text = await response.text();
@@ -127,13 +135,24 @@ async function createDeployment() {
   assert.equal(fingerprint(repo),process.env.RELEASE_FINGERPRINT);
   const names=execFileSync('git',['-C',repo,'ls-files','-z'],{encoding:'utf8'}).split('\0').filter(Boolean);
   const files=names.map(file=>{const data=fs.readFileSync(path.join(repo,file));return {file, data, size:data.length, sha:crypto.createHash('sha1').update(data).digest('hex')};});
+  const previousDeployment=(await live())[0];
+  const cached=cachedFileHashes(await vc(`/v6/deployments/${previousDeployment.id}/files`));
+  const pending=files.filter(file=>!cached.has(file.sha));
+  console.log(`Fuente: ${files.length-pending.length} archivos reutilizados; ${pending.length} pendientes de subir.`);
   let next=0;
   await Promise.all(Array.from({length:8},async()=>{
-    while(next<files.length){
-      const file=files[next++];
-      const response=await fetch(`https://api.vercel.com/v2/files?teamId=${config.teamId}`,{method:'POST',headers:{Authorization:`Bearer ${process.env.VERCEL_TOKEN}`,'Content-Type':'application/octet-stream','Content-Length':String(file.size),'x-vercel-digest':file.sha},body:file.data});
-      if(!response.ok) throw new Error(`No se pudo subir el archivo de fuente: ${response.status}`);
-      await response.arrayBuffer();
+    while(next<pending.length){
+      const file=pending[next++];
+      for(let attempt=0;attempt<8;attempt++){
+        const response=await fetch(`https://api.vercel.com/v2/files?teamId=${config.teamId}`,{method:'POST',headers:{Authorization:`Bearer ${process.env.VERCEL_TOKEN}`,'Content-Type':'application/octet-stream','Content-Length':String(file.size),'x-vercel-digest':file.sha},body:file.data});
+        await response.arrayBuffer();
+        if(response.ok) break;
+        if(attempt===7 || (response.status!==429 && response.status<500)) throw new Error(`No se pudo subir el archivo de fuente: ${response.status}`);
+        const retrySeconds=Number(response.headers.get('retry-after')) || 10*(2**attempt);
+        const seconds=Math.min(60,Math.max(5,retrySeconds));
+        console.log(`Vercel ${response.status}: reintento de subida en ${seconds}s.`);
+        await new Promise(resolve=>setTimeout(resolve,seconds*1000));
+      }
     }
   }));
   console.log(`Fuente del commit subida: ${files.length} archivos.`);
