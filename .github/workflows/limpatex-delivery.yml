@@ -15,6 +15,7 @@ on:
         default: true
 permissions:
   contents: read
+  deployments: read
 concurrency:
   group: limpatex-production-delivery
   queue: max
