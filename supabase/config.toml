@@ -40,6 +40,11 @@ verify_jwt = false
 [functions.laundry-route-access]
 verify_jwt = false
 
+# Public warehouse link requires the existing worker PIN; every action validates
+# its receipt session. Administration validates the user's role inside the handler.
+[functions.laundry-receipts]
+verify_jwt = false
+
 [functions.manage-laundry-route-workers]
 verify_jwt = true
 
