@@ -36,11 +36,18 @@ export function AttentionPanel({groups, issues, loading, error, onRetry, onRevie
     try {await onReview(alert);} catch (reason) {setReviewError(reason instanceof Error ? reason.message : 'No se pudo guardar la revisión. Vuelve a intentarlo.');}
     finally {setPendingKey(null);}
   };
+  const reviewRow = async (alerts: AttentionAlert[]) => {
+    setPendingKey(alerts[0].key); setReviewError('');
+    try {for (const alert of alerts) await onReview(alert);}
+    catch (reason) {setReviewError(reason instanceof Error ? reason.message : 'No se pudo guardar la revisión. Vuelve a intentarlo.');}
+    finally {setPendingKey(null);}
+  };
   const row = (group: AttentionGroup) => {
     const matching = filter === 'all' ? group.alerts : group.alerts.filter(a => a.kind === filter);
     const primary = matching[0];
-    return <button type="button" key={group.task.id} onClick={() => select(group)}
-      className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition hover:shadow-sm ${tone(primary.kind)}`}>
+    return <div key={group.task.id}
+      className={`flex w-full items-start gap-2 rounded-lg border p-3 ${tone(primary.kind)}`}>
+      <button type="button" onClick={() => select(group)} className="flex min-w-0 flex-1 items-start gap-3 text-left transition hover:opacity-80">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">{primary.title}</span>
@@ -50,7 +57,14 @@ export function AttentionPanel({groups, issues, loading, error, onRetry, onRevie
         {group.alerts.length > 1 && <span className="mt-1 block text-xs font-medium">{group.alerts.length} avisos en esta tarea</span>}
       </span>
       <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />
-    </button>;
+      </button>
+      <Button size="sm" variant="outline" className="shrink-0" disabled={pendingKey !== null}
+        aria-label={`Marcar como revisada: ${group.task.property}`}
+        onClick={() => void reviewRow(matching)}>
+        <Check className="mr-1 hidden h-4 w-4 sm:block" aria-hidden="true" />
+        {matching.some(alert => alert.key === pendingKey) ? 'Guardando…' : 'Revisada'}
+      </Button>
+    </div>;
   };
   return <>
     <section className="rounded-lg border border-line bg-white p-4 shadow-sm" aria-label="Requiere tu atención">
@@ -70,6 +84,7 @@ export function AttentionPanel({groups, issues, loading, error, onRetry, onRevie
             </Button>)}
           </div>
           <div className="space-y-2">{filtered.slice(0, 5).map(row)}</div>
+          {reviewError && <p className="mt-2 text-sm text-destructive" role="alert">{reviewError}</p>}
           {!filtered.length && <p className="py-4 text-sm text-muted-foreground">{groups.length ? 'No hay avisos de este tipo.' : issues.length ? 'No hay avisos detectados; quedan datos por comprobar.' : 'No hay tareas que requieran atención ahora'}</p>}
           {issues.length > 0 && <details className="mt-3 rounded border border-amber-200 p-2 text-xs"><summary className="cursor-pointer font-medium">Datos por comprobar ({issues.length})</summary>
             {issues.map((issue, i) => <p key={`${issue.taskId}-${i}`} className="mt-2">{issue.property}: {issue.message}</p>)}
@@ -79,6 +94,7 @@ export function AttentionPanel({groups, issues, loading, error, onRetry, onRevie
     </section>
     <Dialog open={allOpen} onOpenChange={setAllOpen}><DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>Alertas de hoy</DialogTitle><DialogDescription>{filter === 'all' ? 'Todas las tareas que requieren atención.' : alertLabels[filter]}</DialogDescription></DialogHeader>
       {error ? <p role="alert">{error}</p> : <div className="space-y-2">{filtered.map(row)}</div>}
+      {reviewError && <p className="text-sm text-destructive" role="alert">{reviewError}</p>}
     </DialogContent></Dialog>
     <Dialog open={selectedId !== null} onOpenChange={open => {if (!open) setSelectedId(null);}}><DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{selected?.task.property || 'Revisión de avisos'}</DialogTitle><DialogDescription>Revisar un aviso no cambia el estado de la tarea ni del reporte.</DialogDescription></DialogHeader>
       {error ? <p role="alert" className="text-destructive">{error}</p> : !selected ? <p>No quedan avisos pendientes en esta tarea.</p> : <>
