@@ -131,6 +131,31 @@ try {
     );
   }
   await page
+    .getByRole("button", { name: "Revisar recuento", exact: true })
+    .click();
+  await page.getByRole("heading", { name: "Revisa las cantidades" }).waitFor();
+  assert.equal(
+    (
+      await t.db.query(
+        "SELECT count(*)::int as n FROM laundry_receipt_versions",
+      )
+    ).rows[0]?.n ?? 0,
+    0,
+  );
+  assert.equal(
+    (
+      await t.db.query(
+        "SELECT current_quantity::float as n FROM stock_levels WHERE product_id=$1",
+        [t.productMap.bath_towels],
+      )
+    ).rows[0]?.n ?? 0,
+    0,
+  );
+  await page.screenshot({
+    path: join(artifacts, "review-mobile.png"),
+    fullPage: true,
+  });
+  await page
     .getByRole("button", { name: "Confirmar y enviar Excel", exact: true })
     .click();
   await page
@@ -149,6 +174,7 @@ try {
       .find((r) => r[0] === "Toallas de baño")[1],
     235,
   );
+  await page.getByRole("button", { name: "Volver al recuento" }).click();
   dropNextAdd = true;
   await page.getByLabel("Cantidad Toallas de baño", { exact: true }).fill("15");
   await towel.getByRole("button", { name: "Añadir", exact: true }).click();
@@ -170,22 +196,33 @@ try {
     "250",
   );
   await page
+    .getByRole("button", { name: "Revisar recuento", exact: true })
+    .click();
+  await page
     .getByRole("button", {
       name: "Confirmar cambios y reenviar Excel",
       exact: true,
     })
     .click();
   await page.getByText("Versión 2 · Empleado A", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Editar Toallas de baño" }).click();
+  await page.getByLabel("Total corregido Toallas de baño").fill("240");
   await page
-    .getByLabel("Cantidad Toallas de baño", { exact: true })
-    .fill("240");
-  await towel
-    .getByRole("button", { name: "Usar esta cantidad como total corregido" })
+    .getByRole("button", { name: "Guardar corrección", exact: true })
     .click();
   await page
-    .getByLabel("Total Toallas de baño", { exact: true })
+    .getByLabel("Revisado Toallas de baño", { exact: true })
     .filter({ hasText: "240" })
     .waitFor();
+  assert.equal(
+    (
+      await t.db.query(
+        "SELECT current_quantity::float as n FROM stock_levels WHERE product_id=$1",
+        [t.productMap.bath_towels],
+      )
+    ).rows[0].n,
+    250,
+  );
   await page
     .getByRole("button", {
       name: "Confirmar cambios y reenviar Excel",

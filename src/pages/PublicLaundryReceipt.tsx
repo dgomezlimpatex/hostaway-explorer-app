@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import LaundryReceiptReview from "@/components/inventory/LaundryReceiptReview";
 import {
   RECEIPT_MATERIALS,
   madridReceiptDate,
@@ -55,6 +56,7 @@ export default function PublicLaundryReceipt() {
   );
   const [state, setState] = useState<ReceiptState | null>(null);
   const [date, setDate] = useState("");
+  const [reviewing, setReviewing] = useState(false);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -102,6 +104,7 @@ export default function PublicLaundryReceipt() {
     };
   }, [access, busy, refresh, cancelReads]);
   useEffect(() => {
+    setReviewing(false);
     setInputs({});
     setInputRevisions({});
     setNotesDirty(false);
@@ -233,13 +236,11 @@ export default function PublicLaundryReceipt() {
     <main className="min-h-screen bg-slate-50 px-3 py-3 text-slate-900">
       <div className="relative mx-auto max-w-xl space-y-2">
         <header>
-          <p className="hidden">
-            APP GESTIÓN LIMPATEX
-          </p>
-          <h1 className="pr-24 text-lg font-bold leading-7 sm:text-xl">Inventario de lencería</h1>
-          <p className="hidden">
-            Cuenta por tandas y confirma al terminar.
-          </p>
+          <p className="hidden">APP GESTIÓN LIMPATEX</p>
+          <h1 className="pr-24 text-lg font-bold leading-7 sm:text-xl">
+            Inventario de lencería
+          </h1>
+          <p className="hidden">Cuenta por tandas y confirma al terminar.</p>
         </header>
         {error && (
           <div
@@ -365,7 +366,10 @@ export default function PublicLaundryReceipt() {
               <>
                 <section className="contents">
                   <h2 className="hidden">{state.warehouseName}</h2>
-                  <p className="absolute right-0 top-0 !mt-0 text-xs leading-7 text-slate-500"> {state.date}</p>
+                  <p className="absolute right-0 top-0 !mt-0 text-xs leading-7 text-slate-500">
+                    {" "}
+                    {state.date}
+                  </p>
                   {date && (
                     <Button
                       variant="outline"
@@ -412,159 +416,187 @@ export default function PublicLaundryReceipt() {
                   </Button>
                 ) : (
                   <>
-                    <p className="hidden" role="status">
-                      {changed
-                        ? "Borrador · el stock cambia al confirmar"
-                        : `Confirmado · versión ${state.receipt.latest_version}`}
-                      <br />
-                      Guardado:{" "}
-                      {new Date(state.receipt.updated_at).toLocaleTimeString(
-                        "es-ES",
-                        { timeZone: "Europe/Madrid" },
-                      )}
-                    </p>
-                    {RECEIPT_MATERIALS.map(([key, label]) => (
-                      <section
-                        key={key}
-                        className="rounded-xl border bg-white p-3"
-                      >
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <label
-                            htmlFor={`count-${key}`}
-                            className="text-sm font-semibold leading-5"
-                          >
-                            {label}
-                          </label>
-                          <output
-                            aria-label={`Total ${label}`}
-                            className="text-2xl font-bold leading-7 tabular-nums text-primary"
-                          >
-                            {state.receipt!.counts[key]}
-                          </output>
-                        </div>
-                        <div className="flex gap-2">
-                          <Input
-                            id={`count-${key}`}
-                            aria-label={`Cantidad ${label}`}
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            placeholder="Cantidad de esta tanda"
-                            value={inputs[key] || ""}
-                            disabled={locked}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, "");
-                              setInputs((prev) => ({ ...prev, [key]: value }));
-                              setInputRevisions((prev) => {
-                                const next = { ...prev };
-                                if (!value) delete next[key];
-                                else if (next[key] === undefined)
-                                  next[key] = state.receipt!.revision;
-                                return next;
-                              });
-                            }}
-                            className="h-11 min-w-0 text-base"
-                          />
-                          <Button
-                            className="h-11 px-4"
-                            disabled={locked || !inputs[key]}
-                            onClick={() => quantityAction(key, "add")}
-                          >
-                            Añadir
-                          </Button>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          className="hidden"
-                          disabled={
-                            locked ||
-                            inputs[key] === undefined ||
-                            inputs[key] === ""
-                          }
-                          onClick={() => quantityAction(key, "set")}
-                        >
-                          Usar esta cantidad como total corregido
-                        </Button>
-                      </section>
-                    ))}
-                    <Button
-                      variant="outline"
-                      disabled={locked || !lastEditable}
-                      onClick={() =>
-                        void mutate({
-                          action: "undo",
-                          targetId: lastEditable?.id,
-                        })
-                      }
-                    >
-                      Deshacer última suma o corrección
-                    </Button>
-                    <section className="space-y-3 rounded-xl border bg-white p-4">
-                      <label htmlFor="receipt-notes" className="font-semibold">
-                        Observaciones e incidencias
-                      </label>
-                      <p className="text-xs text-slate-600">
-                        Cuenta únicamente ropa limpia aceptada. Anota aquí
-                        prendas rechazadas.
-                      </p>
-                      <Textarea
-                        id="receipt-notes"
-                        maxLength={2000}
-                        disabled={locked}
-                        value={notes}
-                        onChange={(e) => {
-                          setNotes(e.target.value);
-                          setNotesDirty(true);
-                          if (notesRevision === undefined)
-                            setNotesRevision(state.receipt!.revision);
-                        }}
-                      />
-                      <Button
-                        variant="outline"
-                        disabled={locked || notes === state.receipt.notes}
-                        onClick={() =>
+                    {reviewing ? (
+                      <LaundryReceiptReview
+                        counts={state.receipt.counts}
+                        revision={state.receipt.revision}
+                        notes={state.receipt.notes}
+                        locked={locked}
+                        confirmed={!changed}
+                        updated={Boolean(state.receipt.latest_version)}
+                        onCorrect={(material, quantity, expectedRevision) =>
                           void mutate({
-                            action: "notes",
-                            notes,
-                            expectedRevision:
-                              notesRevision ?? state.receipt?.revision,
+                            action: "set",
+                            material,
+                            quantity,
+                            expectedRevision,
                           })
                         }
-                      >
-                        Guardar observaciones
-                      </Button>
-                    </section>
-                    {unsubmitted && (
-                      <p className="text-sm text-amber-800">
-                        Hay cantidades escritas sin añadir. Añádelas o vacía sus
-                        campos antes de confirmar.
-                      </p>
+                        onConfirm={() => void mutate({ action: "confirm" })}
+                        onBack={() => {
+                          setReviewing(false);
+                          window.scrollTo({ top: 0 });
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <p className="hidden" role="status">
+                          {changed
+                            ? "Borrador · el stock cambia al confirmar"
+                            : `Confirmado · versión ${state.receipt.latest_version}`}
+                          <br />
+                          Guardado:{" "}
+                          {new Date(
+                            state.receipt.updated_at,
+                          ).toLocaleTimeString("es-ES", {
+                            timeZone: "Europe/Madrid",
+                          })}
+                        </p>
+                        {RECEIPT_MATERIALS.map(([key, label]) => (
+                          <section
+                            key={key}
+                            className="rounded-xl border bg-white p-3"
+                          >
+                            <div className="mb-2 flex items-center justify-between gap-3">
+                              <label
+                                htmlFor={`count-${key}`}
+                                className="text-sm font-semibold leading-5"
+                              >
+                                {label}
+                              </label>
+                              <output
+                                aria-label={`Total ${label}`}
+                                className="text-2xl font-bold leading-7 tabular-nums text-primary"
+                              >
+                                {state.receipt!.counts[key]}
+                              </output>
+                            </div>
+                            <div className="flex gap-2">
+                              <Input
+                                id={`count-${key}`}
+                                aria-label={`Cantidad ${label}`}
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                placeholder="Cantidad de esta tanda"
+                                value={inputs[key] || ""}
+                                disabled={locked}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(
+                                    /\D/g,
+                                    "",
+                                  );
+                                  setInputs((prev) => ({
+                                    ...prev,
+                                    [key]: value,
+                                  }));
+                                  setInputRevisions((prev) => {
+                                    const next = { ...prev };
+                                    if (!value) delete next[key];
+                                    else if (next[key] === undefined)
+                                      next[key] = state.receipt!.revision;
+                                    return next;
+                                  });
+                                }}
+                                className="h-11 min-w-0 text-base"
+                              />
+                              <Button
+                                className="h-11 px-4"
+                                disabled={locked || !inputs[key]}
+                                onClick={() => quantityAction(key, "add")}
+                              >
+                                Añadir
+                              </Button>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              className="hidden"
+                              disabled={
+                                locked ||
+                                inputs[key] === undefined ||
+                                inputs[key] === ""
+                              }
+                              onClick={() => quantityAction(key, "set")}
+                            >
+                              Usar esta cantidad como total corregido
+                            </Button>
+                          </section>
+                        ))}
+                        <Button
+                          variant="outline"
+                          disabled={locked || !lastEditable}
+                          onClick={() =>
+                            void mutate({
+                              action: "undo",
+                              targetId: lastEditable?.id,
+                            })
+                          }
+                        >
+                          Deshacer última suma o corrección
+                        </Button>
+                        <section className="space-y-3 rounded-xl border bg-white p-4">
+                          <label
+                            htmlFor="receipt-notes"
+                            className="font-semibold"
+                          >
+                            Observaciones e incidencias
+                          </label>
+                          <p className="text-xs text-slate-600">
+                            Cuenta únicamente ropa limpia aceptada. Anota aquí
+                            prendas rechazadas.
+                          </p>
+                          <Textarea
+                            id="receipt-notes"
+                            maxLength={2000}
+                            disabled={locked}
+                            value={notes}
+                            onChange={(e) => {
+                              setNotes(e.target.value);
+                              setNotesDirty(true);
+                              if (notesRevision === undefined)
+                                setNotesRevision(state.receipt!.revision);
+                            }}
+                          />
+                          <Button
+                            variant="outline"
+                            disabled={locked || notes === state.receipt.notes}
+                            onClick={() =>
+                              void mutate({
+                                action: "notes",
+                                notes,
+                                expectedRevision:
+                                  notesRevision ?? state.receipt?.revision,
+                              })
+                            }
+                          >
+                            Guardar observaciones
+                          </Button>
+                        </section>
+                        {unsubmitted && (
+                          <p className="text-sm text-amber-800">
+                            Hay cantidades escritas sin añadir. Añádelas o vacía
+                            sus campos antes de confirmar.
+                          </p>
+                        )}
+                        <Button
+                          className="h-auto min-h-14 w-full whitespace-normal py-4 text-base"
+                          disabled={
+                            locked ||
+                            unsubmitted ||
+                            notes !== state.receipt.notes
+                          }
+                          onClick={() => {
+                            setReviewing(true);
+                            window.scrollTo({ top: 0 });
+                          }}
+                        >
+                          Revisar recuento
+                        </Button>
+                        <p className="text-center text-xs text-slate-600">
+                          Destinatarios: dgomez@limpatex.com y
+                          geisha@limpatex.com
+                        </p>
+                      </>
                     )}
-                    <Button
-                      className="h-auto min-h-14 w-full whitespace-normal py-4 text-base"
-                      disabled={
-                        locked ||
-                        !changed ||
-                        unsubmitted ||
-                        notes !== state.receipt.notes
-                      }
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            "¿Confirmar las cantidades mostradas, actualizar el stock y enviar el Excel a administración?",
-                          )
-                        )
-                          void mutate({ action: "confirm" });
-                      }}
-                    >
-                      {busy
-                        ? "Guardando…"
-                        : state.receipt.latest_version
-                          ? "Confirmar cambios y reenviar Excel"
-                          : "Confirmar y enviar Excel"}
-                    </Button>
-                    <p className="text-center text-xs text-slate-600">
-                      Destinatarios: dgomez@limpatex.com y geisha@limpatex.com
-                    </p>
                     {state.versions.map((v) => {
                       const email = receiptEmail(v);
                       return (
