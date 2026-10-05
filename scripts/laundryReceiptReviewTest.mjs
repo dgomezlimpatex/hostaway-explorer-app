@@ -161,10 +161,12 @@ try {
     "Opening review cannot save or send",
   );
   click("Editar Toallas de baño");
-  fill("");
-  click("Guardar corrección");
-  assert.equal(corrections.length, 0);
-  assert.ok(text(tree).includes("cantidad entera"));
+  for (const invalid of ["", "-5", "2.5", "1000000000"]) {
+    fill(invalid);
+    click("Guardar corrección");
+    assert.equal(corrections.length, 0);
+    assert.ok(text(tree).includes("cantidad entera"));
+  }
   fill("270");
   assert.equal(
     button("Confirmar y enviar Excel").props.disabled,

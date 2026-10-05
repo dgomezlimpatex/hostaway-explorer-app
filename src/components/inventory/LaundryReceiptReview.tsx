@@ -107,7 +107,7 @@ export default function LaundryReceiptReview({
                     setError("");
                     setEdit({
                       ...edit,
-                      value: event.target.value.replace(/\D/g, ""),
+                      value: event.target.value,
                     });
                   }}
                 />
