@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
-import {changeDigest,validateReview,reviewPath} from './scope.mjs';
+import {changeDigest,validateReview,reviewFilename} from './scope.mjs';
 const git=args=>execFileSync('git',args,{encoding:'utf8'}).trim();
 if (!process.argv[2]) throw new Error('Uso: node automation/delivery/review.mjs ruta-a-revision.json');
 if (git(['status','--porcelain'])) throw new Error('Confirmar solo los cambios propios antes de preparar la revisión');
@@ -8,6 +8,7 @@ git(['fetch','origin','main']);
 const base=git(['merge-base','origin/main','HEAD']);
 const review={...JSON.parse(fs.readFileSync(process.argv[2],'utf8')),version:1,scope:'application',digest:changeDigest(process.cwd(),base,'HEAD')};
 validateReview(review,review.digest);
-fs.mkdirSync('.delivery',{recursive:true});
+const reviewPath=reviewFilename(git(['branch','--show-current']));
+fs.mkdirSync('.delivery/requests',{recursive:true});
 fs.writeFileSync(reviewPath,JSON.stringify(review,null,2)+'\n');
 console.log('Revisión ligada al cambio exacto. Revisar y confirmar únicamente '+reviewPath+' antes de submit.');
