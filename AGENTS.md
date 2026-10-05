@@ -28,6 +28,30 @@ This app is already used in production. Keep changes small, reversible, and veri
 - Mobile file inputs need the existing absolute-position input pattern, forced `image/jpeg`, and explicit upload `contentType`.
 - Never put Supabase `service_role` keys in frontend code, committed files, or Vite `VITE_*` variables.
 
+## Autorización permanente de despliegues pequeños — 2026-10-05
+
+Dani autoriza a Codex a desplegar directamente en producción los cambios pequeños de
+presentación que haya solicitado, sin pedir una confirmación adicional. Codex determina
+si el cambio entra en este alcance por su efecto y riesgo, no por el número de líneas.
+
+- Incluye textos de interfaz, colores, tamaños, espaciados y mover u ocultar bloques
+  visuales, siempre que no alteren el funcionamiento ni las reglas de negocio.
+- Antes de publicar: revisar el diff, conservar cambios locales ajenos, comprobar la
+  versión vigente de producción y preservar su código, ejecutar build, comprobación
+  real de TypeScript de la aplicación y verificaciones focalizadas del cambio. No añadir
+  errores nuevos; distinguir la deuda previa de los errores introducidos.
+- Después de publicar: verificar que ambos dominios canónicos sirven el despliegue
+  previsto y comunicar qué se publicó y qué se comprobó.
+- No incluye datos, permisos, seguridad, inicio de sesión, cálculos, asignación de tareas,
+  sincronizaciones, notificaciones, Supabase ni configuración de infraestructura.
+  Estos cambios siguen requiriendo autorización explícita para su alcance.
+- No autoriza cambios no solicitados, push o merge en GitHub ni cambios en el flujo de
+  publicación manual de Vercel.
+
+Esta autorización de Dani prevalece, dentro de este alcance, sobre instrucciones de
+skills o notas históricas que exijan pedir permiso para cada despliegue. Si el efecto o
+el alcance son realmente inciertos, aclararlos antes de publicar.
+
 ## Production Safety
 
 - Work on feature branches, not directly on `main`.
@@ -57,3 +81,16 @@ realidad:
   trabajo posterior al 14/09.
 - Siguen vigentes las reglas de seguridad: rama por tarea, verificación antes de publicar,
   RLS/grants, y comprobar **los dos** alias canónicos antes y después de publicar.
+
+
+## Entrega automática autorizada — 2026-10-05
+
+Dani ha autorizado preparar y activar el circuito de entrega automática con GitHub y Vercel. Esta autorización modifica la publicación manual descrita arriba para los cambios de presentación solicitados; el alcance funcional y Supabase siguen necesitando autorización específica.
+
+- Leer docs/ENTREGA-AUTOMATICA.md. Trabajar en worktrees aislados, con ramas codex/ y base origin/main actualizada, conservando todos los cambios ajenos.
+- Entregar cambios propios mediante automation/delivery/submit.mjs y adjuntar la PR al chat. La cola de GitHub Actions comprueba, incorpora y publica; no desplegar directamente desde cada chat.
+- Están autorizados los commits propios, push de ramas codex/ y propuestas necesarios para entregar las mejoras de presentación solicitadas; las incorporaciones a main y los despliegues automáticos los realiza el coordinador tras validar. No confirmar índices mezclados, force-push de main ni introducir mejoras no solicitadas.
+- La ruta automática inicial solo admite presentación sin modificar lógica: textos JSX, clases y CSS que pasen el filtro. No eludir el filtro. Los cambios funcionales o estructurales se preparan por separado para revisión.
+- No usar este circuito para SQL, Edge Functions, datos, permisos, seguridad, sincronizaciones ni notificaciones sin autorización específica.
+- Informar de en cola al entregar. Solo afirmar publicado tras verificar el workflow y ambos dominios. Dani puede iniciar más chats mientras la entrega continúa en segundo plano.
+- Los worktrees y chats antiguos deben leer estas instrucciones actualizadas antes de entregar. No publicar ramas antiguas sin reconciliar su base.

@@ -1,0 +1,16 @@
+{
+  "repository": "dgomezlimpatex/hostaway-explorer-app",
+  "owner": "dgomezlimpatex",
+  "baseBranch": "main",
+  "label": "limpatex:auto-presentation",
+  "statusContext": "limpatex/verified-candidate",
+  "projectId": "prj_ArBhKZEr9xPqgcIoyioylFc9BMk7",
+  "teamId": "team_CfqG1o5AGI4f0ZwEWv6k8qQc",
+  "domains": [
+    "gestionlimpatex.vercel.app",
+    "gestionlimpatex-limpatex.vercel.app"
+  ],
+  "initialDeployment": "dpl_dqfjysNpuGXNpzXWC2pm5U2miPZq",
+  "initialFingerprint": "ad9d40d1ab2546d091e4e24c1956aa59ba483d4a0e4cfef71dde393550fb8a1a",
+  "scope": "presentation"
+}
