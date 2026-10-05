@@ -2,6 +2,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { passwordSignIn, type LoginError } from '@/auth/passwordSignIn';
 import type { Database } from '@/integrations/supabase/types';
 import {
   canUseOperationalMode,
@@ -18,47 +19,6 @@ const validatePassword = (password: string): string[] => {
   if (!/\d/.test(password)) errors.push('one number');
   if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('one special character');
   return errors;
-};
-
-// Login attempt tracking
-const LOGIN_ATTEMPTS_KEY = 'login_attempts';
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-
-const checkLoginAttempts = async (email: string): Promise<boolean> => {
-  const attempts = JSON.parse(localStorage.getItem(LOGIN_ATTEMPTS_KEY) || '{}');
-  const userAttempts = attempts[email];
-  
-  if (!userAttempts) return true;
-  
-  const now = Date.now();
-  if (userAttempts.count >= MAX_ATTEMPTS) {
-    if (now - userAttempts.lastAttempt < LOCKOUT_DURATION) {
-      return false;
-    }
-    // Reset after lockout period
-    delete attempts[email];
-    localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts));
-  }
-  
-  return true;
-};
-
-const logLoginAttempt = async (email: string, success: boolean): Promise<void> => {
-  const attempts = JSON.parse(localStorage.getItem(LOGIN_ATTEMPTS_KEY) || '{}');
-  
-  if (success) {
-    // Reset attempts on successful login
-    delete attempts[email];
-  } else {
-    // Increment failed attempts
-    attempts[email] = {
-      count: (attempts[email]?.count || 0) + 1,
-      lastAttempt: Date.now()
-    };
-  }
-  
-  localStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts));
 };
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -83,7 +43,7 @@ interface AuthContextType {
   canSwitchOperationalMode: boolean;
   setOperationalMode: (mode: OperationalMode) => void;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: LoginError | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
@@ -260,27 +220,15 @@ export const useAuthProvider = (): AuthContextType => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    setIsLoading(true);
-    
-    // Rate limiting check
-    const canAttempt = await checkLoginAttempts(email);
-    if (!canAttempt) {
-      setIsLoading(false);
-      return { error: { message: 'Too many login attempts. Please try again later.' } };
-    }
-    
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    // Log login attempt
-    await logLoginAttempt(email, !error);
-    
-    setIsLoading(false);
-    return { error };
-  };
+  const signIn = (email: string, password: string) => passwordSignIn({
+    email,
+    storage: {
+      getItem: (key) => localStorage.getItem(key),
+      setItem: (key, value) => localStorage.setItem(key, value),
+    },
+    authenticate: () => supabase.auth.signInWithPassword({ email, password }),
+    setLoading: setIsLoading,
+  });
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     setIsLoading(true);
