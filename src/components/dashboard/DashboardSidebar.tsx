@@ -14,8 +14,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   LogOut,
-  Shirt,
-  Bed,
   Receipt,
   RefreshCw,
   Settings,
@@ -130,18 +128,6 @@ const managementItems: NavigationItem[] = [
     href: '/planning/buildings',
     icon: Building2,
     permission: 'tasks-edit'
-  },
-  {
-    title: 'Control de Mudas',
-    href: '/control-mudas',
-    icon: Bed,
-    permission: 'reports'
-  },
-  {
-    title: 'Lavandería',
-    href: '/lavanderia/gestion',
-    icon: Shirt,
-    permission: 'reports'
   },
   {
     title: 'Nuevo sistema de ruta',

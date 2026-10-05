@@ -1,0 +1,21 @@
+{
+  "request": "Ocultar del sidebar Lavandería y Control de Mudas temporalmente",
+  "reason": "Retira solo accesos visuales de los menús de escritorio y móvil, sin modificar rutas, permisos ni datos",
+  "verification": "Render de ambos componentes reales con fixtures locales sin Supabase; enlaces ocultos y enlaces restantes verificados, navegador a 1440 y 390 px. Build y lint correctos, tipos Node correctos y mismos 102 errores previos de aplicación sin diferencias. No se inició sesión real.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/sidebarHiddenModulesTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "fc6a11051022944f2a5c2665a3af46fba4195010471f2212dd0195149c8dbd7a"
+}

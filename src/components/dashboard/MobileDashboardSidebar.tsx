@@ -79,7 +79,6 @@ const managementItems: NavigationItem[] = [
     icon: Building2,
     permission: 'tasks-edit',
   },
-  { title: 'Lavandería', href: '/lavanderia/gestion', icon: Package, permission: 'reports' },
   { title: 'Nuevo sistema de ruta', href: '/lavanderia/nuevo-sistema', icon: Route, permission: 'route-v2-owner' },
   { title: 'Inventario', href: '/inventory', icon: Package, permission: 'inventory' },
 ];
@@ -260,4 +259,3 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
     </div>
   );
 };
-
