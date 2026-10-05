@@ -100,7 +100,7 @@ async function preDeploy() {
 export function deploymentBody(commit, sourceFingerprint, cfg = config) {
   assert.match(commit, /^[a-f0-9]{40}$/);
   return {name:'gestion_limpatex', project:cfg.projectId, target:'production', source:'cli', autoAssignCustomDomains:false,
-    gitMetadata:{remoteUrl:`https://github.com/${cfg.repository}.git`, commitSha:commit, commitRef:cfg.baseBranch, dirty:'false', ci:'true', ciType:'github-actions'},
+    gitMetadata:{remoteUrl:`https://github.com/${cfg.repository}.git`, commitSha:commit, commitRef:cfg.baseBranch},
     meta:{limpatexCommit:commit, limpatexSourceFingerprint:sourceFingerprint}};
 }
 async function createDeployment() {
