@@ -31,7 +31,7 @@ async function request(url, method = 'GET', body, token = process.env.GH_TOKEN) 
   return text ? JSON.parse(text) : null;
 }
 const gh = (endpoint, method, body) => request(github + endpoint, method, body);
-const vc = endpoint => request('https://api.vercel.com' + endpoint + `?teamId=${config.teamId}`, 'GET', undefined, process.env.VERCEL_TOKEN);
+const vc = (endpoint, method = 'GET', body) => request('https://api.vercel.com' + endpoint + `?teamId=${config.teamId}`, method, body, process.env.VERCEL_TOKEN);
 const git = (repo, args) => execFileSync('git', ['-C', repo, ...args], {encoding:'utf8', maxBuffer:30e6}).trim();
 function output(key, value) { fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`); }
 async function live() { return Promise.all(config.domains.map(d => vc(`/v13/deployments/${d}`))); }
@@ -94,7 +94,60 @@ async function preDeploy() {
   assert.equal(git(repo, ['rev-parse', 'HEAD']), sha);
   assert.equal(fingerprint(repo), process.env.RELEASE_FINGERPRINT);
   const control = path.join(workspace, 'control');
-  assertProduction(await live(), fingerprint(control));
+  assertProduction(await live(), process.env.PRODUCTION_FINGERPRINT || fingerprint(control));
+}
+export function deploymentBody(commit, sourceFingerprint, cfg = config) {
+  assert.match(commit, /^[a-f0-9]{40}$/);
+  return {name:'gestion_limpatex', project:cfg.projectId, target:'production', autoAssignCustomDomains:false,
+    gitSource:{type:'github', repoId:1003841679, ref:commit, sha:commit},
+    meta:{limpatexCommit:commit, limpatexSourceFingerprint:sourceFingerprint}};
+}
+async function createDeployment() {
+  const d = await vc('/v13/deployments', 'POST', deploymentBody(process.env.RELEASE_COMMIT, process.env.RELEASE_FINGERPRINT));
+  output('url', 'https://' + d.url);
+  console.log(`Deployment creado: ${d.id}. Los dominios siguen en la versión anterior.`);
+  let previous;
+  for (let attempt = 0; attempt < 120; attempt++) {
+    const current = await vc(`/v13/deployments/${d.id}`);
+    assert.equal(current.projectId, config.projectId);
+    assert.equal(current.meta?.limpatexCommit, process.env.RELEASE_COMMIT);
+    if (previous !== current.readyState) { console.log(current.readyState); previous=current.readyState; }
+    if (current.readyState === 'READY') return;
+    assert(!['ERROR','CANCELED'].includes(current.readyState), current.errorMessage || 'El deployment falló');
+    await new Promise(resolve => setTimeout(resolve,10000));
+  }
+  throw new Error('La construcción excedió veinte minutos; comprobar antes de reintentar');
+}
+async function promoteDeployment() {
+  const d = await vc(`/v13/deployments/${process.env.RELEASE_URL.replace(/^https?:\/\//,'').replace(/\/$/,'')}`);
+  assert.equal(d.projectId, config.projectId); assert.equal(d.readyState,'READY');
+  assert.equal(d.meta?.limpatexCommit, process.env.RELEASE_COMMIT);
+  assert.equal(d.meta?.limpatexSourceFingerprint, process.env.RELEASE_FINGERPRINT);
+  await vc(`/v10/projects/${config.projectId}/promote/${d.id}`, 'POST', {});
+  for (const domain of config.domains) await vc(`/v2/deployments/${d.id}/aliases`, 'POST', {alias:domain});
+  for (let attempt=0; attempt<30; attempt++) {
+    if ((await live()).every(current=>current.id===d.id)) return;
+    await new Promise(resolve=>setTimeout(resolve,2000));
+  }
+  throw new Error('No se confirmó el cambio de los dos dominios');
+}
+async function recover() {
+  const pr=await gh(`/pulls/${Number(process.env.PR_NUMBER)}`);
+  assert(pr.merged && eligible({...pr,state:'open'}), 'Solo recuperar una entrega autorizada ya incorporada');
+  const statuses=(await gh(`/commits/${pr.head.sha}/status`)).statuses;
+  assert(statuses.some(s=>s.context===config.statusContext && s.state==='success'), 'Falta validación previa de la propuesta');
+  const repo=path.join(workspace,'control');
+  const main=await currentMain();
+  assert.equal(git(repo,['rev-parse','HEAD']),main);
+  const currentFingerprint=fingerprint(repo);
+  git(repo,['fetch','origin',pr.merge_commit_sha]);
+  git(repo,['checkout','--detach',pr.merge_commit_sha]);
+  assert.equal(fingerprint(repo),currentFingerprint,'La aplicación cambió después de validar; no se puede recuperar automáticamente');
+  git(repo,['checkout','--detach',`${pr.merge_commit_sha}^`]);
+  const productionFingerprint=fingerprint(repo);
+  git(repo,['checkout','--detach',main]);
+  assertProduction(await live(),productionFingerprint);
+  output('commit',main); output('fingerprint',currentFingerprint); output('productionFingerprint',productionFingerprint);
 }
 async function verifyDeployment() {
   const deployments = await live();
@@ -123,5 +176,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   else if (command === 'merge') await merge();
   else if (command === 'pre-deploy') await preDeploy();
   else if (command === 'verify-deployment') await verifyDeployment();
+  else if (command === 'create-deployment') await createDeployment();
+  else if (command === 'promote-deployment') await promoteDeployment();
+  else if (command === 'recover') await recover();
   else throw new Error('Comando desconocido');
 }
