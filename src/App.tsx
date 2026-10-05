@@ -42,6 +42,8 @@ const InventoryConfig = React.lazy(() => import("./pages/InventoryConfig"));
 const InventoryReports = React.lazy(() => import("./pages/InventoryReports"));
 const InventoryWarehouses = React.lazy(() => import("./pages/InventoryWarehouses"));
 const InventoryLaundry = React.lazy(() => import("./pages/InventoryLaundry"));
+const LaundryReceiptAdmin = React.lazy(() => import("./pages/LaundryReceiptAdmin"));
+const PublicLaundryReceipt = React.lazy(() => import("./pages/PublicLaundryReceipt"));
 const InventoryAmenities = React.lazy(() => import("./pages/InventoryAmenities"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 const LogisticsPicklists = React.lazy(() => import("./pages/LogisticsPicklists"));
@@ -124,6 +126,7 @@ function App() {
                   <Route path="/accept-invitation" element={<FullPageSuspense><AcceptInvitation /></FullPageSuspense>} />
                   <Route path="/lavanderia/:token" element={<FullPageSuspense><PublicLaundryView /></FullPageSuspense>} />
                   <Route path="/reparto/:token" element={<FullPageSuspense><PublicLaundryScheduledView /></FullPageSuspense>} />
+                  <Route path="/recepcion-lavanderia/:token" element={<FullPageSuspense><PublicLaundryReceipt /></FullPageSuspense>} />
                   <Route path="/portal/:identifier" element={<FullPageSuspense><ClientPortal /></FullPageSuspense>} />
 
                   {/* Calendario: pantalla completa, SIN sidebar persistente */}
@@ -179,6 +182,7 @@ function App() {
                       </RoleProtectedRoute>
                     </ProtectedRoute>
                   } />
+                  <Route path="/inventory/laundry/receipts" element={<RoleProtectedRoute requiredModule="inventory" excludedRoles={['supervisor', 'cleaner', 'client']}><FullPageSuspense><LaundryReceiptAdmin /></FullPageSuspense></RoleProtectedRoute>} />
                   <Route path="/inventory/amenities" element={
                     <ProtectedRoute>
                       <RoleProtectedRoute requiredModule="inventory">

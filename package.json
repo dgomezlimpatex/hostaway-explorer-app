@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test:laundry-receipts": "node scripts/laundryReceiptDatabaseTest.mjs && node scripts/laundryReceiptEdgeTest.mjs",
+    "test:laundry-receipts:browser": "node scripts/laundryReceiptBrowserTest.mjs",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "lint:app": "eslint src",
@@ -144,6 +146,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.5.5",
