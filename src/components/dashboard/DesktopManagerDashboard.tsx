@@ -40,6 +40,7 @@ interface IncidentDashboardStats {
 }
 
 interface DesktopManagerDashboardProps {
+  attentionWidget?: React.ReactNode;
   todayTasks: Task[];
   unassignedTasks: Task[];
   monthlyMetrics: MonthlyMetrics;
@@ -79,6 +80,7 @@ const ComponentLoader = () => (
 const formatPercent = (value: number) => `${value > 0 ? '+' : ''}${value}%`;
 
 const DesktopManagerDashboard = ({
+  attentionWidget,
   todayTasks,
   unassignedTasks,
   monthlyMetrics,
@@ -266,6 +268,7 @@ const DesktopManagerDashboard = ({
           </div>
         </section>
 
+        {attentionWidget}
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <section className="rounded-lg border border-line bg-white shadow-sm">
             <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4">

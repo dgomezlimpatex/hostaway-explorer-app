@@ -14,6 +14,7 @@ import { BatchCreateTaskModal } from '@/components/modals/BatchCreateTaskModal';
 import { TaskDetailsModal } from '@/components/modals/TaskDetailsModal';
 import DesktopManagerDashboard from './DesktopManagerDashboard';
 import { MobileManagerDashboard } from './MobileManagerDashboard';
+import { AttentionWidget } from '@/features/attention/AttentionWidget';
 
 const LinenControlWidget = lazy(() => import('./components/LinenControlWidget').then((module) => ({ default: module.LinenControlWidget })));
 const WorkloadWidget = lazy(() => import('@/components/workload/WorkloadWidget'));
@@ -112,6 +113,7 @@ export const ManagerDashboard = () => {
       <>
         <MobileManagerDashboard
           todayTasks={todayTasks}
+          attentionWidget={<AttentionWidget onTask={handleTaskClick} />}
           unassignedTasks={unassignedTasks}
           monthlyMetrics={monthlyMetrics}
           pendingIncidents={pendingIncidents}
@@ -164,6 +166,7 @@ export const ManagerDashboard = () => {
     <>
       <DesktopManagerDashboard
         todayTasks={todayTasks}
+        attentionWidget={<AttentionWidget onTask={handleTaskClick} />}
         unassignedTasks={unassignedTasks}
         monthlyMetrics={monthlyMetrics}
         pendingIncidents={pendingIncidents}

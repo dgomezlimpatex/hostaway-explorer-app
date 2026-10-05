@@ -38,6 +38,7 @@ interface IncidentDashboardStats {
 }
 
 interface MobileManagerDashboardProps {
+  attentionWidget?: ReactNode;
   todayTasks: Task[];
   unassignedTasks: Task[];
   monthlyMetrics: MonthlyMetrics;
@@ -106,6 +107,7 @@ function TaskRow({ task, onTaskClick }: { task: Task; onTaskClick: (task: Task) 
 }
 
 export function MobileManagerDashboard({
+  attentionWidget,
   todayTasks,
   unassignedTasks,
   monthlyMetrics,
@@ -172,6 +174,8 @@ export function MobileManagerDashboard({
             </CardContent>
           </Card>
         </header>
+
+        {attentionWidget}
 
         <section className="grid grid-cols-2 gap-3">
           <Button onClick={onOpenCreateModal} className="h-20 flex-col gap-1 rounded-xl">
