@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { buildServices, readAllPages, type SourceTask } from './financialSource';
+import { formatMadridDate } from '@/utils/date';
 
 export function useFinancialData(sedeId: string | undefined, start: string, end: string) {
+  const today = formatMadridDate(new Date());
   return useQuery({
-    queryKey: ['financial-analysis', sedeId, start, end],
+    queryKey: ['financial-analysis', sedeId, start, end, today],
     enabled: !!sedeId && !!start && !!end && start <= end,
     queryFn: async () => {
       const [tasks, properties, clients, workers] = await Promise.all([
@@ -18,7 +20,7 @@ export function useFinancialData(sedeId: string | undefined, start: string, end:
         readAllPages((from, to) => supabase.from('cleaners').select('id,name').eq('sede_id', sedeId!).order('id').range(from, to)),
       ]);
       const clientDirectory = clients.map(client => ({ id: client.id, name: client.nombre }));
-      return { services: buildServices(tasks as unknown as SourceTask[], properties, clientDirectory), clients: clientDirectory,
+      return { services: buildServices(tasks as unknown as SourceTask[], properties, clientDirectory, workers, today), clients: clientDirectory,
         properties: properties.map(property => ({ id: property.id, name: property.nombre, clientId: property.cliente_id })), workers };
     },
   });

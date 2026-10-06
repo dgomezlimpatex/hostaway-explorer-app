@@ -1,5 +1,6 @@
 import type { FinancialService, Quantities } from './financialModel';
-import { getCalendarTaskStatus, type CalendarProgressReport } from '@/utils/calendarTaskStatus';
+import type { CalendarProgressReport } from '@/utils/calendarTaskStatus';
+import { formatMadridDate } from '@/utils/date';
 import { getWindowDurationMinutes } from '@/utils/cleaning-planning/capacity';
 
 export interface SourceTask {
@@ -23,15 +24,20 @@ const quantityFields = {
   bathMat: 'numero_alfombrines', kitchenKit: 'amenities_cocina', bathKit: 'amenities_bano',
   foodKit: 'kit_alimentario', toiletPaper: 'cantidad_rollos_papel_higienico',
 } as const;
-export function buildServices(tasks: SourceTask[], properties: SourceProperty[], clients: DirectoryEntry[]): FinancialService[] {
+export function buildServices(tasks: SourceTask[], properties: SourceProperty[], clients: DirectoryEntry[],
+  workers: DirectoryEntry[] = [], today = formatMadridDate(new Date())): FinancialService[] {
   const propertyMap = new Map(properties.map(property => [property.id, property]));
   const clientMap = new Map(clients.map(client => [client.id, client.name]));
+  const isNotCount = (name: string) => name.trim().toUpperCase() === 'NOT COUNT';
+  const excludedWorkerIds = new Set(workers.filter(worker => isNotCount(worker.name)).map(worker => worker.id));
   return tasks.flatMap(task => {
-    const assignmentMap = new Map((task.task_assignments || []).map(assignment => [assignment.cleaner_id, assignment.cleaner_name]));
+    if (task.status === 'cancelled' || task.status === 'canceled') return [];
+    const assignmentMap = new Map((task.task_assignments || []).filter(assignment => !!assignment.cleaner_id)
+      .map(assignment => [assignment.cleaner_id, assignment.cleaner_name]));
     if (!assignmentMap.size && task.cleaner_id) assignmentMap.set(task.cleaner_id, task.cleaner || 'Trabajador');
-    const workerIds = [...assignmentMap.keys()];
+    if ([...assignmentMap].some(([id, name]) => excludedWorkerIds.has(id) || isNotCount(name))) return [];
+    if (!assignmentMap.size && task.date < today) return [];
     const reports = task.task_reports || [];
-    if (getCalendarTaskStatus(task.status, reports, workerIds) !== 'completed') return [];
     const property = propertyMap.get(task.propiedad_id || '');
     const clientId = task.cliente_id || property?.cliente_id || '';
     const quantities: Quantities = {};
@@ -41,8 +47,8 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
     }
     const windowMinutes = getWindowDurationMinutes(task.start_time, task.end_time);
     const propertyMinutes = property?.duracion_servicio;
-    const plannedMinutes = windowMinutes > 0 ? windowMinutes : typeof propertyMinutes === 'number' && propertyMinutes > 0 && workerIds.length
-      ? Math.ceil(propertyMinutes / workerIds.length / 15) * 15 : null;
+    const plannedMinutes = windowMinutes > 0 ? windowMinutes : typeof propertyMinutes === 'number' && propertyMinutes > 0 && assignmentMap.size
+      ? Math.ceil(propertyMinutes / assignmentMap.size / 15) * 15 : null;
     const workers = [...assignmentMap].map(([id, name]) => {
       const report = [...reports].filter(report => report.cleaner_id === id).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
       const start = Date.parse(report?.start_time || '');
