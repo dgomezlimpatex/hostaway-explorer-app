@@ -1,0 +1,21 @@
+{
+  "request": "Marcar también la entrada de las reservas a mitad del día, en lugar de al inicio.",
+  "reason": "Solo ajusta el segmento visual del calendario semanal. Mantiene ocupación nocturna, fechas, limpiezas, datos y servicios existentes.",
+  "verification": "Pruebas de componentes reales y funciones: entrada y salida alineadas al centro, entrada en primer y último día visible, recorte entre semanas, DST, reservas canceladas y sin fechas. Build, lint focalizado y tipos sin nuevos diagnósticos frente a la base (102 heredados); Node y raíz correctos. Captura de navegador con datos locales.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/clientPortalDesignTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "450a57e29416906dd73da15a2794923926abcbc5e99db35ab310fc622c8e0b71"
+}
