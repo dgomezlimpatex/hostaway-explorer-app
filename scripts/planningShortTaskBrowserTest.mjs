@@ -17,8 +17,8 @@ try {
     const card=page.locator('[data-planning-board] [data-planner-task-id="existing-1"]');
     await expect.poll(()=>card.evaluate(e=>e.clientWidth)).toBeGreaterThan(0);
     expect((await card.boundingBox()).width).toBeLessThan(60);
-    await page.getByRole('button',{name:'Ampliar horario',exact:true}).click();
-    await expect(page.getByRole('button',{name:'Encajar día',exact:true})).toHaveAttribute('aria-pressed','true');
+    for(let i=0;i<8 && (await card.boundingBox()).width<=110;i++) await page.getByRole('button',{name:'Ampliar horario',exact:true}).click();
+    await expect(page.getByRole('button',{name:'Encajar día',exact:true})).toHaveAttribute('aria-pressed','false');
     await expect.poll(async()=>(await card.boundingBox()).width).toBeGreaterThan(110);
     const labels=await card.evaluate(e=>[...e.querySelectorAll('button p:first-child > span:last-child,button > span')].map(s=>({text:s.textContent,visible:s.scrollWidth<=s.clientWidth})));
     expect(labels.find(s=>s.text==='ADP18.4A')?.visible).toBe(true);
@@ -32,11 +32,11 @@ try {
     const grid=await page.locator('[data-quarter-hour-grid]').first().boundingBox();
     await page.mouse.move(source.x+source.width/2,source.y+source.height/2);
     await page.mouse.down();
-    await page.mouse.move(grid.x+135*3.6,grid.y+35,{steps:15});
+    await page.mouse.move(grid.x+135*(grid.width/960),grid.y+35,{steps:15});
     await page.mouse.up();
     await expect(card).toContainText('10:15–10:48');
     await page.getByRole('button',{name:'Encajar día',exact:true}).click();
-    await expect(page.getByRole('button',{name:'Ampliar horario',exact:true})).toHaveAttribute('aria-pressed','false');
+    await expect(page.getByRole('button',{name:'Encajar día',exact:true})).toHaveAttribute('aria-pressed','true');
     await expect.poll(async()=>(await card.boundingBox()).width).toBeLessThan(60);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await page.close();
