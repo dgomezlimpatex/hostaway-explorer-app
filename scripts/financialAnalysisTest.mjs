@@ -114,10 +114,30 @@ try {
   assert.equal(buildServices([{ ...source, status: 'cancelled' }], [property], []).length, 0);
   const report = id => ({ cleaner_id: id, overall_status: 'completed', start_time: '2026-10-06T08:00:00Z', end_time: '2026-10-06T09:30:00Z' });
   const actual = buildServices([{ ...source, status: 'pending', task_reports: [report('w1'), report('w2')] }], [property], [])[0];
-  assert.equal(actual.workers[0].minutes, 90); assert.equal(actual.workers[0].actual, true);
+  assert.equal(actual.workers[0].minutes, 60); assert.equal(actual.workers[0].actual, false); // Report timing does not replace team duration.
   const partial = buildServices([{ ...source, status: 'pending', task_reports: [report('w1')] }], [property], [])[0];
-  assert.equal(partial.workers[0].actual, true); assert.equal(partial.workers[1].actual, false);
+  assert.equal(partial.workers[0].actual, false); assert.equal(partial.workers[1].actual, false);
   assert.equal(partial.workers[1].minutes, 60);
+  const threeAssignments = [...source.task_assignments, { cleaner_id: 'w3', cleaner_name: 'Cris' }];
+  const montellos = buildServices([{ ...source, duracion: 540, task_assignments: threeAssignments, start_time: '13:00', end_time: '22:00' }], [{ ...property, duracion_servicio: 540 }], [])[0];
+  assert.deepEqual(montellos.workers.map(w => w.minutes), [180,180,180]);
+  assert.equal(calculateService(montellos, newSettings()).costs.personal, 13950);
+  const twoPeople = buildServices([{ ...source, duracion: 540 }], [{ ...property, duracion_servicio: 540 }], [])[0];
+  assert.deepEqual(twoPeople.workers.map(w => w.minutes), [270,270]);
+  assert.equal(calculateService(twoPeople, newSettings()).costs.personal, 13950);
+  const onePerson = buildServices([{ ...source, duracion: 540, task_assignments: [source.task_assignments[0]] }], [{ ...property, duracion_servicio: 540 }], [])[0];
+  assert.equal(onePerson.workers[0].minutes, 540);
+  assert.equal(calculateService(onePerson, newSettings()).costs.personal, 13950);
+  const thirds = buildServices([{ ...source, duracion: 100, task_assignments: threeAssignments }], [{ ...property, duracion_servicio: 100 }], [])[0];
+  assert.equal(calculateService(thirds, newSettings()).costs.personal, Math.round(100 * 1550 / 60)); // No rounding inflation per person.
+  const windowFallback = buildServices([{ ...source, duracion: null }], [], [])[0];
+  assert.deepEqual(windowFallback.workers.map(w => w.minutes), [30,30]);
+  assert.equal(buildServices([{ ...source, duracion: -1 }], [property], [])[0].workers[0].minutes, 60);
+  const alreadySplit = buildServices([{ ...source, duracion: 180, task_assignments: threeAssignments }], [{ ...property, duracion_servicio: 540 }], [])[0];
+  assert.deepEqual(alreadySplit.workers.map(w => w.minutes), [180,180,180]); // Do not divide planner-saved per-person duration twice.
+  assert.equal(buildServices([{ ...source, duracion: 120 }], [], [])[0].workers[0].minutes, 60);
+  const adjustedTeam = newSettings(); adjustedTeam.adjustments.s = { minutes: { w1: 240 } };
+  assert.equal(calculateService(montellos, adjustedTeam).costs.personal, 15500); // Manual worker correction remains explicit.
   const unassigned = { ...source, date: '2026-09-30', coste: null, start_time: '', end_time: '', task_assignments: [], cleaner_id: null };
   assert.equal(buildServices([unassigned], [], [], [], '2026-10-01').length, 0);
   assert.equal(buildServices([{ ...unassigned, status: 'completed', task_reports: [report('w1')] }], [], [], [], '2026-10-01').length, 0);
