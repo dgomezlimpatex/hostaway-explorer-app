@@ -1,0 +1,21 @@
+{
+  "request": "Las tareas que no aportan ingreso tampoco deben aportar gasto en el análisis financiero.",
+  "reason": "Cambio local de inclusión solicitado por Dani. Solo servicios con ingreso positivo participan en ingresos, costes automáticos y margen; los ceros y precios pendientes se muestran aparte, sin alterar tareas, propiedades, tarifas ni facturas. Los gastos generales/manuales independientes se conservan.",
+  "verification": "Modelo real: mezclar servicios positivos, cero y precio pendiente deja los mismos totales y clientes que los positivos; personal/lavandería/consumibles/productos se excluyen para cero, salario mensual se mantiene, precio pendiente visible separado y filtros cliente/propiedad/trabajador respetados. La tarifa de propiedad se resuelve primero, conservando servicios positivos aunque la tarea almacenada tenga cero. Página y lector reales con Supabase simulado sin red: ingresos y personal del único servicio positivo, lista explícita de cero/pendiente, edición/tarifas/gastos, filtros, persistencia, escritorio/móvil. Build y lint focalizado correctos, Node sin errores, app con mismos 102 errores previos y ninguno nuevo. Limitaciones previas de estimación de horas y consumos no cambian en esta entrega.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialAnalysisTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "9ecaa1d17817c082e544838cddc009ab6fcf88f8e1d5f585286d4feefade6567"
+}
