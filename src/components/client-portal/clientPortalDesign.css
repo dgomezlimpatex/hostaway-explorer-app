@@ -59,6 +59,7 @@
 .portal-timeline-lanes { position:relative; padding:15px 0; min-height:100px; }
 .portal-night-grid { position:absolute; inset:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); pointer-events:none; }
 .portal-night-grid span { border-right:1px solid #f0ebf5; }
+.portal-night-grid .today { background:#f7f2fc; }
 .portal-stay-lane,.portal-cleaning-lane { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); position:relative; }
 .portal-stay-lane { display:block; min-height:34px; margin-bottom:7px; }
 .portal-stay-bar { position:absolute; top:0; display:flex; gap:6px; align-items:center; padding:8px 9px; min-height:34px; background:#6c3daf; color:white; margin:0; border-radius:5px; overflow:hidden; font-size:11px; text-align:left; }
