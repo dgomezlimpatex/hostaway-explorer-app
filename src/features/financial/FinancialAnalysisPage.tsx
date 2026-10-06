@@ -8,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useFinancialData } from './useFinancialData';
-import { COST_ITEMS, analyze, newSettings, parseAmount, priceAt, readSettings, setRate, validDate,
+import { COST_ITEMS, QUANTITY_ITEMS, analyze, newSettings, parseAmount, priceAt, readSettings, setRate, validDate,
   type Category, type FinanceSettings, type FinancialService, type Filters, type Summary, type ItemId } from './financialModel';
 import type { DirectoryEntry } from './financialSource';
 
 const money = (cents: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 const rateMoney = (mills: number) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(mills / 1000) + ' €';
-const categoryNames: Record<Category, string> = { personal: 'Personal', laundry: 'Lavandería', supplies: 'Amenities y consumibles', other: 'Otros gastos' };
+const formatRate = (item: ItemId, mills: number) => item === 'products' ? new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3 }).format(mills / 1000) + ' %' : rateMoney(mills);
+const categoryNames: Record<Category, string> = { personal: 'Personal', laundry: 'Lavandería', supplies: 'Amenities y consumibles', products: 'Productos de limpieza', other: 'Otros gastos' };
 const panel = 'min-w-0 rounded-2xl border border-violet-100 bg-white p-5 shadow-sm';
 const selectClass = 'h-10 rounded-md border border-input bg-background px-3 text-sm w-full';
 function download(filename: string, content: string, type: string) {
@@ -49,14 +50,14 @@ function ClientTable({ result, names, onClient }: { result: ReturnType<typeof an
     { id: '__general', name: 'Gastos generales · sin repartir', ...result.general }];
   return <div className="overflow-x-auto"><table className="w-full text-sm">
     <caption className="sr-only">Ingresos y gastos por cliente y gastos generales sin IVA</caption>
-    <thead className="bg-violet-50 text-[#310984]"><tr>{['Cliente', 'Ingresos', 'Personal', 'Lavandería', 'Consumibles', 'Otros', 'Total gastos', 'Resultado', 'Margen'].map(title => <th key={title} scope="col" className="whitespace-nowrap p-3 text-left">{title}</th>)}</tr></thead>
+    <thead className="bg-violet-50 text-[#310984]"><tr>{['Cliente', 'Ingresos', 'Personal', 'Lavandería', 'Consumibles', 'Productos', 'Otros', 'Total gastos', 'Resultado', 'Margen'].map(title => <th key={title} scope="col" className="whitespace-nowrap p-3 text-left">{title}</th>)}</tr></thead>
     <tbody>{rows.map(row => <tr key={row.id} className="border-b border-violet-50">
       <th scope="row" className="p-3 text-left font-medium">{row.id !== '__general' ? <button className="inline-flex items-center gap-1 text-[#310984] hover:underline" onClick={() => onClient(row.id)}>{row.name}<ChevronRight className="h-4 w-4" /></button> : row.name}
         {!!row.pending && <span className="block text-xs font-normal text-amber-700">{row.pending} servicios incompletos</span>}</th>
-      {[row.revenue, row.costs.personal, row.costs.laundry, row.costs.supplies, row.costs.other, row.expense, row.result].map((amount, i) => <td key={i} className="whitespace-nowrap p-3 tabular-nums">{money(amount)}</td>)}
+      {[row.revenue, row.costs.personal, row.costs.laundry, row.costs.supplies, row.costs.products, row.costs.other, row.expense, row.result].map((amount, i) => <td key={i} className="whitespace-nowrap p-3 tabular-nums">{money(amount)}</td>)}
       <td className="p-3">{row.margin === null ? '—' : `${row.margin.toFixed(1)} %`}</td>
     </tr>)}</tbody>
-    <tfoot className="bg-violet-50 font-semibold"><tr><th className="p-3 text-left">Total del análisis</th>{[result.total.revenue, result.total.costs.personal, result.total.costs.laundry, result.total.costs.supplies, result.total.costs.other, result.total.expense, result.total.result].map((amount, i) => <td className="p-3" key={i}>{money(amount)}</td>)}<td className="p-3">{result.total.margin === null ? '—' : `${result.total.margin.toFixed(1)} %`}</td></tr></tfoot>
+    <tfoot className="bg-violet-50 font-semibold"><tr><th className="p-3 text-left">Total del análisis</th>{[result.total.revenue, result.total.costs.personal, result.total.costs.laundry, result.total.costs.supplies, result.total.costs.products, result.total.costs.other, result.total.expense, result.total.result].map((amount, i) => <td className="p-3" key={i}>{money(amount)}</td>)}<td className="p-3">{result.total.margin === null ? '—' : `${result.total.margin.toFixed(1)} %`}</td></tr></tfoot>
   </table></div>;
 }
 
@@ -93,8 +94,8 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   const updateFilter = (key: 'clients' | 'properties' | 'workers', ids: string[]) => setFilters(current => ({ ...current, [key]: ids }));
   const csv = () => {
     const cell = (text: string) => '"' + (/^[=+\-@]/.test(text) ? "'" + text : text).split('"').join('""') + '"';
-    const rows = [['Concepto', 'Ingresos EUR', 'Personal EUR', 'Lavandería EUR', 'Consumibles EUR', 'Otros EUR', 'Gastos EUR', 'Resultado provisional EUR'],
-      ...result.clients.map(client => [clientName(client.id), client.revenue, client.costs.personal, client.costs.laundry, client.costs.supplies, client.costs.other, client.expense, client.result].map((value, i) => i ? (Number(value) / 100).toFixed(2) : String(value))),
+    const rows = [['Concepto', 'Ingresos EUR', 'Personal EUR', 'Lavandería EUR', 'Consumibles EUR', 'Productos EUR', 'Otros EUR', 'Gastos EUR', 'Resultado provisional EUR'],
+      ...result.clients.map(client => [clientName(client.id), client.revenue, client.costs.personal, client.costs.laundry, client.costs.supplies, client.costs.products, client.costs.other, client.expense, client.result].map((value, i) => i ? (Number(value) / 100).toFixed(2) : String(value))),
       ['Gastos generales', '0', '0', '0', '0', '0', '0', '0']];
     rows[rows.length - 1] = ['Gastos generales', '0', ...Object.values(result.general.costs).map(value => (value / 100).toFixed(2)), (result.general.expense / 100).toFixed(2), (result.general.result / 100).toFixed(2)];
     rows.push(['TOTAL', (result.total.revenue / 100).toFixed(2), ...Object.values(result.total.costs).map(value => (value / 100).toFixed(2)), (result.total.expense / 100).toFixed(2), (result.total.result / 100).toFixed(2)]);
@@ -137,16 +138,16 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
               <Button key={id} aria-pressed={tab === id} variant={tab === id ? 'default' : 'outline'} className={tab === id ? 'bg-[#310984] hover:bg-[#45209a]' : ''} onClick={() => setTab(id)}>{title}</Button>)}</nav>
             {tab === 'general' && <div className="grid gap-5 lg:grid-cols-[1fr_2fr]">
               <section className={panel}><h2 className="mb-5 flex items-center gap-2 font-semibold text-[#310984]"><Wallet className="h-5 w-5" />Distribución de gastos</h2>
-                {(Object.keys(categoryNames) as Category[]).map((category, i) => <div className="mb-4" key={category}><div className="flex justify-between gap-2 text-sm"><span>{categoryNames[category]}</span><strong>{money(result.total.costs[category])}</strong></div><div className="mt-2 h-2 rounded-full bg-violet-50"><div className={['bg-[#310984]', 'bg-violet-600', 'bg-violet-400', 'bg-violet-300'][i] + ' h-2 rounded-full'} style={{ width: `${result.total.expense ? result.total.costs[category] / result.total.expense * 100 : 0}%` }} /></div></div>)}
+                {(Object.keys(categoryNames) as Category[]).map((category, i) => <div className="mb-4" key={category}><div className="flex justify-between gap-2 text-sm"><span>{categoryNames[category]}</span><strong>{money(result.total.costs[category])}</strong></div><div className="mt-2 h-2 rounded-full bg-violet-50"><div className={['bg-[#310984]', 'bg-violet-600', 'bg-violet-400', 'bg-violet-500', 'bg-violet-300'][i] + ' h-2 rounded-full'} style={{ width: `${result.total.expense ? result.total.costs[category] / result.total.expense * 100 : 0}%` }} /></div></div>)}
                 <div className="border-t pt-3 text-sm"><p>Gastos generales incluidos: <strong>{money(result.general.expense)}</strong></p><p className="mt-1 text-xs text-slate-500">Se cuentan una vez y no se reparten entre clientes.</p></div>
               </section>
               <section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Resultado por cliente</h2><ClientTable result={result} names={data?.clients || []} onClient={selectClient} /></section>
             </div>}
             {tab === 'clients' && <section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Todos los clientes del análisis</h2><ClientTable result={result} names={data?.clients || []} onClient={selectClient} /></section>}
             {tab === 'services' && <section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Servicios · origen de cada importe</h2>
-              {!result.services.length ? <p className="py-8 text-center text-slate-500">No hay servicios completados con estos filtros.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-violet-50 text-[#310984]"><tr>{['Fecha / propiedad', 'Cliente / equipo', 'Ingresos', 'Personal', 'Lavandería', 'Consumibles', 'Resultado', 'Revisión'].map(title => <th className="p-3 text-left" key={title}>{title}</th>)}</tr></thead><tbody>
+              {!result.services.length ? <p className="py-8 text-center text-slate-500">No hay servicios completados con estos filtros.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-violet-50 text-[#310984]"><tr>{['Fecha / propiedad', 'Cliente / equipo', 'Ingresos', 'Personal', 'Lavandería', 'Consumibles', 'Productos', 'Resultado', 'Revisión'].map(title => <th className="p-3 text-left" key={title}>{title}</th>)}</tr></thead><tbody>
                 {result.services.map(service => <tr key={service.id} className="border-b"><td className="p-3"><p>{service.date.split('-').reverse().join('/')}</p><strong>{service.propertyName}</strong></td><td className="p-3">{service.clientName}<p className="text-xs text-slate-500">{service.workers.map(worker => worker.name).join(', ') || 'Sin asignar'}</p></td>
-                  <td className="p-3">{service.revenue === null ? 'Pendiente' : money(service.revenue)}</td>{[service.costs.personal, service.costs.laundry, service.costs.supplies].map((value, i) => <td key={i} className="p-3">{money(value)}</td>)}<td className="p-3">{service.result === null ? '—' : money(service.result)}</td>
+                  <td className="p-3">{service.revenue === null ? 'Pendiente' : money(service.revenue)}</td>{[service.costs.personal, service.costs.laundry, service.costs.supplies, service.costs.products].map((value, i) => <td key={i} className="p-3">{money(value)}</td>)}<td className="p-3">{service.result === null ? '—' : money(service.result)}</td>
                   <td className="p-3"><Button variant="outline" size="sm" onClick={() => setEditing(service)}>Revisar costes</Button><p className="mt-1 text-xs text-amber-700">{service.pending.length ? 'Datos pendientes' : service.estimated ? 'Estimado' : 'Revisado'}</p></td></tr>)}
               </tbody></table></div>}
             </section>}
@@ -156,9 +157,9 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
             </section>}
             {tab === 'rates' && <section className={`${panel} space-y-5`}><h2 className="flex items-center gap-2 font-semibold text-[#310984]"><Settings2 className="h-5 w-5" />Tarifas personalizables · sin IVA</h2><p className="text-sm text-slate-500">Conservamos tres decimales por unidad y redondeamos cada categoría por servicio a céntimos. Los precios iniciales se aplican hasta que exista una tarifa fechada.</p>
               <RateForm workers={data?.workers || []} today={today} onSave={rate => commit({ ...settings, rates: setRate(settings.rates, rate) })} />
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{COST_ITEMS.map(item => <div key={item.id} className="rounded-xl bg-violet-50 p-3 text-sm"><p className="font-medium">{item.label}</p><p className="text-[#310984]">{rateMoney(priceAt(settings.rates, item.id, filters.end))} / {item.unit}</p></div>)}</div>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{COST_ITEMS.map(item => <div key={item.id} className="rounded-xl bg-violet-50 p-3 text-sm"><p className="font-medium">{item.label}</p><p className="text-[#310984]">{formatRate(item.id, priceAt(settings.rates, item.id, filters.end))} / {item.unit}</p></div>)}</div>
               <p className="text-xs text-slate-500">Tarifa general vigente al {filters.end}. Las excepciones por trabajador figuran en el historial.</p>
-              <div className="space-y-2">{[...settings.rates].sort((a, b) => b.date.localeCompare(a.date)).map(rate => <p className="text-sm" key={`${rate.item}:${rate.date}:${rate.workerId || ''}`}>{rate.date} · {COST_ITEMS.find(item => item.id === rate.item)?.label} · {rate.workerId ? data?.workers.find(worker => worker.id === rate.workerId)?.name || 'Trabajador' : 'General'} · <strong>{rateMoney(rate.mills)}</strong></p>)}</div>
+              <div className="space-y-2">{[...settings.rates].sort((a, b) => b.date.localeCompare(a.date)).map(rate => <p className="text-sm" key={`${rate.item}:${rate.date}:${rate.workerId || ''}`}>{rate.date} · {COST_ITEMS.find(item => item.id === rate.item)?.label} · {rate.workerId ? data?.workers.find(worker => worker.id === rate.workerId)?.name || 'Trabajador' : 'General'} · <strong>{formatRate(rate.item, rate.mills)}</strong></p>)}</div>
               <div className="flex flex-wrap items-center gap-3 border-t pt-4"><Button variant="outline" onClick={() => download('limpatex-costes-copia.json', JSON.stringify(settings, null, 2), 'application/json')}>Exportar copia de ajustes</Button>
                 <label className="cursor-pointer rounded-md border bg-white px-4 py-2 text-sm">Restaurar copia<input className="sr-only" type="file" accept=".json,application/json" onChange={async event => { const file = event.target.files?.[0]; event.target.value = ''; if (!file) return; try { if (file.size > 5000000) throw new Error('Archivo demasiado grande'); setImported(readSettings(JSON.parse(await file.text()))); } catch { setMessage('La copia no es válida. No se ha cambiado ningún dato.'); } }} /></label>
               </div>
@@ -174,9 +175,9 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
 
 function RateForm({ workers, today, onSave }: { workers: DirectoryEntry[]; today: string; onSave: (rate: FinanceSettings['rates'][number]) => boolean }) {
   const [item, setItem] = useState<ItemId>('labor'); const [date, setDate] = useState(today); const [amount, setAmount] = useState('15,50'); const [workerId, setWorkerId] = useState(''); const [error, setError] = useState('');
-  return <form className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5" onSubmit={event => { event.preventDefault(); const mills = parseAmount(amount); if (mills === null || !validDate(date)) { setError('Introduce una fecha y un precio válido con hasta tres decimales.'); return; } if (onSave({ item, date, mills, ...(item === 'labor' && workerId ? { workerId } : {}) })) setError(''); }}>
+  return <form className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5" onSubmit={event => { event.preventDefault(); const mills = parseAmount(amount); if (mills === null || !validDate(date) || (item === 'products' && mills > 100000)) { setError('Introduce una fecha y un valor válido con hasta tres decimales; el porcentaje debe estar entre 0 y 100.'); return; } if (onSave({ item, date, mills, ...(item === 'labor' && workerId ? { workerId } : {}) })) setError(''); }}>
     <label className="text-sm">Concepto<select aria-label="Concepto" className={selectClass} value={item} onChange={event => { const id = event.target.value as ItemId; setItem(id); setAmount(String(COST_ITEMS.find(cost => cost.id === id)!.mills / 1000)); }}>{COST_ITEMS.map(cost => <option key={cost.id} value={cost.id}>{cost.label}</option>)}</select></label>
-    <label className="text-sm">Precio unitario sin IVA<Input inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} /></label>
+    <label className="text-sm">{item === 'products' ? 'Porcentaje sobre limpieza' : 'Precio unitario sin IVA'}<Input inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} /></label>
     <label className="text-sm">Aplicar desde<Input type="date" value={date} onChange={event => setDate(event.target.value)} /></label>
     <label className="text-sm">Trabajador<select disabled={item !== 'labor'} className={selectClass} value={workerId} onChange={event => setWorkerId(event.target.value)}><option value="">Todos · tarifa general</option>{workers.map(worker => <option value={worker.id} key={worker.id}>{worker.name}</option>)}</select></label>
     <Button className="bg-[#310984]" type="submit">Guardar tarifa</Button>{error && <p role="alert" className="col-span-full text-sm text-red-700">{error}</p>}
@@ -202,7 +203,7 @@ function ServiceEditor({ service, settings, onClose, onSave }: { service: Financ
 }
 function ServiceEditorForm({ service, settings, onSave }: { service: FinancialService; settings: FinanceSettings; onSave: (adjustment: FinanceSettings['adjustments'][string]) => void }) {
   const adjustment = settings.adjustments[service.id];
-  const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(COST_ITEMS.filter(item => item.id !== 'labor').map(item => [item.id, String(adjustment?.quantities?.[item.id] ?? service.quantities[item.id] ?? '')])));
+  const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(QUANTITY_ITEMS.map(item => [item.id, String(adjustment?.quantities?.[item.id] ?? service.quantities[item.id] ?? '')])));
   const [hours, setHours] = useState<Record<string, string>>(() => Object.fromEntries(service.workers.map(worker => [worker.id, adjustment?.minutes?.[worker.id] === undefined ? '' : String(adjustment.minutes[worker.id] / 60)])));
   const [reviewed, setReviewed] = useState(adjustment?.reviewed || false); const [error, setError] = useState('');
   return <form className="space-y-4" onSubmit={event => { event.preventDefault(); const output: FinanceSettings['adjustments'][string] = { quantities: {}, minutes: {}, reviewed };
@@ -214,7 +215,8 @@ function ServiceEditorForm({ service, settings, onSave }: { service: FinancialSe
     <h3 className="font-semibold text-[#310984]">Personal · horas por trabajador</h3>
     {service.workers.map(worker => <label className="block text-sm" key={worker.id}>{worker.name}<span className="ml-2 text-xs text-slate-500">{worker.minutes === null ? 'Sin horas' : `${(worker.minutes / 60).toFixed(2)} h ${worker.actual ? 'de reporte' : 'previstas'}`} · {rateMoney(priceAt(settings.rates, 'labor', service.date, worker.id))}/h</span><Input inputMode="decimal" placeholder="Mantener horas de la app" value={hours[worker.id]} onChange={event => setHours({ ...hours, [worker.id]: event.target.value })} /></label>)}
     {!service.workers.length && <p className="text-sm text-amber-700">No hay trabajadores identificados. El coste de personal queda pendiente.</p>}
-    <h3 className="font-semibold text-[#310984]">Lavandería y consumibles · unidades utilizadas</h3><div className="grid gap-3 sm:grid-cols-2">{COST_ITEMS.filter(item => item.id !== 'labor').map(item => <label className="text-sm" key={item.id}>{item.label}<span className="ml-1 text-xs text-slate-500">{rateMoney(priceAt(settings.rates, item.id, service.date))}</span><Input inputMode="numeric" placeholder="Cantidad pendiente" value={quantities[item.id]} onChange={event => setQuantities({ ...quantities, [item.id]: event.target.value })} /></label>)}</div>
+    <p className="rounded-lg bg-violet-50 p-3 text-sm text-[#310984]">Productos de limpieza: {formatRate('products', priceAt(settings.rates, 'products', service.date))} del importe de cada limpieza sin IVA. Se calcula automáticamente; no se añade a las cantidades.</p>
+    <h3 className="font-semibold text-[#310984]">Lavandería y consumibles · unidades utilizadas</h3><div className="grid gap-3 sm:grid-cols-2">{QUANTITY_ITEMS.map(item => <label className="text-sm" key={item.id}>{item.label}<span className="ml-1 text-xs text-slate-500">{rateMoney(priceAt(settings.rates, item.id, service.date))}</span><Input inputMode="numeric" placeholder="Cantidad pendiente" value={quantities[item.id]} onChange={event => setQuantities({ ...quantities, [item.id]: event.target.value })} /></label>)}</div>
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} />He revisado todas las cantidades de este servicio</label>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}<Button type="submit" className="bg-[#310984]">Guardar ajustes del análisis</Button>
   </form>;

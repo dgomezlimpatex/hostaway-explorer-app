@@ -1,0 +1,21 @@
+{
+  "request": "Añadir productos como gasto del 3 por ciento del importe sin IVA de cada limpieza, en el análisis financiero general y por cliente, editable como las tarifas existentes.",
+  "reason": "Cálculo local solicitado, sin ejecutar compras ni gastos reales. Solo añade type a la lectura existente de servicios para aplicar el porcentaje a limpiezas. Mantiene ajustes locales por navegador, permisos y datos productivos sin cambios.",
+  "verification": "Pruebas del código real: 100 euros producen 3 euros y 50 producen 1,50; redondeo, ingreso cero o desconocido, dos trabajadoras sin duplicar, exclusión de check-in y desplazamiento, tarifa fechada y máximo 100 por ciento, compatibilidad con cantidades revisadas previas, totales general y por cliente. Navegador local sin red productiva con página y lector reales: columna de productos y edición de porcentaje 4,2, filtros, cantidades, recarga y móvil. Build y lint focalizado correctos; tipos app idénticos a la base, 102 errores previos sin nuevos; tipos Node correctos. Revisión del diff sin escrituras Supabase, cambios de stock, tareas, seguridad, comunicaciones o infraestructura.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialAnalysisTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "a1ecaae33045d581e3d6f3a7f260d44c67055eba318969a44075a3d0e53f5303"
+}
