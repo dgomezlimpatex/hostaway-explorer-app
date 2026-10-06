@@ -1,0 +1,22 @@
+{
+  "request": "Mostrar la información del piso al abrir una tarea desde calendario o Mis tareas antes de iniciar; utilizar NOTAS arriba a la derecha solo una vez iniciada.",
+  "reason": "Se cambia dónde aparece la ficha usando el estado de inicio ya existente. Antes de iniciar se muestra el componente de datos directamente; iniciada o finalizada se ofrece el botón de notas. No cambia carga de datos, guardado, inicio, fotos, finalización, sincronización ni permisos.",
+  "verification": "Build y lint focalizado correctos; tipos de aplicación sin nuevos errores (102 previos) y Node correcto. Tests del componente real verifican botón oculto antes de iniciar y presente durante el trabajo, con icono de estado conservado. Navegador con mocks locales: datos y notas visibles directamente desde Mis tareas y calendario, sin escrituras al consultar, recarga sin cobertura, desaparición de la ficha al iniciar y consulta mediante NOTAS. Regresión completa de fotos, finalización, reintentos y notas anteriores conservadas. La cola repite los tests Node sin red y su navegador de entrada.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerTaskHeaderTest.mjs",
+    "scripts/cleanerPropertyDetailsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "53523ef7eb93a44d40ee19bd519739f2d5bb0dcd471e10003ea17fbee89dc4b6"
+}
