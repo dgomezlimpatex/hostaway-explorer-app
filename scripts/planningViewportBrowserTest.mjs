@@ -21,6 +21,8 @@ try {
       const scroll = page.locator('[data-planning-timeline-scroll]');
       const grid = page.locator('[data-quarter-hour-grid]').first();
       await expect.poll(() => grid.evaluate(e => e.clientWidth)).toBeGreaterThan(0);
+      expect(await grid.evaluate(e=>e.clientHeight)).toBe(84);
+      await expect(scroll.locator('.sticky').getByText(/^Horario /)).toHaveCount(0);
       const geometry = await scroll.evaluate(e => ({height:e.clientHeight, width:e.clientWidth, full:e.scrollWidth}));
       expect(geometry.height).toBeLessThan(600);
       expect(geometry.height).toBeGreaterThan(250);

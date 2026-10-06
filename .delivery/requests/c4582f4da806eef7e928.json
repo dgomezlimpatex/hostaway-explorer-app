@@ -1,0 +1,21 @@
+{
+  "request": "Quitar la línea Horario de la fila de cada trabajador y reducir la altura de las filas.",
+  "tests": [
+    "scripts/planningTaskLanesTest.mjs"
+  ],
+  "effects": {
+    "infrastructure": false,
+    "costs": false,
+    "authentication": false,
+    "communications": false,
+    "database": false,
+    "integrations": false,
+    "security": false,
+    "productionData": false
+  },
+  "reason": "Ajuste visual solicitado: elimina texto repetido en la columna del trabajador y compacta tarjetas y filas. Conserva disponibilidad en bandas del calendario y comportamiento existente.",
+  "verification": "Build correcto. Tipos aplicación 102 antes y después sin diagnósticos nuevos, Node 0. Lint focalizado sin errores y dos avisos previos. Navegador offline en 1920,1366,1024 y móvil390: filas84px, sin línea Horario, resize, scroll y arrastre a12:15; reasignación y compañeras pasan. Prueba de carriles valida que las tarjetas no se tapen ni alteren tiempos.",
+  "version": 1,
+  "scope": "application",
+  "digest": "ac93138737277d76a17e2c5c9a778280cc3b49840d65639732ecde9e1bbd7d7f"
+}

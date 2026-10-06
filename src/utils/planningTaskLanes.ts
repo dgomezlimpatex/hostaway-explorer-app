@@ -1,6 +1,6 @@
 /** Only actual time conflicts create additional lanes. */
-export const PLANNING_CARD_HEIGHT = 80;
-export const PLANNING_LANE_STEP = 88;
+export const PLANNING_CARD_HEIGHT = 68;
+export const PLANNING_LANE_STEP = 76;
 
 export function planningTaskLanes<T extends { id: string; startMinute: number; endMinute: number }>(
   items: T[], start: number, pixelsPerMinute: number,
