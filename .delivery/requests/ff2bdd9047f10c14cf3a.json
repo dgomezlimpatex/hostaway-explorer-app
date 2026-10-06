@@ -1,0 +1,21 @@
+{
+  "request": "Completar la página de tareas del portal de clientes con la disposición de la prueba aprobada, en tonos morados y adaptada a móvil.",
+  "reason": "Presentación y filtrado local de reservas ya obtenidas: lista cronológica, próxima limpieza, calendario mensual lateral y accesos a pestañas existentes. No modifica servicios, consultas ni escrituras de producción.",
+  "verification": "Build y lint focalizado correctos; tipos de aplicación comparados contra la base sin nuevos diagnósticos; tipos Node y raíz comprobados. Pruebas con componentes reales y hooks locales: orden entre propiedades, filtros próximas/pasadas/todas, búsqueda y alojamiento, navegación de meses y accesos a calendario/añadir, detalle por teclado y edición. Capturas de escritorio y móvil con datos ficticios; flujo autenticado real no ejecutado.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/clientPortalDesignTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "6ab19fecf1237428528d64b054c578c9515c7798636b695826609851b4f0d7e9"
+}
