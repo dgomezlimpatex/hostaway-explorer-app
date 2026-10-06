@@ -12,6 +12,7 @@ import type { Cleaner, Task } from '@/types/calendar';
 import type { TaskChecklistTemplate, TaskReport } from '@/types/taskReports';
 import { readCleanerCache, readWithCleanerCache } from './offlineStore';
 import { useCleanerOfflineStatus } from './CleanerOfflineProvider';
+import type { CleanerPropertyDetailsData } from './CleanerPropertyDetails';
 
 export function useCleanerCachedQuery<T>(key: QueryKey, cacheKey: string, loader: () => Promise<T>, enabled: boolean) {
   const client = useQueryClient();
@@ -54,7 +55,7 @@ export interface CleanerTaskBundle {
   report: TaskReport | null;
   templates: TaskChecklistTemplate[];
   assignedTemplateId?: string;
-  property: { notas?: string; numero_camas?: number; numero_banos?: number; numero_sabanas?: number; numero_toallas_grandes?: number; numero_toallas_pequenas?: number } | null;
+  property: CleanerPropertyDetailsData | null;
 }
 
 export const cleanerBundleKey = (ownerId: string, sedeId: string, taskId: string) => `${ownerId}:${sedeId}:task:${taskId}`;
@@ -73,7 +74,7 @@ export async function loadCleanerBundle(ownerId: string, sedeId: string, task: T
     supabase.from('task_reports').select('*').eq('task_id', taskId).eq('cleaner_id', cleanerId).maybeSingle(),
     loadTemplates(ownerId, sedeId),
     task.propertyId ? supabase.from('property_checklist_assignments').select('checklist_template_id').eq('property_id', task.propertyId).eq('is_active', true).maybeSingle() : Promise.resolve({ data: null, error: null }),
-    task.propertyId ? supabase.from('properties').select('notas,numero_camas,numero_banos,numero_sabanas,numero_toallas_grandes,numero_toallas_pequenas')
+    task.propertyId ? supabase.from('properties').select('notas,numero_camas,numero_camas_pequenas,numero_camas_suite,numero_sofas_cama,numero_banos,duracion_servicio,numero_sabanas,numero_sabanas_pequenas,numero_sabanas_suite,numero_toallas_grandes,numero_toallas_pequenas,numero_alfombrines,numero_fundas_almohada,kit_alimentario,cantidad_rollos_papel_higienico,cantidad_rollos_papel_cocina')
       .eq('id', task.propertyId).eq('sede_id', sedeId).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
   if (report.error) throw report.error;

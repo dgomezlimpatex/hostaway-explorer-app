@@ -11,6 +11,7 @@ import type { Task } from '@/types/calendar';
 import type { TaskMedia, TaskReport } from '@/types/taskReports';
 import { Loader2, MapPin, Play, CheckCircle2 } from 'lucide-react';
 import { CleanerSyncStatus } from './CleanerSyncStatus';
+import { CleanerPropertyDetails } from './CleanerPropertyDetails';
 import { CleanerWorkContext } from './CleanerWorkContext';
 import { cleanerBundleKey, loadCleanerBundle, useCleanerCachedQuery, useCleanerIdentity } from './useCleanerData';
 import {
@@ -215,11 +216,9 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
           {bundle.error && !bundle.data && <p role="alert" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">No se ha descargado la ficha de esta tarea. Recupera cobertura y vuelve a abrirla para preparar el checklist.</p>}
           {missingTemplate && <p role="alert" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">El checklist de este reporte ya no está disponible. Tu avance sigue guardado; consulta con coordinación.</p>}
           {virtual && <p className="rounded-xl bg-muted p-4 text-sm">Esta es una previsión recurrente. Podrás iniciar la limpieza cuando coordinación o la programación diaria genere la tarea.</p>}
-          {started && (bundle.data?.property?.notas || task.notes) && <details className="mb-3 rounded-xl bg-amber-50 p-3 text-sm"><summary className="min-h-8 cursor-pointer font-semibold">Indicaciones del piso y de la tarea</summary><p className="whitespace-pre-wrap">{bundle.data?.property?.notas}</p><p className="mt-2 whitespace-pre-wrap">{task.notes}</p></details>}
+          <CleanerPropertyDetails property={bundle.data?.property} taskNotes={task.notes} compact={started} />
           {loading ? <div role="status" className="flex items-center justify-center gap-2 py-12"><Loader2 className="h-5 w-5 animate-spin" />Preparando la tarea…</div>
             : !started && !completed ? <div className="space-y-4 py-3">
-              {bundle.data?.property?.notas && <div className="rounded-xl bg-amber-50 p-4"><p className="mb-1 font-semibold">Indicaciones del piso</p><p className="whitespace-pre-wrap text-sm">{bundle.data.property.notas}</p></div>}
-              {task.notes && <p className="whitespace-pre-wrap rounded-xl bg-muted p-4 text-sm">{task.notes}</p>}
               <p className="text-sm text-muted-foreground">Pulsa iniciar cuando empieces la limpieza. Las fotos y el checklist se guardarán en este móvil mientras trabajas.</p>
               {!identity.data && <p role="alert" className="text-sm text-amber-900">No se ha encontrado tu ficha de trabajadora. Consulta con coordinación.</p>}
               {!fromToday && <p className="text-sm text-muted-foreground">Solo puedes iniciar las tareas del día de hoy.</p>}
