@@ -1,0 +1,23 @@
+{
+  "request": "Al pulsar Revisar y finalizar completar la tarea y mantener en la pantalla final solo el tiempo real del servicio.",
+  "reason": "Cambia el paso de interfaz que invoca la finalización existente. Guarda el mismo borrador local y utiliza el circuito de envío ya existente, sin modificar sincronización, backend ni reglas operativas. No se realizan operaciones sobre datos reales durante la entrega.",
+  "verification": "Prueba del manejador real extraído mediante TypeScript: finalización, guardas, fotos/checklist preservados, error de guardado y doble pulsación sin cambiar la hora final. SSR del componente real: hora de Madrid, duración congelada, solo tarjeta de tiempo y otros consumidores intactos. Navegador con backend sintético: fotos obligatorias, cierre en una pulsación sin cobertura, pantalla final, recarga y hora final persistente, reenvío confirmado y regresiones offline. Build, tipos sin diagnósticos nuevos y lint focalizado. No se usa sesión ni datos de producción.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerFinishTest.mjs",
+    "scripts/cleanerTaskHeaderTest.mjs",
+    "scripts/cleanerPropertyDetailsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "8d2f73a86f9c4faabb3c6dbfa5a8b96adbeb6afa19ac8168324d6ab6a8b8a164"
+}
