@@ -44,7 +44,6 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   const [saving, setSaving] = useState(0);
   const [preparingPhotos, setPreparingPhotos] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<'checklist' | 'summary'>('checklist');
   const [checklist, setChecklist] = useState<CleanerChecklist>({});
   const [notes, setNotes] = useState('');
   const fieldsInitialized = useRef(false);
@@ -191,11 +190,16 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
     if (!saveErrorRef.current) onClose();
   };
   const finish = async () => {
-    if (!draft || !started || task.date !== formatMadridDate(new Date()) || validation.missing.length || saving || preparingPhotos || !bundle.data || missingTemplate || recovery) return;
-    await save(current => ({
-      ...current!, revision: current!.revision + 1, finishRequested: true, error: undefined,
-      report: { ...current!.report, checklist_completed: checklist, notes, overall_status: 'completed', end_time: new Date().toISOString(), updated_at: new Date().toISOString() },
-    })).then(onClose).catch(() => undefined);
+    if (!draft || !started || completed || task.date !== formatMadridDate(new Date()) || validation.missing.length || saving || preparingPhotos || !bundle.data || missingTemplate || recovery) return;
+    await save(current => {
+      if (!current) throw new Error('Inicia la tarea antes de finalizarla.');
+      if (current.finishRequested || current.report.overall_status === 'completed') return current;
+      const now = new Date().toISOString();
+      return {
+        ...current, revision: current.revision + 1, finishRequested: true, error: undefined,
+        report: { ...current.report, checklist_completed: checklist, notes, overall_status: 'completed', end_time: now, updated_at: now },
+      };
+    }).catch(() => undefined);
   };
 
   const busy = saving > 0 || preparingPhotos > 0;
@@ -228,7 +232,7 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
               {!identity.data && <p role="alert" className="text-sm text-amber-900">No se ha encontrado tu ficha de trabajadora. Consulta con coordinación.</p>}
               {!fromToday && <p className="text-sm text-muted-foreground">Solo puedes iniciar las tareas del día de hoy.</p>}
             </div>
-            : draft && step === 'checklist' ? <>
+            : draft && (!completed || recovery) ? <>
               <ChecklistSection template={template} checklist={checklist}
                 onChecklistChange={next => { setChecklist(next); void updateReport({ checklist_completed: next }).catch(() => undefined); }}
                 reportId={draft.report.id} isReadOnly={completed || !fromToday || recovery}
@@ -244,16 +248,16 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
                 }} />
               {isOnline && !recovery ? <IncidentReportTrigger task={effectiveTask} hasStartedTask isTaskCompleted={completed} className="mt-4" />
                 : !completed && <p className="mt-4 text-xs text-muted-foreground">El parte de incidencia se puede enviar cuando recuperes cobertura.</p>}
-            </> : draft ? <ReportSummary task={effectiveTask} template={template} checklist={checklist} notes={notes} completionPercentage={validation.percentage} currentReport={draft.report} /> : <p className="py-4 text-sm">Esta tarea ya está finalizada.</p>}
+            </> : draft ? <ReportSummary task={effectiveTask} template={template} checklist={checklist} notes={notes} completionPercentage={validation.percentage} currentReport={draft.report} timeOnly /> : <p className="py-4 text-sm">Esta tarea ya está finalizada.</p>}
         </div>
         <div className="shrink-0 space-y-2 border-t bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {(!started || busy || error || completed) && <p role="status" className="text-center text-xs text-muted-foreground">{busy ? 'Guardando en el móvil…' : error ? 'Hay cambios que no se han podido guardar' : completed ? 'Limpieza finalizada · revisa arriba el estado del envío' : 'La tarea se inicia al pulsar el botón'}</p>}
           {draft && !completed && validation.missing.length > 0 && <p className="text-xs text-amber-900">Faltan {validation.missing.length} puntos o fotos obligatorias.</p>}
           {completed || virtual || recovery ? <Button className="min-h-12 w-full" onClick={() => void close()} disabled={busy}>Volver a mis tareas</Button>
             : !started ? <Button className="min-h-12 w-full" onClick={() => void start()} disabled={loading || busy || !bundle.data || !identity.data || !fromToday || missingTemplate}><Play className="mr-2 h-4 w-4" />Iniciar limpieza</Button>
-            : <div className="flex gap-2">{step === 'summary' && <Button variant="outline" className="min-h-12" onClick={() => setStep('checklist')}>Revisar</Button>}
-              <Button className="min-h-12 flex-1" disabled={busy || !fromToday || !bundle.data || missingTemplate || Boolean(validation.missing.length)} onClick={() => { if (step === 'summary') void finish(); else setStep('summary'); }}>
-                <CheckCircle2 className="mr-2 h-4 w-4" />{step === 'summary' ? 'Finalizar limpieza' : 'Revisar y finalizar'}
+            : <div className="flex gap-2">
+              <Button className="min-h-12 flex-1" disabled={busy || !fromToday || !bundle.data || missingTemplate || Boolean(validation.missing.length)} onClick={() => void finish()}>
+                <CheckCircle2 className="mr-2 h-4 w-4" />Revisar y finalizar
               </Button></div>}
         </div>
       </DialogContent>
