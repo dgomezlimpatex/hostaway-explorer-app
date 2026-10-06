@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { format, addDays, differenceInCalendarDays } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus, Trash2, Loader2, CalendarIcon, Users, MessageSquare, Home, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ interface ReservationRow {
   checkOutDate: Date | undefined;
   guestCount: number | undefined;
   specialRequests: string;
+  checkInOpen: boolean;
   checkOutOpen: boolean;
 }
 
@@ -45,6 +46,7 @@ const createEmptyRow = (): ReservationRow => ({
   checkOutDate: undefined,
   guestCount: undefined,
   specialRequests: '',
+  checkInOpen: false,
   checkOutOpen: false,
 });
 
@@ -75,8 +77,8 @@ export const QuickAddReservations = ({
     setRows(prev => prev.map(row => {
       if (row.id !== rowId) return row;
       if (type === 'checkIn') {
-        const checkOutDate = row.checkOutDate || (date ? addDays(date, 1) : undefined);
-        return { ...row, checkInDate: date, checkOutDate, checkOutOpen: true };
+        const checkOutDate = date && row.checkOutDate && row.checkOutDate > date ? row.checkOutDate : undefined;
+        return { ...row, checkInDate: date, checkOutDate, checkInOpen: false, checkOutOpen: !!date };
       } else {
         return { ...row, checkOutDate: date, checkOutOpen: false };
       }
@@ -228,7 +230,7 @@ export const QuickAddReservations = ({
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                     Entrada
                   </label>
-                  <Popover>
+                  <Popover open={row.checkInOpen} onOpenChange={(open) => updateRow(row.id, { checkInOpen: open })}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
