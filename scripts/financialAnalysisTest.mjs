@@ -83,7 +83,17 @@ try {
   const property = { id: 'p', nombre: 'Casa', cliente_id: 'c', coste_servicio: 55, duracion_servicio: 120, numero_sabanas: 2, numero_sabanas_pequenas: 1, numero_sabanas_suite: 1, numero_fundas_almohada: 3 };
   const source = { type: 'limpieza-turistica', id: 's', date: service.date, status: 'completed', coste: 0, cliente_id: 'c', propiedad_id: 'p', property: 'Casa', cleaner_id: 'w1', cleaner: 'Ana', start_time: '10:00', end_time: '11:00', task_assignments: [{ cleaner_id: 'w1', cleaner_name: 'Ana' }, { cleaner_id: 'w2', cleaner_name: 'Bea' }], task_reports: [] };
   const mapped = buildServices([source], [property], [{ id: 'c', name: 'Cliente' }])[0];
-  assert.equal(mapped.revenue, 0); assert.equal(mapped.revenueEstimated, false); assert.equal(mapped.quantities.doubleSheet, 2);
+  assert.equal(mapped.revenue, 5500); assert.equal(mapped.revenueEstimated, true); assert.equal(mapped.quantities.doubleSheet, 2);
+  assert.equal(calculateService(mapped, newSettings()).costs.products, 165);
+  const zeroProperty = buildServices([source], [{ ...property, coste_servicio: 0 }], [])[0];
+  assert.equal(zeroProperty.revenue, 0); assert.equal(zeroProperty.revenueEstimated, false);
+  const missingProperty = buildServices([source], [], [])[0];
+  assert.equal(missingProperty.revenue, 0); assert.equal(missingProperty.revenueEstimated, false);
+  const positiveTask = buildServices([{ ...source, coste: 42 }], [property], [])[0];
+  assert.equal(positiveTask.revenue, 4200); assert.equal(positiveTask.revenueEstimated, false);
+  assert.equal(buildServices([{ ...source, coste: null }], [property], [])[0].revenue, 5500);
+  assert.equal(buildServices([source], [{ ...property, coste_servicio: -1 }], [])[0].revenue, 0);
+  assert.equal(buildServices([source], [{ ...property, coste_servicio: Infinity }], [])[0].revenue, 0);
   assert.equal(calculateService(mapped, newSettings()).costs.personal, 3100);
   assert.equal(buildServices([{ ...source, status: 'pending' }], [property], []).length, 1);
   assert.equal(buildServices([{ ...source, status: 'cancelled' }], [property], []).length, 0);

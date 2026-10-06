@@ -1,0 +1,21 @@
+{
+  "request": "Usar la tarifa de propiedad cuando una tarea tiene importe cero y la propiedad tiene tarifa positiva, confirmado por Dani al revisar septiembre.",
+  "reason": "Corrige únicamente la lectura y cálculo local de ingresos; no modifica importes, tareas ni tarifas productivas, ni ejecuta cobros/facturas. Conserva importe de tarea positivo y cero cuando la propiedad no tiene precio positivo.",
+  "verification": "Adaptador real: tarea cero con propiedad 55 usa 55 y productos 3%, cero en ambos conserva cero, cero sin propiedad conserva cero, tarea positiva prevalece, importe ausente usa propiedad, tarifa negativa/no finita no sustituye cero. Sigue indicando la tarifa actual de propiedad como estimación histórica. Pruebas previas de estados, NOT COUNT, asignaciones, horas, filtros y salarios pasan. Navegador real con lector simulado sin red: tarea cero se muestra a precio de propiedad, calcula productos, filtros, tarifa y ajustes persistentes; escritorio/móvil sin desbordamiento. Build, lint y Node correctos; app conserva 102 errores previos sin nuevos. No se escriben datos reales ni se cambia facturación/cobro.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialAnalysisTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "6046bb651425029d6ccbed2da13a4d5b03b95eadc3883bd19412a97dc9022673"
+}
