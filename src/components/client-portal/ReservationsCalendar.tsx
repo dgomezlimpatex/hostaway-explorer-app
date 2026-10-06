@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Clock3, Loader2, Moon, Search } from 'lucide
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { PortalBooking } from '@/types/clientPortal';
 import { ReservationDetailModal } from './ReservationDetailModal';
-import { calendarDay, cleansOn, dayLabel, hasStay, madridToday, nightCount, occupiesNight, shiftDay, staySegment, weekOf } from './calendar/portalOccupancy';
+import { calendarDay, cleansOn, dayLabel, hasStay, madridToday, nightCount, occupiesNight, shiftDay, stayBarSegment, weekOf } from './calendar/portalOccupancy';
 
 interface Property { id: string; codigo: string; nombre: string }
 interface Props { bookings: PortalBooking[]; properties?: Property[]; clientId: string; isLoading: boolean }
@@ -65,10 +65,10 @@ export const ReservationsCalendar = ({ bookings, properties = [], clientId, isLo
       <div className="portal-timeline-header"><span>Alojamiento</span>{days.map(day => <button type="button" key={day} className={day === madridToday() ? 'today' : ''} onClick={() => { setSelectedDay(day); setView('day'); }}><small>{dayLabel(day, { weekday: 'short' })}</small><strong>{Number(day.slice(-2))}</strong></button>)}</div>
       {propertyRows.map(property => {
         const rows = bookings.filter(booking => booking.property?.id === property.id && booking.status !== 'cancelled');
-        const stays = rows.filter(hasStay).filter(booking => staySegment(booking, days));
+        const stays = rows.filter(hasStay).filter(booking => stayBarSegment(booking, days));
         return <div className="portal-timeline-row" key={property.id}><div className="portal-timeline-property"><span className="portal-property-code">{property.codigo}</span><strong>{property.nombre}</strong></div><div className="portal-timeline-lanes">
           <div className="portal-night-grid">{days.map(day => <span key={day} />)}</div>
-          {stays.map(booking => { const segment = staySegment(booking, days)!; return <div className="portal-stay-lane" key={booking.id}><button type="button" className="portal-stay-bar" style={{ gridColumn: `${segment.start + 1} / span ${segment.span}` }} onClick={() => setDetail(booking)} aria-label={`Estancia de ${property.nombre}: ${booking.checkInDate} a ${booking.checkOutDate}`}><Moon size={13} /><span>{nightCount(booking)} noches</span></button></div>; })}
+          {stays.map(booking => { const segment = stayBarSegment(booking, days)!; return <div className="portal-stay-lane" key={booking.id}><button type="button" className="portal-stay-bar" style={{ left: `${segment.start / days.length * 100}%`, width: `${segment.span / days.length * 100}%` }} onClick={() => setDetail(booking)} aria-label={`Estancia de ${property.nombre}: ${booking.checkInDate} a ${booking.checkOutDate}`}><Moon size={13} /><span>{nightCount(booking)} noches</span></button></div>; })}
           <div className="portal-cleaning-lane">{days.map(day => <div key={day}>{rows.filter(booking => cleansOn(booking, day)).map(cleaningButton)}</div>)}</div>
         </div></div>;
       })}

@@ -1,0 +1,21 @@
+{
+  "request": "Cambiar las barras de reserva para que terminen a mitad del día de salida y comiencen al inicio del día de entrada, según el ejemplo de Dani.",
+  "reason": "Ajuste visual de las barras semanales calculado localmente. No altera las fechas de reservas, el número de noches, las limpiezas, los servicios de datos ni permisos.",
+  "verification": "Prueba de componentes reales y cálculo visual: salida del 6 a mitad de columna, entrada del 6 en su inicio, salida sola al comienzo de semana, estancias fuera de rango, corte al final de semana, cancelaciones, fechas ausentes y DST. Comprobados estilos de posición y anchura del componente real. Navegador local con datos ficticios muestra la salida a mitad del 6 y la entrada en el borde inicial. Build, tipos Node y lint pasan; tipos de aplicación conservan los 102 errores previos, sin nuevos. Sin red en pruebas funcionales y sin escrituras productivas.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/clientPortalDesignTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "07f3b17c7ee64bdbe47052367b5211137a156ba9fa04dfe3c475c8e0e3e190c8"
+}

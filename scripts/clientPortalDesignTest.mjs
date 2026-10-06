@@ -36,6 +36,16 @@ try {
  assert.equal(m.nightCount({...booking,checkInDate:'2026-10-24',checkOutDate:'2026-10-27'}),3);assert.equal(m.nightCount({...booking,checkInDate:'2026-03-28',checkOutDate:'2026-03-31'}),3);
  assert.deepEqual(m.staySegment({...booking,checkInDate:'2026-09-29',checkOutDate:'2026-10-07'},m.weekOf('2026-10-06')),{start:0,span:2});
  assert.deepEqual(m.staySegment({...booking,checkInDate:'2026-10-10',checkOutDate:'2026-10-18'},m.weekOf('2026-10-06')),{start:5,span:2});
+ const week=m.weekOf('2026-10-06');
+ assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-02',checkOutDate:'2026-10-06'},week),{start:0,span:1.5},'departure reaches midday of the 6th');
+ assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-06',checkOutDate:'2026-10-08'},week),{start:1,span:2.5},'arrival begins at start of the 6th');
+ assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-01',checkOutDate:'2026-10-05'},week),{start:0,span:0.5},'a checkout-only first day remains visible');
+ assert.equal(m.stayBarSegment({...booking,checkInDate:'2026-10-01',checkOutDate:'2026-10-04'},week),null);
+ assert.equal(m.stayBarSegment({...booking,checkInDate:'2026-10-12',checkOutDate:'2026-10-14'},week),null);
+ assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-10',checkOutDate:'2026-10-18'},week),{start:5,span:2},'bar clips at visible week boundary');
+ assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-24',checkOutDate:'2026-10-27'},m.weekOf('2026-10-27')),{start:0,span:1.5},'DST does not shift departure midpoint');
+ assert.equal(m.stayBarSegment({...booking,status:'cancelled'},week),null);
+ assert.equal(m.stayBarSegment({...booking,checkInDate:null},week),null);
  const find=(n,p)=>!n||typeof n!=='object'?[]:Array.isArray(n)?n.flatMap(c=>find(c,p)):[...(p(n)?[n]:[]),...find(n.props?.children,p)];
  const text=n=>n==null||typeof n==='boolean'?'':typeof n!=='object'?String(n):Array.isArray(n)?n.map(text).join(''):text(n.props?.children);
  const button=(tree,label)=>find(tree,n=>(n.type==='button'||n.type==='Button')&&text(n).trim()===label)[0];
@@ -46,7 +56,7 @@ try {
  let cal=render('calendar',m.ReservationsCalendar,calendarProps);
  assert.match(text(cal),/Noche ocupada/);assert.equal(find(cal,n=>n.props?.className==='portal-cleaning').length,1,'turnover cleaning coexists with new stay');
  find(cal,n=>n.props?.className==='portal-cleaning')[0].props.onClick();cal=render('calendar',m.ReservationsCalendar,calendarProps);assert.equal(find(cal,n=>n.type===m.ReservationDetailModal)[0].props.booking.id,sample.id);
- button(cal,'Semana').props.onClick();cal=render('calendar',m.ReservationsCalendar,calendarProps);assert.ok(find(cal,n=>n.props?.className==='portal-timeline').length);button(cal,'Mes').props.onClick();cal=render('calendar',m.ReservationsCalendar,calendarProps);assert.equal(find(cal,n=>n.type==='button'&&n.props['aria-label']?.includes('alojamientos ocupados')).length,42);
+ button(cal,'Semana').props.onClick();cal=render('calendar',m.ReservationsCalendar,calendarProps);assert.ok(find(cal,n=>n.props?.className==='portal-timeline').length);const arrivalBar=find(cal,n=>n.props?.className==='portal-stay-bar'&&n.props['aria-label'].endsWith(calendarProps.bookings[1].checkOutDate))[0];assert.ok(arrivalBar);const visual=m.stayBarSegment(calendarProps.bookings[1],m.weekOf(today));assert.equal(arrivalBar.props.style.left,`${visual.start/7*100}%`);assert.equal(arrivalBar.props.style.width,`${visual.span/7*100}%`);button(cal,'Mes').props.onClick();cal=render('calendar',m.ReservationsCalendar,calendarProps);assert.equal(find(cal,n=>n.type==='button'&&n.props['aria-label']?.includes('alojamientos ocupados')).length,42);
  let dashboard=render('dashboard',m.ClientPortalDashboard,{clientId:'example',clientName:'Cliente de prueba',onLogout(){}});assert.ok(button(dashboard,'Añadir tarea'));assert.equal(find(dashboard,n=>n.type==='TabsTrigger'&&n.props.value==='operations').length,0);
  m.fixture({settings:{allowReservationCreation:false,operationalPortalEnabled:true},bookings:[sample],properties:[property]});dashboard=render('dashboard',m.ClientPortalDashboard,{clientId:'example',clientName:'Cliente de prueba',onLogout(){}});assert.equal(button(dashboard,'Añadir tarea'),undefined);assert.equal(find(dashboard,n=>n.type==='TabsTrigger'&&n.props.value==='add').length,0);assert.equal(find(dashboard,n=>n.type==='TabsTrigger'&&n.props.value==='operations').length,1);
  const opsProps={clientId:'example',bookings:[sample,{...sample,id:'progress',taskStatus:'in_progress',startTime:'11:00'},{...sample,id:'pending',taskStatus:'pending',startTime:null}],isLoading:false};
