@@ -180,10 +180,23 @@ try {
   await page.getByRole('button',{name:'Volver a la tarea',exact:true}).click();
   assert.equal(await page.getByRole('button',{name:'Revisar y finalizar'}).isDisabled(),true,'Mandatory photo blocks completion');
   await context.setOffline(true);
+  assert.equal(await page.getByLabel('Notas de la limpieza').count(),0,'Report notes input is removed');
+  assert.equal(await page.getByText('Avance guardado en este móvil',{exact:true}).count(),0,'Redundant footer status is removed');
+  // Seed a previously saved note locally: removing the input must preserve old reports.
+  await page.addScriptTag({content:await readFile(join(temporary,'helper.js'),'utf8')});
+  await page.evaluate(({userId,taskId}) => window.cleanerTest.changeDraft(`${userId}:${taskId}`,current=>({
+    ...current,revision:current.revision+1,report:{...current.report,notes:'Nota conservada sin cobertura'},
+  })),{userId,taskId});
+  await page.reload();
+  await page.getByText('Piso de prueba',{exact:true}).first().click();
+  await page.getByRole('button',{name:'Revisar y finalizar'}).waitFor();
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jD1sAAAAASUVORK5CYII=','base64');
   await page.locator('input[type=file]').first().setInputFiles({name:'prueba.png',mimeType:'image/png',buffer:png});
   await page.getByRole('button',{name:/Extra de prueba/}).click();
-  await page.getByLabel('Notas de la limpieza').fill('Nota conservada sin cobertura');
+  await page.getByText('Guardando en el móvil…',{exact:true}).waitFor({state:'hidden'});
+  assert.equal(await page.getByLabel('Notas de la limpieza').count(),0);
+  assert.equal(await page.getByText('Avance guardado en este móvil',{exact:true}).count(),0);
+  if (process.env.CLEANER_SCREENSHOT_DIR) await page.screenshot({path:join(process.env.CLEANER_SCREENSHOT_DIR,'mobile-report-no-notes.png'),fullPage:true,animations:'disabled'});
   await page.getByRole('button',{name:'Revisar y finalizar'}).click();
   await page.getByRole('button',{name:'Finalizar limpieza'}).click();
   await page.getByRole('dialog').waitFor({state:'hidden'});
@@ -231,6 +244,7 @@ try {
   saved=await page.evaluate(owner => window.cleanerTest.listLocal('drafts',owner).then(items=>items[0]),userId);
   assert.equal(saved.revision,saved.syncedRevision,'Only confirmed work may be acknowledged');
   assert.equal(remoteReport.overall_status,'completed'); assert.equal(task.status,'completed');
+  assert.equal(remoteReport.notes,'Nota conservada sin cobertura','Existing report notes remain intact');
   assert.equal(task.additional_tasks[0].completed,true,'Offline extra tasks are confirmed with the report');
   assert.equal(media.length,1); assert.equal(storedUploads.size,1,'Uncertain retry must not duplicate photos');
   const writesBefore=writes;

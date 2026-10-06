@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { ChecklistSection } from '@/components/modals/task-report/ChecklistSection';
 import { ReportSummary } from '@/components/modals/task-report/ReportSummary';
 import { useAuth } from '@/hooks/useAuth';
@@ -241,15 +240,12 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
                       completedBy: isCompleted ? user?.id : undefined, completedByName: isCompleted ? user?.email : undefined } },
                   })).catch(() => undefined);
                 }} />
-              <label className="mt-5 block text-sm font-medium" htmlFor="cleaner-work-notes">Notas de la limpieza</label>
-              <Textarea id="cleaner-work-notes" className="mt-2" placeholder="Algo que coordinación deba saber…" value={notes}
-                disabled={completed || !fromToday || recovery} onChange={event => { setNotes(event.target.value); void updateReport({ notes: event.target.value }).catch(() => undefined); }} />
               {isOnline && !recovery ? <IncidentReportTrigger task={effectiveTask} hasStartedTask isTaskCompleted={completed} className="mt-4" />
-                : !completed && <p className="mt-4 text-xs text-muted-foreground">Si hay una incidencia, consérvala en las notas. El parte de incidencia se envía con cobertura.</p>}
+                : !completed && <p className="mt-4 text-xs text-muted-foreground">El parte de incidencia se puede enviar cuando recuperes cobertura.</p>}
             </> : draft ? <ReportSummary task={effectiveTask} template={template} checklist={checklist} notes={notes} completionPercentage={validation.percentage} currentReport={draft.report} /> : <p className="py-4 text-sm">Esta tarea ya está finalizada.</p>}
         </div>
         <div className="shrink-0 space-y-2 border-t bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <p role="status" className="text-center text-xs text-muted-foreground">{busy ? 'Guardando en el móvil…' : error ? 'Hay cambios que no se han podido guardar' : completed ? 'Limpieza finalizada · revisa arriba el estado del envío' : started ? 'Avance guardado en este móvil' : 'La tarea se inicia al pulsar el botón'}</p>
+          {(!started || busy || error || completed) && <p role="status" className="text-center text-xs text-muted-foreground">{busy ? 'Guardando en el móvil…' : error ? 'Hay cambios que no se han podido guardar' : completed ? 'Limpieza finalizada · revisa arriba el estado del envío' : 'La tarea se inicia al pulsar el botón'}</p>}
           {draft && !completed && validation.missing.length > 0 && <p className="text-xs text-amber-900">Faltan {validation.missing.length} puntos o fotos obligatorias.</p>}
           {completed || virtual || recovery ? <Button className="min-h-12 w-full" onClick={() => void close()} disabled={busy}>Volver a mis tareas</Button>
             : !started ? <Button className="min-h-12 w-full" onClick={() => void start()} disabled={loading || busy || !bundle.data || !identity.data || !fromToday || missingTemplate}><Play className="mr-2 h-4 w-4" />Iniciar limpieza</Button>
