@@ -1393,10 +1393,6 @@ export const PlanningProposalCalendar = ({
   const dayBlockingWarnings = warnings.filter(
     (warning) => warning.severity === 'blocking',
   );
-  const daySoftWarnings = warnings.filter(
-    (warning) => warning.severity === 'warning',
-  );
-
   return (
     <DndContext
       sensors={sensors}
@@ -1415,27 +1411,14 @@ export const PlanningProposalCalendar = ({
             Este plan está desactualizado. Regenera antes de guardar.
           </div>
         )}
-        {moveNotice && (
+        {moveNotice?.error && (
           <div
             role="alert"
             aria-live="assertive"
             data-dnd-notice
-            className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-sm ${moveNotice.error ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}
+            className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
           >
             <span>{moveNotice.message}</span>
-            {moveNotice.previous && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  onDraftProposalsChange(moveNotice.previous!);
-                  setMoveNotice(null);
-                }}
-              >
-                Deshacer
-              </Button>
-            )}
           </div>
         )}
 
@@ -1463,7 +1446,7 @@ export const PlanningProposalCalendar = ({
           </div>
         )}
 
-        {(dayBlockingWarnings.length > 0 || daySoftWarnings.length > 0) && (
+        {dayBlockingWarnings.length > 0 && (
           <div className="grid gap-3 lg:grid-cols-2">
             {dayBlockingWarnings.length > 0 && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-3">
@@ -1493,39 +1476,17 @@ export const PlanningProposalCalendar = ({
                 </ul>
               </div>
             )}
-            {daySoftWarnings.length > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <p className="flex items-center gap-2 text-sm font-semibold text-amber-900">
-                  <AlertTriangle className="h-4 w-4" /> {daySoftWarnings.length}{' '}
-                  avisos operativos
-                </p>
-                <ul className="mt-2 space-y-1 text-xs text-amber-800">
-                  {daySoftWarnings.slice(0, 4).map((warning) => (
-                    <li key={warning.id} className="flex flex-wrap items-center justify-between gap-2">
-                      <span>• {warning.message}</span>
-                      {warning.taskId && (
-                        <button
-                          type="button"
-                          data-planning-warning-action
-                          className="shrink-0 rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
-                          onClick={() => openReassignment(warning.taskId as string)}
-                        >
-                          Ver esta limpieza
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                  {daySoftWarnings.length > 4 && (
-                    <li className="font-semibold">y {daySoftWarnings.length - 4} más</li>
-                  )}
-                </ul>
-              </div>
-            )}
           </div>
         )}
 
         {/* El contador permanece visible; las pendientes se muestran antes de la lista móvil. */}
-        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 rounded-lg border border-line bg-paper/95 px-3 py-2 text-sm shadow-sm backdrop-blur lg:hidden">
+        <div className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-paper/95 px-3 py-2 text-sm shadow-sm backdrop-blur lg:hidden">
+          {moveNotice?.previous && !moveNotice.error && (
+            <Button type="button" variant="outline" size="sm" onClick={() => {
+              onDraftProposalsChange(moveNotice.previous!);
+              setMoveNotice(null);
+            }}>Deshacer</Button>
+          )}
           <span className={unassignedTasks.length > 0 ? 'font-semibold text-ink' : 'font-semibold text-emerald-700'}>
             {unassignedTasks.length > 0
               ? `${unassignedTasks.length} limpieza${unassignedTasks.length === 1 ? '' : 's'} sin asignar`
@@ -1824,6 +1785,19 @@ export const PlanningProposalCalendar = ({
                   {expandedTimeline ? 'Encajar día' : 'Ampliar horario'}
                 </Button>
                 <p className="text-xs font-semibold text-ink-3">15 min</p>
+                {moveNotice?.previous && !moveNotice.error && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onDraftProposalsChange(moveNotice.previous!);
+                      setMoveNotice(null);
+                    }}
+                  >
+                    Deshacer
+                  </Button>
+                )}
                 {manualChangeCount > 0 && (
                   <Button
                     type="button"
