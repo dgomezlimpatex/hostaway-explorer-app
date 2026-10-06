@@ -10,6 +10,7 @@ import type { Task } from '@/types/calendar';
 import type { TaskMedia, TaskReport } from '@/types/taskReports';
 import { Loader2, MapPin, Play, CheckCircle2 } from 'lucide-react';
 import { CleanerTaskHeaderActions } from './CleanerTaskHeaderActions';
+import { CleanerPropertyDetails } from './CleanerPropertyDetails';
 import { useCleanerOfflineStatus } from './CleanerOfflineProvider';
 import { CleanerWorkContext } from './CleanerWorkContext';
 import { cleanerBundleKey, loadCleanerBundle, useCleanerCachedQuery, useCleanerIdentity } from './useCleanerData';
@@ -209,7 +210,7 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
               <DialogDescription id="cleaner-work-description">{task.propertyName || task.property} · {task.startTime.slice(0, 5)}</DialogDescription>
             </div>
             <CleanerTaskHeaderActions property={bundle.data?.property} taskNotes={task.notes} propertyName={task.propertyName || task.property}
-              loading={loading} status={offlineStatus} />
+              loading={loading} status={offlineStatus} showNotes={started || Boolean(completed)} />
           </div>
           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.address)}`} target="_blank" rel="noopener noreferrer" className="mt-1 flex min-h-8 items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3 shrink-0" />{task.address}</a>
         </DialogHeader>
@@ -221,6 +222,7 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
           {bundle.error && !bundle.data && <p role="alert" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">No se ha descargado la ficha de esta tarea. Recupera cobertura y vuelve a abrirla para preparar el checklist.</p>}
           {missingTemplate && <p role="alert" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">El checklist de este reporte ya no está disponible. Tu avance sigue guardado; consulta con coordinación.</p>}
           {virtual && <p className="rounded-xl bg-muted p-4 text-sm">Esta es una previsión recurrente. Podrás iniciar la limpieza cuando coordinación o la programación diaria genere la tarea.</p>}
+          {!started && !completed && <CleanerPropertyDetails property={bundle.data?.property} taskNotes={task.notes} />}
           {loading ? <div role="status" className="flex items-center justify-center gap-2 py-12"><Loader2 className="h-5 w-5 animate-spin" />Preparando la tarea…</div>
             : !started && !completed ? <div className="space-y-4 py-3">
               {!identity.data && <p role="alert" className="text-sm text-amber-900">No se ha encontrado tu ficha de trabajadora. Consulta con coordinación.</p>}
