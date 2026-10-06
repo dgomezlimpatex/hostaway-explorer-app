@@ -4,7 +4,7 @@ import tailwindcss from 'tailwindcss';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-export async function buildOfflinePlanningFixture({ scenario = 'normal', controls = false, shortTasks = false } = {}) {
+export async function buildOfflinePlanningFixture({ scenario = 'normal', controls = false, shortTasks = false, delayedQuickRefresh = false } = {}) {
   const fixturePlugin = {
     name: 'planning-offline-fixture',
     setup(plugin) {
@@ -17,7 +17,9 @@ export async function buildOfflinePlanningFixture({ scenario = 'normal', control
       plugin.onLoad({ filter: /.*/, namespace: 'offline' }, ({ path }) => ({ loader: 'js', contents: {
         week: "export const usePlanningCalendarWeek=()=>({ data:[],startDate:'2026-09-21',endDate:'2026-09-27',isPending:false,isError:false });",
         sidebar: "export const useSidebar=()=>({state:'expanded',isMobile:window.matchMedia('(max-width: 767px)').matches});",
-        actions: `const save = async (detail) => window.dispatchEvent(new CustomEvent('planning-example-task-saved', {detail}));
+        actions: `const pending=[];
+          window.planningExampleRefresh=()=>{for(const detail of pending.splice(0)) window.dispatchEvent(new CustomEvent('planning-example-task-saved',{detail}));};
+          const save = async (detail) => {if(window.planningExampleDelayedRefresh) pending.push(detail); else window.dispatchEvent(new CustomEvent('planning-example-task-saved', {detail}));};
           export const useCleaningPlanningActions=()=>({isSavingQuickAction:false,
             unassignTaskAsync: task => save({taskId:task.id,unassign:true}),
             updateTaskSchedule: ({task,startTime,endTime}) => save({taskId:task.id,startTime,endTime}),
@@ -39,6 +41,6 @@ export async function buildOfflinePlanningFixture({ scenario = 'normal', control
     'src/components/cleaning-planning/**/*.{tsx,ts}', 'src/components/ui/{button,accordion,dropdown-menu,dialog,badge,select}.tsx',
     'scripts/cleaningPlanningBrowser.entry.tsx',
   ] })]).process(cssSource, { from: resolve('src/index.css') });
-  const settings = `window.planningExampleScenario=${JSON.stringify(scenario)};window.planningExampleControls=${Boolean(controls)};`;
+  const settings = `window.planningExampleDelayedRefresh=${Boolean(delayedQuickRefresh)};window.planningExampleScenario=${JSON.stringify(scenario)};window.planningExampleControls=${Boolean(controls)};`;
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Planificador · Ejemplo local</title><style>${css.css}</style></head><body><div id="root"></div><script>${settings}${built.outputFiles[0].text.replaceAll('</script', '<\\/script')}</script></body></html>`;
 }

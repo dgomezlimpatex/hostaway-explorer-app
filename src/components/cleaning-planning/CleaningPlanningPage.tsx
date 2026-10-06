@@ -1,4 +1,5 @@
-import { buildProposalContextKey, canAcceptSavedTaskContext } from '@/utils/cleaning-planning/proposalContext';
+import { usePlanningSavedTaskContext } from '@/hooks/usePlanningSavedTaskContext';
+import { buildProposalContextKey } from '@/utils/cleaning-planning/proposalContext';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { addDays } from 'date-fns';
@@ -168,7 +169,6 @@ export const CleaningPlanningPage = () => {
   const [date, setDate] = useState(() => addDays(getTodayMadrid(), 1));
   const [preset, setPreset] = useState<PlanningRangePreset>('today');
   const [filters, setFilters] = useState<CleaningPlanningFilters>(defaultFilters);
-  const [savedQuickTaskId, setSavedQuickTaskId] = useState<string | null>(null);
   const [proposalState, setProposalState] = useState<ProposalState | null>(null);
   const [calendarNavigation, setCalendarNavigation] = useState(false);
   const [isSavingDay, setIsSavingDay] = useState(false);
@@ -238,13 +238,8 @@ export const CleaningPlanningPage = () => {
     range,
     tasks: filteredTasks,
   }), [activeSede?.id, effectiveAvailability, filters, filteredTasks, operationalCleaners, range]);
-  useEffect(() => {
-    if (!savedQuickTaskId || !proposalState || isError) return;
-    if (canAcceptSavedTaskContext(proposalState.contextKey, proposalContextKey, savedQuickTaskId)) {
-      setProposalState(current => current ? { ...current, contextKey: proposalContextKey } : current);
-      setSavedQuickTaskId(null);
-    }
-  }, [savedQuickTaskId, proposalState, proposalContextKey, isError]);
+  const recordSavedTask = usePlanningSavedTaskContext(proposalState?.contextKey, proposalContextKey,
+    contextKey => setProposalState(current => current ? { ...current, contextKey } : current), isError);
   const proposal = proposalState?.result || null;
   const proposalTasks = proposalState?.tasksSnapshot || filteredUnassignedTasks;
   const hasPartialScope = filteredUnassignedTasks.length !== enhancedUnassignedTasks.length;
@@ -413,7 +408,7 @@ export const CleaningPlanningPage = () => {
             isPartialScope={hasPartialScope}
             totalPendingTaskCount={enhancedUnassignedTasks.length}
             savedTaskIds={savedTaskIds}
-            onTaskSaved={setSavedQuickTaskId}
+            onTaskSaved={recordSavedTask}
             onApply={handleApplyProposal}
             onClear={() => {dayProposals.current.delete(dayKey);setProposalState(null);setCalendarNavigation(false);}}
           />

@@ -25,17 +25,24 @@ export const buildProposalContextKey = ({ activeSedeId, cleanerIds, availability
   ]) })).sort((a, b) => a.id.localeCompare(b.id)),
 });
 
-/** Accept only the task explicitly saved here; concurrent changes stay stale. */
-export const canAcceptSavedTaskContext = (previous: string, current: string, taskId: string): boolean => {
-  if (previous === current) return false; // Wait for the refreshed task.
+/** Acknowledge only refreshed tasks explicitly saved in this board. */
+export const acceptedSavedTaskChanges = (previous: string, current: string, taskIds: string[]): string[] => {
+  if (previous === current || !taskIds.length) return [];
   try {
     const before = JSON.parse(previous);
     const after = JSON.parse(current);
-    const oldTask = before.tasks.find((task: { id: string }) => task.id === taskId);
-    const newTask = after.tasks.find((task: { id: string }) => task.id === taskId);
-    if (!oldTask || !newTask || oldTask.value === newTask.value) return false;
-    before.tasks = before.tasks.filter((task: { id: string }) => task.id !== taskId);
-    after.tasks = after.tasks.filter((task: { id: string }) => task.id !== taskId);
-    return JSON.stringify(before) === JSON.stringify(after);
-  } catch { return false; }
+    const changed = [...new Set(taskIds)].filter(id => {
+      const oldTasks = before.tasks.filter((task: { id: string }) => task.id === id);
+      const newTasks = after.tasks.filter((task: { id: string }) => task.id === id);
+      return oldTasks.length && newTasks.length && JSON.stringify(oldTasks) !== JSON.stringify(newTasks);
+    });
+    if (!changed.length) return [];
+    before.tasks = before.tasks.filter((task: { id: string }) => !changed.includes(task.id));
+    after.tasks = after.tasks.filter((task: { id: string }) => !changed.includes(task.id));
+    return JSON.stringify(before) === JSON.stringify(after) ? changed : [];
+  } catch { return []; }
 };
+
+/** Single-task compatibility; concurrent edits still invalidate the draft. */
+export const canAcceptSavedTaskContext = (previous: string, current: string, taskId: string): boolean =>
+  acceptedSavedTaskChanges(previous, current, [taskId]).length > 0;

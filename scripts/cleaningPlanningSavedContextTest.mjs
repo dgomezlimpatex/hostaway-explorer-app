@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 
-const bundle = await build({ stdin: { contents: `export {buildProposalContextKey,canAcceptSavedTaskContext} from './src/utils/cleaning-planning/proposalContext'; export {buildPlanningExample} from './scripts/cleaningPlanningExampleData';`, resolveDir: process.cwd(), loader: 'ts' }, bundle:true, write:false, platform:'node', format:'esm' });
-const {buildProposalContextKey:key,canAcceptSavedTaskContext:accept,buildPlanningExample} = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+const bundle = await build({ stdin: { contents: `export {buildProposalContextKey,canAcceptSavedTaskContext,acceptedSavedTaskChanges} from './src/utils/cleaning-planning/proposalContext'; export {buildPlanningExample} from './scripts/cleaningPlanningExampleData';`, resolveDir: process.cwd(), loader: 'ts' }, bundle:true, write:false, platform:'node', format:'esm' });
+const {buildProposalContextKey:key,canAcceptSavedTaskContext:accept,acceptedSavedTaskChanges:acceptMany,buildPlanningExample} = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
 const example = buildPlanningExample('normal');
 const input = {activeSedeId:'demo',cleanerIds:example.cleaners.map(c=>c.id),availability:example.effectiveAvailability,filters:{},range:{startDate:'2026-09-26',endDate:'2026-09-26'},tasks:example.tasks};
 const before = key(input);
@@ -16,3 +16,15 @@ assert.equal(accept(before,key({...updated,availability:updated.availability.map
 assert.equal(accept(before,key({...updated,activeSedeId:'another-sede'}),'existing-1'),false,'sede change stays stale');
 assert.equal(accept(before,key({...updated,tasks:updated.tasks.filter(t=>t.id!=='existing-1')}),'existing-1'),false,'deleted task stays stale');
 console.log('planning-saved-context: OK (own edit, load, concurrent task, new task, availability, sede, deletion)');
+
+const two = {...input,tasks:input.tasks.map(task=>({...task,cleanerId:'worker-1',assignments:[{cleaner_id:'worker-1'}]}))};
+const remove = (state, ids) => ({...state,tasks:state.tasks.map(task=>ids.includes(task.id)?{...task,cleanerId:undefined,assignments:[]}:task)});
+const first = remove(two,['existing-1']);
+const both = remove(two,['existing-1','proposed-1']);
+assert.equal(accept(key(two),key(both),'proposed-1'),false,'Old last-id tracking blocks two successful own changes');
+assert.deepEqual(acceptMany(key(two),key(both),['existing-1','proposed-1']),['existing-1','proposed-1']);
+assert.deepEqual(acceptMany(key(two),key(first),['existing-1','proposed-1']),['existing-1'],'Accept only data that has arrived, retain the second pending id');
+assert.deepEqual(acceptMany(key(first),key(both),['proposed-1']),['proposed-1']);
+assert.deepEqual(acceptMany(key(two),key({...both,tasks:both.tasks.map(t=>t.id==='pending-1'?{...t,startTime:'16:00'}:t)}),['existing-1','proposed-1']),[],'External edits still block even alongside two own saves');
+assert.deepEqual(acceptMany(key(two),key({...both,tasks:both.tasks.filter(t=>t.id!=='existing-1')}),['existing-1','proposed-1']),[],'Deletion remains stale');
+console.log('planning-multiple-saved-context: OK (coalesced/delayed own refresh, pending ids, concurrent edit and deletion)');
