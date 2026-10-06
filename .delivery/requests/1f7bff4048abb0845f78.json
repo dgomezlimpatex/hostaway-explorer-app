@@ -1,0 +1,23 @@
+{
+  "effects": {
+    "infrastructure": false,
+    "security": false,
+    "integrations": false,
+    "costs": false,
+    "communications": false,
+    "productionData": false,
+    "database": false,
+    "authentication": false
+  },
+  "verification": "Pruebas offline sobre código real: colisión por puntero, rectángulos actualizados, recorte del horario y fallback de teclado; navegador con horario encajado y ampliado, agarre por extremo, scroll en ambos ejes durante arrastre, preview sincronizada, persona/hora exactas y cancelación fuera del horario. Regresión de tareas de 33 minutos, pantalla adaptable, cabecera al hacer scroll, reasignación y compañeras, y banners. Build correcto, Node sin errores, aplicación conserva los 102 diagnósticos previos, lint focalizado sin errores (2 avisos previos). Datos ficticios y red bloqueada; no se han arrastrado tareas reales.",
+  "tests": [
+    "scripts/planningPointerDragTest.mjs",
+    "scripts/planningViewportTest.mjs",
+    "scripts/planningNoticeBannersTest.mjs"
+  ],
+  "reason": "Solo corrige la geometría de la interacción local y añade una vista flotante; conserva la validación, el borrador y el guardado explícito existentes. No realiza escrituras ni comunicaciones al arrastrar.",
+  "request": "Corregir el arrastre del planificador para que la tarjeta siga al puntero y se suelte en la persona y hora apuntadas.",
+  "version": 1,
+  "scope": "application",
+  "digest": "aed43c0edcf25a542a6531a468a548bf93b002f63ab6e231ee9a5dba17be3238"
+}
