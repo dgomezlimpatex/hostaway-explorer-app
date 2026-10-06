@@ -1,0 +1,21 @@
+{
+  "tests": [
+    "scripts/planningViewportTest.mjs"
+  ],
+  "effects": {
+    "security": false,
+    "productionData": false,
+    "costs": false,
+    "database": false,
+    "infrastructure": false,
+    "communications": false,
+    "integrations": false,
+    "authentication": false
+  },
+  "verification": "Build correcto. Aplicación 102 diagnósticos heredados antes/después sin nuevos, Node 0, lint sin errores y dos avisos previos. Pruebas de escala expandida, ancho de33min y drag con scroll pasan. Navegador offline en1920 y1366 con tareas33min confirma código ADP18.4A y hora09:00–09:33 completos, scroll dehoras sincronizado, arrastre a10:15–10:48 conservando33min y regreso a encajar. Regresiones de escritorio/móvil, resize y reasignación pasan.",
+  "request": "Las tareas de 33 minutos resultan ilegibles; permitir hacer más anchos los bloques horarios para leerlas.",
+  "reason": "Control visual local Ampliar horario/Encajar día. Ajusta la escala horizontal y mantiene su correspondencia con el arrastre; no altera duraciones reales, datos, guardado ni reglas operativas.",
+  "version": 1,
+  "scope": "application",
+  "digest": "49b67b9735e4686ac8b3eb7151952a382d2c0c086c4a8fce0910531ee317fde2"
+}
