@@ -36,8 +36,19 @@ try {
   const reads = await page.evaluate(() => window.reads);
   assert.equal(reads.length, 4);
   for (const read of reads) { assert.deepEqual(read.calls.find(call => call[0] === 'eq'), ['eq', 'sede_id', 's']); assert.deepEqual([read.from,read.to], [0,499]); }
+  const previousEnd = await page.getByLabel('Hasta', { exact: true }).inputValue();
+  const [year, month] = previousEnd.split('-').map(Number);
+  const monthEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+  await page.getByLabel('Hasta', { exact: true }).fill(monthEnd);
+  await expect(page.getByText('2317,00 €', { exact: true }).first()).toBeVisible();
+  await page.getByLabel('Hasta', { exact: true }).fill(previousEnd);
   await page.getByRole('button', { name: 'Tarifas', exact: true }).click();
   await expect(page.getByText('0,247 € / prenda')).toBeVisible();
+  await expect(page.getByText('2317,00 € / mes · coste de empresa')).toBeVisible();
+  await page.getByLabel('Concepto', { exact: true }).selectOption('tourismSalary');
+  await page.getByLabel('Coste de empresa mensual').fill('0');
+  await page.getByLabel('Aplicar desde').fill('2000-01-01');
+  await page.getByRole('button', { name: 'Guardar tarifa' }).click();
   await page.getByLabel('Concepto', { exact: true }).selectOption('kitchenKit');
   await page.getByLabel('Precio unitario sin IVA').fill('1,17');
   await page.getByRole('button', { name: 'Guardar tarifa' }).click();

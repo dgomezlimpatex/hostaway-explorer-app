@@ -1,0 +1,21 @@
+{
+  "request": "Añadir el salario de dirección íntegro para turismo, 2317 euros de coste de empresa mensual, como gasto general editable del análisis financiero.",
+  "reason": "Cálculo local solicitado del coste facilitado por Dani, separado del personal de servicios. No calcula ni ejecuta nóminas, impuestos, cotizaciones, pagos o escrituras productivas. Mantiene tarifas locales y fuentes existentes.",
+  "verification": "Pruebas reales: mes completo 2317, dos meses 4634, fracción de días, febrero de 28/29 días, cambio de tarifa a mitad de mes, histórico, intervalo inválido, gasto incluso sin servicios y exclusión al filtrar clientes/propiedades/trabajadores. Compatibilidad de copias y cantidades anteriores. Navegador real con lector simulado sin red productiva: salario en mes completo, tarifa editable, gasto automático, filtros, edición previa y recarga, escritorio/móvil. Build y lint correctos; tipos de aplicación idénticos a base (102 errores previos, ninguno nuevo) y Node sin errores. Revisión del diff: sin permisos, seguridad, autenticación, comunicaciones, sincronizaciones, datos reales ni esquema. El gasto general se aplica al análisis de la sede seleccionada, no consolida ni reparte sedes/clientes.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialAnalysisTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "47541b796621ad165edf9f347c02f0e9d77438b3edbc42b524cb36b7adb3322c"
+}
