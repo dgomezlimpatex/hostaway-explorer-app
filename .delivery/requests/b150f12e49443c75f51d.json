@@ -1,0 +1,21 @@
+{
+  "effects": {
+    "costs": false,
+    "productionData": false,
+    "communications": false,
+    "integrations": false,
+    "database": false,
+    "infrastructure": false,
+    "security": false,
+    "authentication": false
+  },
+  "tests": [
+    "scripts/planningScrollChromeTest.mjs"
+  ],
+  "verification": "Build correcto. Tipos aplicación 102 heredados antes/después, Node 0 y lint focalizado sin errores (dos avisos previos). Hook real probado con ciclo React simulado sin red: umbrales, reversión, protección de ajuste de layout, inicio, móvil y cambio de día. Navegador offline con 20 trabajadoras, animación y reduced-motion: cabecera más compacta, ocultar al bajar, restaurar al subir, horizontal sin efecto, calendario mayor; regresión de resize, scroll, arrastre y reasignación pasan. Capturas visibles y ocultas inspeccionadas.",
+  "request": "Compactar la cabecera y leyenda del reparto; ocultarlas al bajar por las filas y mostrarlas al subir, con transición suave. Dani confirmó que el scroll es vertical.",
+  "reason": "Interacción visual local de escritorio. Reacciona a la dirección del scroll y ajusta el espacio del calendario; no altera tareas, asignaciones, guardado, backend ni comunicaciones.",
+  "version": 1,
+  "scope": "application",
+  "digest": "50141b7384974b44a1d08b3c79e8fbd00eb2c2c3b0d21d5789141ccfb165f527"
+}
