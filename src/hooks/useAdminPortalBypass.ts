@@ -35,10 +35,11 @@ export const useAdminPortalBypass = () => {
 
       const slug = createClientSlug(clientName);
       const url = `${window.location.origin}/portal/${slug}-${data.shortCode}?admin_bypass=${encodeURIComponent(data.bypassToken)}`;
-      window.open(url, '_blank', 'noopener');
+      // Navigate in this tab: opening a popup after the request may be blocked.
+      window.location.assign(url);
       return data;
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       console.error('admin portal bypass error:', err);
       toast({
         title: 'Error',

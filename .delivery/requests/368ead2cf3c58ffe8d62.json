@@ -1,0 +1,21 @@
+{
+  "request": "Simplificar Portales de clientes con nombre y botones Compartir acceso, Editar cliente, Historial y Acceder, sin pedir PIN al administrador.",
+  "reason": "Reorganiza la interfaz y los controles existentes. La única modificación del acceso es navegar en la misma pestaña en lugar de abrir una ventana después de esperar al servidor. Conserva la función admin-portal-bypass, su solicitud, token, validación y límites existentes; no introduce ni modifica autenticación o permisos. Compartir solo copia al portapapeles por acción del usuario. Las opciones existentes se trasladan al diálogo con las mismas mutaciones; abrir la página o los diálogos no ejecuta escrituras.",
+  "verification": "Prueba Node sin red ejecuta la página y el hook reales con fixtures y comprueba acciones por cliente, copia y error de portapapeles, actualización del diálogo, creación solo al pulsar, filtros, estado pendiente, carga, error, historial y navegación con el token existente, incluyendo fallo sin navegar. Navegador con React/Radix reales y backend simulado: escritorio y móvil, compartir, editar, historial, estado pendiente, navegación en la misma pestaña, carga/error/vacío. Build y lint focalizado correctos; aplicación conserva exactamente 102 diagnósticos previos y Node no tiene errores. Tres baterías de regresión del portal correctas. No se probó la emisión o validación de tokens contra producción, ni su latencia real; no se cambiaron funciones Supabase ni credenciales.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/clientPortalsAdminTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "d9887d06430139f1270a68e32edfa0be73c82c5ca6ba3751ac178264f5c0addf"
+}
