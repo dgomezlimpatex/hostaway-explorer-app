@@ -160,6 +160,12 @@ const checklistItems: NavigationItem[] = [
 
 const billingItems: NavigationItem[] = [
   {
+    title: 'Análisis financiero',
+    href: '/financial-analysis',
+    icon: Calculator,
+    permission: 'reports'
+  },
+  {
     title: 'Facturación por Cliente',
     href: '/client-billing',
     icon: Receipt,
