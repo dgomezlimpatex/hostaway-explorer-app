@@ -42,6 +42,7 @@ export type ReceiptExport = {
   worker_name: string;
   confirmed_at: string;
   counts: ReceiptCounts;
+  discarded_counts?: ReceiptCounts;
   notes: string;
 };
 export function receiptWorkbookRows(
@@ -61,8 +62,14 @@ export function receiptWorkbookRows(
       }),
     ],
     [],
-    ["Material", "Unidades recibidas"],
-    ...RECEIPT_MATERIALS.map(([key, label]) => [label, snapshot.counts[key]]),
+    snapshot.discarded_counts
+      ? ["Material", "Unidades recibidas", "Descartes (no suman al inventario)"]
+      : ["Material", "Unidades recibidas"],
+    ...RECEIPT_MATERIALS.map(([key, label]) =>
+      snapshot.discarded_counts
+        ? [label, snapshot.counts[key], snapshot.discarded_counts[key]]
+        : [label, snapshot.counts[key]],
+    ),
     [],
     ["Observaciones", snapshot.notes],
   ];

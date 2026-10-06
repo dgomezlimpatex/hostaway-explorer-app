@@ -41,7 +41,9 @@ export async function downloadReceiptExcel(snapshot: ReceiptExport) {
   const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   const sheet = XLSX.utils.aoa_to_sheet(receiptWorkbookRows(snapshot));
-  sheet["!cols"] = [{ wch: 36 }, { wch: 55 }];
+  sheet["!cols"] = snapshot.discarded_counts
+    ? [{ wch: 36 }, { wch: 55 }, { wch: 38 }]
+    : [{ wch: 36 }, { wch: 55 }];
   XLSX.utils.book_append_sheet(wb, sheet, "Recuento");
   XLSX.writeFile(wb, receiptFilename(snapshot));
 }

@@ -20,7 +20,9 @@ export async function sendReceiptEmail(db: SupabaseClient, versionId?: string) {
     const snapshot = job.snapshot as ReceiptExport;
     const wb = XLSX.utils.book_new();
     const sheet = XLSX.utils.aoa_to_sheet(receiptWorkbookRows(snapshot));
-    sheet["!cols"] = [{ wch: 36 }, { wch: 55 }];
+    sheet["!cols"] = snapshot.discarded_counts
+      ? [{ wch: 36 }, { wch: 55 }, { wch: 38 }]
+      : [{ wch: 36 }, { wch: 55 }];
     XLSX.utils.book_append_sheet(wb, sheet, "Recuento");
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -34,7 +36,7 @@ export async function sendReceiptEmail(db: SupabaseClient, versionId?: string) {
         from: "APP GESTIÓN LIMPATEX <alertas@limpatexgestion.es>",
         to: ["dgomez@limpatex.com", "geisha@limpatex.com"],
         subject: `${snapshot.version > 1 ? "ACTUALIZADO · " : ""}Recuento lavandería ${snapshot.receipt_date} · ${snapshot.warehouse_name} · v${snapshot.version}`,
-        text: `Adjuntamos el recuento de ropa limpia recibida del ${snapshot.receipt_date}, confirmado por ${snapshot.worker_name}.\n${snapshot.version > 1 ? "Esta versión sustituye al recuento anterior de este día y almacén." : ""}\nEl Excel contiene el recuento recibido, no las existencias totales del almacén.`,
+        text: `Adjuntamos el recuento de ropa limpia recibida del ${snapshot.receipt_date}, confirmado por ${snapshot.worker_name}.\n${snapshot.version > 1 ? "Esta versión sustituye al recuento anterior de este día y almacén." : ""}\n${snapshot.discarded_counts ? "El Excel distingue la ropa aceptada y los descartes para devolver a lavandería. Los descartes no se incorporan al inventario. No incluye existencias totales del almacén." : "El Excel contiene el recuento recibido, no las existencias totales del almacén."}`,
         attachments: [
           {
             filename: receiptFilename(snapshot),

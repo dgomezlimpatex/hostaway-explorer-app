@@ -47,6 +47,15 @@ export async function receiptTestDatabase() {
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      new URL(
+        "../supabase/migrations/20261006092312_laundry_receipt_discards.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
   const sede = randomUUID(),
     warehouse = randomUUID(),
     warehouse2 = randomUUID(),
