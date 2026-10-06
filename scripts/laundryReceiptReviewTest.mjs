@@ -90,10 +90,13 @@ try {
     pillows: 30,
   };
   const corrections = [];
+  const discardCorrections = [];
   let confirmations = 0,
     back = 0;
   let props = {
     counts,
+    discardedCounts: Object.fromEntries(Object.keys(counts).map((k) => [k, 0])),
+    onCorrectDiscard: (...args) => discardCorrections.push(args),
     revision: 5,
     notes: "Dos carros",
     locked: false,
@@ -147,13 +150,13 @@ try {
     render();
   }
   render();
-  assert.equal(nodes().filter((n) => n.type === "output").length, 9);
+  assert.equal(nodes().filter((n) => n.type === "output").length, 18);
   assert.equal(
     nodes().filter(
       (n) =>
         n.type === "button" && n.props["aria-label"]?.startsWith("Editar "),
     ).length,
-    9,
+    18,
   );
   assert.equal(
     corrections.length + confirmations,
@@ -213,7 +216,7 @@ try {
   assert.equal(
     nodes().filter((n) => n.props?.["aria-label"]?.startsWith("Editar "))
       .length,
-    9,
+    18,
   );
   assert.equal(confirmations, 1, "Success view cannot send again");
   click("Editar Edredones");
@@ -225,6 +228,39 @@ try {
     1,
     "Correcting a confirmed receipt does not resend automatically",
   );
+  click("Cancelar edición");
+  props = { ...props, confirmed: false };
+  render();
+  assert.equal(
+    nodes().find((n) => n.type === "details").props.open,
+    undefined,
+    "Discards collapsed by default",
+  );
+  click("Editar descartes Almohadas");
+  fill("4");
+  assert.equal(
+    button("Confirmar cambios y reenviar Excel").props.disabled,
+    true,
+  );
+  click("Guardar corrección");
+  assert.deepEqual(discardCorrections, [["pillows", 4, 8]]);
+  props = {
+    ...props,
+    discardedCounts: { ...props.discardedCounts, pillows: 4 },
+    revision: 9,
+  };
+  render();
+  assert.equal(nodes().filter((n) => n.type === "input").length, 0);
+  click("Editar descartes Almohadas");
+  fill("3");
+  props = { ...props, revision: 10 };
+  render();
+  assert.equal(
+    button("Guardar corrección").props.disabled,
+    true,
+    "Stale discard correction blocked",
+  );
+  assert.equal(confirmations, 1, "Discard editing does not send");
   console.log(
     "Review: nine totals, no automatic writes/send, edits, validation, stale revision, pending work, confirmation, updated receipt and success view verified.",
   );

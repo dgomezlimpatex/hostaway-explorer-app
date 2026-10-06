@@ -103,7 +103,7 @@ export async function handleReceiptRequest(req: Request): Promise<Response> {
         ? await db
             .from("laundry_receipts")
             .select(
-              "id,receipt_date,counts,notes,revision,latest_version,updated_at",
+              "id,receipt_date,counts,discarded_counts,notes,revision,latest_version,updated_at",
             )
             .eq("link_id", config.id)
             .order("receipt_date", { ascending: false })
