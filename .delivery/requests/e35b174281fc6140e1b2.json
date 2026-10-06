@@ -1,0 +1,22 @@
+{
+  "tests": [
+    "scripts/cleaningPlanningSavedContextTest.mjs",
+    "scripts/planningViewportTest.mjs"
+  ],
+  "effects": {
+    "authentication": false,
+    "infrastructure": false,
+    "communications": false,
+    "security": false,
+    "database": false,
+    "costs": false,
+    "productionData": false,
+    "integrations": false
+  },
+  "request": "Corregir el bloqueo al guardar cambios de un día ya planificado después de desasignar tareas a dos trabajadoras; publicación autorizada por Dani.",
+  "verification": "Reproducción local de la pérdida del primer id al refrescar dos desasignaciones juntas. Pruebas de código real para actualizaciones juntas o escalonadas, espera de datos, cambios concurrentes, tareas nuevas/eliminadas, disponibilidad y sede. Navegador con hook y componentes reales, datos ficticios/red bloqueada: desasignar tareas de dos trabajadoras antes del refresh, conservar borrador y guardar; escritorio/móvil; estado de ajustes ya guardados sin ejecutar lote vacío. Regresiones de reasignación con compañeras, drag sincronizado, zoom y banners. Build y tipos Node correctos; aplicación mantiene 102 errores previos sin nuevos; lint focalizado sin errores. No se ha inspeccionado ni modificado el reparto real del día 11.",
+  "reason": "La pantalla conserva todos los ids de tareas guardadas por sus acciones rápidas hasta que llega la actualización. Solo reconcilia cambios propios confirmados, manteniendo el bloqueo ante cambios externos. Aclara que los ajustes rápidos ya guardados no requieren un lote vacío. No altera servicios de escritura, notificaciones, permisos ni backend y no opera sobre datos reales.",
+  "version": 1,
+  "scope": "application",
+  "digest": "7bd497e21421efaae2de0f196573dc8e9e086cb47c2a10527b255867fd93f30b"
+}
