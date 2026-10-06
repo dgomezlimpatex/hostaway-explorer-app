@@ -11,7 +11,7 @@ interface PlanningDayNavigationProps {
 
 export function PlanningDayNavigation({ date, disabled, onChange }: PlanningDayNavigationProps) {
   return (
-    <nav aria-label="Cambiar día del planning" className="mb-4 rounded-xl border border-line bg-white p-3 shadow-sober">
+    <nav aria-label="Cambiar día del planning" className="mb-3 rounded-xl border border-line bg-white p-2 shadow-sober">
       <div className="flex flex-wrap items-center gap-2">
         <div className="grid min-w-0 w-full grid-cols-[44px_minmax(0,1fr)_44px] gap-2 sm:w-auto sm:grid-cols-[44px_190px_44px]">
           <Button variant="outline" className="h-11 w-11 p-0 focus-visible:ring-2 focus-visible:ring-brand" aria-label="Día anterior" disabled={disabled} onClick={() => onChange(addDays(date, -1))}><ChevronLeft className="h-5 w-5" /></Button>
