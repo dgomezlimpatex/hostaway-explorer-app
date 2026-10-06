@@ -1,5 +1,4 @@
 import type { FinancialService, Quantities } from './financialModel';
-import type { CalendarProgressReport } from '@/utils/calendarTaskStatus';
 import { formatMadridDate } from '@/utils/date';
 import { getWindowDurationMinutes } from '@/utils/cleaning-planning/capacity';
 
@@ -7,8 +6,8 @@ export interface SourceTask {
   type: string;
   id: string; date: string; status: string; coste: number | null; cliente_id: string | null; propiedad_id: string | null;
   property: string; cleaner_id: string | null; cleaner: string | null; start_time: string; end_time: string;
+  duracion?: number | null;
   task_assignments: { cleaner_id: string; cleaner_name: string }[];
-  task_reports: (CalendarProgressReport & { updated_at?: string })[];
 }
 export interface SourceProperty {
   id: string; nombre: string; cliente_id: string; coste_servicio: number | null; duracion_servicio: number | null;
@@ -37,7 +36,6 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
     if (!assignmentMap.size && task.cleaner_id) assignmentMap.set(task.cleaner_id, task.cleaner || 'Trabajador');
     if ([...assignmentMap].some(([id, name]) => excludedWorkerIds.has(id) || isNotCount(name))) return [];
     if (!assignmentMap.size && task.date < today) return [];
-    const reports = task.task_reports || [];
     const property = propertyMap.get(task.propiedad_id || '');
     const clientId = task.cliente_id || property?.cliente_id || '';
     const quantities: Quantities = {};
@@ -47,15 +45,13 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
     }
     const windowMinutes = getWindowDurationMinutes(task.start_time, task.end_time);
     const propertyMinutes = property?.duracion_servicio;
-    const plannedMinutes = windowMinutes > 0 ? windowMinutes : typeof propertyMinutes === 'number' && propertyMinutes > 0 && assignmentMap.size
-      ? Math.ceil(propertyMinutes / assignmentMap.size / 15) * 15 : null;
-    const workers = [...assignmentMap].map(([id, name]) => {
-      const report = [...reports].filter(report => report.cleaner_id === id).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
-      const start = Date.parse(report?.start_time || '');
-      const end = Date.parse(report?.end_time || '');
-      const actual = Number.isFinite(start) && Number.isFinite(end) && end >= start && end - start <= 86400000;
-      return { id, name, minutes: actual ? Math.round((end - start) / 60000) : plannedMinutes, actual };
-    });
+    const positiveDuration = (value: number | null | undefined) => typeof value === 'number' && Number.isFinite(value) && value > 0;
+    // The property holds total work; planner-saved task duration may already be per person.
+    const totalMinutes = positiveDuration(propertyMinutes) ? propertyMinutes! : positiveDuration(task.duracion) ? task.duracion!
+      : windowMinutes > 0 ? windowMinutes : null;
+    // Duration is the team's total work, never a separate full duration for each person.
+    const plannedMinutes = totalMinutes !== null && assignmentMap.size ? totalMinutes / assignmentMap.size : null;
+    const workers = [...assignmentMap].map(([id, name]) => ({ id, name, minutes: plannedMinutes, actual: false }));
     const hasRevenue = typeof task.coste === 'number' && Number.isFinite(task.coste) && task.coste >= 0;
     const propertyRevenue = property?.coste_servicio;
     const positivePropertyRevenue = typeof propertyRevenue === 'number' && Number.isFinite(propertyRevenue) && propertyRevenue > 0;

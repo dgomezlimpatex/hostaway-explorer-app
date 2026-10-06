@@ -11,7 +11,7 @@ const modules = {
     const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid'}).format(new Date());
     const data={tasks:[{id:'t',type:'limpieza-turistica',date,status:'pending',coste:0,cliente_id:'c',propiedad_id:'p',property:'Apartamento Centro',cleaner_id:'w1',cleaner:'Ana',start_time:'10:00',end_time:'11:00',task_assignments:[{cleaner_id:'w1',cleaner_name:'Ana'},{cleaner_id:'w2',cleaner_name:'Bea'}],task_reports:[]}],
       properties:[{id:'p',nombre:'Apartamento Centro',cliente_id:'c',coste_servicio:100,duracion_servicio:120,numero_sabanas:2,numero_sabanas_pequenas:0,numero_sabanas_suite:0,numero_fundas_almohada:2,numero_toallas_grandes:2,numero_toallas_pequenas:2,numero_alfombrines:1,amenities_cocina:1,amenities_bano:1,kit_alimentario:1,cantidad_rollos_papel_higienico:2}],clients:[{id:'c',nombre:'Cliente de prueba'},{id:'c2',nombre:'Cliente sin servicios'}],cleaners:[{id:'w1',name:'Ana'},{id:'w2',name:'Bea'},{id:'nc',name:'NOT COUNT'}]};
-    const task=data.tasks[0];
+    const task=data.tasks[0]; task.duracion=120; task.end_time='12:00'; // Two hours total, one hour per each of two people.
     data.properties.push({...data.properties[0],id:'pzero',nombre:'Jornada Hotel de prueba',coste_servicio:0});
     data.tasks.push({...task,id:'no-income',propiedad_id:'pzero',coste:0},
       {...task,id:'missing-income',propiedad_id:'missing',property:'Servicio con precio pendiente',coste:null});

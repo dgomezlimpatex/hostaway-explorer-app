@@ -132,7 +132,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
           <p role="status" className={panel}>Cargando servicios y costes…</p> : <>
             <Indicators summary={result.total} />
             <p className="text-sm text-slate-600">{result.total.services} servicios contabilizados · {result.total.estimated} con estimaciones · {result.total.pending} con datos pendientes.
-              {' '}Ingresos por fecha del servicio; no representan facturas ni cobros. Horas reales cuando el reporte las incluye; en su defecto, horas previstas.
+              {' '}Ingresos por fecha del servicio; no representan facturas ni cobros. El personal se estima repartiendo la duración total de la tarea entre sus personas asignadas; los ajustes manuales por persona prevalecen.
               {' '}Si el importe de la tarea es cero y la propiedad tiene precio, se usa la tarifa actual de la propiedad como estimación.
               {' '}Los servicios sin ingreso no suman gastos. Los gastos generales se mantienen por separado.
               {' '}Se incluyen las pendientes asignadas. Se excluyen las canceladas, las tareas pasadas sin asignar y las asignadas a NOT COUNT.
