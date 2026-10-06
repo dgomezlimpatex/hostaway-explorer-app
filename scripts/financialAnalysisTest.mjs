@@ -85,14 +85,30 @@ try {
   const mapped = buildServices([source], [property], [{ id: 'c', name: 'Cliente' }])[0];
   assert.equal(mapped.revenue, 0); assert.equal(mapped.revenueEstimated, false); assert.equal(mapped.quantities.doubleSheet, 2);
   assert.equal(calculateService(mapped, newSettings()).costs.personal, 3100);
-  assert.equal(buildServices([{ ...source, status: 'pending' }], [property], []).length, 0);
+  assert.equal(buildServices([{ ...source, status: 'pending' }], [property], []).length, 1);
   assert.equal(buildServices([{ ...source, status: 'cancelled' }], [property], []).length, 0);
   const report = id => ({ cleaner_id: id, overall_status: 'completed', start_time: '2026-10-06T08:00:00Z', end_time: '2026-10-06T09:30:00Z' });
   const actual = buildServices([{ ...source, status: 'pending', task_reports: [report('w1'), report('w2')] }], [property], [])[0];
   assert.equal(actual.workers[0].minutes, 90); assert.equal(actual.workers[0].actual, true);
-  assert.equal(buildServices([{ ...source, status: 'pending', task_reports: [report('w1')] }], [property], []).length, 0);
-  const absent = buildServices([{ ...source, coste: null, start_time: '', end_time: '', task_assignments: [], cleaner_id: null }], [], [])[0];
+  const partial = buildServices([{ ...source, status: 'pending', task_reports: [report('w1')] }], [property], [])[0];
+  assert.equal(partial.workers[0].actual, true); assert.equal(partial.workers[1].actual, false);
+  assert.equal(partial.workers[1].minutes, 60);
+  const unassigned = { ...source, date: '2026-09-30', coste: null, start_time: '', end_time: '', task_assignments: [], cleaner_id: null };
+  assert.equal(buildServices([unassigned], [], [], [], '2026-10-01').length, 0);
+  assert.equal(buildServices([{ ...unassigned, status: 'completed', task_reports: [report('w1')] }], [], [], [], '2026-10-01').length, 0);
+  const absent = buildServices([unassigned], [], [], [], '2026-09-30')[0];
   assert.equal(absent.revenue, null); assert.equal(absent.workers.length, 0);
+  assert.equal(buildServices([unassigned], [], [], [], '2026-09-29').length, 1); // Future unassigned: provisional.
+  assert.equal(buildServices([{ ...source, status: 'in_progress' }], [property], []).length, 1);
+  assert.equal(buildServices([{ ...source, status: 'canceled' }], [property], []).length, 0);
+  const excludedWorker = { id: 'nc', name: 'NOT COUNT' };
+  const notCount = { ...source, task_assignments: [{ cleaner_id: 'nc', cleaner_name: ' not count ' }] };
+  assert.equal(buildServices([notCount], [property], []).length, 0);
+  assert.equal(buildServices([{ ...notCount, task_assignments: [{ cleaner_id: 'nc', cleaner_name: 'Nombre antiguo' }] }], [property], [], [excludedWorker]).length, 0);
+  assert.equal(buildServices([{ ...notCount, task_assignments: [...notCount.task_assignments, source.task_assignments[0]] }], [property], []).length, 0); // Whole service, no duplicated income.
+  assert.equal(buildServices([{ ...source, task_assignments: [], cleaner_id: 'nc', cleaner: 'NOT COUNT' }], [property], []).length, 0);
+  assert.equal(buildServices([{ ...source, task_assignments: [], cleaner_id: 'w1', date: '2026-09-30', status: 'pending' }], [property], [], [], '2026-10-01').length, 1); // Legacy assigned task.
+  assert.equal(buildServices([{ ...unassigned, task_assignments: [{ cleaner_id: '', cleaner_name: 'Ana' }] }], [], [], [], '2026-10-01').length, 0);
   const pages = []; const entries = await readAllPages(async (from, to) => { pages.push([from,to]); return { data: Array.from({length:from === 0 ? 500 : 3}, (_,i) => from+i), error: null }; });
   assert.equal(entries.length, 503); assert.deepEqual(pages, [[0,499],[500,999]]);
   await assert.rejects(() => readAllPages(async () => ({ data: null, error: { message: 'Error de lectura' } })), /Error de lectura/);

@@ -9,8 +9,12 @@ const modules = {
   '@/hooks/useAuth': "export const useAuth=()=>({user:{id:'u'}});",
   '@/integrations/supabase/client': `
     const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid'}).format(new Date());
-    const data={tasks:[{id:'t',type:'limpieza-turistica',date,status:'completed',coste:100,cliente_id:'c',propiedad_id:'p',property:'Apartamento Centro',cleaner_id:'w1',cleaner:'Ana',start_time:'10:00',end_time:'11:00',task_assignments:[{cleaner_id:'w1',cleaner_name:'Ana'},{cleaner_id:'w2',cleaner_name:'Bea'}],task_reports:[]}],
-      properties:[{id:'p',nombre:'Apartamento Centro',cliente_id:'c',coste_servicio:100,duracion_servicio:120,numero_sabanas:2,numero_sabanas_pequenas:0,numero_sabanas_suite:0,numero_fundas_almohada:2,numero_toallas_grandes:2,numero_toallas_pequenas:2,numero_alfombrines:1,amenities_cocina:1,amenities_bano:1,kit_alimentario:1,cantidad_rollos_papel_higienico:2}],clients:[{id:'c',nombre:'Cliente de prueba'},{id:'c2',nombre:'Cliente sin servicios'}],cleaners:[{id:'w1',name:'Ana'},{id:'w2',name:'Bea'}]};
+    const data={tasks:[{id:'t',type:'limpieza-turistica',date,status:'pending',coste:100,cliente_id:'c',propiedad_id:'p',property:'Apartamento Centro',cleaner_id:'w1',cleaner:'Ana',start_time:'10:00',end_time:'11:00',task_assignments:[{cleaner_id:'w1',cleaner_name:'Ana'},{cleaner_id:'w2',cleaner_name:'Bea'}],task_reports:[]}],
+      properties:[{id:'p',nombre:'Apartamento Centro',cliente_id:'c',coste_servicio:100,duracion_servicio:120,numero_sabanas:2,numero_sabanas_pequenas:0,numero_sabanas_suite:0,numero_fundas_almohada:2,numero_toallas_grandes:2,numero_toallas_pequenas:2,numero_alfombrines:1,amenities_cocina:1,amenities_bano:1,kit_alimentario:1,cantidad_rollos_papel_higienico:2}],clients:[{id:'c',nombre:'Cliente de prueba'},{id:'c2',nombre:'Cliente sin servicios'}],cleaners:[{id:'w1',name:'Ana'},{id:'w2',name:'Bea'},{id:'nc',name:'NOT COUNT'}]};
+    const task=data.tasks[0];
+    data.tasks.push({...task,id:'excluded-nc',coste:999,task_assignments:[{cleaner_id:'nc',cleaner_name:'Nombre antiguo'}]},
+      {...task,id:'excluded-past',date:'2000-01-01',coste:999,cleaner_id:null,task_assignments:[]},
+      {...task,id:'excluded-cancelled',status:'cancelled',coste:999});
     export const supabase={from(table){const calls=[];const q={select(...a){calls.push(['select',...a]);return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},range(from,to){window.reads=window.reads||[];window.reads.push({table,calls,from,to});return Promise.resolve({data:data[table].slice(from,to+1),error:null})}};return q}};
   `,
 };
@@ -31,6 +35,7 @@ try {
   await expect(page.getByRole('heading', { name: 'Análisis financiero', exact: true })).toBeVisible();
   await expect(page.getByText('100,00 €', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('31,00 €', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/1 servicios contabilizados/)).toBeVisible();
   await expect(page.getByText('Productos de limpieza', { exact: true })).toBeVisible();
   await expect(page.getByText('3,00 €', { exact: true }).first()).toBeVisible();
   const reads = await page.evaluate(() => window.reads);
