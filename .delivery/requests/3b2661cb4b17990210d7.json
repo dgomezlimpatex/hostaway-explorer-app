@@ -1,0 +1,22 @@
+{
+  "effects": {
+    "security": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "database": false,
+    "authentication": false,
+    "productionData": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/planningViewportTest.mjs",
+    "scripts/planningTaskLanesTest.mjs"
+  ],
+  "request": "Añadir botones para ampliar y reducir solo el ancho de las columnas horarias, según comodidad y pantalla.",
+  "reason": "Ajuste local de la escala horizontal del calendario. No modifica tareas, duración, validación, guardado ni datos; sustituye el interruptor de ampliación por controles graduales y conserva Encajar día.",
+  "verification": "Pruebas sobre código real de pasos, límites, reversibilidad, escala manual estable tras resize y restablecimiento automático. Navegador offline a 1920, 1366 y 1024: botones +/- cambian únicamente anchura, fuente/altura constantes, límites, porcentaje, resize, hora visible y scroll de cabecera sincronizados, sin desbordamiento; tareas de 33 minutos legibles y drag mantiene duración. Regresión de móvil/desktop, colapso de cabecera y reasignación con compañeras. Build correcto, tipos Node sin errores, 102 errores previos de aplicación sin nuevos; lint focalizado sin errores y dos avisos previos. Datos ficticios y red bloqueada.",
+  "version": 1,
+  "scope": "application",
+  "digest": "5a606f2ba4e517f927e241a3515c6b82465dffe5de2d4ef0a6bd1543944e4214"
+}
