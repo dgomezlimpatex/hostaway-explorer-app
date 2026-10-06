@@ -133,6 +133,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
             <Indicators summary={result.total} />
             <p className="text-sm text-slate-600">{result.total.services} servicios contabilizados · {result.total.estimated} con estimaciones · {result.total.pending} con datos pendientes.
               {' '}Ingresos por fecha del servicio; no representan facturas ni cobros. Horas reales cuando el reporte las incluye; en su defecto, horas previstas.
+              {' '}Si el importe de la tarea es cero y la propiedad tiene precio, se usa la tarifa actual de la propiedad como estimación.
               {' '}Se incluyen las pendientes asignadas. Se excluyen las canceladas, las tareas pasadas sin asignar y las asignadas a NOT COUNT.
               {' '}Las cantidades de la ficha son estimaciones actuales; revísalas por servicio. El resultado no es definitivo mientras falten costes.</p>
             <nav aria-label="Vistas del análisis" className="flex gap-2 overflow-x-auto pb-1">{([['general', 'General'], ['clients', 'Por cliente'], ['services', 'Servicios'], ['expenses', 'Otros gastos'], ['rates', 'Tarifas']] as const).map(([id, title]) =>

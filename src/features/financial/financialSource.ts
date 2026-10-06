@@ -57,11 +57,14 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
       return { id, name, minutes: actual ? Math.round((end - start) / 60000) : plannedMinutes, actual };
     });
     const hasRevenue = typeof task.coste === 'number' && Number.isFinite(task.coste) && task.coste >= 0;
-    const revenueValue = hasRevenue ? task.coste : property?.coste_servicio;
+    const propertyRevenue = property?.coste_servicio;
+    const positivePropertyRevenue = typeof propertyRevenue === 'number' && Number.isFinite(propertyRevenue) && propertyRevenue > 0;
+    const usePropertyRevenue = !hasRevenue || (task.coste === 0 && positivePropertyRevenue);
+    const revenueValue = usePropertyRevenue ? propertyRevenue : task.coste;
     return [{ id: task.id, type: task.type || '', date: task.date, clientId, clientName: clientMap.get(clientId) || 'Sin cliente identificado',
       propertyId: task.propiedad_id || '', propertyName: property?.nombre || task.property, workers, quantities,
       revenue: typeof revenueValue === 'number' && Number.isFinite(revenueValue) && revenueValue >= 0 ? Math.round(revenueValue * 100) : null,
-      revenueEstimated: !hasRevenue }];
+      revenueEstimated: usePropertyRevenue }];
   });
 }
 
