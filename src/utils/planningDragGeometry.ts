@@ -2,10 +2,10 @@ import { pointerWithin, rectIntersection, type CollisionDetection } from '@dnd-k
 
 /** Measure visible targets on every pointer move, including scroll/layout changes. */
 export const planningPointerCollision: CollisionDetection = (args) => {
-  const droppableRects = new Map(args.droppableRects);
+  const droppableRects = new Map<typeof args.droppableContainers[number]["id"], typeof args.collisionRect>();
   for (const container of args.droppableContainers) {
     const node = container.node.current;
-    if (!node) { droppableRects.delete(container.id); continue; }
+    if (!node) continue;
     const rect = node.getBoundingClientRect();
     const viewport = node.closest('[data-planning-timeline-scroll]');
     const clip = viewport?.getBoundingClientRect();
@@ -15,7 +15,7 @@ export const planningPointerCollision: CollisionDetection = (args) => {
     const right = Math.min(rect.right, clip?.right ?? rect.right);
     const top = Math.max(rect.top, clip?.top ?? rect.top);
     const bottom = Math.min(rect.bottom, clip?.bottom ?? rect.bottom);
-    if (right <= left || bottom <= top) { droppableRects.delete(container.id); continue; }
+    if (right <= left || bottom <= top) continue;
     droppableRects.set(container.id, { left, right, top, bottom, width: right-left, height: bottom-top });
   }
   const measured = { ...args, droppableRects };
