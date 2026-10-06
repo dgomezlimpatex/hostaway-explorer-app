@@ -18,5 +18,5 @@
   "reason": "La pantalla conserva todos los ids de tareas guardadas por sus acciones rápidas hasta que llega la actualización. Solo reconcilia cambios propios confirmados, manteniendo el bloqueo ante cambios externos. Aclara que los ajustes rápidos ya guardados no requieren un lote vacío. No altera servicios de escritura, notificaciones, permisos ni backend y no opera sobre datos reales.",
   "version": 1,
   "scope": "application",
-  "digest": "7bd497e21421efaae2de0f196573dc8e9e086cb47c2a10527b255867fd93f30b"
+  "digest": "2dd6dd23deede3be00f897f04c72b162980e8d93047dbbafea24618f5e5e5847"
 }
