@@ -4,12 +4,29 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-const dir = mkdtempSync(join(tmpdir(), 'limpatex-financial-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'limpatex-financial-test-'));
 try {
   await build({ stdin: { contents: "export * from './src/features/financial/financialModel'; export * from './src/features/financial/financialSource';", resolveDir: process.cwd(), loader: 'ts' }, outfile: join(dir, 'model.mjs'), bundle: true, platform: 'node', format: 'esm', logLevel: 'silent' });
-  const { COST_ITEMS, newSettings, priceAt, setRate, calculateService, analyze, parseAmount, readSettings, buildServices, readAllPages, validDate } = await import(pathToFileURL(join(dir, 'model.mjs')));
-  assert.deepEqual(COST_ITEMS.map(item => item.mills), [15500,550,510,570,247,535,226,226,10537,3159,3159,150,870,890,1910,130,3000]);
-  const settings = newSettings();
+  const { COST_ITEMS, newSettings, priceAt, setRate, calculateService, analyze, parseAmount, readSettings, buildServices, readAllPages, validDate, monthlySalaryExpenses } = await import(pathToFileURL(join(dir, 'model.mjs')));
+  assert.deepEqual(COST_ITEMS.map(item => item.mills), [15500,550,510,570,247,535,226,226,10537,3159,3159,150,870,890,1910,130,3000,2317000]);
+  const monthly = monthlySalaryExpenses([], '2026-10-01', '2026-10-31');
+  assert.equal(monthly.length, 1); assert.equal(monthly[0].cents, 231700); assert.equal(monthly[0].automatic, true);
+  assert.equal(monthlySalaryExpenses([], '2026-10-01', '2026-11-30').reduce((sum, expense) => sum + expense.cents, 0), 463400);
+  assert.equal(monthlySalaryExpenses([], '2026-10-01', '2026-10-15')[0].cents, Math.round(231700 * 15 / 31));
+  assert.equal(monthlySalaryExpenses([], '2024-02-01', '2024-02-29')[0].cents, 231700);
+  assert.equal(monthlySalaryExpenses([], '2024-02-29', '2024-02-29')[0].cents, Math.round(231700 / 29));
+  assert.equal(monthlySalaryExpenses([], '2026-02-01', '2026-02-28')[0].cents, 231700);
+  const changedSalary = [{ item: 'tourismSalary', date: '2026-10-16', mills: 2500000 }];
+  assert.equal(monthlySalaryExpenses(changedSalary, '2026-10-01', '2026-10-31')[0].cents, Math.round((231700 * 15 + 250000 * 16) / 31));
+  assert.equal(monthlySalaryExpenses(changedSalary, '2026-09-01', '2026-09-30')[0].cents, 231700);
+  assert.deepEqual(monthlySalaryExpenses([], '', '2026-10-01'), []);
+  assert.deepEqual(monthlySalaryExpenses([], '2026-10-31', '2026-10-01'), []);
+  const salaryFilters = { start: '2026-10-01', end: '2026-10-31', clients: [], properties: [], workers: [] };
+  const salaryAnalysis = analyze([], newSettings(), salaryFilters);
+  assert.equal(salaryAnalysis.total.costs.salary, 231700); assert.equal(salaryAnalysis.general.expense, 231700); assert.equal(salaryAnalysis.total.result, -231700);
+  for (const field of ['clients','properties','workers']) assert.equal(analyze([], newSettings(), { ...salaryFilters, [field]: ['id'] }).total.costs.salary, 0);
+  assert.deepEqual(readSettings(JSON.parse(JSON.stringify(newSettings()))), newSettings()); // Existing backups need no salary quantities.
+  const settings = newSettings(); settings.rates = [{ item: 'tourismSalary', date: '2026-01-01', mills: 0 }];
   const service = { type: 'limpieza-turistica', id: 's', date: '2026-10-06', clientId: 'c', clientName: 'Cliente', propertyId: 'p', propertyName: 'Apartamento', revenue: 10000, revenueEstimated: false,
     workers: [{ id: 'w1', name: 'Ana', minutes: 60, actual: true }, { id: 'w2', name: 'Bea', minutes: 60, actual: true }], quantities: { pillowcase: 3, bathTowel: 2 } };
   let computed = calculateService(service, settings);
@@ -27,7 +44,7 @@ try {
   assert.equal(calculateService({ ...service, date: '2026-11-01' }, percentageSettings).costs.products, 500);
   assert.equal(computed.costs.laundry, 181); // 3 x .247 + 2 x .535 = 1.811, round only category total.
   assert.ok(computed.pending.length); assert.equal(computed.estimated, true);
-  const quantities = Object.fromEntries(COST_ITEMS.filter(item => item.id !== 'labor' && item.id !== 'products').map(item => [item.id, 0]));
+  const quantities = Object.fromEntries(COST_ITEMS.filter(item => item.id !== 'labor' && item.id !== 'products' && item.id !== 'tourismSalary').map(item => [item.id, 0]));
   settings.adjustments.s = { quantities: { ...quantities, pillowcase: 3, bathTowel: 2 }, reviewed: true };
   computed = calculateService(service, settings); assert.deepEqual(computed.pending, []); assert.equal(computed.estimated, false);
   settings.rates = setRate(settings.rates, { item: 'labor', date: '2026-11-01', mills: 20000 });
@@ -36,7 +53,7 @@ try {
   settings.rates = setRate(settings.rates, { item: 'labor', date: '2026-10-01', mills: 18000, workerId: 'w1' });
   assert.equal(calculateService(service, settings).costs.personal, 3350);
   settings.rates = setRate(settings.rates, { item: 'labor', date: '2026-10-01', mills: 19000, workerId: 'w1' });
-  assert.equal(settings.rates.length, 2); assert.equal(priceAt(settings.rates, 'labor', service.date, 'w1'), 19000);
+  assert.equal(settings.rates.length, 3); assert.equal(priceAt(settings.rates, 'labor', service.date, 'w1'), 19000);
   const filters = { start: '2026-10-01', end: '2026-10-31', clients: [], properties: [], workers: [] };
   settings.expenses = [{ id: 'e', date: service.date, label: 'Alquiler', category: 'other', cents: 5000, clientId: '', propertyId: '', workerId: '' },
     { id: 'e2', date: service.date, label: 'Extra', category: 'other', cents: 1000, clientId: 'c', propertyId: 'p', workerId: 'w1' }];

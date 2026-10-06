@@ -16,10 +16,11 @@ export const COST_ITEMS = [
   { id: 'foodKit', label: 'Kit amenities alimentarios', category: 'supplies', unit: 'kit', mills: 1910 },
   { id: 'toiletPaper', label: 'Papel higiénico', category: 'supplies', unit: 'rollo', mills: 130 },
   { id: 'products', label: 'Productos de limpieza', category: 'products', unit: 'importe de limpieza', mills: 3000 },
+  { id: 'tourismSalary', label: 'Salario dirección turismo', category: 'salary', unit: 'mes · coste de empresa', mills: 2317000 },
 ] as const;
-export const QUANTITY_ITEMS = COST_ITEMS.filter(item => item.id !== 'labor' && item.id !== 'products');
+export const QUANTITY_ITEMS = COST_ITEMS.filter(item => item.category === 'laundry' || item.category === 'supplies');
 export type ItemId = typeof COST_ITEMS[number]['id'];
-export type Category = 'personal' | 'laundry' | 'supplies' | 'products' | 'other';
+export type Category = 'personal' | 'laundry' | 'supplies' | 'products' | 'salary' | 'other';
 export type Quantities = Partial<Record<ItemId, number>>;
 export interface Rate { item: ItemId; date: string; mills: number; workerId?: string }
 export interface WorkerHours { id: string; name: string; minutes: number | null; actual: boolean }
@@ -30,6 +31,7 @@ export interface FinancialService {
 }
 export interface ServiceAdjustment { quantities?: Quantities; reviewed?: boolean; minutes?: Record<string, number> }
 export interface Expense {
+  automatic?: boolean;
   id: string; date: string; label: string; cents: number; category: Category;
   clientId: string; propertyId: string; workerId: string;
 }
@@ -88,7 +90,7 @@ export function calculateService(service: FinancialService, settings: FinanceSet
   if (!service.type.trim()) pending.push('Tipo de servicio pendiente para productos');
   if (cleaning && service.revenue === null) pending.push('Base de productos pendiente');
   const products = cleaning && service.revenue !== null ? Math.round(service.revenue * priceAt(settings.rates, 'products', service.date) / 100000) : 0;
-  const costs = { personal: Math.round(laborMills / 10), laundry: Math.round(laundryMills / 10), supplies: Math.round(supplyMills / 10), products, other: 0 };
+  const costs = { personal: Math.round(laborMills / 10), laundry: Math.round(laundryMills / 10), supplies: Math.round(supplyMills / 10), products, salary: 0, other: 0 };
   const expense = Object.values(costs).reduce((sum, amount) => sum + amount, 0);
   return { ...service, costs, expense, result: service.revenue === null ? null : service.revenue - expense, pending, estimated };
 }
@@ -97,7 +99,7 @@ export interface Summary {
   pending: number; estimated: number; services: number;
 }
 function summarize(services: CalculatedService[], expenses: Expense[]): Summary {
-  const costs = { personal: 0, laundry: 0, supplies: 0, products: 0, other: 0 };
+  const costs = { personal: 0, laundry: 0, supplies: 0, products: 0, salary: 0, other: 0 };
   for (const service of services) for (const key of Object.keys(costs) as Category[]) costs[key] += service.costs[key];
   for (const expense of expenses) costs[expense.category] += expense.cents;
   const revenue = services.reduce((sum, service) => sum + (service.revenue ?? 0), 0);
@@ -105,13 +107,36 @@ function summarize(services: CalculatedService[], expenses: Expense[]): Summary 
   return { revenue, costs, expense, result: revenue - expense, margin: revenue > 0 ? (revenue - expense) / revenue * 100 : null,
     pending: services.filter(service => service.pending.length).length, estimated: services.filter(service => service.estimated).length, services: services.length };
 }
+export function monthlySalaryExpenses(rates: Rate[], start: string, end: string): Expense[] {
+  if (!validDate(start) || !validDate(end) || start > end) return [];
+  const result: Expense[] = [];
+  const cursor = new Date(start + 'T00:00:00Z');
+  const endTime = Date.parse(end + 'T00:00:00Z');
+  let month = ''; let totalMills = 0; let includedDays = 0; let lastDate = '';
+  const finishMonth = () => {
+    const monthEnd = new Date(month + '-01T00:00:00Z');
+    monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1, 0);
+    const daysInMonth = monthEnd.getUTCDate();
+    result.push({ id: `salary:${month}`, date: lastDate, label: `Salario dirección turismo · ${month} · ${includedDays}/${daysInMonth} días`,
+      cents: Math.round(totalMills / daysInMonth / 10), category: 'salary', clientId: '', propertyId: '', workerId: '', automatic: true });
+  };
+  while (cursor.getTime() <= endTime) {
+    const day = cursor.toISOString().slice(0, 10);
+    if (month && month !== day.slice(0, 7)) { finishMonth(); totalMills = 0; includedDays = 0; }
+    month = day.slice(0, 7); lastDate = day; includedDays += 1;
+    totalMills += priceAt(rates, 'tourismSalary', day);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  finishMonth();
+  return result;
+}
 export function analyze(services: FinancialService[], settings: FinanceSettings, filters: Filters) {
   const inPeriod = (date: string) => date >= filters.start && date <= filters.end;
   const match = (ids: string[], id: string) => !ids.length || ids.includes(id);
   const selected = services.filter(service => inPeriod(service.date) && match(filters.clients, service.clientId) &&
     match(filters.properties, service.propertyId) && (!filters.workers.length || service.workers.some(worker => filters.workers.includes(worker.id))))
     .map(service => calculateService(service, settings));
-  const expenses = settings.expenses.filter(expense => inPeriod(expense.date) && match(filters.clients, expense.clientId) &&
+  const expenses = [...settings.expenses, ...monthlySalaryExpenses(settings.rates, filters.start, filters.end)].filter(expense => inPeriod(expense.date) && match(filters.clients, expense.clientId) &&
     match(filters.properties, expense.propertyId) && match(filters.workers, expense.workerId));
   const ids = [...new Set([...selected.map(service => service.clientId), ...expenses.filter(expense => expense.clientId).map(expense => expense.clientId)])];
   const clients = ids.map(id => ({ id, name: services.find(service => service.clientId === id)?.clientName || 'Cliente sin servicios en este periodo',
@@ -128,7 +153,7 @@ export function readSettings(value: unknown): FinanceSettings {
     (rate.item === 'products' && rate.mills > 100000) ||
     (rate.workerId !== undefined && typeof rate.workerId !== 'string')) throw new Error('Tarifa no válida');
   for (const expense of data.expenses) if (!expense || !validDate(expense.date) || !number(expense.cents) ||
-    !['personal', 'laundry', 'supplies', 'products', 'other'].includes(expense.category) ||
+    !['personal', 'laundry', 'supplies', 'products', 'salary', 'other'].includes(expense.category) || expense.automatic !== undefined ||
     ['id', 'label', 'clientId', 'propertyId', 'workerId'].some(key => typeof expense[key] !== 'string')) throw new Error('Gasto no válido');
   if (new Set(data.expenses.map(expense => expense.id)).size !== data.expenses.length) throw new Error('Gastos duplicados');
   for (const adjustment of Object.values(data.adjustments)) {
