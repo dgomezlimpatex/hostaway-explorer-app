@@ -38,12 +38,15 @@ try {
  assert.deepEqual(m.staySegment({...booking,checkInDate:'2026-10-10',checkOutDate:'2026-10-18'},m.weekOf('2026-10-06')),{start:5,span:2});
  const week=m.weekOf('2026-10-06');
  assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-02',checkOutDate:'2026-10-06'},week),{start:0,span:1.5},'departure reaches midday of the 6th');
- assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-06',checkOutDate:'2026-10-08'},week),{start:1,span:2.5},'arrival begins at start of the 6th');
+ assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-06',checkOutDate:'2026-10-08'},week),{start:1.5,span:2},'arrival begins at midday of the 6th');
  assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-01',checkOutDate:'2026-10-05'},week),{start:0,span:0.5},'a checkout-only first day remains visible');
  assert.equal(m.stayBarSegment({...booking,checkInDate:'2026-10-01',checkOutDate:'2026-10-04'},week),null);
  assert.equal(m.stayBarSegment({...booking,checkInDate:'2026-10-12',checkOutDate:'2026-10-14'},week),null);
- assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-10',checkOutDate:'2026-10-18'},week),{start:5,span:2},'bar clips at visible week boundary');
+ assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-10',checkOutDate:'2026-10-18'},week),{start:5.5,span:1.5},'bar clips at visible week boundary');
  assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-24',checkOutDate:'2026-10-27'},m.weekOf('2026-10-27')),{start:0,span:1.5},'DST does not shift departure midpoint');
+ const departing=m.stayBarSegment({...booking,checkInDate:'2026-10-02',checkOutDate:'2026-10-06'},week);const arriving=m.stayBarSegment({...booking,checkInDate:'2026-10-06',checkOutDate:'2026-10-08'},week);assert.equal(departing.start+departing.span,arriving.start,'same-day turnover bars meet at midday');
+ assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-05',checkOutDate:'2026-10-06'},week),{start:0.5,span:1},'arrival on first visible day starts at midday');
+ assert.deepEqual(m.stayBarSegment({...booking,checkInDate:'2026-10-11',checkOutDate:'2026-10-13'},week),{start:6.5,span:0.5},'arrival on last visible day occupies only its second half');
  assert.equal(m.stayBarSegment({...booking,status:'cancelled'},week),null);
  assert.equal(m.stayBarSegment({...booking,checkInDate:null},week),null);
  const find=(n,p)=>!n||typeof n!=='object'?[]:Array.isArray(n)?n.flatMap(c=>find(c,p)):[...(p(n)?[n]:[]),...find(n.props?.children,p)];

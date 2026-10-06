@@ -29,11 +29,11 @@ export const staySegment = (booking: PortalBooking, days: string[]) => {
   const occupied = days.map((day, index) => occupiesNight(booking, day) ? index : -1).filter(index => index >= 0);
   return occupied.length ? { start: occupied[0], span: occupied.length } : null;
 };
-// Visual bars include half of the departure day; nightly occupancy remains exclusive.
+// Visual bars run from arrival midday to departure midday; nightly occupancy remains exclusive.
 export const stayBarSegment = (booking: PortalBooking, days: string[]) => {
   if (!hasStay(booking) || !days.length) return null;
   const offset = (day: string) => (Date.parse(`${day}T12:00:00Z`) - Date.parse(`${days[0]}T12:00:00Z`)) / 86400000;
-  const start = Math.max(0, offset(calendarDay(booking.checkInDate)!));
+  const start = Math.max(0, offset(calendarDay(booking.checkInDate)!) + 0.5);
   const finish = Math.min(days.length, offset(calendarDay(booking.checkOutDate)!) + 0.5);
   return finish > start ? { start, span: finish - start } : null;
 };
