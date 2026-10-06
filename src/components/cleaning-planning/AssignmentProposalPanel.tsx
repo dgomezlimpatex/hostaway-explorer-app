@@ -12,6 +12,7 @@ import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchA
 import { PlanningProposalCalendar, PlanningProposalDraftWarning } from './PlanningProposalCalendar';
 import { PlanningSteps } from './PlanningSteps';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { usePlanningScrollChrome } from '@/hooks/usePlanningScrollChrome';
 
 interface AssignmentProposalPanelProps {
   draftScopeKey?: string;
@@ -76,6 +77,7 @@ export const AssignmentProposalPanel = ({
   onClear,
 }: AssignmentProposalPanelProps) => {
   const { state: sidebarState, isMobile } = useSidebar();
+  const chrome = usePlanningScrollChrome(selectedDay);
   const [draftProposals, setDraftProposals] = useState<AssignmentProposal[]>([]);
   const [draftWarnings, setDraftWarnings] = useState<PlanningProposalDraftWarning[]>([]);
   const [draftSourceSignature, setDraftSourceSignature] = useState('');
@@ -208,17 +210,19 @@ export const AssignmentProposalPanel = ({
   const hasBlockingIssue = isStale || blockingWarnings.length > 0;
   return (
     <main className="space-y-4 pb-48 md:space-y-3 md:pb-24" aria-busy={isApplying}>
-      <header className="planner-stage-hero overflow-hidden rounded-2xl border border-line bg-white shadow-sober">
-        <div className="grid gap-5 p-5 md:gap-4 md:px-4 md:py-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+      <div data-planning-chrome data-collapsed={chrome.collapsed} aria-hidden={chrome.collapsed} className="planner-scroll-chrome">
+      <div className="min-h-0 overflow-hidden">
+      <header className="planner-stage-hero min-h-0 overflow-hidden rounded-2xl border border-line bg-white shadow-sober">
+        <div className="grid gap-3 px-4 py-3 md:gap-3 md:px-4 md:py-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand">
               <span aria-hidden="true" className="h-px w-5 shrink-0 bg-brand/60" />
               <span className="truncate">{sedeName || 'Planificación diaria'}</span>
             </p>
-            <h1 data-planner-proposal-title tabIndex={-1} className="mt-2 text-balance text-2xl font-semibold tracking-tight text-ink focus:outline-none md:text-2xl">
+            <h1 data-planner-proposal-title tabIndex={-1} className="mt-1 text-balance text-xl font-semibold tracking-tight text-ink focus:outline-none md:text-xl">
               {selectedDay ? `Reparto del ${dateLabel}` : `Reparto · ${dateLabel}`}
             </h1>
-            <p className="mt-1 max-w-2xl text-sm leading-5 text-ink-3">
+            <p className="mt-1 max-w-2xl text-sm leading-5 lg:mt-0.5 text-ink-3">
               {isPartialScope && <span className="font-medium text-warning">Vista parcial: {tasks.length} de {totalPendingTaskCount} limpiezas. </span>}
               El borrador se guarda al confirmar; los ajustes rápidos se aplican al momento.
             </p>
@@ -251,9 +255,11 @@ export const AssignmentProposalPanel = ({
         </div>
 
         <div className="border-t border-line-soft px-5 md:px-4">
-          <PlanningSteps current={2} compact className="py-2" />
+          <PlanningSteps current={2} compact className="py-1.5 [&>li]:pt-1.5 [&>li]:gap-2 [&>li>span:first-child]:h-5 [&>li>span:first-child]:w-5" />
         </div>
       </header>
+      </div>
+      </div>
 
       {(applyError || isStale || blockingWarnings.length > 0) && (
         <section className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-900" aria-live="polite">
@@ -278,6 +284,8 @@ export const AssignmentProposalPanel = ({
 
       <div className={isApplying ? 'pointer-events-none opacity-70' : ''} aria-disabled={isApplying}>
         <PlanningProposalCalendar
+          chromeCollapsed={chrome.collapsed}
+          onTimelineVerticalScroll={(top) => chrome.onScroll(top, 'timeline')}
           selectedDay={selectedDay}
           originalProposals={proposal.proposals}
           draftProposals={draftProposals}

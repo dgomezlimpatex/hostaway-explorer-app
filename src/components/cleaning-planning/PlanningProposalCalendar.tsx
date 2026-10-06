@@ -65,6 +65,8 @@ export interface PlanningProposalDraftWarning {
 }
 
 interface PlanningProposalCalendarProps {
+  chromeCollapsed?: boolean;
+  onTimelineVerticalScroll?: (top: number) => void;
   selectedDay?: string;
   originalProposals: AssignmentProposal[];
   draftProposals: AssignmentProposal[];
@@ -625,6 +627,8 @@ const buildDraftWarnings = ({
 };
 
 export const PlanningProposalCalendar = ({
+  chromeCollapsed = false,
+  onTimelineVerticalScroll,
   selectedDay,
   originalProposals,
   draftProposals,
@@ -648,6 +652,26 @@ export const PlanningProposalCalendar = ({
   const weeklyQuery = usePlanningCalendarWeek(selectedDate);
   const hoursScrollRef = useRef<HTMLDivElement>(null);
   const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const calendarSectionRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    let frame = 0;
+    const until = performance.now() + 400;
+    const measure = () => {
+      const section = calendarSectionRef.current;
+      if (section) section.style.maxHeight = `${Math.max(320, window.innerHeight - section.getBoundingClientRect().top - 72)}px`;
+    };
+    const animate = () => {
+      measure();
+      if (performance.now() < until) frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    const observer = new ResizeObserver(measure);
+    const content = calendarSectionRef.current?.parentElement?.parentElement;
+    if (content) observer.observe(content);
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, {passive: true});
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure); };
+  }, [chromeCollapsed]);
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
   useEffect(() => {
     const viewport = timelineScrollRef.current;
@@ -1652,6 +1676,8 @@ export const PlanningProposalCalendar = ({
         </div>
 
         {/* Leyenda y ayuda: sin esto, los colores y las dos formas de mover una limpieza no se entienden. */}
+        <div data-planning-legend data-collapsed={chromeCollapsed} aria-hidden={chromeCollapsed} className="planner-scroll-chrome">
+        <div className="min-h-0 overflow-hidden">
         <div
           aria-label="Cómo leer el tablero"
           className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-white px-3 py-2 text-xs text-ink-3"
@@ -1676,6 +1702,8 @@ export const PlanningProposalCalendar = ({
           <span className="hidden md:ml-auto md:inline">
             Toca o arrastra una limpieza para moverla. Con el botón derecho cambias la hora, la persona o la dejas sin asignar.
           </span>
+        </div>
+        </div>
         </div>
 
         <div data-planning-board className="hidden min-h-0 min-w-0 items-start gap-3 lg:grid lg:grid-cols-[200px_minmax(0,1fr)]">
@@ -1751,6 +1779,7 @@ export const PlanningProposalCalendar = ({
           </aside>
 
           <section
+            ref={calendarSectionRef}
             aria-label="Ver calendario por horas"
             className="flex max-h-[calc(100dvh-19rem)] min-h-[320px] min-w-0 flex-col rounded-lg border border-line bg-white shadow-sm lg:col-start-2 lg:row-start-1"
           >
@@ -1820,6 +1849,7 @@ export const PlanningProposalCalendar = ({
               className="min-h-0 overflow-auto rounded-b-2xl"
               onScroll={(event) => {
                 if (hoursScrollRef.current) hoursScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
+                onTimelineVerticalScroll?.(event.currentTarget.scrollTop);
               }}
             >
               <div className="min-w-max">
