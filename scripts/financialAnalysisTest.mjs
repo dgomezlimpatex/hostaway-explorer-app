@@ -58,6 +58,21 @@ try {
   settings.expenses = [{ id: 'e', date: service.date, label: 'Alquiler', category: 'other', cents: 5000, clientId: '', propertyId: '', workerId: '' },
     { id: 'e2', date: service.date, label: 'Extra', category: 'other', cents: 1000, clientId: 'c', propertyId: 'p', workerId: 'w1' }];
   const all = analyze([service], settings, filters);
+  const zeroIncome = { ...service, id: 'zero-income', revenue: 0, clientId: 'zero-client' };
+  const pendingIncome = { ...service, id: 'pending-income', revenue: null };
+  const mixedIncome = analyze([service, zeroIncome, pendingIncome], settings, filters);
+  assert.deepEqual(mixedIncome.total, all.total); assert.deepEqual(mixedIncome.clients, all.clients);
+  assert.deepEqual(mixedIncome.excludedIncomeServices.map(s => s.id), ['zero-income', 'pending-income']);
+  const onlyZero = analyze([zeroIncome], newSettings(), filters);
+  assert.equal(onlyZero.total.revenue, 0); assert.equal(onlyZero.total.services, 0);
+  assert.equal(onlyZero.total.expense, 231700); // Monthly salary remains, service costs are all excluded.
+  for (const category of ['personal','laundry','supplies','products']) assert.equal(onlyZero.total.costs[category], 0);
+  assert.equal(onlyZero.clients.length, 0);
+  const onlyPending = analyze([pendingIncome], newSettings(), filters);
+  assert.equal(onlyPending.total.costs.personal, 0); assert.equal(onlyPending.excludedIncomeServices[0].revenue, null);
+  assert.equal(analyze([zeroIncome], settings, { ...filters, clients: ['c'] }).excludedIncomeServices.length, 0);
+  assert.equal(analyze([zeroIncome], settings, { ...filters, properties: ['missing'] }).excludedIncomeServices.length, 0);
+  assert.equal(analyze([zeroIncome], settings, { ...filters, workers: ['missing'] }).excludedIncomeServices.length, 0);
   assert.equal(all.total.revenue, 10000); assert.equal(all.general.expense, 5000); assert.equal(all.total.expense, all.clients[0].expense + all.general.expense);
   const unidentified = analyze([{ ...service, clientId: '', clientName: 'Sin cliente identificado' }], settings, filters);
   assert.equal(unidentified.total.expense, unidentified.clients.reduce((sum, client) => sum + client.expense, 0) + unidentified.general.expense);

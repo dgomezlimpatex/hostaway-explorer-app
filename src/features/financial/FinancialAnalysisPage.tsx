@@ -134,8 +134,13 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
             <p className="text-sm text-slate-600">{result.total.services} servicios contabilizados · {result.total.estimated} con estimaciones · {result.total.pending} con datos pendientes.
               {' '}Ingresos por fecha del servicio; no representan facturas ni cobros. Horas reales cuando el reporte las incluye; en su defecto, horas previstas.
               {' '}Si el importe de la tarea es cero y la propiedad tiene precio, se usa la tarifa actual de la propiedad como estimación.
+              {' '}Los servicios sin ingreso no suman gastos. Los gastos generales se mantienen por separado.
               {' '}Se incluyen las pendientes asignadas. Se excluyen las canceladas, las tareas pasadas sin asignar y las asignadas a NOT COUNT.
               {' '}Las cantidades de la ficha son estimaciones actuales; revísalas por servicio. El resultado no es definitivo mientras falten costes.</p>
+            {!!result.excludedIncomeServices.length && <details className={panel}><summary className="cursor-pointer font-medium text-[#310984]">Servicios fuera del balance: {result.excludedIncomeServices.filter(service => service.revenue === 0).length} con ingreso cero · {result.excludedIncomeServices.filter(service => service.revenue === null).length} con precio pendiente</summary>
+              <p className="mt-2 text-sm text-slate-600">Estas tareas no aportan ingresos ni costes de personal, lavandería, consumibles o productos. Un precio pendiente debe revisarse; no implica que el servicio sea gratuito.</p>
+              <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm">{result.excludedIncomeServices.map(service => <li key={service.id}>{service.date.split('-').reverse().join('/')} · {service.propertyName} · {service.revenue === null ? 'Precio pendiente' : money(service.revenue)}</li>)}</ul>
+            </details>}
             <nav aria-label="Vistas del análisis" className="flex gap-2 overflow-x-auto pb-1">{([['general', 'General'], ['clients', 'Por cliente'], ['services', 'Servicios'], ['expenses', 'Otros gastos'], ['rates', 'Tarifas']] as const).map(([id, title]) =>
               <Button key={id} aria-pressed={tab === id} variant={tab === id ? 'default' : 'outline'} className={tab === id ? 'bg-[#310984] hover:bg-[#45209a]' : ''} onClick={() => setTab(id)}>{title}</Button>)}</nav>
             {tab === 'general' && <div className="grid gap-5 lg:grid-cols-[1fr_2fr]">
