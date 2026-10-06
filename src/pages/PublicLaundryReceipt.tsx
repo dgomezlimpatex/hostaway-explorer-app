@@ -321,6 +321,8 @@ export default function PublicLaundryReceipt() {
                     (
                       {
                         add: "Añadir",
+                        add_discard: "Añadir descartes",
+                        set_discard: "Corregir descartes",
                         set: "Corregir total",
                         start: "Iniciar recuento",
                         notes: "Guardar observaciones",

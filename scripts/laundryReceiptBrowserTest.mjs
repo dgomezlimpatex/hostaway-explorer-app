@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chromium } from "@playwright/test";
+import { chromium, expect } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -174,6 +174,16 @@ try {
   await page
     .getByText("Operación pendiente de guardar", { exact: true })
     .waitFor();
+  // Wait for the simulated lost response before reloading. The pending banner
+  // appears as soon as saving starts, while the request can still be in flight.
+  await expect(
+    page.getByRole("button", { name: "Recuperar operación" }),
+  ).toBeEnabled();
+  assert.equal(
+    dropNextAdd,
+    false,
+    "The dropped response must already have happened",
+  );
   await page.reload();
   await page.getByRole("button", { name: "Recuperar operación" }).click();
   await page
@@ -292,6 +302,16 @@ try {
   await page
     .getByRole("button", { name: "Recuperar operación" })
     .waitFor({ state: "visible" });
+  // Wait for the simulated lost response before reloading. The pending banner
+  // appears as soon as saving starts, while the request can still be in flight.
+  await expect(
+    page.getByRole("button", { name: "Recuperar operación" }),
+  ).toBeEnabled();
+  assert.equal(
+    dropNextAdd,
+    false,
+    "The dropped response must already have happened",
+  );
   await page.reload();
   await page.getByRole("button", { name: "Recuperar operación" }).click();
   await page
