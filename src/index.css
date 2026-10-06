@@ -1026,3 +1026,20 @@ textarea:focus {
 /* Entrega automática: prueba de integración sin efecto visual. */
 
 /* Circuito de entrega automatica verificado: sin efecto visual. */
+
+.planner-scroll-chrome {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-bottom: 0;
+  transition: grid-template-rows 280ms ease, margin-bottom 280ms ease, opacity 200ms ease;
+}
+.planner-scroll-chrome[data-collapsed='true'] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-bottom: -0.75rem;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .planner-scroll-chrome { transition: none; }
+}
