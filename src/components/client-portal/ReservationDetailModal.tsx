@@ -72,7 +72,7 @@ export const ReservationDetailModal = ({
   const renderStatusBadge = () => {
     if (operationalStatus === 'cleaned') {
       return (
-        <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-200 hover:bg-emerald-500/20">
+        <Badge className="bg-violet-500/15 text-violet-700 border-violet-200 hover:bg-violet-500/20">
           <CheckCircle2 className="h-3 w-3 mr-1" /> Limpia
         </Badge>
       );
@@ -94,11 +94,11 @@ export const ReservationDetailModal = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="portal-detail max-w-2xl max-h-[90dvh] overflow-y-auto rounded-2xl border-violet-100 p-5 sm:p-8">
           <DialogHeader>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <DialogTitle className="text-xl flex items-center gap-2 flex-wrap">
+                <DialogTitle className="text-2xl font-semibold flex items-center gap-2 flex-wrap pr-8">
                   <span className="truncate">
                     {booking.property?.codigo || booking.property?.nombre || 'Propiedad'}
                   </span>
@@ -123,7 +123,7 @@ export const ReservationDetailModal = ({
 
           <div className="space-y-4 mt-4">
             {/* Info grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 rounded-xl bg-violet-50/60 p-5">
               <InfoRow
                 icon={<Calendar className="h-4 w-4" />}
                 label="Fecha de limpieza"

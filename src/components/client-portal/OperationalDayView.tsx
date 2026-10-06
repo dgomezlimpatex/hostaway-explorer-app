@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { PortalBooking } from '@/types/clientPortal';
 import { cn } from '@/lib/utils';
+import { madridToday } from './calendar/portalOccupancy';
 import { ReservationDetailModal } from './ReservationDetailModal';
 import {
   filterPortalBookingsByOperationalDay,
@@ -48,20 +49,20 @@ const statusMeta: Record<PortalOperationalStatus, {
   },
   in_progress: {
     icon: PlayCircle,
-    card: 'border-amber-200 bg-amber-50/40',
+    card: 'border-slate-200',
     badge: 'border-amber-200 bg-amber-100 text-amber-800',
     dot: 'bg-amber-500',
   },
   cleaned: {
     icon: CheckCircle2,
-    card: 'border-emerald-200 bg-emerald-50/35',
-    badge: 'border-emerald-200 bg-emerald-100 text-emerald-800',
-    dot: 'bg-emerald-500',
+    card: 'border-slate-200',
+    badge: 'border-violet-200 bg-violet-100 text-violet-800',
+    dot: 'bg-violet-500',
   },
 };
 
 export const OperationalDayView = ({ clientId, bookings, isLoading }: OperationalDayViewProps) => {
-  const today = useMemo(() => new Date(), []);
+  const today = useMemo(() => parseISO(madridToday()), []);
   const [selectedDay, setSelectedDay] = useState(format(today, 'yyyy-MM-dd'));
   const [statusFilter, setStatusFilter] = useState<PortalOperationalStatus | 'all'>('all');
   const [detailBooking, setDetailBooking] = useState<PortalBooking | null>(null);
@@ -98,7 +99,7 @@ export const OperationalDayView = ({ clientId, bookings, isLoading }: Operationa
   }
 
   return (
-    <div className="space-y-4">
+    <div className="portal-operations space-y-4">
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-3 sm:px-5">
           <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => moveDay(-1)} aria-label="Día anterior">
@@ -128,15 +129,15 @@ export const OperationalDayView = ({ clientId, bookings, isLoading }: Operationa
                 type="button"
                 onClick={() => { setSelectedDay(iso); setStatusFilter('all'); }}
                 className={cn(
-                  'min-h-16 rounded-2xl px-1 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-                  active ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100',
+                  'min-h-16 rounded-xl px-1 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                  active ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-violet-50',
                 )}
                 aria-pressed={active}
               >
                 <span className="block text-[10px] font-semibold uppercase sm:text-xs">{format(date, 'EEE', { locale: es })}</span>
                 <span className="mt-0.5 block text-lg font-bold tabular-nums">{format(date, 'd')}</span>
                 <span className={cn('mt-0.5 block text-[10px]', active ? 'text-white/65' : 'text-slate-400')}>
-                  {count} {count === 1 ? 'limpieza' : 'limpiezas'}
+                  {count}<span className="hidden sm:inline"> {count === 1 ? 'limpieza' : 'limpiezas'}</span>
                 </span>
               </button>
             );
@@ -173,54 +174,54 @@ export const OperationalDayView = ({ clientId, bookings, isLoading }: Operationa
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {visibleBookings.map((booking) => {
             const status = getPortalOperationalStatus(booking.taskStatus);
             const meta = statusMeta[status];
             const StatusIcon = meta.icon;
             const hasPlannedTime = Boolean(booking.startTime);
             return (
-              <article key={booking.id} className={cn('rounded-3xl border bg-white p-4 shadow-sm', meta.card)}>
+              <article key={booking.id} className={cn('portal-operation-card rounded-xl border bg-white p-5', meta.card)}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       {booking.property?.codigo && (
-                        <span className="rounded-lg bg-slate-950 px-2 py-1 text-xs font-bold text-white">{booking.property.codigo}</span>
+                        <span className="rounded bg-violet-50 px-2 py-1 text-xs font-medium text-violet-800">{booking.property.codigo}</span>
                       )}
                       <Badge variant="outline" className={cn('gap-1.5', meta.badge)}>
                         <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot)} />
                         {getPortalOperationalStatusLabel(status)}
                       </Badge>
                     </div>
-                    <h4 className="mt-2 truncate text-base font-bold text-slate-950">
+                    <h4 className="mt-4 text-base font-semibold text-slate-950">
                       {booking.property?.nombre || 'Apartamento sin identificar'}
                     </h4>
                   </div>
-                  <StatusIcon className={cn('h-6 w-6 shrink-0', status === 'cleaned' ? 'text-emerald-600' : status === 'in_progress' ? 'text-amber-600' : 'text-slate-400')} />
+                  <StatusIcon aria-hidden="true" className={cn('h-6 w-6 shrink-0', status === 'cleaned' ? 'text-violet-600' : status === 'in_progress' ? 'text-amber-600' : 'text-slate-400')} />
                 </div>
 
-                <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-                  <div className="flex items-center gap-2 rounded-2xl bg-white/75 px-3 py-2.5 ring-1 ring-slate-200/80">
+                <div className="mt-5 grid grid-cols-[auto_1fr] gap-4 text-sm">
+                  <div className="flex items-center gap-2 min-w-0">
                     <Clock3 className="h-4 w-4 shrink-0 text-primary" />
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Hora prevista</p>
-                      <p className="font-semibold tabular-nums text-slate-900">
+                      <p className="text-[10px] font-medium text-slate-500">Hora prevista</p>
+                      <p className="text-lg font-semibold tabular-nums text-primary">
                         {hasPlannedTime ? formatPortalTaskTime(booking.startTime) : 'Sin hora definida'}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 rounded-2xl bg-white/75 px-3 py-2.5 ring-1 ring-slate-200/80">
+                  <div className="flex items-center gap-2 min-w-0">
                     <MapPin className="h-4 w-4 shrink-0 text-primary" />
                     <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Ubicación</p>
-                      <p className="truncate font-medium text-slate-800">{booking.property?.direccion || 'Dirección no disponible'}</p>
+                      <p className="text-[10px] font-medium text-slate-500">Ubicación</p>
+                      <p className="break-words text-xs text-slate-600">{booking.property?.direccion || 'Dirección no disponible'}</p>
                     </div>
                   </div>
                 </div>
 
                 <Button
-                  variant={status === 'cleaned' ? 'default' : 'outline'}
-                  className="mt-4 w-full rounded-xl"
+                  variant="ghost"
+                  className="portal-operation-action mt-5 w-full justify-start gap-2 rounded-none"
                   onClick={() => setDetailBooking(booking)}
                 >
                   {status === 'cleaned' ? <Camera className="mr-2 h-4 w-4" /> : <Clock3 className="mr-2 h-4 w-4" />}
@@ -233,7 +234,7 @@ export const OperationalDayView = ({ clientId, bookings, isLoading }: Operationa
       )}
 
       <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
         La información se actualiza automáticamente cada minuto.
       </p>
 
@@ -266,8 +267,8 @@ const StatusCounter = ({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-2xl border bg-white px-2 py-3 text-left shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:px-4',
-        active ? 'border-slate-950 ring-1 ring-slate-950' : meta.card,
+        'portal-status-counter rounded-xl border bg-white px-2 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:px-4',
+        active ? 'border-primary ring-1 ring-primary' : meta.card,
       )}
       aria-pressed={active}
     >

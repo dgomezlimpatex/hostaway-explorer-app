@@ -248,7 +248,7 @@ export const ReservationsList = ({
     return (
       <Card className="border-slate-200 bg-white shadow-sm">
         <CardContent className="py-16 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-50">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
           <p className="font-medium text-muted-foreground">Cargando reservas...</p>
@@ -284,9 +284,11 @@ export const ReservationsList = ({
     const nights = booking.source === 'manual' ? getNightsCount(checkInDate, checkOutDate) : null;
 
     return (
-      <button
+      <div
         key={booking.id}
-        type="button"
+        role="button"
+        tabIndex={0}
+        onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setDetailBooking(booking); } }}
         onClick={() => setDetailBooking(booking)}
         className="group relative block w-full p-2 text-left transition-colors"
       >
@@ -294,14 +296,14 @@ export const ReservationsList = ({
           <span
             className={cn(
               'absolute left-2 top-4 bottom-4 w-1 rounded-full',
-              isToday(cleaningDate) ? 'bg-emerald-500' : daysUntil <= 3 ? 'bg-amber-500' : 'bg-primary',
+              isToday(cleaningDate) ? 'bg-violet-500' : daysUntil <= 3 ? 'bg-amber-500' : 'bg-primary',
             )}
           />
         )}
 
         <div
           className={cn(
-            'flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 pl-5 shadow-sm transition-all group-hover:border-blue-100 group-hover:shadow-md sm:p-3.5 sm:pl-5',
+            'flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 pl-5 shadow-sm transition-all group-hover:border-violet-100 group-hover:shadow-md sm:p-3.5 sm:pl-5',
             pastBooking && 'bg-slate-50/70 shadow-none',
           )}
         >
@@ -311,10 +313,10 @@ export const ReservationsList = ({
               pastBooking
                 ? 'bg-slate-100 text-slate-400'
                 : isToday(cleaningDate)
-                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+                  ? 'bg-violet-50 text-violet-700 ring-1 ring-violet-100'
                   : daysUntil <= 3 && daysUntil > 0
                     ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
-                    : 'bg-blue-50 text-primary ring-1 ring-blue-100',
+                    : 'bg-violet-50 text-primary ring-1 ring-violet-100',
             )}
           >
             <Calendar className="h-4 w-4" />
@@ -337,7 +339,7 @@ export const ReservationsList = ({
               </span>
 
               {isToday(cleaningDate) && (
-                <Badge className="h-5 border-emerald-200 bg-emerald-50 px-1.5 text-[10px] text-emerald-700 hover:bg-emerald-50">
+                <Badge className="h-5 border-violet-200 bg-violet-50 px-1.5 text-[10px] text-violet-700 hover:bg-violet-50">
                   Hoy
                 </Badge>
               )}
@@ -380,7 +382,7 @@ export const ReservationsList = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-blue-50 hover:text-primary"
+                className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-violet-50 hover:text-primary"
                 onClick={() => setEditingBooking(booking)}
                 aria-label="Editar reserva"
               >
@@ -400,20 +402,20 @@ export const ReservationsList = ({
 
           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
         </div>
-      </button>
+      </div>
     );
   };
 
   return (
     <>
-      <Card className="overflow-hidden border-slate-200 bg-white shadow-sm">
-        <div className="border-b bg-gradient-to-br from-white via-blue-50/70 to-slate-50 p-4 sm:p-5">
+      <Card className="portal-task-list overflow-hidden border-slate-200 bg-white shadow-sm">
+        <div className="border-b bg-gradient-to-br from-white via-violet-50/70 to-slate-50 p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Reservas</p>
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">Panel de reservas por propiedad</h2>
+
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">Tus alojamientos</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Vista operativa de las limpiezas recientes y próximas. Abre cualquier fila para revisar el detalle.
+                Consulta las próximas tareas o abre una para ver sus detalles.
               </p>
             </div>
 
@@ -424,19 +426,19 @@ export const ReservationsList = ({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 lg:grid-cols-[1.2fr_0.9fr_0.8fr_auto]">
-            <div className="relative">
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-[1.2fr_0.9fr_0.8fr_auto]">
+            <div className="relative col-span-2 lg:col-span-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar propiedad, fecha, dirección o notas..."
+                aria-label="Buscar tareas" placeholder="Buscar alojamiento o tarea..."
                 className="h-10 bg-white pl-9"
               />
             </div>
 
             <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-              <SelectTrigger className="h-10 bg-white">
+              <SelectTrigger aria-label="Filtrar por alojamiento" className="h-10 bg-white">
                 <SelectValue placeholder="Propiedad" />
               </SelectTrigger>
               <SelectContent>
@@ -450,7 +452,7 @@ export const ReservationsList = ({
             </Select>
 
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
-              <SelectTrigger className="h-10 bg-white">
+              <SelectTrigger aria-label="Filtrar por fecha" className="h-10 bg-white">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
@@ -478,7 +480,7 @@ export const ReservationsList = ({
               <Button variant="link" onClick={clearFilters}>Limpiar filtros</Button>
             </div>
           ) : (
-            <Accordion type="multiple" className="divide-y divide-slate-100">
+            <Accordion type="multiple" defaultValue={groupedByProperty.map(group => group.propertyId || group.propertyCode || group.propertyName)} className="divide-y divide-slate-100">
               {groupedByProperty.map((group) => {
                 const today = normalizeDate(new Date());
                 const upcoming: PortalBooking[] = [];
@@ -503,7 +505,7 @@ export const ReservationsList = ({
                       <div className="flex min-w-0 flex-1 items-center gap-3">
                         <div className={cn(
                           'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl',
-                          hasActive ? 'bg-blue-50 text-primary ring-1 ring-blue-100' : 'bg-slate-100 text-slate-500',
+                          hasActive ? 'bg-violet-50 text-primary ring-1 ring-violet-100' : 'bg-slate-100 text-slate-500',
                         )}>
                           <Building2 className="h-5 w-5" />
                         </div>
@@ -521,7 +523,7 @@ export const ReservationsList = ({
                           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                             <span>{group.bookings.length} limpieza{group.bookings.length === 1 ? '' : 's'}</span>
                             {upcoming.length > 0 && (
-                              <Badge variant="outline" className="h-5 border-emerald-200 bg-emerald-50 px-1.5 text-[10px] text-emerald-700">
+                              <Badge variant="outline" className="h-5 border-violet-200 bg-violet-50 px-1.5 text-[10px] text-violet-700">
                                 {upcoming.length} próxima{upcoming.length === 1 ? '' : 's'}
                               </Badge>
                             )}
@@ -649,8 +651,8 @@ const ReservationMetric = ({
   icon: typeof Calendar;
 }) => {
   const tones = {
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    blue: 'bg-blue-50 text-blue-700 border-blue-100',
+    emerald: 'bg-violet-50 text-violet-700 border-violet-100',
+    blue: 'bg-violet-50 text-violet-700 border-violet-100',
     slate: 'bg-slate-50 text-slate-700 border-slate-100',
     amber: 'bg-amber-50 text-amber-700 border-amber-100',
   };
@@ -667,10 +669,10 @@ const ReservationMetric = ({
 };
 
 const SectionHeader = ({ label, count }: { label: string; count: number }) => (
-  <div className="flex items-center gap-2 border-y border-slate-100 bg-emerald-50/80 px-4 py-3 sm:px-5">
-    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-    <span className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">{label}</span>
-    <Badge variant="outline" className="h-5 border-emerald-200 bg-white px-2 text-xs text-emerald-700">
+  <div className="flex items-center gap-2 border-y border-slate-100 bg-violet-50/80 px-4 py-3 sm:px-5">
+    <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
+    <span className="text-xs font-bold uppercase tracking-[0.16em] text-violet-800">{label}</span>
+    <Badge variant="outline" className="h-5 border-violet-200 bg-white px-2 text-xs text-violet-700">
       {count}
     </Badge>
   </div>
