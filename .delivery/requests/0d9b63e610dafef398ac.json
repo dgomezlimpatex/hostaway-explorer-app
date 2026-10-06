@@ -1,0 +1,21 @@
+{
+  "request": "Al seleccionar entrada, abrir el calendario de salida sin autocompletar el día siguiente, de modo que pueda seleccionarse con un clic.",
+  "reason": "Cambia únicamente el estado local del formulario y sus calendarios. No modifica la mutación existente, datos, consultas, permisos ni servicios.",
+  "verification": "Build, lint focalizado y tipos de aplicación sin nuevos diagnósticos frente a la base (102 heredados); tipos Node y raíz correctos. Pruebas con componente real y hooks locales: salida inicialmente vacía, cierre de entrada y apertura de salida, selección de un día siguiente con un clic, limpieza de salida inválida, conservación de fecha elegida válida, vaciado de entrada y envío existente con fechas explícitas. Captura de formulario con estado local simulado; los clics de navegador no pudieron verificarse por la interacción del navegador integrado. No se ejecutaron operaciones sobre datos reales.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/clientPortalDesignTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "2035c17986a852bf1fb446d6d66cb4ebad52da0cb1127ae7dc47c841624ccebf"
+}
