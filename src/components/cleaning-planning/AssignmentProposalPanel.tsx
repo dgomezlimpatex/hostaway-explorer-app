@@ -82,6 +82,7 @@ export const AssignmentProposalPanel = ({
   const [draftWarnings, setDraftWarnings] = useState<PlanningProposalDraftWarning[]>([]);
   const [draftSourceSignature, setDraftSourceSignature] = useState('');
   const [applyError, setApplyError] = useState('');
+  const [quickChangesSaved, setQuickChangesSaved] = useState(false);
   const [draftSafetyReady, setDraftSafetyReady] = useState(false);
   const applyInFlightRef = useRef(false);
 
@@ -116,6 +117,7 @@ export const AssignmentProposalPanel = ({
         } catch { /* Keep the restored draft usable if storage is unavailable. */ }
       }
     }
+    setQuickChangesSaved(false);
     setDraftProposals(restored || proposal.proposals.map((item) => ({ ...item })));
     setDraftWarnings([]);
     setDraftSafetyReady(false);
@@ -207,6 +209,8 @@ export const AssignmentProposalPanel = ({
 
   if (!proposal) return null;
 
+  const hasNoDraftAssignments = draftProposals.length === 0 && !isStale;
+  const hasOnlySavedQuickChanges = quickChangesSaved && hasNoDraftAssignments;
   const hasBlockingIssue = isStale || blockingWarnings.length > 0;
   return (
     <main className="space-y-4 pb-48 md:space-y-3 md:pb-24" aria-busy={isApplying}>
@@ -297,7 +301,7 @@ export const AssignmentProposalPanel = ({
           excludedCleanerAssignments={excludedCleanerAssignments}
           isStale={isStale}
           savedTaskIds={savedTaskIds}
-          onTaskSaved={onTaskSaved}
+          onTaskSaved={(taskId) => { setQuickChangesSaved(true); onTaskSaved?.(taskId); }}
           onDraftProposalsChange={handleDraftProposalsChange}
           onDraftWarningsChange={handleDraftWarningsChange}
         />
@@ -343,7 +347,11 @@ export const AssignmentProposalPanel = ({
           </Button>
           <div className="flex flex-col gap-2 sm:items-end lg:flex-row lg:items-center lg:gap-4">
             <p className="text-xs font-semibold text-ink-3">
-              Se guardarán {coveredCount} limpieza{coveredCount === 1 ? '' : 's'}{uncoveredCount > 0 ? ` · ${uncoveredCount} quedarán sin responsable` : ''}. Después se iniciarán los avisos.
+              {hasOnlySavedQuickChanges
+                ? 'Los ajustes rápidos ya están guardados. Puedes seguir reajustando el reparto.'
+                : hasNoDraftAssignments
+                  ? 'No hay nuevas asignaciones para guardar. Las limpiezas sin responsable siguen disponibles en el tablero.'
+                : <>Se guardarán {coveredCount} limpieza{coveredCount === 1 ? '' : 's'}{uncoveredCount > 0 ? ` · ${uncoveredCount} quedarán sin responsable` : ''}. Después se iniciarán los avisos.</>}
             </p>
             <Button
               type="button"
@@ -356,6 +364,10 @@ export const AssignmentProposalPanel = ({
               <span className="relative z-10">
                 {isApplying
                   ? 'Guardando reparto…'
+                  : hasOnlySavedQuickChanges
+                    ? 'Ajustes guardados'
+                  : hasNoDraftAssignments
+                    ? 'Sin cambios pendientes'
                   : uncoveredCount > 0
                     ? `Guardar ${coveredCount} y avisar`
                     : 'Guardar reparto y avisar'}
