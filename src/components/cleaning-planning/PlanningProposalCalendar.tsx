@@ -1,10 +1,15 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEventHandler, type MouseEventHandler, type ReactElement, type ReactNode, type TouchEventHandler } from 'react';
+import { createPortal } from 'react-dom';
+import { planningPointerCollision } from '@/utils/planningDragGeometry';
 import { usePlanningCalendarWeek } from '@/hooks/usePlanningCalendarWeek';
 import { planningCalendarWeeklyHours } from '@/utils/planningCalendarWeeklyHours';
 import { PLANNING_CARD_HEIGHT, PLANNING_LANE_STEP, planningTaskLanes } from '@/utils/planningTaskLanes';
 import { planningPixelsPerMinute, planningDropMinute } from '@/utils/planningViewport';
 import {
   DndContext,
+  DragOverlay,
+  type CollisionDetection,
+  type Modifier,
   KeyboardSensor,
   MouseSensor,
   TouchSensor,
@@ -183,8 +188,10 @@ const CleanerDropZone = ({
   dropId?: string;
   children: ReactNode;
 }) => {
+  const nodeRef = useRef<HTMLDivElement | null>(null);
   const { setNodeRef, isOver } = useDroppable({
     id: dropId || `cleaner:${cleanerId}`,
+    data: { getLiveRect: () => nodeRef.current?.getBoundingClientRect() },
   });
   const tone =
     isOver && feedback
@@ -194,25 +201,13 @@ const CleanerDropZone = ({
       : '';
   return (
     <div
-      ref={setNodeRef}
+      ref={(node) => { nodeRef.current = node; setNodeRef(node); }}
       data-dnd-drop-worker={cleanerId}
       className={`${className || ''} ${tone}`}
     >
       {children}
     </div>
   );
-};
-
-const getActivatorClientX = (event: Event): number | undefined => {
-  if ('clientX' in event && typeof event.clientX === 'number')
-    return event.clientX;
-  if ('touches' in event) {
-    const touchEvent = event as TouchEvent;
-    return (
-      touchEvent.touches[0]?.clientX ?? touchEvent.changedTouches[0]?.clientX
-    );
-  }
-  return undefined;
 };
 
 const toMinutes = (value?: string): number => {
@@ -696,6 +691,20 @@ export const PlanningProposalCalendar = ({
   const [editedExistingTaskIds, setEditedExistingTaskIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const dragPointerRef = useRef<{ x: number; y: number } | null>(null);
+  const dragOriginRef = useRef<{ left: number; top: number } | null>(null);
+  const previewAtPointer: Modifier = ({ activeNodeRect, transform }) => {
+    if (!dragOriginRef.current && activeNodeRect) dragOriginRef.current = activeNodeRect;
+    const origin = dragOriginRef.current;
+    const pointer = dragPointerRef.current;
+    return origin && pointer ? { ...transform, x: pointer.x - origin.left, y: pointer.y - origin.top,
+      scaleX: 1, scaleY: 1 } : transform;
+  };
+  const pointerCollision: CollisionDetection = (args) => {
+    // dnd-kit's event delta includes scroll compensation; pointerCoordinates does not.
+    dragPointerRef.current = args.pointerCoordinates;
+    return planningPointerCollision(args);
+  };
   const [activeDrag, setActiveDrag] = useState<DragPayload | null>(null);
   const [dragHover, setDragHover] = useState<{
     cleanerId: string;
@@ -1017,21 +1026,20 @@ export const PlanningProposalCalendar = ({
 
   const handleDragStart = ({ active }: DragStartEvent) => {
     if (isStale) return;
+    dragOriginRef.current = null;
     setMoveNotice(null);
     setActiveDrag(active.data.current as DragPayload);
   };
   const handleDragMove = ({
     active,
     over,
-    activatorEvent,
-    delta,
   }: DragMoveEvent) => {
     if (!over || !String(over.id).startsWith('cleaner:'))
       return setDragHover(null);
     const payload = active.data.current as DragPayload;
     const task = taskById.get(payload.taskId);
     if (!task) return;
-    const pointerX = getActivatorClientX(activatorEvent);
+    const pointerX = dragPointerRef.current?.x;
     const fallbackMinute = getTaskStart(
       task,
       payload.proposalIndex === undefined
@@ -1041,8 +1049,8 @@ export const PlanningProposalCalendar = ({
     setDragHover({
       cleanerId: String(over.id).slice('cleaner:'.length),
       startMinute: planningDropMinute(
-        pointerX === undefined ? undefined : pointerX + delta.x,
-        over.rect.left,
+        pointerX,
+        (over.data.current?.getLiveRect?.() ?? over.rect).left,
         bounds.start,
         bounds.end,
         fallbackMinute,
@@ -1053,8 +1061,6 @@ export const PlanningProposalCalendar = ({
   const handleDragEnd = ({
     active,
     over,
-    activatorEvent,
-    delta,
   }: DragEndEvent) => {
     setActiveDrag(null);
     setDragHover(null);
@@ -1075,13 +1081,13 @@ export const PlanningProposalCalendar = ({
         ? undefined
         : draftProposals[payload.proposalIndex],
     );
-    const pointerX = getActivatorClientX(activatorEvent);
+    const pointerX = dragPointerRef.current?.x;
     const dropMinute =
       cleanerPrefix === 'mobile-cleaner:'
         ? fallbackMinute
         : planningDropMinute(
-            pointerX === undefined ? undefined : pointerX + delta.x,
-            over.rect.left,
+            pointerX,
+            (over.data.current?.getLiveRect?.() ?? over.rect).left,
             bounds.start,
             bounds.end,
             fallbackMinute,
@@ -1397,6 +1403,8 @@ export const PlanningProposalCalendar = ({
     <DndContext
       sensors={sensors}
       autoScroll={false}
+      collisionDetection={pointerCollision}
+      onDragOver={handleDragMove}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
       onDragCancel={() => {
@@ -1879,7 +1887,8 @@ export const PlanningProposalCalendar = ({
                         key={cleaner.id}
                         className="flex min-h-[80px] border-b border-[#310984]/8 last:border-b-0"
                       >
-                        <div className="sticky left-0 z-10 flex w-[240px] shrink-0 items-center gap-2 border-r border-line bg-white px-3 py-2">
+                        <div data-planning-worker-column
+                          className="sticky left-0 z-10 flex w-[240px] shrink-0 items-center gap-2 border-r border-line bg-white px-3 py-2">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-line-soft text-xs font-bold text-brand">
                             {cleaner.name
                               .split(' ')
@@ -2036,6 +2045,14 @@ export const PlanningProposalCalendar = ({
         )}
       </div>
 
+      {typeof document !== 'undefined' && createPortal(
+        <DragOverlay dropAnimation={null} modifiers={[previewAtPointer]} style={{ pointerEvents: 'none' }}>
+          {activeDrag && <div data-planning-drag-preview aria-hidden="true"
+            className="w-44 rounded-lg border border-white/60 bg-success px-3 py-2 text-sm text-white shadow-xl">
+            <p className="truncate font-bold">{taskById.get(activeDrag.taskId)?.propertyCode || taskById.get(activeDrag.taskId)?.property}</p>
+            <p className="text-xs">{dragHover ? `Colocar a las ${fromMinutes(dragHover.startMinute)}` : 'Arrastra a una persona'}</p>
+          </div>}
+        </DragOverlay>, document.body)}
       <Dialog
         open={Boolean(reassignment)}
         onOpenChange={(open) => {
