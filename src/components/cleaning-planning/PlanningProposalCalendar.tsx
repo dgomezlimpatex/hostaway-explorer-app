@@ -1848,7 +1848,7 @@ export const PlanningProposalCalendar = ({
                     return (
                       <div
                         key={cleaner.id}
-                        className="flex min-h-[92px] border-b border-[#310984]/8 last:border-b-0"
+                        className="flex min-h-[80px] border-b border-[#310984]/8 last:border-b-0"
                       >
                         <div className="sticky left-0 z-10 flex w-[240px] shrink-0 items-center gap-2 border-r border-line bg-white px-3 py-2">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-line-soft text-xs font-bold text-brand">
@@ -1870,12 +1870,6 @@ export const PlanningProposalCalendar = ({
                                 : `${hoursLabel(assignedHours)} / ${contractHours > 0 ? hoursLabel(contractHours) : '—'} h · semana`}
                             </p>
                             {weeklyReady && contractHours === 0 && <p className="text-xs text-ink-3">Sin horas de contrato</p>}
-                            <p
-                              title={getAvailabilitySummary(availability)}
-                              className={'truncate text-[11px] ' + (!availability ? 'text-ink-3' : availability.isAvailable ? 'text-ink-3' : 'font-semibold text-rose-700')}
-                            >
-                              {getAvailabilitySummary(availability)}
-                            </p>
                             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#eeeaf5]">
                               <div
                                 className={`h-full rounded-full ${assignedHours > contractHours && contractHours > 0 ? 'bg-red-500' : capacityPercent >= 85 ? 'bg-amber-500' : 'bg-emerald-500'}`}
@@ -1959,7 +1953,7 @@ export const PlanningProposalCalendar = ({
                                         {...attributes}
                                         type="button"
                                         data-planner-primary-action
-                                        className={`min-h-0 min-w-0 flex-1 overflow-hidden text-left text-white transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none ${width < 180 ? 'px-1 pb-1 pt-7' : 'p-2'}`}
+                                        className={`min-h-0 min-w-0 flex-1 overflow-hidden text-left text-white transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none ${width < 180 ? 'px-1 pb-1 pt-6' : 'p-1'}`}
                                         onKeyDown={(event) => {
                                           if (event.code !== 'Enter') onKeyDown?.(event);
                                         }}
@@ -1972,7 +1966,7 @@ export const PlanningProposalCalendar = ({
                                           )
                                         }
                                       >
-                                        <p className={`flex items-center gap-1.5 font-bold leading-tight ${statusTone.foreground} ${width < 180 ? 'text-sm' : 'text-base'}`}>
+                                        <p className={`flex items-center gap-1.5 text-sm font-bold leading-tight ${statusTone.foreground}`}>
                                           <span aria-hidden="true" className={`grid h-5 w-5 shrink-0 place-items-center rounded-md ${statusTone.iconSurface} ${statusTone.iconForeground} ${width < 180 ? 'absolute left-1 top-1' : ''}`}>
                                             <StatusIcon className="h-3.5 w-3.5" />
                                           </span>
@@ -1980,10 +1974,10 @@ export const PlanningProposalCalendar = ({
                                             {item.task.propertyCode || item.task.property}
                                           </span>
                                         </p>
-                                        <p className={`${width < 150 ? 'hidden' : ''} mt-1 truncate text-xs ${statusTone.foreground}`}>
+                                        <p className={`${width < 150 ? 'hidden' : ''} mt-0.5 truncate text-xs ${statusTone.foreground}`}>
                                           {item.task.detectedBuilding?.propertyGroupName || item.task.property}
                                         </p>
-                                        <span className={`mt-1 inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-md bg-black/15 ${width < 130 ? 'px-1' : 'px-1.5'} py-0.5 ${width < 150 ? 'text-[10px]' : 'text-xs'} font-semibold text-white ${width < 180 ? 'mt-0' : ''}`} title={`${fromMinutes(item.startMinute)}–${fromMinutes(item.endMinute)}`}>
+                                        <span className={`mt-0.5 inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-md bg-black/15 ${width < 130 ? 'px-1' : 'px-1.5'} py-0.5 ${width < 150 ? 'text-[10px]' : 'text-xs'} font-semibold text-white ${width < 180 ? 'mt-0' : ''}`} title={`${fromMinutes(item.startMinute)}–${fromMinutes(item.endMinute)}`}>
                                           <Clock aria-hidden="true" className={`h-3 w-3 shrink-0 ${width < 150 ? 'hidden' : ''}`} />
                                           {fromMinutes(item.startMinute)}–{fromMinutes(item.endMinute)}
                                         </span>
