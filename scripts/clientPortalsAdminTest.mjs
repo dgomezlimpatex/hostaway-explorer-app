@@ -19,7 +19,7 @@ export const jsxs = jsx;
 export const Fragment = 'Fragment';
 export const useToast = () => ({ toast: value => state.toasts.push(value) });
 export const useAdminClientPortals = () => ({ data: state.rows, isLoading: state.loading, isError: state.error, refetch: () => state.calls.push(['refetch']) });
-const mutation = name => ({ isPending: state.pending, variables: { clientId: 'one' }, mutate: args => state.calls.push([name, args]) });
+const mutation = name => ({ isPending: state.pending, variables: { clientId: 'one' }, mutate: (args, options) => { state.calls.push([name, args]); if (options) state.callbacks = options; } });
 export const useToggleClientPhotosVisibility = () => mutation('photos');
 export const useToggleClientReservationCreation = () => mutation('reservations');
 export const useToggleClientIncidents = () => mutation('incidents');
@@ -108,6 +108,8 @@ try {
   button(nodes(render(),'li')[2], 'Editar cliente').props.onClick();
   button(render(),'Crear acceso').props.onClick();
   assert.deepEqual(state.calls.at(-1), ['create','three']);
+  state.callbacks.onSuccess();
+  assert.deepEqual(state.calls.at(-1), ['refetch'], 'refresh the admin overview after successful access creation');
   nodes(render(),'Dialog')[0].props.onOpenChange(false);
   nodes(render(),'Input')[0].props.onChange({target:{value:'Hotel'}});
   assert.equal(nodes(render(),'li').length, 1);

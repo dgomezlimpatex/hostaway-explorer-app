@@ -189,7 +189,7 @@ const ClientPortalsAdmin = () => {
               <p className="text-muted-foreground">Último acceso: {editTarget.access?.lastAccessAt
                 ? new Date(editTarget.access.lastAccessAt).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }) : '—'}</p>
               {!editTarget.access && <Button variant="outline" disabled={createAccess.isPending}
-                onClick={() => createAccess.mutate(editTarget.clientId)}>
+                onClick={() => createAccess.mutate(editTarget.clientId, { onSuccess: () => refetch() })}>
                 <Link2 className="h-4 w-4 mr-2" /> {createAccess.isPending ? 'Creando...' : 'Crear acceso'}
               </Button>}
             </div>
