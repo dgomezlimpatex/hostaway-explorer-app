@@ -1,0 +1,21 @@
+{
+  "request": "Adaptar el planificador diario al espacio disponible a zoom 100% sin empequeñecer toda la interfaz.",
+  "verification": "Build correcto; tipos aplicación 102 antes y después, Node sin errores nuevos; lint sin errores, dos warnings anteriores. Navegador offline en 1920/1366/1024/390, con espacio real del sidebar, resize, scroll de horas sincronizado y arrastre real a 12:15. Reasignación móvil/escritorio y compañeras pasan. Contrato UI antiguo falla igual en base por esperar Propuesta de la app.",
+  "reason": "Cambio de presentación y coordenadas locales del tablero. No modifica acciones de guardado, datos, permisos, comunicaciones ni reglas de asignación.",
+  "tests": [
+    "scripts/planningViewportTest.mjs"
+  ],
+  "effects": {
+    "costs": false,
+    "security": false,
+    "communications": false,
+    "database": false,
+    "authentication": false,
+    "infrastructure": false,
+    "productionData": false,
+    "integrations": false
+  },
+  "version": 1,
+  "scope": "application",
+  "digest": "831e7d7f4fa3e6a6c82e50b66944144877b21d700d51e5e5a35842c9bc3cfd0a"
+}
