@@ -67,7 +67,7 @@ export const ReservationsCalendar = ({ bookings, properties = [], clientId, isLo
         const rows = bookings.filter(booking => booking.property?.id === property.id && booking.status !== 'cancelled');
         const stays = rows.filter(hasStay).filter(booking => stayBarSegment(booking, days));
         return <div className="portal-timeline-row" key={property.id}><div className="portal-timeline-property"><span className="portal-property-code">{property.codigo}</span><strong>{property.nombre}</strong></div><div className="portal-timeline-lanes">
-          <div className="portal-night-grid">{days.map(day => <span key={day} />)}</div>
+          <div className="portal-night-grid">{days.map(day => <span key={day} className={day === madridToday() ? 'today' : ''} />)}</div>
           {stays.map(booking => { const segment = stayBarSegment(booking, days)!; return <div className="portal-stay-lane" key={booking.id}><button type="button" className="portal-stay-bar" style={{ left: `${segment.start / days.length * 100}%`, width: `${segment.span / days.length * 100}%` }} onClick={() => setDetail(booking)} aria-label={`Estancia de ${property.nombre}: ${booking.checkInDate} a ${booking.checkOutDate}`}><Moon size={13} /><span>{nightCount(booking)} noches</span></button></div>; })}
           <div className="portal-cleaning-lane">{days.map(day => <div key={day}>{rows.filter(booking => cleansOn(booking, day)).map(cleaningButton)}</div>)}</div>
         </div></div>;

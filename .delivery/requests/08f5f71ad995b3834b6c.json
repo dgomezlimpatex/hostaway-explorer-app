@@ -1,0 +1,21 @@
+{
+  "request": "Resaltar toda la columna del día actual con el mismo color del encabezado Hoy.",
+  "reason": "Añade una clase visual al fondo de la fecha actual usando el helper existente. No altera consultas, fechas, ocupación, acciones ni datos.",
+  "verification": "Build, lint focalizado y tipos de aplicación sin nuevos diagnósticos frente a la base; tipos Node y raíz correctos. Prueba del componente real verifica que solo la celda del día actual quede resaltada en cada fondo de alojamiento. Captura de navegador con datos ficticios comprueba la continuidad del color bajo reservas y limpiezas.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/clientPortalDesignTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "70a2f1e4fe686f16d2d33b9f99330058070b7e2882fbd1c076dde6789033c20f"
+}
