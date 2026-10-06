@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { Task, Cleaner } from '@/types/calendar';
 
 export interface DragState {
@@ -10,6 +10,8 @@ export interface DragState {
 }
 
 export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void) => {
+  // Keep the active task synchronously, even before React commits a render.
+  const activeTaskRef = useRef<Task | null>(null);
   const [dragState, setDragState] = useState<DragState>({
     draggedTask: null,
     isDragging: false,
@@ -17,6 +19,7 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
   });
 
   const handleDragStart = useCallback((e: React.DragEvent, task: Task) => {
+    activeTaskRef.current = task;
     console.log('🚀 useDragAndDrop - handleDragStart called with task:', task.id, task.property);
     e.dataTransfer.effectAllowed = 'move';
     
@@ -25,7 +28,7 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     e.dataTransfer.setData('application/json', JSON.stringify({ taskId: task.id, taskData: task }));
     
     // Calculate offset for smooth positioning
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const offset = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
@@ -48,6 +51,7 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
   }, []);
 
   const handleDragEnd = useCallback((e: React.DragEvent) => {
+    activeTaskRef.current = null;
     console.log('🏁 useDragAndDrop - handleDragEnd called');
     setDragState({
       draggedTask: null,
@@ -85,7 +89,14 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     
     console.log('📋 useDragAndDrop - taskId from drag data:', taskId);
     
-    if (taskId && dragState.draggedTask) {
+    const activeTask = activeTaskRef.current;
+    // Some browsers return an empty payload on drop. Only fall back to an
+    // active drag from this calendar, never to an unrelated external payload.
+    taskId = taskId || activeTask?.id;
+    const isActiveTask = !!activeTask?.id && taskId === activeTask.id;
+    activeTaskRef.current = null;
+
+    if (isActiveTask) {
       console.log('🔄 useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleanersCount: cleaners.length, timeSlot });
       // Always call onTaskAssign - let the backend handle if it's the same position
       onTaskAssign(taskId, cleanerId, cleaners, timeSlot);

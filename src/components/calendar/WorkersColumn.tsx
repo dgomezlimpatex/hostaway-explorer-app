@@ -38,10 +38,7 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
     e.stopPropagation();
     const target = e.currentTarget as HTMLElement;
     target.classList.remove('bg-line-soft');
-    const taskId = e.dataTransfer.getData('text/plain');
-    if (taskId) {
-      onDrop(e, cleanerId, cleaners);
-    }
+    onDrop(e, cleanerId, cleaners);
   };
 
   const getAbsenceLabel = (status: WorkerAbsenceStatus | undefined) => {
