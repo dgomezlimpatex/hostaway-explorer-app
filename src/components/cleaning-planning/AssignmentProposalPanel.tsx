@@ -207,18 +207,18 @@ export const AssignmentProposalPanel = ({
 
   const hasBlockingIssue = isStale || blockingWarnings.length > 0;
   return (
-    <main className="space-y-4 pb-48 md:space-y-5 md:pb-32" aria-busy={isApplying}>
+    <main className="space-y-4 pb-48 md:space-y-3 md:pb-24" aria-busy={isApplying}>
       <header className="planner-stage-hero overflow-hidden rounded-2xl border border-line bg-white shadow-sober">
-        <div className="grid gap-5 p-5 md:gap-6 md:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="grid gap-5 p-5 md:gap-4 md:px-4 md:py-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-brand">
               <span aria-hidden="true" className="h-px w-5 shrink-0 bg-brand/60" />
               <span className="truncate">{sedeName || 'Planificación diaria'}</span>
             </p>
-            <h1 data-planner-proposal-title tabIndex={-1} className="mt-2 text-balance text-2xl font-semibold tracking-tight text-ink focus:outline-none md:text-3xl">
+            <h1 data-planner-proposal-title tabIndex={-1} className="mt-2 text-balance text-2xl font-semibold tracking-tight text-ink focus:outline-none md:text-2xl">
               {selectedDay ? `Reparto del ${dateLabel}` : `Reparto · ${dateLabel}`}
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-3">
+            <p className="mt-1 max-w-2xl text-sm leading-5 text-ink-3">
               {isPartialScope && <span className="font-medium text-warning">Vista parcial: {tasks.length} de {totalPendingTaskCount} limpiezas. </span>}
               El borrador se guarda al confirmar; los ajustes rápidos se aplican al momento.
             </p>
@@ -250,8 +250,8 @@ export const AssignmentProposalPanel = ({
           </div>
         </div>
 
-        <div className="border-t border-line-soft px-5 md:px-7">
-          <PlanningSteps current={2} compact className="py-3" />
+        <div className="border-t border-line-soft px-5 md:px-4">
+          <PlanningSteps current={2} compact className="py-2" />
         </div>
       </header>
 
@@ -326,21 +326,21 @@ export const AssignmentProposalPanel = ({
       </Accordion>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(49,9,132,0.12)] backdrop-blur transition-[left] duration-200 md:p-4"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(49,9,132,0.12)] backdrop-blur transition-[left] duration-200 md:px-4 md:py-2"
         style={{ left: isMobile ? 0 : sidebarState === 'expanded' ? '18rem' : '4rem' }}
       >
         <div className="mx-auto flex w-full max-w-[1920px] flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <Button type="button" variant="outline" className="min-h-[48px] border-line text-brand" disabled={isApplying} onClick={handleDiscard}>
+          <Button type="button" variant="outline" className="min-h-[44px] border-line text-brand" disabled={isApplying} onClick={handleDiscard}>
             Descartar propuesta
           </Button>
-          <div className="flex flex-col gap-2 sm:items-end">
+          <div className="flex flex-col gap-2 sm:items-end lg:flex-row lg:items-center lg:gap-4">
             <p className="text-xs font-semibold text-ink-3">
               Se guardarán {coveredCount} limpieza{coveredCount === 1 ? '' : 's'}{uncoveredCount > 0 ? ` · ${uncoveredCount} quedarán sin responsable` : ''}. Después se iniciarán los avisos.
             </p>
             <Button
               type="button"
               aria-busy={isApplying}
-              className="relative isolate min-h-[50px] overflow-hidden bg-ink px-6 text-base font-semibold text-white hover:bg-black"
+              className="relative isolate min-h-[44px] overflow-hidden bg-ink px-6 text-base font-semibold text-white hover:bg-black"
               disabled={!canApply}
               onClick={handleApply}
             >
