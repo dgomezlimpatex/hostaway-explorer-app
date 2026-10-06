@@ -3,6 +3,7 @@ import { getCalendarTaskStatus, type CalendarProgressReport } from '@/utils/cale
 import { getWindowDurationMinutes } from '@/utils/cleaning-planning/capacity';
 
 export interface SourceTask {
+  type: string;
   id: string; date: string; status: string; coste: number | null; cliente_id: string | null; propiedad_id: string | null;
   property: string; cleaner_id: string | null; cleaner: string | null; start_time: string; end_time: string;
   task_assignments: { cleaner_id: string; cleaner_name: string }[];
@@ -51,7 +52,7 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
     });
     const hasRevenue = typeof task.coste === 'number' && Number.isFinite(task.coste) && task.coste >= 0;
     const revenueValue = hasRevenue ? task.coste : property?.coste_servicio;
-    return [{ id: task.id, date: task.date, clientId, clientName: clientMap.get(clientId) || 'Sin cliente identificado',
+    return [{ id: task.id, type: task.type || '', date: task.date, clientId, clientName: clientMap.get(clientId) || 'Sin cliente identificado',
       propertyId: task.propiedad_id || '', propertyName: property?.nombre || task.property, workers, quantities,
       revenue: typeof revenueValue === 'number' && Number.isFinite(revenueValue) && revenueValue >= 0 ? Math.round(revenueValue * 100) : null,
       revenueEstimated: !hasRevenue }];

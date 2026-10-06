@@ -15,13 +15,16 @@ export const COST_ITEMS = [
   { id: 'bathKit', label: 'Kit amenities baño', category: 'supplies', unit: 'kit', mills: 890 },
   { id: 'foodKit', label: 'Kit amenities alimentarios', category: 'supplies', unit: 'kit', mills: 1910 },
   { id: 'toiletPaper', label: 'Papel higiénico', category: 'supplies', unit: 'rollo', mills: 130 },
+  { id: 'products', label: 'Productos de limpieza', category: 'products', unit: 'importe de limpieza', mills: 3000 },
 ] as const;
+export const QUANTITY_ITEMS = COST_ITEMS.filter(item => item.id !== 'labor' && item.id !== 'products');
 export type ItemId = typeof COST_ITEMS[number]['id'];
-export type Category = 'personal' | 'laundry' | 'supplies' | 'other';
+export type Category = 'personal' | 'laundry' | 'supplies' | 'products' | 'other';
 export type Quantities = Partial<Record<ItemId, number>>;
 export interface Rate { item: ItemId; date: string; mills: number; workerId?: string }
 export interface WorkerHours { id: string; name: string; minutes: number | null; actual: boolean }
 export interface FinancialService {
+  type: string;
   id: string; date: string; clientId: string; clientName: string; propertyId: string; propertyName: string;
   revenue: number | null; revenueEstimated: boolean; workers: WorkerHours[]; quantities: Quantities;
 }
@@ -70,7 +73,7 @@ export function calculateService(service: FinancialService, settings: FinanceSet
   const quantities = { ...service.quantities, ...adjustment?.quantities };
   let laundryMills = 0;
   let supplyMills = 0;
-  for (const item of COST_ITEMS.filter(item => item.id !== 'labor')) {
+  for (const item of QUANTITY_ITEMS) {
     const quantity = quantities[item.id];
     if (quantity === undefined) {
       if (!adjustment?.reviewed) pending.push(`Cantidad pendiente: ${item.label}`);
@@ -81,7 +84,11 @@ export function calculateService(service: FinancialService, settings: FinanceSet
     else supplyMills += amount;
   }
   if (!adjustment?.reviewed) estimated = true;
-  const costs = { personal: Math.round(laborMills / 10), laundry: Math.round(laundryMills / 10), supplies: Math.round(supplyMills / 10), other: 0 };
+  const cleaning = service.type.trim().toLowerCase().startsWith('limpieza') || service.type.trim().toLowerCase() === 'cleaning';
+  if (!service.type.trim()) pending.push('Tipo de servicio pendiente para productos');
+  if (cleaning && service.revenue === null) pending.push('Base de productos pendiente');
+  const products = cleaning && service.revenue !== null ? Math.round(service.revenue * priceAt(settings.rates, 'products', service.date) / 100000) : 0;
+  const costs = { personal: Math.round(laborMills / 10), laundry: Math.round(laundryMills / 10), supplies: Math.round(supplyMills / 10), products, other: 0 };
   const expense = Object.values(costs).reduce((sum, amount) => sum + amount, 0);
   return { ...service, costs, expense, result: service.revenue === null ? null : service.revenue - expense, pending, estimated };
 }
@@ -90,7 +97,7 @@ export interface Summary {
   pending: number; estimated: number; services: number;
 }
 function summarize(services: CalculatedService[], expenses: Expense[]): Summary {
-  const costs = { personal: 0, laundry: 0, supplies: 0, other: 0 };
+  const costs = { personal: 0, laundry: 0, supplies: 0, products: 0, other: 0 };
   for (const service of services) for (const key of Object.keys(costs) as Category[]) costs[key] += service.costs[key];
   for (const expense of expenses) costs[expense.category] += expense.cents;
   const revenue = services.reduce((sum, service) => sum + (service.revenue ?? 0), 0);
@@ -118,16 +125,17 @@ export function readSettings(value: unknown): FinanceSettings {
     !data.adjustments || typeof data.adjustments !== 'object' || Array.isArray(data.adjustments)) throw new Error('Formato de copia no válido');
   const number = (n: unknown, max = 1000000000) => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0 && n <= max;
   for (const rate of data.rates) if (!rate || !COST_ITEMS.some(item => item.id === rate.item) || !validDate(rate.date) || !number(rate.mills) ||
+    (rate.item === 'products' && rate.mills > 100000) ||
     (rate.workerId !== undefined && typeof rate.workerId !== 'string')) throw new Error('Tarifa no válida');
   for (const expense of data.expenses) if (!expense || !validDate(expense.date) || !number(expense.cents) ||
-    !['personal', 'laundry', 'supplies', 'other'].includes(expense.category) ||
+    !['personal', 'laundry', 'supplies', 'products', 'other'].includes(expense.category) ||
     ['id', 'label', 'clientId', 'propertyId', 'workerId'].some(key => typeof expense[key] !== 'string')) throw new Error('Gasto no válido');
   if (new Set(data.expenses.map(expense => expense.id)).size !== data.expenses.length) throw new Error('Gastos duplicados');
   for (const adjustment of Object.values(data.adjustments)) {
     if (!adjustment || typeof adjustment !== 'object' || (adjustment.reviewed !== undefined && typeof adjustment.reviewed !== 'boolean')) throw new Error('Ajuste no válido');
-    for (const [key, quantity] of Object.entries(adjustment.quantities || {})) if (key === 'labor' || !COST_ITEMS.some(item => item.id === key) || !number(quantity, 100000)) throw new Error('Cantidad no válida');
+    for (const [key, quantity] of Object.entries(adjustment.quantities || {})) if (!QUANTITY_ITEMS.some(item => item.id === key) || !number(quantity, 100000)) throw new Error('Cantidad no válida');
     for (const minutes of Object.values(adjustment.minutes || {})) if (!number(minutes, 1440)) throw new Error('Horas no válidas');
-    if (adjustment.reviewed && COST_ITEMS.some(item => item.id !== 'labor' && adjustment.quantities?.[item.id] === undefined)) throw new Error('Faltan cantidades revisadas');
+    if (adjustment.reviewed && QUANTITY_ITEMS.some(item => adjustment.quantities?.[item.id] === undefined)) throw new Error('Faltan cantidades revisadas');
   }
   return data;
 }

@@ -8,15 +8,26 @@ const dir = mkdtempSync(join(tmpdir(), 'limpatex-financial-test-'));
 try {
   await build({ stdin: { contents: "export * from './src/features/financial/financialModel'; export * from './src/features/financial/financialSource';", resolveDir: process.cwd(), loader: 'ts' }, outfile: join(dir, 'model.mjs'), bundle: true, platform: 'node', format: 'esm', logLevel: 'silent' });
   const { COST_ITEMS, newSettings, priceAt, setRate, calculateService, analyze, parseAmount, readSettings, buildServices, readAllPages, validDate } = await import(pathToFileURL(join(dir, 'model.mjs')));
-  assert.deepEqual(COST_ITEMS.map(item => item.mills), [15500,550,510,570,247,535,226,226,10537,3159,3159,150,870,890,1910,130]);
+  assert.deepEqual(COST_ITEMS.map(item => item.mills), [15500,550,510,570,247,535,226,226,10537,3159,3159,150,870,890,1910,130,3000]);
   const settings = newSettings();
-  const service = { id: 's', date: '2026-10-06', clientId: 'c', clientName: 'Cliente', propertyId: 'p', propertyName: 'Apartamento', revenue: 10000, revenueEstimated: false,
+  const service = { type: 'limpieza-turistica', id: 's', date: '2026-10-06', clientId: 'c', clientName: 'Cliente', propertyId: 'p', propertyName: 'Apartamento', revenue: 10000, revenueEstimated: false,
     workers: [{ id: 'w1', name: 'Ana', minutes: 60, actual: true }, { id: 'w2', name: 'Bea', minutes: 60, actual: true }], quantities: { pillowcase: 3, bathTowel: 2 } };
   let computed = calculateService(service, settings);
   assert.equal(computed.costs.personal, 3100); // Two people x one hour, never divide actual worked time.
+  assert.equal(computed.costs.products, 300); // 3% of service income, once despite two workers.
+  assert.equal(calculateService({ ...service, revenue: 5000 }, settings).costs.products, 150);
+  assert.equal(calculateService({ ...service, revenue: 12345 }, settings).costs.products, 370);
+  assert.equal(calculateService({ ...service, revenue: 0 }, settings).costs.products, 0);
+  assert.equal(calculateService({ ...service, type: 'check-in' }, settings).costs.products, 0);
+  assert.equal(calculateService({ ...service, type: 'desplazamiento' }, settings).costs.products, 0);
+  assert.equal(calculateService({ ...service, type: 'limpieza-mantenimiento' }, settings).costs.products, 300);
+  assert.ok(calculateService({ ...service, revenue: null }, settings).pending.includes('Base de productos pendiente'));
+  const percentageSettings = { ...settings, rates: [{ item: 'products', date: '2026-11-01', mills: 5000 }] };
+  assert.equal(calculateService(service, percentageSettings).costs.products, 300);
+  assert.equal(calculateService({ ...service, date: '2026-11-01' }, percentageSettings).costs.products, 500);
   assert.equal(computed.costs.laundry, 181); // 3 x .247 + 2 x .535 = 1.811, round only category total.
   assert.ok(computed.pending.length); assert.equal(computed.estimated, true);
-  const quantities = Object.fromEntries(COST_ITEMS.filter(item => item.id !== 'labor').map(item => [item.id, 0]));
+  const quantities = Object.fromEntries(COST_ITEMS.filter(item => item.id !== 'labor' && item.id !== 'products').map(item => [item.id, 0]));
   settings.adjustments.s = { quantities: { ...quantities, pillowcase: 3, bathTowel: 2 }, reviewed: true };
   computed = calculateService(service, settings); assert.deepEqual(computed.pending, []); assert.equal(computed.estimated, false);
   settings.rates = setRate(settings.rates, { item: 'labor', date: '2026-11-01', mills: 20000 });
@@ -35,6 +46,8 @@ try {
   assert.equal(unidentified.total.expense, unidentified.clients.reduce((sum, client) => sum + client.expense, 0) + unidentified.general.expense);
   const worker = analyze([service], settings, { ...filters, workers: ['w1', 'w2'] });
   assert.equal(worker.total.revenue, 10000); assert.equal(worker.services.length, 1); assert.equal(worker.expenses.length, 1);
+  assert.equal(worker.total.costs.products, 300);
+  assert.equal(all.total.costs.products, 300); assert.equal(all.clients[0].costs.products, 300);
   assert.equal(worker.total.costs.personal, 3450); // Retain whole team cost alongside whole service revenue.
   assert.equal(analyze([service], settings, { ...filters, clients: ['c'] }).general.expense, 0);
   assert.equal(analyze([service], settings, { ...filters, properties: ['missing'] }).total.services, 0);
@@ -47,10 +60,11 @@ try {
   assert.equal(validDate('2026-02-30'), false); assert.equal(validDate('2026-10-06'), true);
   assert.deepEqual(readSettings(JSON.parse(JSON.stringify(settings))), settings);
   assert.throws(() => readSettings({ ...settings, rates: [{ item: 'labor', mills: -1, date: service.date }] }));
+  assert.throws(() => readSettings({ ...settings, rates: [{ item: 'products', mills: 100001, date: service.date }] }));
   assert.throws(() => readSettings({ ...settings, expenses: [settings.expenses[0], settings.expenses[0]] }));
   assert.throws(() => readSettings({ ...settings, adjustments: { s: { reviewed: true } } }));
   const property = { id: 'p', nombre: 'Casa', cliente_id: 'c', coste_servicio: 55, duracion_servicio: 120, numero_sabanas: 2, numero_sabanas_pequenas: 1, numero_sabanas_suite: 1, numero_fundas_almohada: 3 };
-  const source = { id: 's', date: service.date, status: 'completed', coste: 0, cliente_id: 'c', propiedad_id: 'p', property: 'Casa', cleaner_id: 'w1', cleaner: 'Ana', start_time: '10:00', end_time: '11:00', task_assignments: [{ cleaner_id: 'w1', cleaner_name: 'Ana' }, { cleaner_id: 'w2', cleaner_name: 'Bea' }], task_reports: [] };
+  const source = { type: 'limpieza-turistica', id: 's', date: service.date, status: 'completed', coste: 0, cliente_id: 'c', propiedad_id: 'p', property: 'Casa', cleaner_id: 'w1', cleaner: 'Ana', start_time: '10:00', end_time: '11:00', task_assignments: [{ cleaner_id: 'w1', cleaner_name: 'Ana' }, { cleaner_id: 'w2', cleaner_name: 'Bea' }], task_reports: [] };
   const mapped = buildServices([source], [property], [{ id: 'c', name: 'Cliente' }])[0];
   assert.equal(mapped.revenue, 0); assert.equal(mapped.revenueEstimated, false); assert.equal(mapped.quantities.doubleSheet, 2);
   assert.equal(calculateService(mapped, newSettings()).costs.personal, 3100);

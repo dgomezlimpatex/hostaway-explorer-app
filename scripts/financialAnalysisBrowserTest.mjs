@@ -9,7 +9,7 @@ const modules = {
   '@/hooks/useAuth': "export const useAuth=()=>({user:{id:'u'}});",
   '@/integrations/supabase/client': `
     const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid'}).format(new Date());
-    const data={tasks:[{id:'t',date,status:'completed',coste:100,cliente_id:'c',propiedad_id:'p',property:'Apartamento Centro',cleaner_id:'w1',cleaner:'Ana',start_time:'10:00',end_time:'11:00',task_assignments:[{cleaner_id:'w1',cleaner_name:'Ana'},{cleaner_id:'w2',cleaner_name:'Bea'}],task_reports:[]}],
+    const data={tasks:[{id:'t',type:'limpieza-turistica',date,status:'completed',coste:100,cliente_id:'c',propiedad_id:'p',property:'Apartamento Centro',cleaner_id:'w1',cleaner:'Ana',start_time:'10:00',end_time:'11:00',task_assignments:[{cleaner_id:'w1',cleaner_name:'Ana'},{cleaner_id:'w2',cleaner_name:'Bea'}],task_reports:[]}],
       properties:[{id:'p',nombre:'Apartamento Centro',cliente_id:'c',coste_servicio:100,duracion_servicio:120,numero_sabanas:2,numero_sabanas_pequenas:0,numero_sabanas_suite:0,numero_fundas_almohada:2,numero_toallas_grandes:2,numero_toallas_pequenas:2,numero_alfombrines:1,amenities_cocina:1,amenities_bano:1,kit_alimentario:1,cantidad_rollos_papel_higienico:2}],clients:[{id:'c',nombre:'Cliente de prueba'},{id:'c2',nombre:'Cliente sin servicios'}],cleaners:[{id:'w1',name:'Ana'},{id:'w2',name:'Bea'}]};
     export const supabase={from(table){const calls=[];const q={select(...a){calls.push(['select',...a]);return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},range(from,to){window.reads=window.reads||[];window.reads.push({table,calls,from,to});return Promise.resolve({data:data[table].slice(from,to+1),error:null})}};return q}};
   `,
@@ -31,6 +31,8 @@ try {
   await expect(page.getByRole('heading', { name: 'Análisis financiero', exact: true })).toBeVisible();
   await expect(page.getByText('100,00 €', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('31,00 €', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Productos de limpieza', { exact: true })).toBeVisible();
+  await expect(page.getByText('3,00 €', { exact: true }).first()).toBeVisible();
   const reads = await page.evaluate(() => window.reads);
   assert.equal(reads.length, 4);
   for (const read of reads) { assert.deepEqual(read.calls.find(call => call[0] === 'eq'), ['eq', 'sede_id', 's']); assert.deepEqual([read.from,read.to], [0,499]); }
@@ -40,6 +42,11 @@ try {
   await page.getByLabel('Precio unitario sin IVA').fill('1,17');
   await page.getByRole('button', { name: 'Guardar tarifa' }).click();
   await expect(page.getByRole('status')).toContainText('guardados');
+  await page.getByLabel('Concepto', { exact: true }).selectOption('products');
+  await page.getByLabel('Porcentaje sobre limpieza').fill('4,2');
+  await page.getByRole('button', { name: 'Guardar tarifa' }).click();
+  await page.getByRole('button', { name: 'General', exact: true }).click();
+  await expect(page.getByText('4,20 €', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Otros gastos', exact: true }).click();
   await page.getByLabel('Concepto del gasto').fill('Alquiler de prueba');
   await page.getByLabel('Importe sin IVA', { exact: true }).fill('50');
