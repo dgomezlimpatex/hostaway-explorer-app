@@ -59,7 +59,8 @@ try {
     notes: '=HYPERLINK("https://fixture.invalid")',
     expectedRevision: 1,
   });
-  const result = await mutate({ action: "confirm", expectedRevision: 2 });
+  await mutate({ action: "add_discard", material: "bath_towels", quantity: 7 });
+  const result = await mutate({ action: "confirm", expectedRevision: 3 });
   let read = await request({ action: "read", ...access });
   assert.equal(read.data.versions[0].email.status, "error");
   const stockBefore = (
@@ -102,6 +103,8 @@ try {
   assert.deepEqual(wb.SheetNames, ["Recuento"]);
   const rows = XLSX.utils.sheet_to_json(wb.Sheets.Recuento, { header: 1 });
   assert.equal(rows.find((row) => row[0] === "Toallas de baño")[1], 235);
+  assert.equal(rows.find((row) => row[0] === "Toallas de baño")[2], 7);
+  assert.ok(sent[1].payload.text.includes("descartes"));
   assert.equal(
     rows.filter((row) => typeof row[1] === "number" && row[0] !== "Versión")
       .length,
@@ -134,10 +137,52 @@ try {
     ).status,
     200,
   );
-  const foreignSede = randomUUID(), foreignWarehouse = randomUUID();
-  await t.db.query('INSERT INTO sedes VALUES($1)', [foreignSede]);
-  await t.db.query("INSERT INTO stock_warehouses(id,sede_id,name) VALUES($1,$2,'Almacén no autorizado')", [foreignWarehouse,foreignSede]);
-  assert.equal((await request({ action: 'admin_read', warehouseId: foreignWarehouse }, 'Bearer fixture-admin-jwt')).status, 403);
+  await mutate({
+    action: "set_discard",
+    material: "bath_towels",
+    quantity: 3,
+    expectedRevision: 3,
+  });
+  await mutate({ action: "confirm", expectedRevision: 4 });
+  assert.equal(
+    (
+      await t.db.query(
+        "SELECT sum(current_quantity)::float AS n FROM stock_levels",
+      )
+    ).rows[0].n,
+    stockBefore,
+  );
+  const revised = XLSX.utils.sheet_to_json(
+    XLSX.read(sent[2].payload.attachments[0].content, { type: "base64" }).Sheets
+      .Recuento,
+    { header: 1 },
+  );
+  assert.deepEqual(
+    revised.find((r) => r[0] === "Toallas de baño"),
+    ["Toallas de baño", 235, 3],
+  );
+  assert.ok(sent[2].payload.subject.includes("ACTUALIZADO"));
+  const adminRead = await request(
+    { action: "admin_read", warehouseId: t.warehouse },
+    "Bearer fixture-admin-jwt",
+  );
+  assert.equal(adminRead.data.receipts[0].discarded_counts.bath_towels, 3);
+  const foreignSede = randomUUID(),
+    foreignWarehouse = randomUUID();
+  await t.db.query("INSERT INTO sedes VALUES($1)", [foreignSede]);
+  await t.db.query(
+    "INSERT INTO stock_warehouses(id,sede_id,name) VALUES($1,$2,'Almacén no autorizado')",
+    [foreignWarehouse, foreignSede],
+  );
+  assert.equal(
+    (
+      await request(
+        { action: "admin_read", warehouseId: foreignWarehouse },
+        "Bearer fixture-admin-jwt",
+      )
+    ).status,
+    403,
+  );
   assert.equal((await request({ action: "logout", ...access })).status, 200);
   assert.equal((await request({ action: "read", ...access })).status, 401);
   console.log(

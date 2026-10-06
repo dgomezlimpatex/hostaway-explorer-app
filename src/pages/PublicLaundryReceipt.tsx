@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import LaundryReceiptReview from "@/components/inventory/LaundryReceiptReview";
 import {
   RECEIPT_MATERIALS,
+  emptyReceiptCounts,
   madridReceiptDate,
   receiptQuantity,
 } from "../../supabase/functions/_shared/laundryReceiptDomain";
@@ -64,9 +64,6 @@ export default function PublicLaundryReceipt() {
   const [inputRevisions, setInputRevisions] = useState<Record<string, number>>(
     {},
   );
-  const [notes, setNotes] = useState("");
-  const [notesDirty, setNotesDirty] = useState(false);
-  const [notesRevision, setNotesRevision] = useState<number | undefined>();
   const readSequence = useRef(0);
   const cancelReads = useCallback(() => {
     readSequence.current++;
@@ -107,12 +104,7 @@ export default function PublicLaundryReceipt() {
     setReviewing(false);
     setInputs({});
     setInputRevisions({});
-    setNotesDirty(false);
-    setNotesRevision(undefined);
   }, [state?.date, state?.receipt?.id]);
-  useEffect(() => {
-    if (!notesDirty) setNotes(state?.receipt?.notes || "");
-  }, [state?.receipt?.notes, notesDirty]);
 
   async function login(event: React.FormEvent) {
     event.preventDefault();
@@ -153,19 +145,16 @@ export default function PublicLaundryReceipt() {
       localStorage.removeItem(pendingKey);
       setPending(null);
       if (operation.payload.material) {
+        const inputKey = `${String(operation.payload.action).includes("discard") ? "discard:" : ""}${String(operation.payload.material)}`;
         setInputs((prev) => ({
           ...prev,
-          [String(operation.payload.material)]: "",
+          [inputKey]: "",
         }));
         setInputRevisions((prev) => {
           const next = { ...prev };
-          delete next[String(operation.payload.material)];
+          delete next[inputKey];
           return next;
         });
-      }
-      if (operation.payload.action === "notes") {
-        setNotesDirty(false);
-        setNotesRevision(undefined);
       }
       await refresh();
     } catch (err) {
@@ -196,10 +185,14 @@ export default function PublicLaundryReceipt() {
     setPending(operation);
     await sendPending(operation);
   }
-  function quantityAction(material: string, action: "add" | "set") {
+  function quantityAction(
+    material: string,
+    action: "add" | "set" | "add_discard",
+  ) {
     try {
-      const quantity = receiptQuantity(inputs[material] || "");
-      if (action === "add" && quantity === 0)
+      const inputKey = `${action === "add_discard" ? "discard:" : ""}${material}`;
+      const quantity = receiptQuantity(inputs[inputKey] || "");
+      if (action !== "set" && quantity === 0)
         throw new Error("Introduce una cantidad mayor que cero para sumar.");
       if (
         action === "set" &&
@@ -211,7 +204,7 @@ export default function PublicLaundryReceipt() {
         material,
         quantity,
         expectedRevision:
-          inputRevisions[material] ?? state?.receipt?.revision ?? 0,
+          inputRevisions[inputKey] ?? state?.receipt?.revision ?? 0,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cantidad inválida");
@@ -219,16 +212,23 @@ export default function PublicLaundryReceipt() {
   }
   const locked = busy || Boolean(pending);
   const latest = state?.versions[0];
+  const discardedCounts =
+    state?.receipt?.discarded_counts ?? emptyReceiptCounts();
   const changed =
     !latest ||
     RECEIPT_MATERIALS.some(
       ([key]) => latest.snapshot.counts[key] !== state?.receipt?.counts[key],
     ) ||
+    RECEIPT_MATERIALS.some(
+      ([key]) =>
+        (latest.snapshot.discarded_counts?.[key] ?? 0) !== discardedCounts[key],
+    ) ||
     latest.snapshot.notes !== state?.receipt?.notes;
   const lastEditable = state?.operations.find(
     (op) =>
-      ["add", "set"].includes(op.payload.action) &&
-      op.revision === state.receipt?.revision,
+      ["add", "set", "add_discard", "set_discard"].includes(
+        op.payload.action,
+      ) && op.revision === state.receipt?.revision,
   );
   const unsubmitted = Object.values(inputs).some((value) => value !== "");
 
@@ -354,7 +354,6 @@ export default function PublicLaundryReceipt() {
                     localStorage.removeItem(pendingKey);
                     setPending(null);
                     setInputRevisions({});
-                    setNotesRevision(undefined);
                     await refresh().catch((err) => setError(err.message));
                   }}
                 >
@@ -419,6 +418,19 @@ export default function PublicLaundryReceipt() {
                     {reviewing ? (
                       <LaundryReceiptReview
                         counts={state.receipt.counts}
+                        discardedCounts={discardedCounts}
+                        onCorrectDiscard={(
+                          material,
+                          quantity,
+                          expectedRevision,
+                        ) =>
+                          void mutate({
+                            action: "set_discard",
+                            material,
+                            quantity,
+                            expectedRevision,
+                          })
+                        }
                         revision={state.receipt.revision}
                         notes={state.receipt.notes}
                         locked={locked}
@@ -533,44 +545,69 @@ export default function PublicLaundryReceipt() {
                         >
                           Deshacer última suma o corrección
                         </Button>
-                        <section className="space-y-3 rounded-xl border bg-white p-4">
-                          <label
-                            htmlFor="receipt-notes"
-                            className="font-semibold"
-                          >
-                            Observaciones e incidencias
-                          </label>
-                          <p className="text-xs text-slate-600">
-                            Cuenta únicamente ropa limpia aceptada. Anota aquí
-                            prendas rechazadas.
+                        <details className="rounded-xl border bg-white p-3">
+                          <summary className="cursor-pointer py-2 text-sm font-semibold">
+                            DESCARTES
+                          </summary>
+                          <p className="mb-3 text-xs text-slate-600">
+                            Ropa sucia, rota o rechazada para devolver a
+                            lavandería. No suma al inventario y se incluye en el
+                            Excel.
                           </p>
-                          <Textarea
-                            id="receipt-notes"
-                            maxLength={2000}
-                            disabled={locked}
-                            value={notes}
-                            onChange={(e) => {
-                              setNotes(e.target.value);
-                              setNotesDirty(true);
-                              if (notesRevision === undefined)
-                                setNotesRevision(state.receipt!.revision);
-                            }}
-                          />
-                          <Button
-                            variant="outline"
-                            disabled={locked || notes === state.receipt.notes}
-                            onClick={() =>
-                              void mutate({
-                                action: "notes",
-                                notes,
-                                expectedRevision:
-                                  notesRevision ?? state.receipt?.revision,
-                              })
-                            }
-                          >
-                            Guardar observaciones
-                          </Button>
-                        </section>
+                          <div className="space-y-2">
+                            {RECEIPT_MATERIALS.map(([key, label]) => (
+                              <section
+                                key={key}
+                                className="rounded-lg border p-3"
+                              >
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                  <label
+                                    htmlFor={`discard-${key}`}
+                                    className="text-sm font-semibold"
+                                  >
+                                    {label}
+                                  </label>
+                                  <output
+                                    aria-label={`Total descartes ${label}`}
+                                    className="text-2xl font-bold tabular-nums text-primary"
+                                  >
+                                    {discardedCounts[key]}
+                                  </output>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Input
+                                    id={`discard-${key}`}
+                                    aria-label={`Cantidad descartes ${label}`}
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    placeholder="Cantidad de esta tanda"
+                                    value={inputs[`discard:${key}`] || ""}
+                                    disabled={locked}
+                                    className="h-11 min-w-0 text-base"
+                                    onChange={(e) =>
+                                      setInputs((prev) => ({
+                                        ...prev,
+                                        [`discard:${key}`]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                  <Button
+                                    className="h-11 px-4"
+                                    aria-label={`Añadir descartes ${label}`}
+                                    disabled={
+                                      locked || !inputs[`discard:${key}`]
+                                    }
+                                    onClick={() =>
+                                      quantityAction(key, "add_discard")
+                                    }
+                                  >
+                                    Añadir
+                                  </Button>
+                                </div>
+                              </section>
+                            ))}
+                          </div>
+                        </details>
                         {unsubmitted && (
                           <p className="text-sm text-amber-800">
                             Hay cantidades escritas sin añadir. Añádelas o vacía
@@ -579,11 +616,7 @@ export default function PublicLaundryReceipt() {
                         )}
                         <Button
                           className="h-auto min-h-14 w-full whitespace-normal py-4 text-base"
-                          disabled={
-                            locked ||
-                            unsubmitted ||
-                            notes !== state.receipt.notes
-                          }
+                          disabled={locked || unsubmitted}
                           onClick={() => {
                             setReviewing(true);
                             window.scrollTo({ top: 0 });

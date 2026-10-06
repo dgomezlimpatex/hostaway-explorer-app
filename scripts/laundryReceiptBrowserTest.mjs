@@ -75,7 +75,7 @@ try {
       if (
         dropNextAdd &&
         body.action === "mutate" &&
-        body.payload.action === "add"
+        ["add", "add_discard"].includes(body.payload.action)
       ) {
         dropNextAdd = false;
         return route.abort("connectionfailed");
@@ -130,6 +130,67 @@ try {
       page.getByLabel("Cantidad Toallas de baño", { exact: true }).fill(""),
     );
   }
+  assert.equal(
+    await page
+      .getByLabel("Cantidad descartes Toallas de baño", { exact: true })
+      .isVisible(),
+    false,
+    "Discard rows closed by default",
+  );
+  assert.equal(await page.getByLabel("Observaciones e incidencias").count(), 0);
+  await page.locator("summary").filter({ hasText: "DESCARTES" }).click();
+  assert.equal(
+    await page.locator('input[aria-label^="Cantidad descartes "]').count(),
+    9,
+  );
+  for (const [quantity, total] of [
+    [5, 5],
+    [7, 12],
+  ]) {
+    await page
+      .getByLabel("Cantidad descartes Toallas de baño", { exact: true })
+      .fill(String(quantity));
+    await page
+      .getByRole("button", {
+        name: "Añadir descartes Toallas de baño",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByLabel("Total descartes Toallas de baño", { exact: true })
+      .filter({ hasText: String(total) })
+      .waitFor();
+  }
+  dropNextAdd = true;
+  await page
+    .getByLabel("Cantidad descartes Toallas de baño", { exact: true })
+    .fill("3");
+  await page
+    .getByRole("button", {
+      name: "Añadir descartes Toallas de baño",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByText("Operación pendiente de guardar", { exact: true })
+    .waitFor();
+  await page.reload();
+  await page.getByRole("button", { name: "Recuperar operación" }).click();
+  await page
+    .getByText("Operación pendiente de guardar", { exact: true })
+    .waitFor({ state: "hidden" });
+  await page.locator("summary").filter({ hasText: "DESCARTES" }).click();
+  assert.equal(
+    await page
+      .getByLabel("Total descartes Toallas de baño", { exact: true })
+      .textContent(),
+    "15",
+    "Discard response recovery must not duplicate",
+  );
+  await page.screenshot({
+    path: join(artifacts, "discards-mobile.png"),
+    fullPage: true,
+  });
   await page
     .getByRole("button", { name: "Revisar recuento", exact: true })
     .click();
@@ -151,6 +212,38 @@ try {
     ).rows[0]?.n ?? 0,
     0,
   );
+  assert.equal(
+    await page
+      .getByRole("button", {
+        name: "Editar descartes Toallas de baño",
+        exact: true,
+      })
+      .isVisible(),
+    false,
+  );
+  await page.locator("summary").filter({ hasText: "DESCARTES" }).click();
+  await page
+    .getByRole("button", {
+      name: "Editar descartes Toallas de baño",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByLabel("Total corregido descartes Toallas de baño", { exact: true })
+    .fill("10");
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Confirmar y enviar Excel", exact: true })
+      .isDisabled(),
+    true,
+  );
+  await page
+    .getByRole("button", { name: "Guardar corrección", exact: true })
+    .click();
+  await page
+    .getByLabel("Revisado descartes Toallas de baño", { exact: true })
+    .filter({ hasText: "10" })
+    .waitFor();
   await page.screenshot({
     path: join(artifacts, "review-mobile.png"),
     fullPage: true,
@@ -172,6 +265,21 @@ try {
     XLSX.utils
       .sheet_to_json(wb.Sheets.Recuento, { header: 1 })
       .find((r) => r[0] === "Toallas de baño")[1],
+    235,
+  );
+  assert.deepEqual(
+    XLSX.utils
+      .sheet_to_json(wb.Sheets.Recuento, { header: 1 })
+      .find((r) => r[0] === "Toallas de baño"),
+    ["Toallas de baño", 235, 10],
+  );
+  assert.equal(
+    (
+      await t.db.query(
+        "SELECT current_quantity::float AS n FROM stock_levels WHERE product_id=$1",
+        [t.productMap.bath_towels],
+      )
+    ).rows[0].n,
     235,
   );
   await page.getByRole("button", { name: "Volver al recuento" }).click();

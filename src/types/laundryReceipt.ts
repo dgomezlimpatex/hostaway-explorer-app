@@ -21,6 +21,7 @@ export type Receipt = {
   id: string;
   receipt_date: string;
   counts: ReceiptCounts;
+  discarded_counts?: ReceiptCounts;
   notes: string;
   revision: number;
   latest_version: number;
