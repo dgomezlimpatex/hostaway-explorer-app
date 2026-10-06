@@ -392,10 +392,10 @@ export const CleaningPlanningPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-paper p-3 text-ink md:p-6">
-      {(proposalState || calendarNavigation) && <div className="mx-auto w-full max-w-[1920px]"><PlanningDayNavigation date={date} disabled={isApplyingProposal || isSavingDay} onChange={handleCalendarDateChange} /></div>}
+    <div className="min-h-screen bg-paper p-3 text-ink md:p-3">
+      {(proposalState || calendarNavigation) && <div className="mx-auto w-full max-w-none"><PlanningDayNavigation date={date} disabled={isApplyingProposal || isSavingDay} onChange={handleCalendarDateChange} /></div>}
       {proposalState ? (
-        <div className="mx-auto w-full max-w-[1920px]">
+        <div className="mx-auto w-full max-w-none">
           <AssignmentProposalPanel
             key={dayKey}
             draftScopeKey={dayKey}
@@ -419,7 +419,7 @@ export const CleaningPlanningPage = () => {
           />
         </div>
       ) : calendarNavigation ? (
-        <div className="mx-auto max-w-[1920px] rounded-lg border bg-white p-8" role="status">
+        <div className="mx-auto max-w-none rounded-lg border bg-white p-8" role="status">
           {isError || buildingDataQuery.isError ? <><p>No se pudo cargar este día. Tu borrador anterior se conserva.</p><Button variant="outline" onClick={()=>{void refetch();void buildingDataQuery.refetch();}}>Reintentar</Button></> : 'Cargando calendario…'}
         </div>
       ) : (

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type Keyboard
 import { usePlanningCalendarWeek } from '@/hooks/usePlanningCalendarWeek';
 import { planningCalendarWeeklyHours } from '@/utils/planningCalendarWeeklyHours';
 import { PLANNING_CARD_HEIGHT, PLANNING_LANE_STEP, planningTaskLanes } from '@/utils/planningTaskLanes';
+import { planningPixelsPerMinute, planningDropMinute } from '@/utils/planningViewport';
 import {
   DndContext,
   KeyboardSensor,
@@ -102,9 +103,8 @@ interface CalendarItem {
   assignmentRole?: AssignmentProposal['assignmentRole'];
 }
 
-const PIXELS_PER_MINUTE = 2.4;
+const WORKER_COLUMN_WIDTH = 240;
 const SNAP_MINUTES = 15;
-const QUARTER_HOUR_GRID_SIZE = SNAP_MINUTES * PIXELS_PER_MINUTE;
 const UNASSIGNED_PLACEMENT_ID = '__unassigned__';
 
 type PlannerTaskCardStatus = 'conflict' | 'saved' | 'assigned' | 'manual' | 'proposal' | 'unassigned';
@@ -209,23 +209,6 @@ const getActivatorClientX = (event: Event): number | undefined => {
     );
   }
   return undefined;
-};
-
-const getDropStartMinute = (
-  finalPointerX: number | undefined,
-  dropZoneLeft: number,
-  timelineStartMinute: number,
-  timelineEndMinute: number,
-  fallbackMinute: number,
-): number => {
-  if (finalPointerX === undefined) return fallbackMinute;
-  const timelineOffset = Math.max(0, finalPointerX - dropZoneLeft);
-  const rawMinute = timelineStartMinute + timelineOffset / PIXELS_PER_MINUTE;
-  const snappedMinute = Math.round(rawMinute / SNAP_MINUTES) * SNAP_MINUTES;
-  return Math.max(
-    timelineStartMinute,
-    Math.min(timelineEndMinute, snappedMinute),
-  );
 };
 
 const toMinutes = (value?: string): number => {
@@ -665,6 +648,14 @@ export const PlanningProposalCalendar = ({
   const weeklyQuery = usePlanningCalendarWeek(selectedDate);
   const hoursScrollRef = useRef<HTMLDivElement>(null);
   const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
+  useEffect(() => {
+    const viewport = timelineScrollRef.current;
+    if (!viewport) return;
+    const observer = new ResizeObserver(() => setTimelineViewportWidth(viewport.clientWidth));
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
   const mobileTrayRef = useRef<HTMLDivElement>(null);
   const [reassignment, setReassignment] = useState<SelectedTask | null>(null);
   const [reassignmentOrigin, setReassignmentOrigin] = useState<{ x: number; y: number; scale: number } | null>(null);
@@ -928,10 +919,11 @@ export const PlanningProposalCalendar = ({
       ),
     };
   }, [dayItems, effectiveAvailability, selectedDate, visibleCleaners]);
-  const timelineWidth = Math.max(
-    760,
-    (bounds.end - bounds.start) * PIXELS_PER_MINUTE,
+  const pixelsPerMinute = planningPixelsPerMinute(
+    Math.max(0, timelineViewportWidth - WORKER_COLUMN_WIDTH), bounds.end - bounds.start,
   );
+  const quarterHourGridSize = SNAP_MINUTES * pixelsPerMinute;
+  const timelineWidth = (bounds.end - bounds.start) * pixelsPerMinute;
   const timeMarkers = useMemo(() => {
     const markers: number[] = [];
     for (let minute = bounds.start; minute <= bounds.end; minute += 60)
@@ -1011,12 +1003,13 @@ export const PlanningProposalCalendar = ({
     );
     setDragHover({
       cleanerId: String(over.id).slice('cleaner:'.length),
-      startMinute: getDropStartMinute(
+      startMinute: planningDropMinute(
         pointerX === undefined ? undefined : pointerX + delta.x,
         over.rect.left,
         bounds.start,
         bounds.end,
         fallbackMinute,
+        pixelsPerMinute,
       ),
     });
   };
@@ -1049,12 +1042,13 @@ export const PlanningProposalCalendar = ({
     const dropMinute =
       cleanerPrefix === 'mobile-cleaner:'
         ? fallbackMinute
-        : getDropStartMinute(
+        : planningDropMinute(
             pointerX === undefined ? undefined : pointerX + delta.x,
             over.rect.left,
             bounds.start,
             bounds.end,
             fallbackMinute,
+            pixelsPerMinute,
           );
     applyPlacement(
       { taskId: payload.taskId, proposalIndex: payload.proposalIndex, sourceCleanerId: payload.sourceCleanerId },
@@ -1378,7 +1372,7 @@ export const PlanningProposalCalendar = ({
       }}
       onDragEnd={handleDragEnd}
     >
-      <div className="space-y-4">
+      <div className="space-y-3">
         {isStale && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             Este plan está desactualizado. Regenera antes de guardar.
@@ -1660,7 +1654,7 @@ export const PlanningProposalCalendar = ({
         {/* Leyenda y ayuda: sin esto, los colores y las dos formas de mover una limpieza no se entienden. */}
         <div
           aria-label="Cómo leer el tablero"
-          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-white px-4 py-3 text-xs text-ink-3"
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-white px-3 py-2 text-xs text-ink-3"
         >
           <span className="font-semibold text-ink">Cómo leer el tablero</span>
           <span className="inline-flex items-center gap-2">
@@ -1684,7 +1678,7 @@ export const PlanningProposalCalendar = ({
           </span>
         </div>
 
-        <div data-planning-board className="hidden min-h-[620px] min-w-0 items-start gap-3 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
+        <div data-planning-board className="hidden min-h-0 min-w-0 items-start gap-3 lg:grid lg:grid-cols-[200px_minmax(0,1fr)]">
           <aside aria-label="Tareas sin asignar" data-planning-unassigned className="sticky top-4 flex min-w-0 max-h-[calc(100dvh-12rem)] min-h-0 flex-col self-start rounded-xl border border-line bg-paper shadow-sm lg:col-start-1 lg:row-start-1">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <div>
@@ -1758,7 +1752,7 @@ export const PlanningProposalCalendar = ({
 
           <section
             aria-label="Ver calendario por horas"
-            className="min-w-0 rounded-lg border border-line bg-white shadow-sm lg:col-start-2 lg:row-start-1"
+            className="flex max-h-[calc(100dvh-19rem)] min-h-[320px] min-w-0 flex-col rounded-lg border border-line bg-white shadow-sm lg:col-start-2 lg:row-start-1"
           >
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <div>
@@ -1789,7 +1783,7 @@ export const PlanningProposalCalendar = ({
                 )}
               </div>
             </div>
-            <div data-planning-hours-sticky className="sticky top-0 z-30 bg-paper shadow-sm">
+            <div data-planning-hours-sticky className="sticky top-0 z-30 shrink-0 bg-paper shadow-sm">
               <div
                 ref={hoursScrollRef}
                 data-planning-hours-scroll
@@ -1800,16 +1794,16 @@ export const PlanningProposalCalendar = ({
               >
               <div className="min-w-max">
                 <div className="flex h-11 border-b border-line bg-paper">
-                  <div className="sticky left-0 z-20 flex w-[300px] shrink-0 items-center border-r border-line bg-paper px-3 text-xs font-bold uppercase tracking-[0.14em] text-ink-3">
+                  <div className="sticky left-0 z-20 flex w-[240px] shrink-0 items-center border-r border-line bg-paper px-3 text-xs font-bold uppercase tracking-[0.14em] text-ink-3">
                     Trabajadora
                   </div>
                   <div className="relative" style={{ width: timelineWidth }}>
                     {timeMarkers.map((minute) => (
                       <span
                         key={minute}
-                        className="absolute top-3 -translate-x-1/2 text-xs font-semibold text-ink-3"
+                        className={`absolute top-3 text-xs font-semibold text-ink-3 ${minute === bounds.start ? '' : '-translate-x-1/2'}`}
                         style={{
-                          left: (minute - bounds.start) * PIXELS_PER_MINUTE,
+                          left: (minute - bounds.start) * pixelsPerMinute,
                         }}
                       >
                         {fromMinutes(minute)}
@@ -1823,7 +1817,7 @@ export const PlanningProposalCalendar = ({
             <div
               ref={timelineScrollRef}
               data-planning-timeline-scroll
-              className="overflow-x-auto rounded-b-2xl"
+              className="min-h-0 overflow-auto rounded-b-2xl"
               onScroll={(event) => {
                 if (hoursScrollRef.current) hoursScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
               }}
@@ -1840,7 +1834,7 @@ export const PlanningProposalCalendar = ({
                       .sort(
                         (left, right) => left.startMinute - right.startMinute,
                       );
-                    const layout = planningTaskLanes(cleanerItems, bounds.start, PIXELS_PER_MINUTE);
+                    const layout = planningTaskLanes(cleanerItems, bounds.start, pixelsPerMinute);
                     const availability = effectiveAvailability.find(
                       (item) =>
                         item.date === selectedDate &&
@@ -1856,7 +1850,7 @@ export const PlanningProposalCalendar = ({
                         key={cleaner.id}
                         className="flex min-h-[92px] border-b border-[#310984]/8 last:border-b-0"
                       >
-                        <div className="sticky left-0 z-10 flex w-[300px] shrink-0 items-center gap-2 border-r border-line bg-white px-3 py-2">
+                        <div className="sticky left-0 z-10 flex w-[240px] shrink-0 items-center gap-2 border-r border-line bg-white px-3 py-2">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-line-soft text-xs font-bold text-brand">
                             {cleaner.name
                               .split(' ')
@@ -1904,7 +1898,7 @@ export const PlanningProposalCalendar = ({
                               backgroundColor: availability ? '#f8fafc' : '#ffffff',
                               backgroundImage:
                                 'linear-gradient(to right, rgba(49,9,132,0.045) 1px, transparent 1px), linear-gradient(to right, rgba(49,9,132,0.12) 1px, transparent 1px)',
-                              backgroundSize: `${QUARTER_HOUR_GRID_SIZE}px 100%, ${60 * PIXELS_PER_MINUTE}px 100%`,
+                              backgroundSize: `${quarterHourGridSize}px 100%, ${60 * pixelsPerMinute}px 100%`,
                             }}
                           >
                             <WorkerAvailabilityBands availability={availability} bounds={bounds} />
@@ -1915,8 +1909,8 @@ export const PlanningProposalCalendar = ({
                                 style={{
                                   left:
                                     (dragHover.startMinute - bounds.start) *
-                                    PIXELS_PER_MINUTE,
-                                  width: QUARTER_HOUR_GRID_SIZE,
+                                    pixelsPerMinute,
+                                  width: quarterHourGridSize,
                                 }}
                               />
                             )}
