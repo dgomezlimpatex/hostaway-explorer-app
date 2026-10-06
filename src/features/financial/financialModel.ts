@@ -108,7 +108,7 @@ export function analyze(services: FinancialService[], settings: FinanceSettings,
     match(filters.properties, expense.propertyId) && match(filters.workers, expense.workerId));
   const ids = [...new Set([...selected.map(service => service.clientId), ...expenses.filter(expense => expense.clientId).map(expense => expense.clientId)])];
   const clients = ids.map(id => ({ id, name: services.find(service => service.clientId === id)?.clientName || 'Cliente sin servicios en este periodo',
-    ...summarize(selected.filter(service => service.clientId === id), expenses.filter(expense => expense.clientId === id)) }));
+    ...summarize(selected.filter(service => service.clientId === id), expenses.filter(expense => !!id && expense.clientId === id)) }));
   return { services: selected, expenses, clients, total: summarize(selected, expenses), general: summarize([], expenses.filter(expense => !expense.clientId)) };
 }
 // Validate imported/local JSON before it can participate in a financial calculation.

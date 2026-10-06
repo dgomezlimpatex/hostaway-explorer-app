@@ -31,6 +31,8 @@ try {
     { id: 'e2', date: service.date, label: 'Extra', category: 'other', cents: 1000, clientId: 'c', propertyId: 'p', workerId: 'w1' }];
   const all = analyze([service], settings, filters);
   assert.equal(all.total.revenue, 10000); assert.equal(all.general.expense, 5000); assert.equal(all.total.expense, all.clients[0].expense + all.general.expense);
+  const unidentified = analyze([{ ...service, clientId: '', clientName: 'Sin cliente identificado' }], settings, filters);
+  assert.equal(unidentified.total.expense, unidentified.clients.reduce((sum, client) => sum + client.expense, 0) + unidentified.general.expense);
   const worker = analyze([service], settings, { ...filters, workers: ['w1', 'w2'] });
   assert.equal(worker.total.revenue, 10000); assert.equal(worker.services.length, 1); assert.equal(worker.expenses.length, 1);
   assert.equal(worker.total.costs.personal, 3450); // Retain whole team cost alongside whole service revenue.
