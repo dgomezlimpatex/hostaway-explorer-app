@@ -1,12 +1,12 @@
 
 import { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useVerifyPortalShortCode, useVerifyPortalToken, useAuthenticatePortal, extractShortCodeFromIdentifier } from '@/hooks/useClientPortal';
 import { PortalSession } from '@/types/clientPortal';
 import { ClientPortalAuth } from '@/components/client-portal/ClientPortalAuth';
 import { ClientPortalDashboard } from '@/components/client-portal/ClientPortalDashboard';
-import { Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 
 const SESSION_KEY = 'client_portal_session';
 const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
@@ -169,9 +169,18 @@ const ClientPortal = () => {
   return (
     <>
       {session.isAdminBypass && (
-        <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-xs px-4 py-2 flex items-center justify-center gap-2">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          Estás viendo este portal como administrador (acceso temporal).
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-xs px-4 py-3 flex flex-col sm:flex-row sm:justify-between items-center gap-3">
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+            Estás viendo este portal como administrador (acceso temporal).
+          </span>
+          <Link
+            to="/admin/client-portals"
+            className="inline-flex min-h-9 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+          >
+            <ArrowLeft className="h-4 w-4 shrink-0" />
+            Volver a portales de clientes
+          </Link>
         </div>
       )}
       <ClientPortalDashboard
@@ -184,4 +193,3 @@ const ClientPortal = () => {
 };
 
 export default ClientPortal;
-

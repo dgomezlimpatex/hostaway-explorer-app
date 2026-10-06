@@ -1,0 +1,21 @@
+{
+  "request": "Permitir al administrador volver directamente desde el portal de un cliente a la página de portales de clientes.",
+  "reason": "Añade un enlace interno a /admin/client-portals dentro de la franja administrativa ya existente, con la misma condición session.isAdminBypass. Navega con React Router en la misma pestaña. No cambia la autenticación, la sesión, los permisos, el backend ni las acciones del portal.",
+  "verification": "Prueba Node ejecuta el componente ClientPortal real con fixtures locales y verifica destino, misma pestaña, aparición solo en sesión administrativa, conservación del dashboard, ausencia para clientes con PIN, carga y error, y ninguna acción de sesión/datos. Navegador con React y Router reales: ida y vuelta en la misma pestaña, vista móvil 390px sin desbordamiento y enlace ausente en sesión de cliente. Build correcto, tipos app conservan exactamente 102 diagnósticos, Node cero, lint conserva un any preexistente del archivo sin errores nuevos, lint de prueba limpio. Regresiones del listado, visibilidad y operativa del portal correctas. No se crearon tokens ni se escribieron datos reales durante las pruebas.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/clientPortalReturnTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "f0244552dd26cdf12047f8330fac3cc38f530ba9740fb706c4d79cda9ddf6a20"
+}
