@@ -1,0 +1,21 @@
+{
+  "request": "Dividir las horas totales entre las personas asignadas siempre que una tarea la realicen dos o más personas: nueve horas entre tres personas son tres por persona.",
+  "reason": "Corrige el cálculo local automático de personal solicitado. Usa duración total de propiedad, duración de tarea si falta y finalmente intervalo, dividido por equipo único. La propiedad prevalece porque la duración guardada por el planificador en tarea puede estar ya repartida. No usa apertura/cierre del parte para sustituir las horas; mantiene correcciones locales manuales por persona. No cambia planificación, asignaciones, partes ni datos reales.",
+  "verification": "Modelo y adaptador reales: nueve horas con una/dos/tres personas mantienen nueve horas de equipo y 139,50 euros a 15,50/h; duración ya repartida en tarea no se divide dos veces; fracciones mantienen total sin inflación por redondeo; fallback de duración/intervalo, valores inválidos, tiempos de parte completo/parcial no cambian el reparto y ajuste manual específico prevalece. Regresiones NOT COUNT, fechas, cero/ingreso pendiente, tarifas de propiedad, salario y filtros pasan. Navegador real con lector simulado sin red: dos horas totales y dos personas suman 31 euros aunque el intervalo sea de dos horas; filtros, tarifas, edición, recarga y escritorio/móvil correctos. Build/lint/Node pasan; mismos 102 errores heredados de app, ninguno nuevo. Los consumos de lavandería/amenities siguen estimados y no se modifica esa regla.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialAnalysisTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "930342a0e87aa627f667fc9d9ebc7fa09dc0cdb1a9cc2d1611dd10a03660c43a"
+}
