@@ -46,4 +46,3 @@ export const ManagementAppLayout = () => {
 };
 
 export default ManagementAppLayout;
-

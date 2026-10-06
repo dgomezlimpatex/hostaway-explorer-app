@@ -4,7 +4,7 @@
 
 Se han recuperado las mejoras sin publicar de la copia «APP GESTION LIMPATEX - Optimizacion 2026-09-29». Los archivos modificados se han combinado usando como referencia su versión del índice de Git, para separar la optimización de los cambios de producción que ya contenía esa copia.
 
-La adaptación parte de `origin/main` en `4828539e9de00765c4bfaf043c755a408c64d13d`. El 6 de octubre se verificó que ambos dominios canónicos servían `dpl_97Sm9CAzEo9qjz7PoAz3BQczVc5d`, READY, con ese mismo commit en sus metadatos. Se conservan la corrección reciente de acceso `passwordSignIn`, el layout actual de gestión, los controles del planificador y las demás pantallas actuales.
+La adaptación parte de `origin/main` en `4828539e9de00765c4bfaf043c755a408c64d13d`. El 6 de octubre se verificó que ambos dominios canónicos servían `dpl_97Sm9CAzEo9qjz7PoAz3BQczVc5d`, READY, con ese mismo commit en sus metadatos. La huella de fuente del commit base coincide con la registrada por producción: `3a6f88f583b49d1faab5babf7d262fa8e1b6541f309d6901923ee375c8e945b3`. Se conservan la corrección reciente de acceso `passwordSignIn`, el layout actual de gestión, los controles del planificador y las demás pantallas actuales.
 
 Las copias originales permanecen intactas. El paquete no importa la planificación, la cola de correos ni las migraciones pendientes de la copia antigua.
 

@@ -253,4 +253,3 @@ try {
   assert.ok(temporary.includes('limpatex-cleaner-test-'));
   await rm(temporary,{recursive:true,force:true});
 }
-
