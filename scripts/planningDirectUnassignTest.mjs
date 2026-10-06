@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {createRequire} from 'node:module';
+import vm from 'node:vm';
+const require=createRequire(import.meta.url),realReact=require('react');
+const slots=[];let hookIndex=0,calls=0,saved=0,closed=0,release;
+const react={...realReact,useState(initial){const i=hookIndex++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return [slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value}];},useRef(initial){const i=hookIndex++;return slots[i]??(slots[i]={current:initial});},useEffect(){},useMemo(fn){return fn()}};
+const actions={isSavingQuickAction:false,unassignTaskAsync:async()=>{calls++;await new Promise(resolve=>{release=resolve})}};
+const result=await build({entryPoints:['src/components/cleaning-planning/TaskQuickActionsDialog.tsx'],bundle:true,write:false,platform:'node',format:'cjs',packages:'external',jsx:'automatic',plugins:[{name:'offline-actions',setup(plugin){plugin.onResolve({filter:/^@\/hooks\/useCleaningPlanningActions$/},()=>({path:'actions',namespace:'fixture'}));plugin.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:'export const useCleaningPlanningActions=()=>globalThis.actions;'}));}}]});
+const context=vm.createContext({module:{exports:{}},require:name=>name==='react'?react:require(name),actions});
+vm.runInContext(result.outputFiles[0].text,context);
+const {TaskQuickActionsDialog}=context.module.exports;
+const props={open:true,task:{id:'task',date:'2026-10-11',startTime:'09:00',endTime:'10:00',property:'Ejemplo',cleanerId:'worker'},cleaners:[{id:'worker',name:'Ejemplo',isActive:true}],onSaved:id=>{assert.equal(id,'task');saved++},onOpenChange:open=>{assert.equal(open,false);closed++}};
+const nodes=tree=>!tree||typeof tree!=='object'?[]:[tree,...[tree.props?.children].flat(Infinity).flatMap(nodes)];
+const render=()=>{hookIndex=0;return nodes(TaskQuickActionsDialog(props))};
+const unassign=tree=>tree.find(n=>n.props?.onClick&&[n.props.children].flat().includes('Desasignar la tarea'));
+let tree=render();assert.ok(unassign(tree),'One unassignment button, no confirmation step');
+const click=unassign(tree).props.onClick;
+const first=click();await click();assert.equal(calls,1,'First click starts saving; repeated click cannot duplicate it');
+tree=render();const pending=tree.find(n=>[n.props?.children].flat().includes('Desasignando…'));
+assert.equal(pending.props.disabled,true);assert.equal(pending.props['aria-busy'],true);
+release();await first;assert.equal(saved,1);assert.equal(closed,1);
+// A failure leaves the dialog usable and does not claim success or close it.
+actions.unassignTaskAsync=async()=>{calls++;throw new Error('Local simulated failure')};
+await unassign(render()).props.onClick();assert.equal(saved,1);assert.equal(closed,1);assert.equal(unassign(render()).props.disabled,false);
+actions.unassignTaskAsync=async()=>{calls++};await unassign(render()).props.onClick();assert.equal(saved,2);assert.equal(closed,2);
+assert.equal(calls,3,'Retry is permitted after a failed attempt');
+console.log('planning-direct-unassign: OK (actual component, one click, pending lock, no duplicates, failure/retry; mocked actions, no network)');

@@ -23,7 +23,6 @@ try {
     await page.getByRole('button',{name:'Dejar sin asignar',exact:true}).click();
     await expect(page.getByRole('dialog',{name:'Apartamento Luna'})).toBeVisible();
     await page.getByRole('button',{name:'Desasignar la tarea',exact:true}).click();
-    await page.getByRole('button',{name:'Sí, quitar asignación',exact:true}).click();
     await expect(page.getByText('Los datos cambiaron.',{exact:true})).toHaveCount(0);
     await page.locator('[data-planner-task-id="existing-1"] [data-planner-primary-action]:visible').click();
     await expect(page.getByRole('dialog',{name:'Colocar tarea'})).toBeVisible();
