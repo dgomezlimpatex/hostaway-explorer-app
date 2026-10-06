@@ -38,4 +38,6 @@ const modal = await readFile('src/features/cleaner/CleanerTaskReportModal.tsx', 
 assert.match(modal, /<CleanerTaskHeaderActions property=\{bundle\.data\?\.property\} taskNotes=\{task\.notes\}/);
 assert.doesNotMatch(modal, /<CleanerPropertyDetails|<CleanerSyncStatus/);
 assert.doesNotMatch(modal, /Pulsa iniciar cuando empieces la limpieza/);
+assert.doesNotMatch(modal, /Notas de la limpieza|Algo que coordinación deba saber|Avance guardado en este móvil|<Textarea|consérvala en las notas/);
+assert.match(modal, /Guardando en el móvil|Hay cambios que no se han podido guardar/);
 console.log('PASS: property notes and characteristics preserved in popup content; supplies and lower helper text absent; offline caches and scoped loader.');

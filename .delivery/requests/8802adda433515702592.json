@@ -1,0 +1,21 @@
+{
+  "request": "Eliminar el campo Notas de la limpieza y el texto Avance guardado en este móvil del final del reporte de limpiadora.",
+  "reason": "Se retiran los elementos de interfaz señalados. Los datos y notas anteriores permanecen intactos; no cambia el guardado, fotos, finalización, permisos ni sincronización. Se corrige el mensaje de incidencia sin cobertura para que no remita al campo eliminado.",
+  "verification": "Build y lint focalizado correctos. Tipos de aplicación: los mismos 102 diagnósticos previos, ningún error añadido; Node correcto. Test del código real comprueba ausencia del campo/texto y conservación de los avisos de guardado/error. Navegador con backend interceptado: ausencia en reporte móvil, reapertura sin cobertura, fotos, finalización, envío, reintentos y conservación de una nota anterior tanto en el móvil como tras la confirmación simulada. Sin acceso a datos de producción. La cola repite el test Node sin red y su navegador de entrada.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerPropertyDetailsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "5995e3f268da477694193bb6ee91eab37c6e1642571fd061975a5560d7cd627f"
+}
