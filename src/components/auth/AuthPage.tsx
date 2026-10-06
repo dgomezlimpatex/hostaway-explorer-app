@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Lock, Mail } from 'lucide-react';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 export const AuthPage = () => {
   const { signIn, isLoading, user } = useAuth();
+  const { isOnline } = useNetworkStatus();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
@@ -21,14 +23,15 @@ export const AuthPage = () => {
 
   // Redirigir si ya está autenticado
   useEffect(() => {
-    if (user) {
+    if (user && !isLoading) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, isLoading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!navigator.onLine) { setError('Necesitas cobertura para iniciar sesión. El trabajo guardado en este móvil se conserva.'); return; }
 
     if (!loginForm.email || !loginForm.password) {
       setError('Por favor, completa todos los campos');
@@ -53,12 +56,13 @@ export const AuthPage = () => {
           <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <Lock className="h-8 w-8 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold">Sistema de Limpieza</CardTitle>
+          <CardTitle className="text-2xl font-bold">APP GESTIÓN LIMPATEX</CardTitle>
           <CardDescription>
             Inicia sesión para acceder al sistema
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {!isOnline && <Alert className="mb-4"><AlertDescription>Recupera cobertura para entrar. Los avances guardados en este móvil se conservan.</AlertDescription></Alert>}
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="login-email">Email</Label>
@@ -67,11 +71,13 @@ export const AuthPage = () => {
                 <Input
                   id="login-email"
                   type="email"
+                  autoComplete="username"
+                  inputMode="email"
                   placeholder="tu@email.com"
                   value={loginForm.email}
                   onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
                   disabled={isLoading}
-                  className="pl-10"
+                  className="h-12 pl-10 text-base md:text-sm"
                 />
               </div>
             </div>
@@ -91,16 +97,17 @@ export const AuthPage = () => {
                 <Input
                   id="login-password"
                   type="password"
+                  autoComplete="current-password"
                   placeholder="Tu contraseña"
                   value={loginForm.password}
                   onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
                   disabled={isLoading}
-                  className="pl-10"
+                  className="h-12 pl-10 text-base md:text-sm"
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="min-h-12 w-full" disabled={isLoading || !isOnline}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

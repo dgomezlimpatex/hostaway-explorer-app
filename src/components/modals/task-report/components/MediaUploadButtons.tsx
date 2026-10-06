@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, Upload } from 'lucide-react';
+import { useCleanerWorkActions } from '@/features/cleaner/CleanerWorkContext';
 
 interface MediaUploadButtonsProps {
   onSingleFileSelect: (file: File) => void;
@@ -17,6 +18,7 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const local = useCleanerWorkActions();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -49,11 +51,11 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         size="sm"
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading || uploadingCount > 0}
-        className="text-xs px-2 py-1 h-7"
+        className="min-h-11 px-3 text-sm"
         aria-label="Tomar foto o seleccionar archivo"
       >
         <Camera className="h-3 w-3 mr-1" />
-        {isUploading ? 'Subiendo...' : 'Foto'}
+        {isUploading ? (local ? 'Guardando…' : 'Subiendo…') : 'Foto'}
       </Button>
 
       <Button
@@ -62,11 +64,11 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         size="sm"
         onClick={() => galleryInputRef.current?.click()}
         disabled={isUploading || uploadingCount > 0}
-        className="text-xs px-2 py-1 h-7"
+        className="min-h-11 px-3 text-sm"
         aria-label="Seleccionar múltiples archivos de la galería"
       >
         <Upload className="h-3 w-3 mr-1" />
-        {uploadingCount > 0 ? `Subiendo ${uploadingCount}...` : 'Galería'}
+        {uploadingCount > 0 ? `${local ? 'Guardando' : 'Subiendo'} ${uploadingCount}…` : 'Galería'}
       </Button>
 
       {/* Input para foto individual - sin capture para máxima compatibilidad Android */}

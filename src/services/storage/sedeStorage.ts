@@ -120,7 +120,7 @@ export const sedeStorageService = {
       return mappedSedes;
     } catch (error) {
       console.error('Error in getUserAccessibleSedes:', error);
-      return [];
+      throw error;
     }
   },
 

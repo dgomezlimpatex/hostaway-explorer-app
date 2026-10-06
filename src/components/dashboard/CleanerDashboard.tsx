@@ -8,10 +8,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { UserMenu } from '@/components/auth/UserMenu';
-import { useTasks } from '@/hooks/useTasks';
-import { useAuth } from '@/hooks/useAuth';
-import { useCleaners } from '@/hooks/useCleaners';
-import { getTodayMadrid, formatMadridDate } from '@/utils/date';
+import { formatMadridDate } from '@/utils/date';
+import { useCleanerTasks } from '@/features/cleaner/useCleanerData';
+import { useMadridToday } from '@/features/cleaner/useMadridToday';
+import { CleanerSyncStatus } from '@/features/cleaner/CleanerSyncStatus';
+import { CleanerPendingWork } from '@/features/cleaner/CleanerPendingWork';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import { OperationalModeSwitcher } from '@/components/auth/OperationalModeSwitcher';
 import { CleanerEntryLoading } from './CleanerEntryLoading';
@@ -26,15 +27,8 @@ const getFirstName = (value?: string | null) => value?.trim().split(/\s+/)[0] ||
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardProps) => {
-  const { user } = useAuth();
-  const { cleaners, isInitialLoading: cleanersLoading } = useCleaners();
-  const today = useMemo(() => getTodayMadrid(), []);
-  const { tasks, isLoading: tasksLoading } = useTasks(today, 'day');
-
-  const currentCleaner = useMemo(() => {
-    if (!user?.id) return null;
-    return cleaners.find((cleaner) => cleaner.user_id === user.id) || null;
-  }, [cleaners, user?.id]);
+  const today = useMadridToday();
+  const { tasks, cleaner: currentCleaner, isLoading, error, hasData, refetch, prepared } = useCleanerTasks(today);
 
   const todayTasks = useMemo(() => {
     if (!tasks || !currentCleaner) return [];
@@ -60,7 +54,7 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
   );
   const heroProgressStyle = { '--cleaner-progress-angle': progressAngle } as CSSProperties;
 
-  if (cleanersLoading || tasksLoading) {
+  if (isLoading) {
     return <CleanerEntryLoading />;
   }
 
@@ -96,6 +90,11 @@ export const CleanerDashboard = ({ userFullName, userEmail }: CleanerDashboardPr
       </header>
 
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 pt-5 sm:gap-6 sm:px-6 sm:pt-8 lg:px-8">
+        <CleanerSyncStatus />
+        <CleanerPendingWork tasks={tasks} />
+        {hasData && <p role="status" className="text-xs text-muted-foreground">{prepared ? 'Tus tareas y checklists de esta semana están descargados en este móvil.' : 'Preparando las fichas de tus tareas. Mantén la app abierta con cobertura antes de salir.'}</p>}
+        {error && !hasData && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">No se han podido descargar tus tareas. Recupera cobertura para preparar este móvil.
+          <button className="ml-2 min-h-11 underline" onClick={() => void refetch()}>Reintentar</button></div>}
         <section
           className="cleaner-dashboard-hero cleaner-page-enter relative overflow-hidden rounded-[1.75rem] px-5 py-5 text-white shadow-[0_20px_56px_rgba(49,9,132,0.16)] sm:px-7 sm:py-6 lg:px-8"
           aria-labelledby="cleaner-dashboard-title"
