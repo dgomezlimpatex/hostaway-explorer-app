@@ -1,0 +1,21 @@
+{
+  "tests": [
+    "scripts/planningNoticeBannersTest.mjs"
+  ],
+  "effects": {
+    "database": false,
+    "costs": false,
+    "productionData": false,
+    "communications": false,
+    "authentication": false,
+    "integrations": false,
+    "infrastructure": false,
+    "security": false
+  },
+  "request": "Eliminar las bandas amarillas de avisos operativos y verdes de confirmación al asignar, situadas encima de la leyenda del planificador.",
+  "verification": "Build correcto tras reconciliar con la ampliación horaria ya integrada. Tipos aplicación102 heredados antes/después sin nuevos, Node0, lint sin errores y dos avisos previos. Render real offline con estado local: avisos suaves y éxito no crean bandas, error y bloqueo visibles, Deshacer permanece. Navegador1440/390: cambio con solape, sin bandas, avisos en detalles, Deshacer recupera11:00 y no desborda; reasignación y tareas33min ampliadas pasan.",
+  "reason": "Presentación de los avisos: oculta únicamente las bandas no bloqueantes, preserva errores y bloqueos, detalles operativos y la acción Deshacer en una ubicación compacta. No cambia validaciones, asignaciones, datos ni guardado.",
+  "version": 1,
+  "scope": "application",
+  "digest": "b15ee3ef3986db4ea9d9b416ef998be3099181c2e55d5f9d24e0c24a59f4329d"
+}
