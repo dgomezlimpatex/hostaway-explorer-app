@@ -55,4 +55,3 @@ try {
  expect(errors).toEqual([]);expect(requests).toEqual([]);
  console.log('planning-hour-zoom-browser: OK (three desktops, gradual +/- width only, limits, resize, hour anchor, reset; offline)');
 } finally {await browser.close();}
-
