@@ -4,7 +4,7 @@ import { planningPointerCollision } from '@/utils/planningDragGeometry';
 import { usePlanningCalendarWeek } from '@/hooks/usePlanningCalendarWeek';
 import { planningCalendarWeeklyHours } from '@/utils/planningCalendarWeeklyHours';
 import { PLANNING_CARD_HEIGHT, PLANNING_LANE_STEP, planningTaskLanes } from '@/utils/planningTaskLanes';
-import { planningPixelsPerMinute, planningDropMinute } from '@/utils/planningViewport';
+import { planningPixelsPerMinute, planningDropMinute, planningZoomStep } from '@/utils/planningViewport';
 import {
   DndContext,
   DragOverlay,
@@ -670,7 +670,7 @@ export const PlanningProposalCalendar = ({
     return () => { observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure); };
   }, [chromeCollapsed]);
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
-  const [expandedTimeline, setExpandedTimeline] = useState(false);
+  const [manualTimelineScale, setManualTimelineScale] = useState<number | null>(null);
   const previousScale = useRef(1);
   useEffect(() => {
     const viewport = timelineScrollRef.current;
@@ -957,7 +957,7 @@ export const PlanningProposalCalendar = ({
     };
   }, [dayItems, effectiveAvailability, selectedDate, visibleCleaners]);
   const pixelsPerMinute = planningPixelsPerMinute(
-    Math.max(0, timelineViewportWidth - WORKER_COLUMN_WIDTH), bounds.end - bounds.start, expandedTimeline,
+    Math.max(0, timelineViewportWidth - WORKER_COLUMN_WIDTH), bounds.end - bounds.start, manualTimelineScale,
   );
   useLayoutEffect(() => {
     const ratio = pixelsPerMinute / previousScale.current;
@@ -1765,7 +1765,7 @@ export const PlanningProposalCalendar = ({
             aria-label="Ver calendario por horas"
             className="flex max-h-[calc(100dvh-19rem)] min-h-[320px] min-w-0 flex-col rounded-lg border border-line bg-white shadow-sm lg:col-start-2 lg:row-start-1"
           >
-            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
               <div>
                 <h3 className="font-bold text-ink">Equipo y horario</h3>
                 <p className="text-xs text-ink-3">
@@ -1779,19 +1779,27 @@ export const PlanningProposalCalendar = ({
                   <span className="inline-flex items-center gap-1.5"><i aria-hidden="true" className="h-3 w-4 rounded border border-violet-500/60 bg-violet-200/60" />Horario estimado</span>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-pressed={expandedTimeline}
-                  title={expandedTimeline ? 'Volver a encajar el día en el ancho disponible' : 'Ensanchar las horas para leer mejor las limpiezas cortas'}
-                  onClick={() => setExpandedTimeline((value) => !value)}
-                  className="shrink-0 border-line text-brand"
-                >
-                  {expandedTimeline ? <ZoomOut className="mr-2 h-4 w-4" /> : <ZoomIn className="mr-2 h-4 w-4" />}
-                  {expandedTimeline ? 'Encajar día' : 'Ampliar horario'}
-                </Button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <div role="group" aria-label="Zoom del horario" className="flex shrink-0 items-center gap-1">
+                  <Button type="button" variant="outline" size="sm" aria-label="Reducir horario"
+                    title="Reducir el ancho de las horas" disabled={pixelsPerMinute <= 1}
+                    onClick={() => setManualTimelineScale(planningZoomStep(pixelsPerMinute, -1))}
+                    className="h-9 w-9 border-line p-0 text-brand">
+                    <ZoomOut aria-hidden="true" className="h-4 w-4" />
+                  </Button>
+                  <span data-planning-zoom-level className="w-12 text-center text-xs font-semibold tabular-nums text-ink-3">
+                    {Math.round(pixelsPerMinute / planningPixelsPerMinute(Math.max(0, timelineViewportWidth - WORKER_COLUMN_WIDTH), bounds.end - bounds.start) * 100)}%
+                  </span>
+                  <Button type="button" variant="outline" size="sm" aria-label="Ampliar horario"
+                    title="Aumentar el ancho de las horas" disabled={pixelsPerMinute >= 6}
+                    onClick={() => setManualTimelineScale(planningZoomStep(pixelsPerMinute, 1))}
+                    className="h-9 w-9 border-line p-0 text-brand">
+                    <ZoomIn aria-hidden="true" className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" aria-pressed={manualTimelineScale === null}
+                    title="Encajar el día en el ancho disponible" onClick={() => setManualTimelineScale(null)}
+                    className="shrink-0 border-line text-brand">Encajar día</Button>
+                </div>
                 <p className="text-xs font-semibold text-ink-3">15 min</p>
                 {moveNotice?.previous && !moveNotice.error && (
                   <Button
