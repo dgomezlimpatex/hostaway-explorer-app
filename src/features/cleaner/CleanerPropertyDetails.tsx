@@ -13,8 +13,8 @@ const characteristics = [
   ['numero_camas_suite', 'Camas suite'], ['numero_sofas_cama', 'Sofás cama'], ['numero_banos', 'Baños'],
 ] as const;
 
-export function CleanerPropertyDetails({ property, taskNotes, compact = false }: {
-  property?: CleanerPropertyDetailsData | null; taskNotes?: string; compact?: boolean;
+export function CleanerPropertyDetails({ property, taskNotes }: {
+  property?: CleanerPropertyDetailsData | null; taskNotes?: string;
 }) {
   const details = property && <div className="space-y-4">
     <section aria-label="Notas del piso" className="rounded-xl border border-amber-200 bg-amber-50 p-3">
@@ -37,8 +37,5 @@ export function CleanerPropertyDetails({ property, taskNotes, compact = false }:
     <h3 className="mb-1 text-sm font-semibold">Notas de la tarea</h3><p className="whitespace-pre-wrap break-words text-sm">{taskNotes}</p>
   </section>;
   if (!property && !notes) return null;
-  return compact ? <details className="mb-4 rounded-xl border p-3">
-    <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">Datos e indicaciones del piso</summary>
-    {details}{notes}
-  </details> : <div className="mb-4">{details}{notes}</div>;
+  return <div className="mb-4">{details}{notes}</div>;
 }
