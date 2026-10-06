@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Clock, UserX } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Clock, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -78,13 +78,14 @@ export const TaskQuickActionsDialog = ({
   const durationMinutes = durationMinutesOf(task);
   const [startTime, setStartTime] = useState(() => normalizeStart(task?.startTime));
   const [cleanerId, setCleanerId] = useState(currentCleanerId);
-  const [confirmingUnassign, setConfirmingUnassign] = useState(false);
+  const [isUnassigning, setIsUnassigning] = useState(false);
+  const unassignInFlightRef = useRef(false);
+  const savingQuickAction = isSavingQuickAction || isUnassigning;
 
   useEffect(() => {
     if (!open) return;
     setStartTime(normalizeStart(task?.startTime));
     setCleanerId((task?.cleanerId || '').trim());
-    setConfirmingUnassign(false);
   }, [open, task?.id, task?.startTime, task?.cleanerId]);
 
   const selectableCleaners = useMemo(
@@ -115,7 +116,7 @@ export const TaskQuickActionsDialog = ({
   if (!task) return null;
 
   const handleSave = async () => {
-    if (!hasChanges || isSavingQuickAction) return;
+    if (!hasChanges || savingQuickAction || unassignInFlightRef.current) return;
     try {
       if (cleanerChanged && selectedCleaner) {
         await reassignTask({
@@ -136,17 +137,18 @@ export const TaskQuickActionsDialog = ({
   };
 
   const handleUnassign = async () => {
-    if (isSavingQuickAction) return;
-    if (!confirmingUnassign) {
-      setConfirmingUnassign(true);
-      return;
-    }
+    if (savingQuickAction || unassignInFlightRef.current) return;
+    unassignInFlightRef.current = true;
+    setIsUnassigning(true);
     try {
       await unassignTaskAsync(task);
       onSaved?.(task.id);
       onOpenChange(false);
     } catch {
       // El aviso de error ya lo muestra el hook; mantenemos la ventana abierta.
+    } finally {
+      unassignInFlightRef.current = false;
+      setIsUnassigning(false);
     }
   };
 
@@ -189,7 +191,7 @@ export const TaskQuickActionsDialog = ({
                 type="time"
                 step={SNAP_MINUTES * 60}
                 value={startTime}
-                disabled={isSavingQuickAction}
+                disabled={savingQuickAction}
                 onChange={(event) => setStartTime(normalizeStart(event.target.value))}
                 className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
@@ -202,7 +204,7 @@ export const TaskQuickActionsDialog = ({
               </label>
               <Select
                 value={cleanerId || NO_CLEANER_VALUE}
-                disabled={isSavingQuickAction}
+                disabled={savingQuickAction}
                 onValueChange={(value) => setCleanerId(value === NO_CLEANER_VALUE ? '' : value)}
               >
                 <SelectTrigger
@@ -237,16 +239,6 @@ export const TaskQuickActionsDialog = ({
             </div>
           </div>
 
-          {confirmingUnassign && (
-            <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900" role="alert">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>
-                ¿Quitar la asignación a <strong>{currentCleanerLabel}</strong>? La limpieza quedará
-                sin asignar y aparecerá en la lista de tareas sin asignar de la planificación.
-              </p>
-            </div>
-          )}
-
           <p className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
             Se guarda al momento sobre la tarea.
             {hasOpenProposal
@@ -258,33 +250,34 @@ export const TaskQuickActionsDialog = ({
         <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
           <Button
             type="button"
-            variant={confirmingUnassign ? 'destructive' : 'outline'}
+            variant="outline"
+            aria-busy={savingQuickAction}
             className="min-h-[44px] gap-2"
-            disabled={isSavingQuickAction}
+            disabled={savingQuickAction}
             onClick={handleUnassign}
           >
             <UserX className="h-4 w-4" />
-            {confirmingUnassign ? 'Sí, quitar asignación' : 'Desasignar la tarea'}
+            {isUnassigning ? 'Desasignando…' : 'Desasignar la tarea'}
           </Button>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="ghost"
               className="min-h-[44px]"
-              disabled={isSavingQuickAction}
+              disabled={savingQuickAction}
               onClick={() => onOpenChange(false)}
             >
               Cancelar
             </Button>
             <Button
               type="button"
-              aria-busy={isSavingQuickAction}
+              aria-busy={savingQuickAction}
               className="relative isolate min-h-[44px] overflow-hidden bg-ink text-white hover:bg-black"
-              disabled={!hasChanges || isSavingQuickAction}
+              disabled={!hasChanges || savingQuickAction}
               onClick={handleSave}
             >
-              {isSavingQuickAction && <span aria-hidden="true" className="planner-save-progress absolute inset-0 bg-white/20" />}
-              <span className="relative z-10">{isSavingQuickAction ? 'Guardando…' : 'Guardar cambios'}</span>
+              {savingQuickAction && <span aria-hidden="true" className="planner-save-progress absolute inset-0 bg-white/20" />}
+              <span className="relative z-10">{savingQuickAction ? 'Guardando…' : 'Guardar cambios'}</span>
             </Button>
           </div>
         </DialogFooter>

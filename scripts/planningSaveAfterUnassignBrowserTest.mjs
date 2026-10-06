@@ -13,7 +13,6 @@ try {
    await page.getByRole('button',{name:'Sin asignar Dejar sin asignar'}).click();
    await page.getByRole('button',{name:'Dejar sin asignar',exact:true}).click();
    await page.getByRole('button',{name:'Desasignar la tarea',exact:true}).click();
-   await page.getByRole('button',{name:'Sí, quitar asignación',exact:true}).click();
   }
   // Both successful saves return before their shared refresh, as can happen on a slow connection.
   await page.evaluate(()=>window.planningExampleRefresh());
@@ -36,7 +35,7 @@ try {
  await expect(page.getByRole('button',{name:'Sin cambios pendientes',exact:true})).toBeDisabled();
  await page.locator('[data-planner-task-id="existing-1"] [data-planner-primary-action]:visible').click();
  await page.getByRole('button',{name:'Sin asignar Dejar sin asignar'}).click();await page.getByRole('button',{name:'Dejar sin asignar',exact:true}).click();
- await page.getByRole('button',{name:'Desasignar la tarea',exact:true}).click();await page.getByRole('button',{name:'Sí, quitar asignación',exact:true}).click();
+ await page.getByRole('button',{name:'Desasignar la tarea',exact:true}).click();
  await expect(page.getByRole('button',{name:'Ajustes guardados',exact:true})).toBeDisabled();
  await expect(page.getByText('Los ajustes rápidos ya están guardados. Puedes seguir reajustando el reparto.',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>window.planningExampleSaved?.count || 0)).toBe(0);
