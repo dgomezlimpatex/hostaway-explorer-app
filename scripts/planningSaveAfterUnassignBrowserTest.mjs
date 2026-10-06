@@ -25,6 +25,22 @@ try {
   expect(saved.some(p=>['load-0','load-1'].includes(p.taskId))).toBe(false);
   await page.close();
  }
+ const emptyHtml=await buildOfflinePlanningFixture();
+ const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/*',route=>{if(route.request().url()==='http://planner.example.test/')return route.fulfill({contentType:'text/html',body:emptyHtml});requests.push(route.request().url());return route.abort();});
+ await page.goto('http://planner.example.test/');await page.getByRole('button',{name:'Preparar el reparto'}).click();
+ // Remove the generated proposal; only the already-saved task's quick unassignment remains.
+ await page.locator('[data-planner-task-id="proposed-1"] [data-planner-primary-action]:visible').click();
+ await page.getByRole('button',{name:'Sin asignar Dejar sin asignar'}).click();await page.getByRole('button',{name:'Dejar sin asignar',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Sin cambios pendientes',exact:true})).toBeDisabled();
+ await page.locator('[data-planner-task-id="existing-1"] [data-planner-primary-action]:visible').click();
+ await page.getByRole('button',{name:'Sin asignar Dejar sin asignar'}).click();await page.getByRole('button',{name:'Dejar sin asignar',exact:true}).click();
+ await page.getByRole('button',{name:'Desasignar la tarea',exact:true}).click();await page.getByRole('button',{name:'Sí, quitar asignación',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Ajustes guardados',exact:true})).toBeDisabled();
+ await expect(page.getByText('Los ajustes rápidos ya están guardados. Puedes seguir reajustando el reparto.',{exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>window.planningExampleSaved?.count || 0)).toBe(0);
+ await page.close();
  expect(errors).toEqual([]);expect(requests).toEqual([]);
  console.log('planning-save-after-unassign-browser: OK (two workers, delayed combined refresh, draft retained, save enabled; desktop/mobile offline)');
 } finally {await browser.close();}
