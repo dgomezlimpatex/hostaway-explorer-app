@@ -4,10 +4,13 @@ import tailwindcss from 'tailwindcss';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-export async function buildOfflinePlanningFixture({ scenario = 'normal', controls = false } = {}) {
+export async function buildOfflinePlanningFixture({ scenario = 'normal', controls = false, shortTasks = false } = {}) {
   const fixturePlugin = {
     name: 'planning-offline-fixture',
     setup(plugin) {
+      if (shortTasks) plugin.onLoad({filter:/cleaningPlanningExampleData\.ts$/}, ({path})=>({loader:'ts',contents:readFileSync(path,'utf8')
+        .replace("makeTask('existing-1', 'Apartamento Luna', '09:00', scenario === 'shared' ? 120 : 60,", "makeTask('existing-1', 'ADP18.4A', '09:00', 33,")
+        .replace("makeTask('proposed-1', 'Apartamento Jardín', '11:00')", "makeTask('proposed-1', 'ADP18.3B', '11:00', 33)")}));
       plugin.onResolve({ filter: /^@\/hooks\/usePlanningCalendarWeek$/ }, () => ({ path: 'week', namespace: 'offline' }));
       plugin.onResolve({ filter: /^@\/components\/ui\/sidebar$/ }, () => ({ path: 'sidebar', namespace: 'offline' }));
       plugin.onResolve({ filter: /^@\/hooks\/useCleaningPlanningActions$/ }, () => ({ path: 'actions', namespace: 'offline' }));

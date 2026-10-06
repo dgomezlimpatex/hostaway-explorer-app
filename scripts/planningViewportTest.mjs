@@ -17,3 +17,9 @@ for (const width of [0, 640, 1080, 1600, 3000]) {
   }
 }
 console.log('planning-viewport: OK (fit, legibility minimum, resize and quarter-hour drop coordinates)');
+for (const width of [640, 1080, 1600]) {
+  const scale = planningPixelsPerMinute(width,1080,true);
+  assert.equal(scale,3.6);
+  assert.ok(33 * scale - 5 >= 110,'33-minute cards have space for the property code and full time range');
+  assert.equal(planningDropMinute(-300 + 375 * scale,-300,360,1440,540,scale),735,'Expanded and scrolled timeline keeps quarter-hour snapping');
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEventHandler, type MouseEventHandler, type ReactElement, type ReactNode, type TouchEventHandler } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEventHandler, type MouseEventHandler, type ReactElement, type ReactNode, type TouchEventHandler } from 'react';
 import { usePlanningCalendarWeek } from '@/hooks/usePlanningCalendarWeek';
 import { planningCalendarWeeklyHours } from '@/utils/planningCalendarWeeklyHours';
 import { PLANNING_CARD_HEIGHT, PLANNING_LANE_STEP, planningTaskLanes } from '@/utils/planningTaskLanes';
@@ -25,6 +25,8 @@ import {
   Sparkles,
   RotateCcw,
   ShieldAlert,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -673,6 +675,8 @@ export const PlanningProposalCalendar = ({
     return () => { observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure); };
   }, [chromeCollapsed]);
   const [timelineViewportWidth, setTimelineViewportWidth] = useState(0);
+  const [expandedTimeline, setExpandedTimeline] = useState(false);
+  const previousScale = useRef(1);
   useEffect(() => {
     const viewport = timelineScrollRef.current;
     if (!viewport) return;
@@ -944,8 +948,17 @@ export const PlanningProposalCalendar = ({
     };
   }, [dayItems, effectiveAvailability, selectedDate, visibleCleaners]);
   const pixelsPerMinute = planningPixelsPerMinute(
-    Math.max(0, timelineViewportWidth - WORKER_COLUMN_WIDTH), bounds.end - bounds.start,
+    Math.max(0, timelineViewportWidth - WORKER_COLUMN_WIDTH), bounds.end - bounds.start, expandedTimeline,
   );
+  useLayoutEffect(() => {
+    const ratio = pixelsPerMinute / previousScale.current;
+    previousScale.current = pixelsPerMinute;
+    const timeline = timelineScrollRef.current;
+    if (timeline && ratio !== 1) {
+      timeline.scrollLeft *= ratio;
+      if (hoursScrollRef.current) hoursScrollRef.current.scrollLeft = timeline.scrollLeft;
+    }
+  }, [pixelsPerMinute]);
   const quarterHourGridSize = SNAP_MINUTES * pixelsPerMinute;
   const timelineWidth = (bounds.end - bounds.start) * pixelsPerMinute;
   const timeMarkers = useMemo(() => {
@@ -1798,6 +1811,18 @@ export const PlanningProposalCalendar = ({
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-pressed={expandedTimeline}
+                  title={expandedTimeline ? 'Volver a encajar el día en el ancho disponible' : 'Ensanchar las horas para leer mejor las limpiezas cortas'}
+                  onClick={() => setExpandedTimeline((value) => !value)}
+                  className="shrink-0 border-line text-brand"
+                >
+                  {expandedTimeline ? <ZoomOut className="mr-2 h-4 w-4" /> : <ZoomIn className="mr-2 h-4 w-4" />}
+                  {expandedTimeline ? 'Encajar día' : 'Ampliar horario'}
+                </Button>
                 <p className="text-xs font-semibold text-ink-3">15 min</p>
                 {manualChangeCount > 0 && (
                   <Button
