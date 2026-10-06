@@ -36,9 +36,11 @@ const cleanerId = '20000000-0000-4000-8000-000000000001';
 const taskId = '30000000-0000-4000-8000-000000000001';
 const sedeId = '40000000-0000-4000-8000-000000000001';
 const templateId = '50000000-0000-4000-8000-000000000001';
+const propertyId = '60000000-0000-4000-8000-000000000001';
 const now = new Date().toISOString();
 const today = new Intl.DateTimeFormat('en-CA',{ timeZone:'Europe/Madrid', year:'numeric',month:'2-digit',day:'2-digit' }).format(new Date());
 const task = { id:taskId, sede_id:sedeId, cleaner_id:cleanerId, cleaner:'Prueba', property:'Piso de prueba', address:'Dirección de prueba', date:today,
+  propiedad_id:propertyId,notes:'Nota específica de la tarea de prueba',
   start_time:'09:00',end_time:'10:00',check_in:'15:00',check_out:'11:00',type:'limpieza',status:'pending',
   additional_tasks:[{id:'extra',text:'Extra de prueba',photoRequired:false,completed:false,addedBy:'coordinacion',addedAt:now}],
   created_at:now,updated_at:now,task_assignments:[],task_reports:[] };
@@ -90,6 +92,7 @@ const mockBackend = async route => {
   if (endpoint === 'sedes') data=[{id:sedeId,nombre:'A Coruña',is_active:true}];
   if (endpoint === 'cleaners') data=[{id:cleanerId,name:'Prueba',user_id:userId,is_active:true,email:'prueba@example.invalid'}];
   if (endpoint === 'task_checklists_templates') data=[template];
+  if (endpoint === 'properties') data=[{notas:'Indicaciones del piso de prueba',numero_camas:2,numero_camas_pequenas:1,numero_camas_suite:0,numero_sofas_cama:1,numero_banos:2,duracion_servicio:60,numero_sabanas:2,numero_sabanas_pequenas:1,numero_sabanas_suite:0,numero_toallas_grandes:4,numero_toallas_pequenas:4,numero_alfombrines:2,numero_fundas_almohada:4,kit_alimentario:1,cantidad_rollos_papel_higienico:3,cantidad_rollos_papel_cocina:1}];
   if (endpoint === 'tasks') data=[{...task, task_assignments:reassigned ? [{cleaner_id:'another-cleaner'}] : [], task_reports:remoteReport ? [remoteReport] : []}];
   if (endpoint === 'task_reports') data=remoteReport ? [remoteReport] : [];
   if (endpoint === 'task_media') data=media.filter(item => !url.searchParams.has('id') || `eq.${item.id}` === url.searchParams.get('id'));
@@ -126,8 +129,23 @@ try {
   assert.equal(writes,0,'Reading dashboard must not start a task');
   await page.goto(origin+'/tasks');
   await page.getByText('Piso de prueba',{exact:true}).first().click();
+  await page.getByText('Indicaciones del piso de prueba',{exact:true}).waitFor();
+  await page.getByText('Nota específica de la tarea de prueba',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('region',{name:'Características del piso'}).isVisible(),true);
+  assert.equal(await page.getByRole('region',{name:'Textiles y amenities'}).isVisible(),true);
+  assert.equal(writes,0,'Opening property details must not start a task');
+  if (process.env.CLEANER_SCREENSHOT_DIR) await page.screenshot({path:join(process.env.CLEANER_SCREENSHOT_DIR,'mobile-property-details.png'),fullPage:true,animations:'disabled'});
+  await context.setOffline(true);
+  await page.reload();
+  await page.getByText('Piso de prueba',{exact:true}).first().click();
+  await page.getByText('Indicaciones del piso de prueba',{exact:true}).waitFor();
+  assert.equal(await page.getByRole('region',{name:'Textiles y amenities'}).isVisible(),true,'Property details are downloaded for offline use');
+  await context.setOffline(false);
   await page.getByRole('button',{name:'Iniciar limpieza'}).click();
   await page.getByRole('button',{name:'Revisar y finalizar'}).waitFor();
+  await page.getByText('Datos e indicaciones del piso',{exact:true}).click();
+  await page.getByText('Indicaciones del piso de prueba',{exact:true}).waitFor();
+  await page.getByText('Datos e indicaciones del piso',{exact:true}).click();
   assert.equal(await page.getByRole('button',{name:'Revisar y finalizar'}).isDisabled(),true,'Mandatory photo blocks completion');
   await context.setOffline(true);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jD1sAAAAASUVORK5CYII=','base64');
