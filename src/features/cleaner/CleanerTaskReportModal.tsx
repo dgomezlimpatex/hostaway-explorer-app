@@ -10,8 +10,8 @@ import { getMimeType } from '@/utils/imageCompression';
 import type { Task } from '@/types/calendar';
 import type { TaskMedia, TaskReport } from '@/types/taskReports';
 import { Loader2, MapPin, Play, CheckCircle2 } from 'lucide-react';
-import { CleanerSyncStatus } from './CleanerSyncStatus';
-import { CleanerPropertyDetails } from './CleanerPropertyDetails';
+import { CleanerTaskHeaderActions } from './CleanerTaskHeaderActions';
+import { useCleanerOfflineStatus } from './CleanerOfflineProvider';
 import { CleanerWorkContext } from './CleanerWorkContext';
 import { cleanerBundleKey, loadCleanerBundle, useCleanerCachedQuery, useCleanerIdentity } from './useCleanerData';
 import {
@@ -32,6 +32,7 @@ export function CleanerTaskReportModal({ task, open, onOpenChange, recovery = fa
 function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () => void; recovery: boolean }) {
   const { user } = useAuth();
   const { isOnline } = useNetworkStatus();
+  const offlineStatus = useCleanerOfflineStatus();
   const identity = useCleanerIdentity();
   const taskId = task.originalTaskId || task.id.split('_assignment_')[0];
   const key = draftKey(identity.ownerId, taskId);
@@ -203,12 +204,17 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
     <Dialog open onOpenChange={open => { if (!open) void close(); }}>
       <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col gap-0 rounded-none p-0 sm:h-[90dvh] sm:max-w-2xl sm:rounded-2xl" onEscapeKeyDown={event => { if (busy) event.preventDefault(); }} aria-describedby="cleaner-work-description">
         <DialogHeader className="shrink-0 border-b px-4 py-4 pr-12 text-left">
-          <DialogTitle>{task.propertyCode || task.property}</DialogTitle>
-          <DialogDescription id="cleaner-work-description">{task.propertyName || task.property} · {task.startTime.slice(0, 5)}</DialogDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 space-y-1.5">
+              <DialogTitle className="break-words">{task.propertyCode || task.property}</DialogTitle>
+              <DialogDescription id="cleaner-work-description">{task.propertyName || task.property} · {task.startTime.slice(0, 5)}</DialogDescription>
+            </div>
+            <CleanerTaskHeaderActions property={bundle.data?.property} taskNotes={task.notes} propertyName={task.propertyName || task.property}
+              loading={loading} status={offlineStatus} />
+          </div>
           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.address)}`} target="_blank" rel="noopener noreferrer" className="mt-1 flex min-h-8 items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3 shrink-0" />{task.address}</a>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3">
-          <CleanerSyncStatus className="mb-3" />
           {recovery && <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">Este trabajo está guardado en el móvil y su envío sigue pendiente. Puedes revisar las fotos y notas para consultarlo con coordinación.</p>}
           {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}
             {draft && <button className="mt-1 min-h-11 font-semibold underline" onClick={() => void updateReport({ checklist_completed: checklist, notes }).catch(() => undefined)}>Reintentar guardar</button>}
@@ -216,7 +222,6 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
           {bundle.error && !bundle.data && <p role="alert" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">No se ha descargado la ficha de esta tarea. Recupera cobertura y vuelve a abrirla para preparar el checklist.</p>}
           {missingTemplate && <p role="alert" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">El checklist de este reporte ya no está disponible. Tu avance sigue guardado; consulta con coordinación.</p>}
           {virtual && <p className="rounded-xl bg-muted p-4 text-sm">Esta es una previsión recurrente. Podrás iniciar la limpieza cuando coordinación o la programación diaria genere la tarea.</p>}
-          <CleanerPropertyDetails property={bundle.data?.property} taskNotes={task.notes} compact={started} />
           {loading ? <div role="status" className="flex items-center justify-center gap-2 py-12"><Loader2 className="h-5 w-5 animate-spin" />Preparando la tarea…</div>
             : !started && !completed ? <div className="space-y-4 py-3">
               {!identity.data && <p role="alert" className="text-sm text-amber-900">No se ha encontrado tu ficha de trabajadora. Consulta con coordinación.</p>}

@@ -1,0 +1,22 @@
+{
+  "request": "Sustituir los datos e indicaciones de la tarea por NOTAS arriba a la derecha con ventana emergente; sustituir su bloque de sincronización por icono rojo, azul o verde con explicación al pulsar.",
+  "reason": "Presentación de datos y estado existentes en la cabecera de la tarea. Ventanas y lectura del contexto local; no se modifica el proveedor, motor de sincronización, permisos, consultas, almacenamiento ni operaciones remotas. Reintentar envío delega al mismo callback existente.",
+  "verification": "Build y lint focalizado correctos; tipos de aplicación conservan los 102 diagnósticos previos y Node no tiene errores. Pruebas Node del componente real y mapeo de estados: pendiente, fotos pendientes, errores, sin cobertura, envío y confirmado; accesibilidad por nombre y ausencia de efectos al renderizar. Navegador móvil y escritorio local con backend interceptado: notas antes/durante limpieza, cierre por botón y Escape sin salir de la tarea, recarga offline, estado rojo y mensaje, envío desde el control real pasando por azul y verde con texto actualizado. Regresión completa de fotos, checklist, finalización, reintentos y aislamiento sin acceso a producción. La cola repite los tests Node sin red y su navegador de entrada.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerTaskHeaderTest.mjs",
+    "scripts/cleanerPropertyDetailsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "19e4f83a7fe14349d528b399b8fede6444e9400932d407cd53110a14d43a178e"
+}
