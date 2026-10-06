@@ -133,15 +133,17 @@ export function monthlySalaryExpenses(rates: Rate[], start: string, end: string)
 export function analyze(services: FinancialService[], settings: FinanceSettings, filters: Filters) {
   const inPeriod = (date: string) => date >= filters.start && date <= filters.end;
   const match = (ids: string[], id: string) => !ids.length || ids.includes(id);
-  const selected = services.filter(service => inPeriod(service.date) && match(filters.clients, service.clientId) &&
-    match(filters.properties, service.propertyId) && (!filters.workers.length || service.workers.some(worker => filters.workers.includes(worker.id))))
+  const candidates = services.filter(service => inPeriod(service.date) && match(filters.clients, service.clientId) &&
+    match(filters.properties, service.propertyId) && (!filters.workers.length || service.workers.some(worker => filters.workers.includes(worker.id))));
+  const excludedIncomeServices = candidates.filter(service => service.revenue === null || service.revenue <= 0);
+  const selected = candidates.filter(service => service.revenue !== null && service.revenue > 0)
     .map(service => calculateService(service, settings));
   const expenses = [...settings.expenses, ...monthlySalaryExpenses(settings.rates, filters.start, filters.end)].filter(expense => inPeriod(expense.date) && match(filters.clients, expense.clientId) &&
     match(filters.properties, expense.propertyId) && match(filters.workers, expense.workerId));
   const ids = [...new Set([...selected.map(service => service.clientId), ...expenses.filter(expense => expense.clientId).map(expense => expense.clientId)])];
   const clients = ids.map(id => ({ id, name: services.find(service => service.clientId === id)?.clientName || 'Cliente sin servicios en este periodo',
     ...summarize(selected.filter(service => service.clientId === id), expenses.filter(expense => !!id && expense.clientId === id)) }));
-  return { services: selected, expenses, clients, total: summarize(selected, expenses), general: summarize([], expenses.filter(expense => !expense.clientId)) };
+  return { services: selected, excludedIncomeServices, expenses, clients, total: summarize(selected, expenses), general: summarize([], expenses.filter(expense => !expense.clientId)) };
 }
 // Validate imported/local JSON before it can participate in a financial calculation.
 export function readSettings(value: unknown): FinanceSettings {
