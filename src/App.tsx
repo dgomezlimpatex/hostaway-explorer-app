@@ -63,6 +63,7 @@ const LaundryRouteOrder = React.lazy(() => import("./pages/LaundryRouteOrder"));
 const LaundryRouteV2Management = React.lazy(() => import("./pages/LaundryRouteV2Management"));
 const LinenControlPage = React.lazy(() => import("./pages/LinenControlPage"));
 const ClientBilling = React.lazy(() => import("./pages/ClientBilling"));
+const FinancialAnalysis = React.lazy(() => import("./features/financial/FinancialAnalysisPage"));
 const BudgetEstimator = React.lazy(() => import("./pages/BudgetEstimator"));
 const OperationalAnalytics = React.lazy(() => import("./pages/OperationalAnalytics"));
 const ClientPortal = React.lazy(() => import("./pages/ClientPortal"));
@@ -326,6 +327,9 @@ function App() {
                     } />
                     <Route path="/client-billing" element={
                       <RoleProtectedRoute requiredModule="reports"><ClientBilling /></RoleProtectedRoute>
+                    } />
+                    <Route path="/financial-analysis" element={
+                      <RoleProtectedRoute requiredModule="reports"><FinancialAnalysis /></RoleProtectedRoute>
                     } />
                     <Route path="/presupuestador" element={
                       <RoleProtectedRoute requiredModule="admin"><BudgetEstimator /></RoleProtectedRoute>

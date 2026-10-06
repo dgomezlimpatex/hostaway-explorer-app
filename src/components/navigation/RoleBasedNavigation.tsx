@@ -112,6 +112,15 @@ export const RoleBasedNavigation = () => {
             />
           )}
 
+          {canAccessModule('reports') && (
+            <NavigationCard
+              to="/financial-analysis"
+              title="Análisis financiero"
+              description="Ingresos, gastos y resultado general o por cliente"
+              icon={Calculator}
+            />
+          )}
+
           {canAccessModule('admin') && (
             <NavigationCard
               to="/presupuestador"
