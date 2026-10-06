@@ -1,0 +1,21 @@
+{
+  "request": "Contabilizar también las tareas pendientes; excluir las tareas pasadas sin asignar y las asignadas a NOT COUNT del análisis financiero.",
+  "reason": "Corrige la selección local de servicios solicitada por Dani; conserva fuentes y permisos de lectura, ajustes locales y cálculo de costes. No modifica tareas, partes, asignaciones ni datos reales.",
+  "verification": "Código real: pendientes y tareas en curso asignadas, cierre parcial del equipo con horas reales/previstas, exclusión de tareas pasadas sin asignar incluso con parte cerrado, inclusión provisional de hoy/futuras sin asignar, NOT COUNT por id/directorio, nombre normalizado, asignación antigua y equipo mixto; cancelaciones preservadas. Navegador con página y lector reales, Supabase simulado sin red: pendiente contabilizada y NOT COUNT por id, sin asignar pasada y cancelada excluidas; filtros, tarifas, edición, persistencia, escritorio/móvil correctos. Build, lint focalizado y Node pasan; tipos app idénticos a base: 102 errores heredados, ninguno nuevo. Recalculo local de septiembre a partir de lectura limitada/anónima, sin guardar registros productivos. Los consumos e ingresos por defecto siguen provisionales; la configuración es local al navegador.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialAnalysisTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "a4e355a4be8a8b1b096e4ec1ee262b7535f4f364865aeb5ba4b9e884c1fd342e"
+}
