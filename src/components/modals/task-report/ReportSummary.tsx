@@ -15,6 +15,7 @@ interface ReportSummaryProps {
   notes: string;
   completionPercentage: number;
   currentReport?: TaskReport;
+  timeOnly?: boolean;
 }
 
 export const ReportSummary: React.FC<ReportSummaryProps> = ({
@@ -24,6 +25,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
   notes,
   completionPercentage,
   currentReport,
+  timeOnly = false,
 }) => {
   const totalItems = template?.checklist_items?.reduce(
     (acc, category) => acc + category.items.length, 
@@ -105,13 +107,13 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
 
   return (
     <div className="space-y-6">
-      <Card><CardHeader><CardTitle className="text-base">Resumen de la limpieza</CardTitle></CardHeader>
+      {!timeOnly && <Card><CardHeader><CardTitle className="text-base">Resumen de la limpieza</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>{completedItems} de {totalItems + (task.additionalTasks?.length || 0)} puntos completados</p>
           <p>{totalPhotos} fotos o vídeos adjuntos</p>
           {notes && <p className="whitespace-pre-wrap rounded-lg bg-muted p-3">{notes}</p>}
         </CardContent>
-      </Card>
+      </Card>}
       {/* Tiempo real del servicio */}
       {currentReport && (
         <Card className="border-blue-200 bg-blue-50">
@@ -151,7 +153,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
       )}
 
       {/* Estado final */}
-      <Card className="border-green-200 bg-green-50">
+      {!timeOnly && <Card className="border-green-200 bg-green-50">
         <CardContent className="pt-6">
           <div className="text-center">
             <CheckCircle className="h-14 w-14 mx-auto mb-3 text-green-500" />
@@ -163,7 +165,7 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
             </p>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 };
