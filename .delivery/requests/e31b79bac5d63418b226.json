@@ -1,0 +1,24 @@
+{
+  "request": "Dani pide que desasignar tareas deje cambios pendientes hasta pulsar Guardar cambios, sin una segunda confirmacion.",
+  "reason": "Cambio solicitado del borrador local: el clic en Desasignar no llama a escrituras ni avisos. El guardado final usa el mecanismo existente de validacion y aplicacion de propuestas con lista vacia de responsables, que ya admite desasignacion. No se cambian servicios, SQL, permisos, autenticacion ni comunicaciones; no se ejecutan operaciones sobre tareas reales.",
+  "verification": "Build correcto; tipos reales de app conservan los mismos 102 diagnosticos previos, tipos Node y comando tsc raiz sin errores; lint focalizado sin errores y dos advertencias anteriores. Pruebas locales de componente, validacion y ejecucion reales: ninguna escritura antes del guardado final, dos retiradas, tareas compartidas, firma/estado/contexto concurrente, rollback, descarte, recarga, reintento tras fallo y reasignacion. Navegador offline escritorio y movil correcto, sin sesion ni datos reales. Dos contratos de texto antiguos ya fallaban en la base por frases ausentes (Propuesta de la app y Faltan datos: se muestran); no se modifican para esconderlos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/planningPendingUnassignTest.mjs",
+    "scripts/planningDirectUnassignTest.mjs",
+    "scripts/cleaningPlanningApplyCompatibilityTest.mjs",
+    "scripts/cleaningPlanningSavedContextTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "d3ed7b53d1b07b8bb35dea1aaa18c1367d13b60186d04f54631bb2ada0de678e"
+}
