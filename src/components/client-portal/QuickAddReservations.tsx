@@ -154,12 +154,12 @@ export const QuickAddReservations = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="portal-add-form space-y-4">
       {/* Header */}
       <div className="px-1">
-        <h2 className="text-lg font-semibold">Nueva reserva</h2>
+        <h2 className="text-lg font-semibold">Nueva tarea</h2>
         <p className="text-sm text-muted-foreground">
-          Las limpiezas se crearán automáticamente.
+          Añade las fechas de la reserva. Su limpieza se programará automáticamente.
         </p>
       </div>
 
@@ -222,7 +222,7 @@ export const QuickAddReservations = ({
               </div>
 
               {/* Dates stacked */}
-              <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {/* Check-in */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">

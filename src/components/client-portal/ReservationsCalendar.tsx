@@ -1,252 +1,80 @@
 import { useMemo, useState } from 'react';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, addMonths, subMonths, startOfMonth, endOfMonth, isWithinInterval, isToday } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { Building2, ChevronLeft, ChevronRight, Clock, Loader2, Calendar, LayoutList } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ClientReservation, PortalBooking } from '@/types/clientPortal';
-import { cn } from '@/lib/utils';
-import { buildPropertyColorMap } from './calendar/propertyColors';
-import { TimelineView } from './calendar/TimelineView';
-import { MonthlyView } from './calendar/MonthlyView';
-import { CalendarLegend } from './calendar/CalendarLegend';
+import { ChevronLeft, ChevronRight, Clock3, Loader2, Moon, Search } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import type { PortalBooking } from '@/types/clientPortal';
+import { ReservationDetailModal } from './ReservationDetailModal';
+import { calendarDay, cleansOn, dayLabel, hasStay, madridToday, nightCount, occupiesNight, shiftDay, staySegment, weekOf } from './calendar/portalOccupancy';
 
-interface ReservationsCalendarProps {
-  bookings: PortalBooking[];
-  isLoading: boolean;
-}
+interface Property { id: string; codigo: string; nombre: string }
+interface Props { bookings: PortalBooking[]; properties?: Property[]; clientId: string; isLoading: boolean }
 
-// Map a PortalBooking → ClientReservation-shaped record so the existing
-// timeline/monthly views can render external tasks (single-day cleanings)
-// alongside manual reservations without a deeper refactor.
-const bookingToReservation = (b: PortalBooking): ClientReservation => {
-  // Prefer the REAL stay dates when available (manual reservations always have
-  // them; external/Avantio/Hostaway bookings get them enriched via RPC in
-  // useClientPortalBookings). Only fall back to a fake "1-night stay" centered
-  // on the cleaning day when no real dates exist (e.g. recurring/manual tasks
-  // not linked to any reservation).
-  let checkIn = b.checkInDate ?? null;
-  let checkOut = b.checkOutDate ?? null;
-  if (!checkIn || !checkOut) {
-    const cleaning = new Date(b.cleaningDate);
-    const dayBefore = new Date(cleaning);
-    dayBefore.setDate(dayBefore.getDate() - 1);
-    checkIn = dayBefore.toISOString().slice(0, 10);
-    checkOut = b.cleaningDate;
-  }
-  return {
-    id: b.id,
-    clientId: '',
-    propertyId: b.property?.id ?? '',
-    checkInDate: checkIn,
-    checkOutDate: checkOut,
-    guestCount: b.guestCount,
-    specialRequests: b.specialRequests,
-    taskId: b.taskId,
-    status: 'active',
-    createdAt: '',
-    updatedAt: '',
-    property: b.property ? {
-      id: b.property.id,
-      nombre: b.property.nombre,
-      codigo: b.property.codigo,
-      direccion: b.property.direccion,
-      checkOutPredeterminado: b.property.checkOutPredeterminado ?? '11:00',
-    } : undefined,
+export const ReservationsCalendar = ({ bookings, properties = [], clientId, isLoading }: Props) => {
+  const mobile = useIsMobile();
+  const [selectedDay, setSelectedDay] = useState(madridToday);
+  const [view, setView] = useState<'auto' | 'day' | 'week' | 'month'>('auto');
+  const [search, setSearch] = useState('');
+  const [detail, setDetail] = useState<PortalBooking | null>(null);
+  const mode = view === 'auto' ? mobile ? 'day' : 'week' : view;
+  const days = weekOf(selectedDay);
+  const propertyRows = useMemo(() => {
+    const map = new Map(properties.map(property => [property.id, property]));
+    bookings.forEach(booking => { if (booking.property) map.set(booking.property.id, booking.property); });
+    return [...map.values()].sort((a, b) => (a.codigo || a.nombre).localeCompare(b.codigo || b.nombre, 'es', { numeric: true }))
+      .filter(property => `${property.codigo} ${property.nombre}`.toLowerCase().includes(search.trim().toLowerCase()));
+  }, [properties, bookings, search]);
+  const movePeriod = (direction: number) => {
+    if (mode !== 'month') { setSelectedDay(shiftDay(selectedDay, direction * (mode === 'day' ? 1 : 7))); return; }
+    const date = new Date(`${selectedDay.slice(0, 7)}-01T12:00:00Z`);
+    date.setUTCMonth(date.getUTCMonth() + direction);
+    setSelectedDay(date.toISOString().slice(0, 10));
   };
-};
-
-type ViewMode = 'timeline' | 'month';
-
-export const ReservationsCalendar = ({ bookings, isLoading }: ReservationsCalendarProps) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
-
-  const reservations = useMemo(
-    () => bookings.filter(b => b.property?.id).map(bookingToReservation),
-    [bookings],
-  );
-
-  const uniqueProperties = useMemo(() => {
-    const props = new Map<string, { id: string; codigo: string; nombre: string }>();
-    reservations.forEach(r => {
-      if (r.propertyId && r.property && !props.has(r.propertyId)) {
-        props.set(r.propertyId, {
-          id: r.propertyId,
-          codigo: r.property.codigo || '',
-          nombre: r.property.nombre || ''
-        });
-      }
-    });
-    return Array.from(props.values()).sort((a, b) =>
-      (a.codigo || a.nombre).localeCompare(b.codigo || b.nombre, 'es', { numeric: true, sensitivity: 'base' })
-    );
-  }, [reservations]);
-
-  const colorMap = useMemo(
-    () => buildPropertyColorMap(uniqueProperties.map(p => p.id)),
-    [uniqueProperties]
-  );
-
-  const weekDays = useMemo(() => {
-    const start = startOfWeek(currentDate, { weekStartsOn: 1 });
-    const end = endOfWeek(currentDate, { weekStartsOn: 1 });
-    return eachDayOfInterval({ start, end });
-  }, [currentDate]);
-
-  const periodRange = useMemo(() => {
-    if (viewMode === 'month') {
-      return {
-        start: startOfMonth(currentDate),
-        end: endOfMonth(currentDate),
-      };
-    }
-
-    return {
-      start: startOfWeek(currentDate, { weekStartsOn: 1 }),
-      end: endOfWeek(currentDate, { weekStartsOn: 1 }),
-    };
-  }, [currentDate, viewMode]);
-
-  const periodReservations = useMemo(() => {
-    return reservations.filter((reservation) => {
-      const checkOut = new Date(reservation.checkOutDate);
-      return isWithinInterval(checkOut, periodRange);
-    });
-  }, [periodRange, reservations]);
-
-  const periodProperties = useMemo(() => {
-    return new Set(periodReservations.map((reservation) => reservation.propertyId)).size;
-  }, [periodReservations]);
-
-  const todayReservations = useMemo(() => {
-    return reservations.filter((reservation) => isToday(new Date(reservation.checkOutDate))).length;
-  }, [reservations]);
-
-  const goToPrevious = () => {
-    setCurrentDate(prev => viewMode === 'month' ? subMonths(prev, 1) : subWeeks(prev, 1));
-  };
-  const goToNext = () => {
-    setCurrentDate(prev => viewMode === 'month' ? addMonths(prev, 1) : addWeeks(prev, 1));
-  };
-  const goToToday = () => setCurrentDate(new Date());
-
-  const getHeaderTitle = () => {
-    if (viewMode === 'month') {
-      return format(currentDate, 'MMMM yyyy', { locale: es });
-    }
-    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-    return `${format(weekStart, 'd MMM', { locale: es })} - ${format(weekEnd, 'd MMM yyyy', { locale: es })}`;
-  };
-
-  if (isLoading) {
-    return (
-      <Card className="border-0 shadow-lg">
-        <CardContent className="py-12 text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-          <p className="mt-4 text-muted-foreground">Cargando calendario...</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="overflow-hidden border-slate-200 bg-white shadow-sm">
-      <CardHeader className="border-b bg-gradient-to-br from-white via-blue-50/70 to-slate-50 px-4 pb-4 sm:px-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Calendario</p>
-            <CardTitle className="mt-1 truncate text-xl font-bold capitalize tracking-tight text-slate-950 sm:text-2xl">
-              {getHeaderTitle()}
-            </CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Revisa visualmente entradas, estancias y salidas por propiedad.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
-            <CalendarMetric label="Periodo" value={periodReservations.length} icon={Calendar} />
-            <CalendarMetric label="Propiedades" value={periodProperties} icon={Building2} />
-            <CalendarMetric label="Hoy" value={todayReservations} icon={Clock} />
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center overflow-hidden rounded-xl border bg-white shadow-sm">
-              <button
-                onClick={() => setViewMode('timeline')}
-                className={cn(
-                  "flex items-center gap-1 px-3 py-2 text-xs font-medium transition-colors",
-                  viewMode === 'timeline' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-slate-50"
-                )}
-              >
-                <LayoutList className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                <span>Semana</span>
-              </button>
-              <button
-                onClick={() => setViewMode('month')}
-                className={cn(
-                  "flex items-center gap-1 px-3 py-2 text-xs font-medium transition-colors",
-                  viewMode === 'month' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-slate-50"
-                )}
-              >
-                <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                <span>Mes</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-1 sm:justify-end sm:gap-2">
-            <Button variant="outline" size="sm" onClick={goToToday} className="h-9 rounded-xl bg-white px-3 text-xs font-medium shadow-sm">
-              Hoy
-            </Button>
-            <Button variant="ghost" size="icon" onClick={goToPrevious} className="h-9 w-9 rounded-xl hover:bg-blue-50">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={goToNext} className="h-9 w-9 rounded-xl hover:bg-blue-50">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-3 sm:p-5">
-        {viewMode === 'timeline' ? (
-          <TimelineView
-            weekDays={weekDays}
-            properties={uniqueProperties}
-            reservations={reservations}
-            colorMap={colorMap}
-          />
-        ) : (
-          <MonthlyView
-            currentDate={currentDate}
-            reservations={reservations}
-            properties={uniqueProperties}
-            colorMap={colorMap}
-          />
-        )}
-        <CalendarLegend properties={uniqueProperties} colorMap={colorMap} />
-      </CardContent>
-    </Card>
-  );
-};
-
-const CalendarMetric = ({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: number;
-  icon: typeof Calendar;
-}) => (
-  <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
-      <Icon className="h-3.5 w-3.5 text-primary" />
+  const cleaningButton = (booking: PortalBooking) => <button key={booking.id} type="button" className="portal-cleaning" onClick={() => setDetail(booking)} aria-label={`Ver limpieza de ${booking.property?.nombre || 'propiedad'} el ${dayLabel(booking.cleaningDate.slice(0, 10), { day: 'numeric', month: 'long' })}`}>
+    <Clock3 size={14} /><span>Limpieza{booking.startTime ? ` · ${booking.startTime.slice(0, 5)}` : ''}</span>
+  </button>;
+  const agenda = () => <div className="portal-agenda">
+    <h3>{dayLabel(selectedDay, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+    {propertyRows.map(property => {
+      const rows = bookings.filter(booking => booking.property?.id === property.id);
+      const stays = rows.filter(booking => occupiesNight(booking, selectedDay));
+      const cleanings = rows.filter(booking => cleansOn(booking, selectedDay));
+      return <article key={property.id} className="portal-agenda-card">
+        <header><div><span className="portal-property-code">{property.codigo}</span><h4>{property.nombre}</h4></div><span className={stays.length ? 'portal-occupied-label' : 'portal-free-label'}>{stays.length ? 'Noche ocupada' : 'Sin estancia registrada'}</span></header>
+        {stays.map(booking => <button key={booking.id} type="button" className="portal-stay-summary" onClick={() => setDetail(booking)}><Moon size={16} /><span>{dayLabel(calendarDay(booking.checkInDate)!, { day: 'numeric', month: 'short' })} → {dayLabel(calendarDay(booking.checkOutDate)!, { day: 'numeric', month: 'short' })}<small>{nightCount(booking)} noches</small></span><ChevronRight size={16} /></button>)}
+        {cleanings.map(cleaningButton)}
+        {!cleanings.length && <p className="portal-no-cleaning">Sin limpieza prevista</p>}
+      </article>;
+    })}
+    {!propertyRows.length && <p className="portal-empty">No hay propiedades con esta búsqueda.</p>}
+  </div>;
+  if (isLoading) return <div className="portal-empty"><Loader2 className="mx-auto animate-spin" />Cargando calendario...</div>;
+  return <section className="portal-calendar">
+    <div className="portal-calendar-toolbar">
+      <div><h2>{dayLabel(selectedDay, { month: 'long', year: 'numeric' })}</h2><p>Estancias por noche y limpiezas previstas</p></div>
+      <div className="portal-view-switch" aria-label="Vista del calendario">{(['day', 'week', 'month'] as const).map(option => <button key={option} type="button" aria-pressed={mode === option} onClick={() => setView(option)}>{option === 'day' ? 'Día' : option === 'week' ? 'Semana' : 'Mes'}</button>)}</div>
     </div>
-    <div className="mt-1 text-xl font-bold tabular-nums text-slate-950">{value}</div>
-  </div>
-);
+    <div className="portal-calendar-controls"><label className="portal-search"><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} aria-label="Buscar alojamiento" placeholder="Buscar alojamiento" /></label><div><button type="button" onClick={() => setSelectedDay(madridToday())}>Hoy</button><button type="button" onClick={() => movePeriod(-1)} aria-label="Periodo anterior"><ChevronLeft size={20} /></button><button type="button" onClick={() => movePeriod(1)} aria-label="Periodo siguiente"><ChevronRight size={20} /></button></div></div>
+    {mode === 'month' ? <div className="portal-month">
+      <div className="portal-month-weekdays">{['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day, index) => <span key={index}>{day}</span>)}</div>
+      <div className="portal-month-grid">{Array.from({ length: 42 }, (_, index) => shiftDay(weekOf(`${selectedDay.slice(0, 7)}-01`)[0], index)).map(day => {
+        const visibleBookings = bookings.filter(booking => propertyRows.some(property => property.id === booking.property?.id));
+        const occupied = new Set(visibleBookings.filter(booking => occupiesNight(booking, day)).map(booking => booking.property?.id)).size;
+        const cleans = visibleBookings.filter(booking => cleansOn(booking, day)).length;
+        return <button type="button" key={day} className={`${day.slice(0, 7) !== selectedDay.slice(0, 7) ? 'outside' : ''} ${day === madridToday() ? 'today' : ''}`} onClick={() => { setSelectedDay(day); setView('day'); }} aria-label={`${dayLabel(day, { day: 'numeric', month: 'long' })}: ${occupied} alojamientos ocupados, ${cleans} limpiezas`}><strong>{Number(day.slice(-2))}</strong>{occupied > 0 && <span><Moon size={12} />{occupied}</span>}{cleans > 0 && <span><Clock3 size={12} />{cleans}</span>}</button>;
+      })}</div>
+    </div> : mode === 'day' ? <><div className="portal-day-strip">{days.map(day => <button key={day} type="button" aria-pressed={day === selectedDay} onClick={() => setSelectedDay(day)}><span>{dayLabel(day, { weekday: 'short' })}</span><strong>{Number(day.slice(-2))}</strong><i className={bookings.some(booking => cleansOn(booking, day)) ? 'has-cleaning' : ''} /></button>)}</div>{agenda()}</> : <div className="portal-timeline-scroll"><div className="portal-timeline">
+      <div className="portal-timeline-header"><span>Alojamiento</span>{days.map(day => <button type="button" key={day} className={day === madridToday() ? 'today' : ''} onClick={() => { setSelectedDay(day); setView('day'); }}><small>{dayLabel(day, { weekday: 'short' })}</small><strong>{Number(day.slice(-2))}</strong></button>)}</div>
+      {propertyRows.map(property => {
+        const rows = bookings.filter(booking => booking.property?.id === property.id && booking.status !== 'cancelled');
+        const stays = rows.filter(hasStay).filter(booking => staySegment(booking, days));
+        return <div className="portal-timeline-row" key={property.id}><div className="portal-timeline-property"><span className="portal-property-code">{property.codigo}</span><strong>{property.nombre}</strong></div><div className="portal-timeline-lanes">
+          <div className="portal-night-grid">{days.map(day => <span key={day} />)}</div>
+          {stays.map(booking => { const segment = staySegment(booking, days)!; return <div className="portal-stay-lane" key={booking.id}><button type="button" className="portal-stay-bar" style={{ gridColumn: `${segment.start + 1} / span ${segment.span}` }} onClick={() => setDetail(booking)} aria-label={`Estancia de ${property.nombre}: ${booking.checkInDate} a ${booking.checkOutDate}`}><Moon size={13} /><span>{nightCount(booking)} noches</span></button></div>; })}
+          <div className="portal-cleaning-lane">{days.map(day => <div key={day}>{rows.filter(booking => cleansOn(booking, day)).map(cleaningButton)}</div>)}</div>
+        </div></div>;
+      })}
+      {!propertyRows.length && <p className="portal-empty">No hay propiedades con esta búsqueda.</p>}
+    </div></div>}
+    <div className="portal-calendar-legend"><span><Moon size={14} /> Noche ocupada</span><span><Clock3 size={14} /> Limpieza</span><p>La noche de salida no se marca como ocupada. Las tareas sin estancia muestran solo la limpieza.</p></div>
+    <ReservationDetailModal booking={detail} clientId={clientId} open={!!detail} onOpenChange={open => { if (!open) setDetail(null); }} />
+  </section>;
+};

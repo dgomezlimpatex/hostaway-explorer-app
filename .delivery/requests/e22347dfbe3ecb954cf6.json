@@ -1,0 +1,24 @@
+{
+  "request": "Implementar en la aplicación real el diseño aprobado del portal: tonos morados, tareas, calendario por noches, adaptación móvil y Operativa para los clientes que ya la tienen habilitada.",
+  "reason": "Cambios de presentación y cálculos locales de ocupación con los datos ya disponibles. Conserva los servicios existentes de creación, edición, cancelación, reportes y configuración; no cambia permisos, autenticación, backend ni sus efectos. El calendario no inventa estancias sin fechas reales.",
+  "verification": "Build, tipos Node y 4 pruebas locales pasan. TypeScript real conserva exactamente los 102 errores previos; lint sin nuevos errores (2 any históricos en galería). Componentes reales comprobados con hooks simulados sin red: creación, edición, búsqueda, teclado, visibilidad, operativa, detalle, ocupación entrada inclusiva/salida exclusiva, cancelación, DST, cruces semanales, vistas día/semana/mes. Navegador local: escritorio y móvil 390 px sin desbordamiento; no se realizó escritura ni sesión de prueba en producción. No se cambian las consultas o mutaciones existentes.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/clientPortalDesignTest.mjs",
+    "scripts/clientPortalOperationalTest.mjs",
+    "scripts/clientPortalNoCompletionTimeTest.mjs",
+    "scripts/clientPortalVisibilityTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "51da8f6ed1d3cde20f41c0b43faa0e627216f7ccdb3c199560296c72132b3227"
+}

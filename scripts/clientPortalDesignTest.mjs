@@ -1,0 +1,67 @@
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const temp = mkdtempSync(join(tmpdir(), 'portal-design-'));
+const runtime = `
+const bags = new Map(); let values=[],cursor=0;
+export const calls=[]; export let mobile=false; export let settings={allowReservationCreation:true,operationalPortalEnabled:false}; export let bookings=[]; export let properties=[];
+export function fixture(data){mobile=data.mobile??false;settings=data.settings??settings;bookings=data.bookings??[];properties=data.properties??[];bags.clear();calls.length=0}
+export function reset(name){if(!bags.has(name))bags.set(name,[]);values=bags.get(name);cursor=0}
+export function useState(initial){const i=cursor++;if(!(i in values))values[i]=typeof initial==='function'?initial():initial;return[values[i],next=>values[i]=typeof next==='function'?next(values[i]):next]}
+export const useMemo=f=>f();export const useCallback=f=>f;export const useEffect=()=>{};export const useRef=value=>({current:value});
+export const createElement=(type,props,...children)=>({type,props:{...props,children:children.length===1?children[0]:children}});export const jsx=(type,props)=>({type,props});export const jsxs=jsx;export const Fragment='fragment';export default {createElement};
+export const useIsMobile=()=>mobile;
+export const useClientPortalSettings=()=>({data:settings});export const useClientPortalBookings=()=>({data:bookings,isLoading:false,refetch:()=>calls.push(['refetch'])});export const useClientProperties=()=>({data:properties,isLoading:false});
+const mutation=kind=>({isPending:false,mutateAsync:async value=>calls.push([kind,value])});
+export const useCreateReservations=()=>mutation('create');export const useCancelReservation=()=>mutation('cancel');export const useUpdateReservation=()=>mutation('edit');export const useToast=()=>({toast:()=>{}});
+export const ReservationDetailModal=()=>null;export const IncidentsTab=()=>null;
+`;
+const names=['Button','Input','Textarea','Select','SelectContent','SelectItem','SelectTrigger','SelectValue','Popover','PopoverTrigger','PopoverContent','Calendar','Tabs','TabsContent','TabsList','TabsTrigger','Toaster','Card','CardContent','Badge','Accordion','AccordionContent','AccordionItem','AccordionTrigger','Dialog','DialogContent','DialogDescription','DialogHeader','DialogTitle','DialogFooter','AlertDialog','AlertDialogAction','AlertDialogCancel','AlertDialogContent','AlertDialogDescription','AlertDialogFooter','AlertDialogHeader','AlertDialogTitle', 'LogOut','Plus','List','AlertTriangle','Home','ClipboardCheck','Building2','CheckCircle2','ChevronRight','ChevronLeft','Clock','Clock3','Edit2','Loader2','MapPin','MessageSquare','Search','Trash2','Users','CalendarIcon','ArrowRight','Camera','MinusCircle','PlayCircle','RotateCcw','Moon'];
+await build({stdin:{contents:`export * from './src/components/client-portal/calendar/portalOccupancy';export * from './src/components/client-portal/ReservationsCalendar';export * from './src/components/client-portal/OperationalDayView';export * from './src/components/client-portal/ClientPortalDashboard';export * from './src/components/client-portal/QuickAddReservations';export * from './src/components/client-portal/EditReservationForm';export * from './src/components/client-portal/ReservationsList';export * from 'fixture';`,resolveDir:process.cwd(),loader:'tsx'},outfile:join(temp,'test.mjs'),bundle:true,platform:'node',format:'esm',jsx:'automatic',logLevel:'silent',plugins:[{name:'offline-fixtures',setup(b){
+ b.onResolve({filter:/^(react(?:\/jsx-runtime)?|fixture|lucide-react|@\/components\/ui\/|@\/hooks\/(useClientPortal|use-toast|use-mobile))/},()=>({path:'fixture',namespace:'fixture'}));
+ b.onResolve({filter:/\/(ReservationDetailModal|IncidentsTab)$/},()=>({path:'fixture',namespace:'fixture'}));
+ b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:runtime+names.map(name=>`export const ${name}='${name}';`).join('\n'),loader:'js'}));
+ b.onLoad({filter:/\.css$/},()=>({contents:'',loader:'css'}));
+}}]});
+try {
+ const m=await import(pathToFileURL(join(temp,'test.mjs')).href);
+ const property={id:'p',nombre:'Casa de prueba',codigo:'CP',direccion:'Dirección de ejemplo'};
+ const booking={id:'a',source:'manual',isEditable:true,cleaningDate:'2026-10-09',checkInDate:'2026-10-06',checkOutDate:'2026-10-09',status:'active',taskId:'t',taskStatus:'completed',startTime:'09:00',reservationId:'r',property,guestCount:null,specialRequests:'Nota local'};
+ assert.equal(m.occupiesNight(booking,'2026-10-06'),true);assert.equal(m.occupiesNight(booking,'2026-10-08'),true);assert.equal(m.occupiesNight(booking,'2026-10-09'),false);assert.equal(m.cleansOn(booking,'2026-10-09'),true);
+ assert.equal(m.occupiesNight({...booking,checkInDate:null},'2026-10-08'),false);assert.equal(m.occupiesNight({...booking,status:'cancelled'},'2026-10-08'),false);assert.equal(m.cleansOn({...booking,status:'cancelled'},'2026-10-09'),false);
+ assert.equal(m.calendarDay('2026-02-30'),null);assert.equal(m.hasStay({...booking,checkOutDate:'2026-10-05'}),false);
+ assert.equal(m.nightCount({...booking,checkInDate:'2026-10-24',checkOutDate:'2026-10-27'}),3);assert.equal(m.nightCount({...booking,checkInDate:'2026-03-28',checkOutDate:'2026-03-31'}),3);
+ assert.deepEqual(m.staySegment({...booking,checkInDate:'2026-09-29',checkOutDate:'2026-10-07'},m.weekOf('2026-10-06')),{start:0,span:2});
+ assert.deepEqual(m.staySegment({...booking,checkInDate:'2026-10-10',checkOutDate:'2026-10-18'},m.weekOf('2026-10-06')),{start:5,span:2});
+ const find=(n,p)=>!n||typeof n!=='object'?[]:Array.isArray(n)?n.flatMap(c=>find(c,p)):[...(p(n)?[n]:[]),...find(n.props?.children,p)];
+ const text=n=>n==null||typeof n==='boolean'?'':typeof n!=='object'?String(n):Array.isArray(n)?n.map(text).join(''):text(n.props?.children);
+ const button=(tree,label)=>find(tree,n=>(n.type==='button'||n.type==='Button')&&text(n).trim()===label)[0];
+ const render=(name,component,props)=>{m.reset(name);return component(props)};
+ const today=m.madridToday();const sample={...booking,cleaningDate:today,checkInDate:m.shiftDay(today,-2),checkOutDate:today};
+ m.fixture({bookings:[sample],properties:[property],mobile:true});
+ const calendarProps={bookings:[sample,{...sample,id:'arrival',checkInDate:today,checkOutDate:m.shiftDay(today,3),cleaningDate:m.shiftDay(today,3)}],properties:[property],clientId:'example',isLoading:false};
+ let cal=render('calendar',m.ReservationsCalendar,calendarProps);
+ assert.match(text(cal),/Noche ocupada/);assert.equal(find(cal,n=>n.props?.className==='portal-cleaning').length,1,'turnover cleaning coexists with new stay');
+ find(cal,n=>n.props?.className==='portal-cleaning')[0].props.onClick();cal=render('calendar',m.ReservationsCalendar,calendarProps);assert.equal(find(cal,n=>n.type===m.ReservationDetailModal)[0].props.booking.id,sample.id);
+ button(cal,'Semana').props.onClick();cal=render('calendar',m.ReservationsCalendar,calendarProps);assert.ok(find(cal,n=>n.props?.className==='portal-timeline').length);button(cal,'Mes').props.onClick();cal=render('calendar',m.ReservationsCalendar,calendarProps);assert.equal(find(cal,n=>n.type==='button'&&n.props['aria-label']?.includes('alojamientos ocupados')).length,42);
+ let dashboard=render('dashboard',m.ClientPortalDashboard,{clientId:'example',clientName:'Cliente de prueba',onLogout(){}});assert.ok(button(dashboard,'Añadir tarea'));assert.equal(find(dashboard,n=>n.type==='TabsTrigger'&&n.props.value==='operations').length,0);
+ m.fixture({settings:{allowReservationCreation:false,operationalPortalEnabled:true},bookings:[sample],properties:[property]});dashboard=render('dashboard',m.ClientPortalDashboard,{clientId:'example',clientName:'Cliente de prueba',onLogout(){}});assert.equal(button(dashboard,'Añadir tarea'),undefined);assert.equal(find(dashboard,n=>n.type==='TabsTrigger'&&n.props.value==='add').length,0);assert.equal(find(dashboard,n=>n.type==='TabsTrigger'&&n.props.value==='operations').length,1);
+ const opsProps={clientId:'example',bookings:[sample,{...sample,id:'progress',taskStatus:'in_progress',startTime:'11:00'},{...sample,id:'pending',taskStatus:'pending',startTime:null}],isLoading:false};
+ let ops=render('ops',m.OperationalDayView,opsProps);assert.equal(find(ops,n=>n.type==='article').length,3);find(ops,n=>n.type==='StatusCounter'&&n.props.status==='cleaned');const counter=find(ops,n=>typeof n.type==='function'&&n.props.status==='cleaned')[0];counter.props.onClick();ops=render('ops',m.OperationalDayView,opsProps);assert.equal(find(ops,n=>n.type==='article').length,1);button(ops,'Ver reporte y fotografías').props.onClick();ops=render('ops',m.OperationalDayView,opsProps);assert.equal(find(ops,n=>n.type===m.ReservationDetailModal)[0].props.booking.taskStatus,'completed');
+ find(ops,n=>n.props?.['aria-label']==='Día siguiente')[0].props.onClick();ops=render('ops',m.OperationalDayView,opsProps);assert.match(text(ops),/No hay limpiezas previstas/);
+ m.fixture({settings:{allowReservationCreation:true},properties:[property]});
+ const addProps={clientId:'example',properties:[property],isLoading:false,onSuccess(){}};
+ let form=render('add',m.QuickAddReservations,addProps);find(form,n=>n.type==='Select')[0].props.onValueChange('p');form=render('add',m.QuickAddReservations,addProps);let calendars=find(form,n=>n.type==='Calendar');calendars[0].props.onSelect(new Date(2026,9,20));form=render('add',m.QuickAddReservations,addProps);calendars=find(form,n=>n.type==='Calendar');calendars[1].props.onSelect(new Date(2026,9,23));form=render('add',m.QuickAddReservations,addProps);
+ const submit=find(form,n=>n.type==='Button'&&typeof n.props.onClick==='function'&&text(n).includes('Guardar'))[0];assert.ok(submit,'original create action remains available');await submit.props.onClick();assert.equal(m.calls[0][0],'create');assert.equal(m.calls[0][1].reservations[0].checkInDate,'2026-10-20');assert.equal(m.calls[0][1].reservations[0].checkOutDate,'2026-10-23');
+ const editProps={reservation:{...booking,id:'r',propertyId:'p'},properties:[property],clientId:'example',clientName:'Cliente',onSuccess(){},onCancel(){}};
+ let edit=render('edit',m.EditReservationForm,editProps);find(edit,n=>n.type==='Textarea')[0].props.onChange({target:{value:'Nota editada'}});edit=render('edit',m.EditReservationForm,editProps);const save=find(edit,n=>n.type==='Button'&&text(n).includes('Guardar'))[0];await save.props.onClick();assert.equal(m.calls.at(-1)[0],'edit');assert.equal(m.calls.at(-1)[1].updates.specialRequests,'Nota editada');
+ m.fixture({settings:{allowReservationCreation:true},properties:[property]});
+ const listProps={clientId:'example',clientName:'Cliente',bookings:[sample],properties:[property],isLoading:false};
+ let list=render('list',m.ReservationsList,listProps);const row=find(list,n=>n.props?.role==='button')[0];assert.ok(row);row.props.onKeyDown({target:1,currentTarget:1,key:'Enter',preventDefault(){}});list=render('list',m.ReservationsList,listProps);assert.equal(find(list,n=>n.type===m.ReservationDetailModal)[0].props.booking.id,sample.id);
+ find(list,n=>n.props?.['aria-label']==='Editar reserva')[0].props.onClick();list=render('list',m.ReservationsList,listProps);assert.equal(find(list,n=>n.type===m.EditReservationForm)[0].props.reservation.id,sample.reservationId);
+ find(list,n=>n.props?.['aria-label']==='Buscar tareas')[0].props.onChange({target:{value:'inexistente'}});list=render('list',m.ReservationsList,listProps);assert.match(text(list),/No hay reservas con estos filtros/);button(list,'Limpiar filtros').props.onClick();list=render('list',m.ReservationsList,listProps);assert.equal(find(list,n=>n.props?.role==='button').length,1);
+ console.log('portal-design: nightly occupancy, DST, turnover, calendar modes, detail, visibility, operational filters, creation and edit OK (local mocks, no network)');
+} finally { rmSync(temp,{recursive:true,force:true}); }
