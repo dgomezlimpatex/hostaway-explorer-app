@@ -1,0 +1,21 @@
+{
+  "request": "Agrupar las tareas de la pestaña Tareas por propiedad, en lugar de mostrarlas todas directamente.",
+  "reason": "Agrupación y plegado local de las reservas ya leídas. Conserva fechas, filtros, búsqueda, acciones y servicios existentes. Los bloques nativos details/summary empiezan cerrados.",
+  "verification": "Build, lint focalizado y tipos de aplicación sin nuevos diagnósticos respecto a la base; tipos Node y raíz. Pruebas del componente real: agrupación por propiedad, grupos cerrados, contador por grupo, orden de tareas dentro del alojamiento, filtros, búsqueda, detalles y edición. Navegador con datos ficticios: cerrado inicial, apertura de Casa del Parque muestra sus dos tareas, captura de escritorio y móvil. Sin escrituras reales.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/clientPortalDesignTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "ac3ccfe99cc84ff7012d42b8237cb4cf7459f932036d3d8b5fb365ed3d3702bd"
+}
