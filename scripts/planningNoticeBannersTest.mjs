@@ -4,6 +4,8 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import vm from 'node:vm';
 
+process.env.NODE_ENV='production';
+
 async function render(mode, notice=null) {
   const result=await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
     import React from 'react';
