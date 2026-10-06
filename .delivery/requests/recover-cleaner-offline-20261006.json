@@ -2,9 +2,9 @@
   "version": 1,
   "scope": "reviewed-release",
   "digest": "276a2f85ed3ea671e70529e58081492f6f05eacab588be3b645498e754d9e6c5",
-  "request": "Recuperar las mejoras sin publicar de limpiadoras y adaptarlas a la versión actual de APP GESTIÓN LIMPATEX.",
-  "reason": "La recuperación incluye almacenamiento local, sesión sin cobertura y envío de reportes/fotos al reconectar. Estos efectos reservados requieren la ruta de revisión específica.",
-  "verification": "Build correcto; TypeScript aplicación 102 diagnósticos heredados idénticos; Node y lint nuevo correctos; sin errores de lint nuevos. Flujo real compilado móvil/escritorio con IndexedDB y service worker, backend interceptado y fixtures sintéticos; regresiones existentes correctas.",
+  "request": "Recuperar las mejoras sin publicar de limpiadoras y adaptarlas a la versiÃ³n actual de APP GESTIÃ“N LIMPATEX.",
+  "reason": "La recuperaciÃ³n incluye almacenamiento local, sesiÃ³n sin cobertura y envÃ­o de reportes/fotos al reconectar. Estos efectos reservados requieren la ruta de revisiÃ³n especÃ­fica.",
+  "verification": "Build correcto; TypeScript aplicaciÃ³n 102 diagnÃ³sticos heredados idÃ©nticos; Node y lint nuevo correctos; sin errores de lint nuevos. Flujo real compilado mÃ³vil/escritorio con IndexedDB y service worker, backend interceptado y fixtures sintÃ©ticos; regresiones existentes correctas.",
   "effects": {
     "productionData": true,
     "database": false,
@@ -16,10 +16,10 @@
     "infrastructure": true
   },
   "effectDetails": {
-    "productionData": "Activar el paquete permite enviar avances, fotos y finalización a las tablas y Storage existentes. No se han ejecutado escrituras reales durante la preparación.",
-    "security": "Recuperación local de interfaz y excepción de cierre por inactividad sin conexión; no cambia RLS ni permisos del servidor.",
-    "authentication": "Carga de identidad y restauración de sesión persistida offline; se conserva passwordSignIn actual.",
-    "infrastructure": "Modificación protegida de vite.config.ts para emitir el service worker. Sin cambios en Vercel, credenciales o infraestructura del servidor."
+    "productionData": "Activar el paquete permite enviar avances, fotos y finalizaciÃ³n a las tablas y Storage existentes. No se han ejecutado escrituras reales durante la preparaciÃ³n.",
+    "security": "RecuperaciÃ³n local de interfaz y excepciÃ³n de cierre por inactividad sin conexiÃ³n; no cambia RLS ni permisos del servidor.",
+    "authentication": "Carga de identidad y restauraciÃ³n de sesiÃ³n persistida offline; se conserva passwordSignIn actual.",
+    "infrastructure": "ModificaciÃ³n protegida de vite.config.ts para emitir el service worker. Sin cambios en Vercel, credenciales o infraestructura del servidor."
   },
   "tests": [
     "scripts/cleanerOfflineBrowserTest.mjs",
@@ -29,11 +29,11 @@
     "scripts/passwordSignInTest.mjs"
   ],
   "authorization": {
-    "preparation": "Solicitud directa de Dani del 6 de octubre: recuperar e incluir las mejoras en la versión actual.",
-    "publication": "Pendiente de autorización específica para los efectos reservados; no activar la cola automática estándar ni reservar turno productivo todavía."
+    "preparation": "Solicitud directa de Dani del 6 de octubre: recuperar e incluir las mejoras en la versiÃ³n actual.",
+    "publication": "Dani autoriza publicar este paquete revisado el 6 de octubre: Hazme una explicación sencilla de los cambios hechos y publicala. Incluye los efectos reservados descritos previamente de sesión sin cobertura, envío posterior de tareas/fotos y service worker. No autoriza SQL, migraciones, cambios de RLS ni despliegues de funciones."
   },
   "limitations": [
-    "Verificado con backend sintético, sin escrituras de producción ni prueba de las RLS actuales.",
-    "Primera descarga con cobertura; envío con app abierta; pruebas Chromium, no dispositivos físicos."
+    "Verificado con backend sintÃ©tico, sin escrituras de producciÃ³n ni prueba de las RLS actuales.",
+    "Primera descarga con cobertura; envÃ­o con app abierta; pruebas Chromium, no dispositivos fÃ­sicos."
   ]
 }
