@@ -147,6 +147,14 @@ export const ReservationsList = ({
 
   const sortedBookings = [...filteredBookings].sort((a, b) => statusFilter === 'past'
     ? b.cleaningDate.localeCompare(a.cleaningDate) : a.cleaningDate.localeCompare(b.cleaningDate));
+  const propertyGroups = Array.from(sortedBookings.reduce((groups, booking) => {
+    const key = getPropertyKey(booking);
+    const group = groups.get(key) ?? { key, property: booking.property, bookings: [] as PortalBooking[] };
+    group.bookings.push(booking);
+    groups.set(key, group);
+    return groups;
+  }, new Map<string, { key: string; property: PortalBooking['property']; bookings: PortalBooking[] }>()).values())
+    .sort((a, b) => (a.property?.nombre ?? 'Sin propiedad').localeCompare(b.property?.nombre ?? 'Sin propiedad', 'es', { numeric: true }));
   const nextBooking = [...bookings].filter(booking => matchesStatusFilter(booking, 'upcoming'))
     .sort((a, b) => a.cleaningDate.localeCompare(b.cleaningDate))[0];
   const monthStart = weekOf(month)[0];
@@ -241,8 +249,11 @@ export const ReservationsList = ({
               <Select value={propertyFilter} onValueChange={setPropertyFilter}><SelectTrigger aria-label="Filtrar por alojamiento"><SelectValue placeholder="Todas las propiedades" /></SelectTrigger><SelectContent><SelectItem value="all">Todas las propiedades</SelectItem>{propertyOptions.map(property => <SelectItem key={property.key} value={property.key}>{property.label}</SelectItem>)}</SelectContent></Select>
             </div>
           </div>
-          <div className="portal-task-column-head"><span>FECHA DE LIMPIEZA / PROPIEDAD</span><span>ESTADO</span></div>
-          {sortedBookings.length ? sortedBookings.map(renderBookingRow) : <div className="portal-empty"><p>{bookings.length ? 'No hay reservas con estos filtros.' : 'Todavía no tienes tareas.'}</p>{bookings.length > 0 && <Button variant="link" onClick={clearFilters}>Limpiar filtros</Button>}</div>}
+          <div className="portal-task-column-head"><span>PROPIEDAD / TAREAS</span><span>DESPLEGAR PARA VER TAREAS</span></div>
+          {sortedBookings.length ? propertyGroups.map(group => <details key={group.key} className="portal-property-tasks">
+            <summary><span className="portal-property-task-icon"><Home size={18} /></span><span className="portal-property-task-name"><strong>{group.property?.nombre ?? 'Sin propiedad'}</strong>{group.property?.codigo && <small>{group.property.codigo}</small>}</span><span className="portal-property-task-count">{group.bookings.length} tarea{group.bookings.length === 1 ? '' : 's'}</span><ChevronRight size={16} /></summary>
+            <div className="portal-property-task-rows">{group.bookings.map(renderBookingRow)}</div>
+          </details>) : <div className="portal-empty"><p>{bookings.length ? 'No hay reservas con estos filtros.' : 'Todavía no tienes tareas.'}</p>{bookings.length > 0 && <Button variant="link" onClick={clearFilters}>Limpiar filtros</Button>}</div>}
           <footer className="portal-task-footer"><span>{sortedBookings.length} tarea{sortedBookings.length === 1 ? '' : 's'}{statusFilter === 'upcoming' ? ' próximas' : statusFilter === 'past' ? ' pasadas' : ''}</span><span>Abre una tarea para ver los detalles <ArrowRight size={12} /></span></footer>
         </section>
         <aside className="portal-tasks-sidebar">
