@@ -1,0 +1,22 @@
+{
+  "request": "Eliminar la segunda confirmación al desasignar una tarea desde clic derecho; desasignar directamente al pulsar el botón.",
+  "tests": [
+    "scripts/planningDirectUnassignTest.mjs",
+    "scripts/cleaningPlanningSavedContextTest.mjs"
+  ],
+  "effects": {
+    "authentication": false,
+    "integrations": false,
+    "costs": false,
+    "communications": false,
+    "productionData": false,
+    "security": false,
+    "database": false,
+    "infrastructure": false
+  },
+  "reason": "Retira una confirmación de interfaz sobre la misma acción rápida existente, sin cambiar su servicio, destinatarios ni contenido. El primer clic ejecuta la acción solicitada y conserva el cierre/reconciliación tras éxito. Añade bloqueo local mientras se espera para impedir clics duplicados. No introduce escrituras automáticas al abrir/renderizar ni altera backend, avisos, permisos o autenticación; pruebas sin datos reales.",
+  "verification": "Prueba Node del componente real con acciones simuladas: primer clic invoca una vez, clics repetidos no duplican, botón ocupado/bloqueado durante espera, callbacks solo tras éxito, fallo permite reintentar sin cerrar ni afirmar éxito. Navegador offline: clic derecho abre la tarea, un único clic la desasigna y cierra, vuelve a Sin asignar y mantiene el borrador válido. Regresiones de desasignar a dos trabajadoras/guardar, escritorio/móvil, reasignación y compañeras. Build correcto, Node sin errores, mismos 102 diagnósticos previos de aplicación y lint focalizado sin errores. No se han desasignado tareas reales desde este chat.",
+  "version": 1,
+  "scope": "application",
+  "digest": "343f7cda8cfd3d8afe314e8cddebac1962d6ff013c5be0aeb4672616f71aa5ad"
+}
