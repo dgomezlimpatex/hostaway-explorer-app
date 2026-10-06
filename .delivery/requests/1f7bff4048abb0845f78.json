@@ -19,5 +19,5 @@
   "request": "Corregir el arrastre del planificador para que la tarjeta siga al puntero y se suelte en la persona y hora apuntadas.",
   "version": 1,
   "scope": "application",
-  "digest": "28103c24b9543ab945dcdb449584217996c8f7c551f1e6eacad1bced77c6cb6c"
+  "digest": "aed43c0edcf25a542a6531a468a548bf93b002f63ab6e231ee9a5dba17be3238"
 }
