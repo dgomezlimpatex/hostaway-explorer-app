@@ -26,3 +26,6 @@ await unassign(render()).props.onClick();assert.equal(saved,1);assert.equal(clos
 actions.unassignTaskAsync=async()=>{calls++};await unassign(render()).props.onClick();assert.equal(saved,2);assert.equal(closed,2);
 assert.equal(calls,3,'Retry is permitted after a failed attempt');
 console.log('planning-direct-unassign: OK (actual component, one click, pending lock, no duplicates, failure/retry; mocked actions, no network)');
+
+let staged=0;props.onUnassignDraft=id=>{assert.equal(id,'task');staged++};
+await unassign(render()).props.onClick();assert.equal(staged,1);assert.equal(calls,3,'Draft unassignment must not call the real write');assert.equal(saved,2,'Draft must not acknowledge a persisted change');assert.equal(closed,3);

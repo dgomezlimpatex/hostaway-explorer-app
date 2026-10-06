@@ -70,6 +70,7 @@ export const buildProposalSignature = (proposals: AssignmentProposal[]): string 
     proposal.cleanerId,
     proposal.proposedStartTime || '',
     proposal.proposedEndTime || '',
+    ...(proposal.operation === 'unassign' ? ['unassign'] : []),
   ].join(':'))
   .sort()
   .join('|');
@@ -95,8 +96,10 @@ const groupProposalsByTask = (proposals: AssignmentProposal[]): ProposalBatchTas
       existing.hasInconsistentSchedule = true;
     }
 
-    existing.cleanerIds.push(proposal.cleanerId);
-    existing.cleanerNames.push(proposal.cleanerName);
+    if (proposal.operation !== 'unassign') {
+      existing.cleanerIds.push(proposal.cleanerId);
+      existing.cleanerNames.push(proposal.cleanerName);
+    }
     byTask.set(proposal.taskId, existing);
   });
 
@@ -184,7 +187,9 @@ export const validateProposalBatchForApply = ({
   }
 
   const items: ProposalBatchValidationItem[] = taskPlans.map((plan) => {
-    if (plan.cleanerIds.length !== proposals.filter((proposal) => proposal.taskId === plan.taskId).length) {
+    const taskProposals = proposals.filter((proposal) => proposal.taskId === plan.taskId);
+    const isUnassignment = taskProposals.length === 1 && taskProposals[0].operation === 'unassign' && taskProposals[0].cleanerId === '';
+    if (!isUnassignment && (taskProposals.some(item => item.operation === 'unassign') || plan.cleanerIds.length !== taskProposals.length)) {
       return buildBlockedItem(plan, 'duplicate_cleaner_for_task', 'La propuesta contiene la misma limpiadora repetida para una tarea.');
     }
 

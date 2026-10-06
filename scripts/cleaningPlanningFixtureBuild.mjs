@@ -17,6 +17,7 @@ export async function buildOfflinePlanningFixture({ scenario = 'normal', control
         if (start < 0 || end < 0) throw new Error('Planning fixture context setup changed; update the offline adapter');
         contents = contents.slice(0, start) + '  const recordSavedTask = usePlanningSavedTaskContext(sourceContext, context, setSourceContext);\n' + contents.slice(end);
         contents = contents.replace('onTaskSaved={setSavedQuickTaskId}', 'onTaskSaved={recordSavedTask}');
+        contents = contents.replace('    window.planningExampleSaved =', "    if (window.planningFailNextSave) { window.planningFailNextSave=false; throw new Error('Fallo local simulado'); }\n    window.planningExampleSaved =");
         return {loader:'tsx', contents};
       });
       if (shortTasks) plugin.onLoad({filter:/cleaningPlanningExampleData\.ts$/}, ({path})=>({loader:'ts',contents:readFileSync(path,'utf8')
@@ -30,7 +31,7 @@ export async function buildOfflinePlanningFixture({ scenario = 'normal', control
         sidebar: "export const useSidebar=()=>({state:'expanded',isMobile:window.matchMedia('(max-width: 767px)').matches});",
         actions: `const pending=[];
           window.planningExampleRefresh=()=>{for(const detail of pending.splice(0)) window.dispatchEvent(new CustomEvent('planning-example-task-saved',{detail}));};
-          const save = async (detail) => {if(window.planningExampleDelayedRefresh) pending.push(detail); else window.dispatchEvent(new CustomEvent('planning-example-task-saved', {detail}));};
+          const save = async (detail) => {window.planningQuickWrites=(window.planningQuickWrites || 0)+1;if(window.planningExampleDelayedRefresh) pending.push(detail); else window.dispatchEvent(new CustomEvent('planning-example-task-saved', {detail}));};
           export const useCleaningPlanningActions=()=>({isSavingQuickAction:false,
             unassignTaskAsync: task => save({taskId:task.id,unassign:true}),
             updateTaskSchedule: ({task,startTime,endTime}) => save({taskId:task.id,startTime,endTime}),
