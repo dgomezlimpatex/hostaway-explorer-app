@@ -1,0 +1,21 @@
+{
+  "request": "Primera versión del análisis financiero general y por cliente, con filtros, tarifas iniciales editables sin IVA y colores morados de Limpatex.",
+  "reason": "Nueva pantalla y cálculos locales solicitados. Solo lee servicios y directorios existentes con la sede y permisos actuales. Tarifas, cantidades y gastos del análisis se guardan exclusivamente en el navegador por usuario y sede; no ejecuta gastos, compras ni escrituras productivas.",
+  "verification": "Prueba Node del código real de cálculo, adaptación y paginación: catálogo completo, milésimas, multiworker, fechas históricas, tarifa individual, filtros, general, cero explícito, datos ausentes e importación validada. Navegador con página y lector reales y cliente sintético sin red productiva: filtros, edición, gastos, recarga, escritorio/móvil. Build correcto; lint focalizado sin errores; tipos app 102 errores previos tanto en origin/main como en candidato, cero diferencias normalizadas; tipos Node y comando tsc raíz correctos. No sesión autenticada real ni persistencia compartida; los consumos de ficha y horas previstas son estimados y el resultado provisional. Revisión directa del diff: no cambios en roles, RLS, auth, stock, tareas, comunicaciones, PMS ni esquema.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialAnalysisTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "7a91c10e94f1ecc1565fcea5cae1335c69ea46b175048d7930307740230dd454"
+}
