@@ -99,6 +99,8 @@ export type AssignmentConflictCode =
 export type PlanningAssignmentRole = 'primary' | 'secondary' | 'backup';
 
 export interface AssignmentProposal {
+  /** Retirada pendiente que solo se aplica con el guardado del reparto. */
+  operation?: 'unassign';
   taskId: string;
   cleanerId: string;
   cleanerName: string;

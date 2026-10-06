@@ -28,6 +28,8 @@ export interface TaskQuickActionsDialogProps {
   hasOpenProposal?: boolean;
   /** Se llama con el id de la tarea cuando el cambio ya está guardado. */
   onSaved?: (taskId: string) => void;
+  /** Desasigna solo en el borrador cuando el tablero ofrece guardado final. */
+  onUnassignDraft?: (taskId: string) => void;
 }
 
 const SNAP_MINUTES = 15;
@@ -72,6 +74,7 @@ export const TaskQuickActionsDialog = ({
   availableCleanerIds,
   hasOpenProposal = false,
   onSaved,
+  onUnassignDraft,
 }: TaskQuickActionsDialogProps) => {
   const { updateTaskSchedule, reassignTask, unassignTaskAsync, isSavingQuickAction } = useCleaningPlanningActions();
   const currentCleanerId = (task?.cleanerId || '').trim();
@@ -138,6 +141,11 @@ export const TaskQuickActionsDialog = ({
 
   const handleUnassign = async () => {
     if (savingQuickAction || unassignInFlightRef.current) return;
+    if (onUnassignDraft) {
+      onUnassignDraft(task.id);
+      onOpenChange(false);
+      return;
+    }
     unassignInFlightRef.current = true;
     setIsUnassigning(true);
     try {
@@ -240,7 +248,9 @@ export const TaskQuickActionsDialog = ({
           </div>
 
           <p className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
-            Se guarda al momento sobre la tarea.
+            {onUnassignDraft
+              ? 'Desasignar deja el cambio pendiente hasta guardar el reparto. Los cambios de esta ventana en hora o responsable se guardan al momento.'
+              : 'Se guarda al momento sobre la tarea.'}
             {hasOpenProposal
               ? ' El reparto abierto se revisará con los nuevos datos; los cambios externos pueden requerir volver a planificar.'
               : ''}

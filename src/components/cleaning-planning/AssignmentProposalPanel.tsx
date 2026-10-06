@@ -147,20 +147,23 @@ export const AssignmentProposalPanel = ({
 
   const coveredTaskIds = useMemo(() => {
     const proposalCountByTask = new Map<string, number>();
-    draftProposals.forEach((item) => proposalCountByTask.set(item.taskId, (proposalCountByTask.get(item.taskId) || 0) + 1));
+    draftProposals.filter(item => item.operation !== 'unassign').forEach((item) => proposalCountByTask.set(item.taskId, (proposalCountByTask.get(item.taskId) || 0) + 1));
     return new Set(calendarTasks
       .filter((task) => (proposalCountByTask.get(task.id) || 0) >= Math.max(1, task.requiredCleaners || 1))
       .map((task) => task.id));
   }, [draftProposals, calendarTasks]);
+  const unassignmentTaskIds = new Set(draftProposals.filter(item => item.operation === 'unassign').map(item => item.taskId));
+  const unassignmentCount = unassignmentTaskIds.size;
   const coveredCount = coveredTaskIds.size;
   const pendingTaskIds = useMemo(() => new Set(tasks.map((task) => task.id)), [tasks]);
   const coveredPendingCount = Array.from(coveredTaskIds).filter((taskId) => pendingTaskIds.has(taskId)).length;
   const editedExistingCount = coveredCount - coveredPendingCount;
   const completeDraftProposals = useMemo(
-    () => draftProposals.filter((item) => coveredTaskIds.has(item.taskId)),
+    () => draftProposals.filter((item) => item.operation === 'unassign' || coveredTaskIds.has(item.taskId)),
     [coveredTaskIds, draftProposals],
   );
-  const uncoveredCount = Math.max(0, (proposal?.summary.totalUnassignedTasks || 0) - coveredPendingCount);
+  const uncoveredCount = Math.max(0, (proposal?.summary.totalUnassignedTasks || 0) - coveredPendingCount)
+    + Array.from(unassignmentTaskIds).filter(taskId => !pendingTaskIds.has(taskId)).length;
   const blockingWarnings = draftWarnings.filter((warning) => (
     warning.severity === 'blocking'
     && (!warning.taskId || coveredTaskIds.has(warning.taskId))
@@ -168,7 +171,7 @@ export const AssignmentProposalPanel = ({
   const softWarnings = draftWarnings.filter((warning) => warning.severity === 'warning');
   const canApply = Boolean(
     proposal
-    && coveredCount > 0
+    && (coveredCount > 0 || unassignmentCount > 0)
     && draftSafetyReady
     && !isApplying
     && !isStale
@@ -228,7 +231,7 @@ export const AssignmentProposalPanel = ({
             </h1>
             <p className="mt-1 max-w-2xl text-sm leading-5 lg:mt-0.5 text-ink-3">
               {isPartialScope && <span className="font-medium text-warning">Vista parcial: {tasks.length} de {totalPendingTaskCount} limpiezas. </span>}
-              El borrador se guarda al confirmar; los ajustes rápidos se aplican al momento.
+              Las desasignaciones y los ajustes del tablero quedan pendientes hasta guardar el reparto.
             </p>
           </div>
 
@@ -351,6 +354,8 @@ export const AssignmentProposalPanel = ({
                 ? 'Los ajustes rápidos ya están guardados. Puedes seguir reajustando el reparto.'
                 : hasNoDraftAssignments
                   ? 'No hay nuevas asignaciones para guardar. Las limpiezas sin responsable siguen disponibles en el tablero.'
+                : unassignmentCount > 0
+                  ? `${unassignmentCount} limpieza${unassignmentCount === 1 ? '' : 's'} quedarán sin responsable al guardar.`
                 : <>Se guardarán {coveredCount} limpieza{coveredCount === 1 ? '' : 's'}{uncoveredCount > 0 ? ` · ${uncoveredCount} quedarán sin responsable` : ''}. Después se iniciarán los avisos.</>}
             </p>
             <Button
@@ -368,6 +373,8 @@ export const AssignmentProposalPanel = ({
                     ? 'Ajustes guardados'
                   : hasNoDraftAssignments
                     ? 'Sin cambios pendientes'
+                  : unassignmentCount > 0
+                    ? 'Guardar cambios'
                   : uncoveredCount > 0
                     ? `Guardar ${coveredCount} y avisar`
                     : 'Guardar reparto y avisar'}

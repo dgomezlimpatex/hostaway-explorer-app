@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {createRequire} from 'node:module';
+import vm from 'node:vm';
+const result=await build({stdin:{contents:"export * from './src/utils/cleaning-planning/proposalBatchApply';export * from './src/utils/cleaning-planning/proposalBatchExecution';",resolveDir:process.cwd()},bundle:true,write:false,platform:'node',format:'cjs',packages:'external'});
+const context=vm.createContext({module:{exports:{}},require:createRequire(import.meta.url)});vm.runInContext(result.outputFiles[0].text,context);
+const {buildProposalSignature,validateProposalBatchForApply,executeProposalBatch}=context.module.exports;
+const tasks=['one','two'].map(id=>({id,date:'2026-10-11',startTime:'09:00',endTime:'10:00',status:'pending',cleanerId:'worker',sedeId:'site',assignments:[{cleaner_id:'worker'},{cleaner_id:'coworker'}]}));
+const proposals=tasks.map(t=>({taskId:t.id,operation:'unassign',cleanerId:'',cleanerName:'Sin asignar',proposedStartTime:t.startTime,proposedEndTime:t.endTime}));
+const input={proposals,proposalSignature:buildProposalSignature(proposals),activeSedeId:'site',activeCleanerIds:['worker','coworker'],expectedTasks:tasks,freshTasks:tasks};
+const valid=validateProposalBatchForApply(input);assert.equal(valid.canApply,true);assert.equal(valid.taskPlans.length,2);assert.ok(valid.taskPlans.every(p=>p.cleanerIds.length===0&&p.previousCleanerIds.length===2));
+let calls=[];await executeProposalBatch(valid.taskPlans,{updateSchedule:async(...args)=>calls.push(['schedule',...args]),setAssignments:async(...args)=>{calls.push(['assignments',...args]);return {}}});assert.equal(calls.filter(c=>c[0]==='assignments'&&c[2].length===0).length,2);
+const stale=validateProposalBatchForApply({...input,freshTasks:tasks.map(t=>({...t,startTime:'10:00'}))});assert.equal(stale.canApply,false);
+assert.equal(validateProposalBatchForApply({...input,proposalSignature:'wrong'}).canApply,false);
+assert.equal(validateProposalBatchForApply({...input,freshTasks:tasks.map(t=>({...t,status:'completed'}))}).canApply,false);
+assert.equal(validateProposalBatchForApply({...input,proposals:[...proposals,{...proposals[0],operation:undefined,cleanerId:'worker'}],proposalSignature:buildProposalSignature([...proposals,{...proposals[0],operation:undefined,cleanerId:'worker'}])}).canApply,false);
+calls=[];let failed=false;await assert.rejects(()=>executeProposalBatch(valid.taskPlans,{updateSchedule:async()=>{},setAssignments:async(id,ids)=>{calls.push([id,ids]);if(id==='two'&&ids.length===0&&!failed){failed=true;throw Error('local failure')}return {}}}));assert.ok(calls.some(([id,ids])=>id==='one'&&ids.length===2),'Rollback restores coworkers after failure');
+console.log('planning-pending-unassign: OK (actual validation/execution, two withdrawals, shared assignments, stale/status/signature rejection, mixed intent rejection, rollback; offline)');

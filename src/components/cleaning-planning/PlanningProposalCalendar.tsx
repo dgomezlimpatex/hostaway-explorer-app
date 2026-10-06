@@ -737,6 +737,7 @@ export const PlanningProposalCalendar = ({
     () => new Map(cleaners.map((cleaner) => [cleaner.id, cleaner])),
     [cleaners],
   );
+  const unassignmentTaskIds = useMemo(() => new Set(draftProposals.filter(item => item.operation === 'unassign').map(item => item.taskId)), [draftProposals]);
   const draftedTaskIds = useMemo(() => {
     const proposalCountByTask = new Map<string, number>();
     draftProposals.forEach((proposal) =>
@@ -759,7 +760,7 @@ export const PlanningProposalCalendar = ({
   const calendarItems = useMemo<CalendarItem[]>(() => {
     const items: CalendarItem[] = [];
     calendarTasks.forEach((task) => {
-      if (draftedTaskIds.has(task.id) || editedExistingTaskIds.has(task.id)) return;
+      if (draftedTaskIds.has(task.id) || editedExistingTaskIds.has(task.id) || unassignmentTaskIds.has(task.id)) return;
       getAssignedCleanerIds(task, cleaners).forEach((cleanerId) => {
         items.push({
           id: `existing:${task.id}:${cleanerId}`,
@@ -777,6 +778,7 @@ export const PlanningProposalCalendar = ({
       });
     });
     draftProposals.forEach((proposal, proposalIndex) => {
+      if (proposal.operation === 'unassign') return;
       const task = taskById.get(proposal.taskId);
       if (!task) return;
       const isExistingAssignmentDraft = proposal.reasons.includes('Asignación existente editable durante la revisión');
@@ -823,6 +825,7 @@ export const PlanningProposalCalendar = ({
     originalProposals,
     taskById,
     editedExistingTaskIds,
+    unassignmentTaskIds,
   ]);
 
   const weeklyHours = useMemo(() => planningCalendarWeeklyHours(
@@ -896,8 +899,8 @@ export const PlanningProposalCalendar = ({
         .filter(
           (task) =>
             task.date === selectedDate &&
-            !draftedTaskIds.has(task.id) &&
-            getAssignedCleanerIds(task, cleaners).length === 0,
+            (!draftedTaskIds.has(task.id) || unassignmentTaskIds.has(task.id)) &&
+            (unassignmentTaskIds.has(task.id) || getAssignedCleanerIds(task, cleaners).length === 0),
         )
         .sort((left, right) =>
           (left.propertyCode || left.property).localeCompare(
@@ -906,7 +909,7 @@ export const PlanningProposalCalendar = ({
             { numeric: true, sensitivity: 'base' },
           ),
         ),
-    [calendarTasks, cleaners, draftedTaskIds, selectedDate],
+    [calendarTasks, cleaners, draftedTaskIds, unassignmentTaskIds, selectedDate],
   );
 
   // Clic derecho sobre una limpieza asignada: ajuste rápido de hora y responsable.
@@ -1140,6 +1143,18 @@ export const PlanningProposalCalendar = ({
       },
     };
   };
+  const stageUnassignment = (taskId: string) => {
+    const task = taskById.get(taskId);
+    if (!task || isStale) return;
+    if (getAssignedCleanerIds(task, cleaners).length === 0) {
+      onDraftProposalsChange(draftProposals.filter(item => item.taskId !== taskId));
+      setQuickActionsTaskId(null);
+      return;
+    }
+    const withdrawal = { ...makeExistingProposal(task, '', 0), operation: 'unassign' as const, cleanerName: 'Sin asignar', durationMinutes: 0 };
+    onDraftProposalsChange([...draftProposals.filter(item => item.taskId !== taskId), withdrawal]);
+    setQuickActionsTaskId(null);
+  };
   const openReassignment = (taskId: string, proposalIndex?: number, sourceCleanerId?: string, sourceElement?: HTMLElement) => {
     if (isStale) return;
     const task = taskById.get(taskId);
@@ -1155,7 +1170,7 @@ export const PlanningProposalCalendar = ({
     } : null);
     pendingEditSnapshotRef.current = null;
     let nextProposalIndex = proposalIndex;
-    if (proposalIndex === undefined) {
+    if (proposalIndex === undefined && !unassignmentTaskIds.has(taskId)) {
       const existingCleanerIds = getAssignedCleanerIds(task, cleaners);
       const existingProposals = existingCleanerIds.map((cleanerId, assignmentIndex) =>
         makeExistingProposal(task, cleanerId, assignmentIndex),
@@ -1344,7 +1359,7 @@ export const PlanningProposalCalendar = ({
       },
     };
     // Dragging a saved assignment must preserve its coworkers in the replacement batch.
-    const base = [...draftProposals];
+    const base = draftProposals.filter(item => item.operation !== 'unassign' || item.taskId !== task.id);
     let targetIndex = directPlacement.proposalIndex;
     if (targetIndex === undefined && directPlacement.sourceCleanerId) {
       getAssignedCleanerIds(task, cleaners).forEach((id, index) => {
@@ -2208,6 +2223,7 @@ export const PlanningProposalCalendar = ({
         busyCleanerIds={quickActionsBusyCleanerIds}
         availableCleanerIds={availableCleanerIds}
         hasOpenProposal
+        onUnassignDraft={stageUnassignment}
         onSaved={(taskId) => {
           // El cambio ya está guardado en la tarea real: el borrador deja de representar
           // esa limpieza para que el tablero muestre el estado real (o la bandeja Sin asignar).

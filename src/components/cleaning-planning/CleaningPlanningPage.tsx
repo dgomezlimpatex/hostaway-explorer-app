@@ -322,7 +322,7 @@ export const CleaningPlanningPage = () => {
     if (!proposal || isProposalStale) return;
     setIsSavingDay(true);
     try {
-    const proposalsToApply = draftProposals && draftProposals.length > 0 ? draftProposals : proposal.proposals;
+    const proposalsToApply = draftProposals ?? proposal.proposals;
     if (proposalsToApply.length === 0) return;
     const proposalSignature = buildProposalSignature(proposalsToApply);
     const freshTasksResult = await refetch();
