@@ -36,7 +36,9 @@ for (const field of [...fields,'notas','duracion_servicio']) assert.ok(selection
 assert.match(loader, /\.eq\('id', task\.propertyId\)\.eq\('sede_id', sedeId\)\.maybeSingle\(\)/);
 const modal = await readFile('src/features/cleaner/CleanerTaskReportModal.tsx', 'utf8');
 assert.match(modal, /<CleanerTaskHeaderActions property=\{bundle\.data\?\.property\} taskNotes=\{task\.notes\}/);
-assert.doesNotMatch(modal, /<CleanerPropertyDetails|<CleanerSyncStatus/);
+assert.match(modal, /!started && !completed && <CleanerPropertyDetails property=\{bundle\.data\?\.property\} taskNotes=\{task\.notes\}/);
+assert.match(modal, /showNotes=\{started \|\| Boolean\(completed\)\}/);
+assert.doesNotMatch(modal, /<CleanerSyncStatus/);
 assert.doesNotMatch(modal, /Pulsa iniciar cuando empieces la limpieza/);
 assert.doesNotMatch(modal, /Notas de la limpieza|Algo que coordinación deba saber|Avance guardado en este móvil|<Textarea|consérvala en las notas/);
 assert.match(modal, /Guardando en el móvil|Hay cambios que no se han podido guardar/);

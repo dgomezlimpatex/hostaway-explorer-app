@@ -28,14 +28,17 @@ for (const [changes, state, label, color, text] of [
   const view = getCleanerTaskStatus(current);
   assert.equal(view.state,state); assert.equal(view.label,label);
   assert.match(view.color,new RegExp(`text-${color}-`)); assert.match(view.text,text);
-  const html = renderToStaticMarkup(createElement(CleanerTaskHeaderActions, {property:{notas:'Hidden until opened'},taskNotes:'Task notes',propertyName:'Piso de prueba',loading:false,status:current}));
+  const html = renderToStaticMarkup(createElement(CleanerTaskHeaderActions, {property:{notas:'Hidden until opened'},taskNotes:'Task notes',propertyName:'Piso de prueba',loading:false,status:current,showNotes:true}));
   assert.match(html, />NOTAS<\/button>/);
   assert.match(html,new RegExp(`data-work-state="${state}"`));
   assert.match(html,new RegExp(`aria-label="Sincronización: ${label}"`));
   assert.doesNotMatch(html,/Hidden until opened|Task notes|Datos e indicaciones del piso|Textiles y amenities/);
 }
-const noStatus = renderToStaticMarkup(createElement(CleanerTaskHeaderActions,{propertyName:'Piso',loading:true,status:null}));
+const noStatus = renderToStaticMarkup(createElement(CleanerTaskHeaderActions,{propertyName:'Piso',loading:true,status:null,showNotes:true}));
 assert.match(noStatus,/>NOTAS<\/button>/);
 assert.doesNotMatch(noStatus,/data-work-state/);
+const beforeStart = renderToStaticMarkup(createElement(CleanerTaskHeaderActions,{propertyName:'Piso',loading:false,status,showNotes:false}));
+assert.doesNotMatch(beforeStart,/>NOTAS<\/button>/);
+assert.match(beforeStart,/data-work-state="confirmed"/);
 assert.equal(syncCalls,0,'Rendering indicators or notes must not trigger sync');
 console.log('PASS: task header buttons, hidden popup content, red/blue/green mapping, pending photos, errors, offline states and no side effects.');

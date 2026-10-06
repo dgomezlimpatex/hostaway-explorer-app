@@ -32,12 +32,13 @@ export function getCleanerTaskStatus(status: WorkStatus) {
     color: 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-700', Icon: Cloud };
 }
 
-export function CleanerTaskHeaderActions({ property, taskNotes, propertyName, loading, status }: {
+export function CleanerTaskHeaderActions({ property, taskNotes, propertyName, loading, status, showNotes }: {
   property?: CleanerPropertyDetailsData | null;
   taskNotes?: string;
   propertyName: string;
   loading: boolean;
   status: WorkStatus | null;
+  showNotes: boolean;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -50,7 +51,7 @@ export function CleanerTaskHeaderActions({ property, taskNotes, propertyName, lo
       setStatusOpen(false);
     }
   }}>
-    <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
+    {showNotes && <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" className="min-h-11 gap-1.5 px-2.5 text-xs font-semibold">
           <FileText className="h-4 w-4" aria-hidden="true" />NOTAS
@@ -68,7 +69,7 @@ export function CleanerTaskHeaderActions({ property, taskNotes, propertyName, lo
         </div>
         <DialogClose asChild><Button type="button" variant="outline" className="min-h-11 shrink-0">Volver a la tarea</Button></DialogClose>
       </DialogContent>
-    </Dialog>
+    </Dialog>}
     {status && view && <Popover open={statusOpen} onOpenChange={setStatusOpen} modal>
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="icon" className={`h-11 w-11 shrink-0 rounded-full ${view.color}`}
