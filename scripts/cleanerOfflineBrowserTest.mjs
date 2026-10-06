@@ -132,14 +132,16 @@ try {
   await page.getByText('Indicaciones del piso de prueba',{exact:true}).waitFor();
   await page.getByText('Nota específica de la tarea de prueba',{exact:true}).waitFor();
   assert.equal(await page.getByRole('region',{name:'Características del piso'}).isVisible(),true);
-  assert.equal(await page.getByRole('region',{name:'Textiles y amenities'}).isVisible(),true);
+  assert.equal(await page.getByRole('region',{name:'Textiles y amenities'}).count(),0);
+  assert.equal(await page.getByText('Pulsa iniciar cuando empieces la limpieza.',{exact:false}).count(),0);
   assert.equal(writes,0,'Opening property details must not start a task');
   if (process.env.CLEANER_SCREENSHOT_DIR) await page.screenshot({path:join(process.env.CLEANER_SCREENSHOT_DIR,'mobile-property-details.png'),fullPage:true,animations:'disabled'});
   await context.setOffline(true);
   await page.reload();
   await page.getByText('Piso de prueba',{exact:true}).first().click();
   await page.getByText('Indicaciones del piso de prueba',{exact:true}).waitFor();
-  assert.equal(await page.getByRole('region',{name:'Textiles y amenities'}).isVisible(),true,'Property details are downloaded for offline use');
+  assert.equal(await page.getByRole('region',{name:'Características del piso'}).isVisible(),true,'Property details are downloaded for offline use');
+  assert.equal(await page.getByRole('region',{name:'Textiles y amenities'}).count(),0,'Supplies stay hidden offline');
   await context.setOffline(false);
   await page.getByRole('button',{name:'Iniciar limpieza'}).click();
   await page.getByRole('button',{name:'Revisar y finalizar'}).waitFor();

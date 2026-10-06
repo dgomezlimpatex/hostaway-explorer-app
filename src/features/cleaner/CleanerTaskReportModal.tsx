@@ -219,7 +219,6 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
           <CleanerPropertyDetails property={bundle.data?.property} taskNotes={task.notes} compact={started} />
           {loading ? <div role="status" className="flex items-center justify-center gap-2 py-12"><Loader2 className="h-5 w-5 animate-spin" />Preparando la tarea…</div>
             : !started && !completed ? <div className="space-y-4 py-3">
-              <p className="text-sm text-muted-foreground">Pulsa iniciar cuando empieces la limpieza. Las fotos y el checklist se guardarán en este móvil mientras trabajas.</p>
               {!identity.data && <p role="alert" className="text-sm text-amber-900">No se ha encontrado tu ficha de trabajadora. Consulta con coordinación.</p>}
               {!fromToday && <p className="text-sm text-muted-foreground">Solo puedes iniciar las tareas del día de hoy.</p>}
             </div>
