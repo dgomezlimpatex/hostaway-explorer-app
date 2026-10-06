@@ -1,0 +1,22 @@
+{
+  "request": "Restaurar los datos y notas del piso al abrir una tarea en las vistas de limpiadora.",
+  "reason": "Muestra información ya existente de la propiedad con una consulta de lectura ampliada, conservando id y sede, caché offline, inicio y finalización actuales. No cambia permisos, autenticación ni operaciones de escritura.",
+  "verification": "Build correcto; tipos de aplicación: los mismos 102 diagnósticos previos, ninguno añadido; tipos Node y lint focalizado correctos. Prueba del componente real con notas, 15 cantidades, duración, vacío, cachés antiguas y vista durante limpieza. Navegador móvil y escritorio con backend sintético interceptado: ficha antes de iniciar, recarga sin cobertura, ficha durante limpieza y regresión completa de fotos/finalización/sincronización. Sin escrituras ni sesiones de producción.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerPropertyDetailsTest.mjs",
+    "scripts/cleanerOfflineBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "f0f405f9381b6638ba948243d769830285422f4f41ebd5656ba3973bf51e19c1"
+}
