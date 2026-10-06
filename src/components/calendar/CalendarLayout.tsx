@@ -108,14 +108,7 @@ export const CalendarLayout = ({
                 <WorkersColumn
                   cleaners={cleaners}
                   onDragOver={onDragOver}
-                  onDrop={(e, cleanerId, cleanersArr) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const taskId = e.dataTransfer.getData('text/plain');
-                    if (taskId) {
-                      onDrop(e, cleanerId, cleanersArr);
-                    }
-                  }}
+                  onDrop={onDrop}
                   absenceStatus={absenceStatus}
                   isDragging={isDragging}
                   preferredCleanerIds={preferredCleanerIds}
