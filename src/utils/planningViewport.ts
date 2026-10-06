@@ -1,5 +1,6 @@
 /** Keep an hour legible on small screens, and fit the full range when space permits. */
-export function planningPixelsPerMinute(availableWidth: number, durationMinutes: number) {
+export function planningPixelsPerMinute(availableWidth: number, durationMinutes: number, expanded = false) {
+  if (expanded) return 3.6;
   return Math.max(1, Math.min(2.4, availableWidth / Math.max(1, durationMinutes)));
 }
 
