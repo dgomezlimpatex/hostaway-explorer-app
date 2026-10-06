@@ -8,6 +8,17 @@ export async function buildOfflinePlanningFixture({ scenario = 'normal', control
   const fixturePlugin = {
     name: 'planning-offline-fixture',
     setup(plugin) {
+      // Exercise the real production acknowledgement hook without changing the TSX demo entry.
+      plugin.onLoad({filter:/cleaningPlanningBrowser\.entry\.tsx$/}, ({path}) => {
+        let contents = readFileSync(path, 'utf8');
+        contents = "import {usePlanningSavedTaskContext} from '../src/hooks/usePlanningSavedTaskContext';\n" + contents;
+        const start = contents.indexOf('  const [savedQuickTaskId');
+        const end = contents.indexOf('  const showProposal', start);
+        if (start < 0 || end < 0) throw new Error('Planning fixture context setup changed; update the offline adapter');
+        contents = contents.slice(0, start) + '  const recordSavedTask = usePlanningSavedTaskContext(sourceContext, context, setSourceContext);\n' + contents.slice(end);
+        contents = contents.replace('onTaskSaved={setSavedQuickTaskId}', 'onTaskSaved={recordSavedTask}');
+        return {loader:'tsx', contents};
+      });
       if (shortTasks) plugin.onLoad({filter:/cleaningPlanningExampleData\.ts$/}, ({path})=>({loader:'ts',contents:readFileSync(path,'utf8')
         .replace("makeTask('existing-1', 'Apartamento Luna', '09:00', scenario === 'shared' ? 120 : 60,", "makeTask('existing-1', 'ADP18.4A', '09:00', 33,")
         .replace("makeTask('proposed-1', 'Apartamento Jardín', '11:00')", "makeTask('proposed-1', 'ADP18.3B', '11:00', 33)")}));

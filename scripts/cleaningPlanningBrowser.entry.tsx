@@ -1,5 +1,4 @@
-import { usePlanningSavedTaskContext } from '../src/hooks/usePlanningSavedTaskContext';
-import { buildProposalContextKey } from '../src/utils/cleaning-planning/proposalContext';
+import { buildProposalContextKey, canAcceptSavedTaskContext } from '../src/utils/cleaning-planning/proposalContext';
 import { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
@@ -44,7 +43,12 @@ function Fixture() {
   const context = buildProposalContextKey({activeSedeId:'demo',cleanerIds:base.cleaners.map(c=>c.id),
     availability:base.effectiveAvailability,filters:{},range:{startDate:day,endDate:day},tasks} as Parameters<typeof buildProposalContextKey>[0]);
   const [sourceContext, setSourceContext] = useState(context);
-  const recordSavedTask = usePlanningSavedTaskContext(sourceContext, context, setSourceContext);
+  const [savedQuickTaskId, setSavedQuickTaskId] = useState<string | null>(null);
+  useEffect(() => {
+    if (savedQuickTaskId && canAcceptSavedTaskContext(sourceContext,context,savedQuickTaskId)) {
+      setSourceContext(context);setSavedQuickTaskId(null);
+    }
+  }, [savedQuickTaskId,sourceContext,context]);
   const showProposal = () => {
     const update = () => flushSync(() => {setSourceContext(context);setOpen(true);});
     if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -77,7 +81,7 @@ function Fixture() {
       <AssignmentProposalPanel
         selectedDay={day} proposal={example.proposal} tasks={base.tasks.filter(task => !task.cleanerId)} calendarTasks={example.tasks}
         cleaners={example.cleaners} effectiveAvailability={example.effectiveAvailability} activeCleanerAssignments={example.activeCleanerAssignments}
-        isStale={sourceContext !== context} onTaskSaved={recordSavedTask}
+        isStale={sourceContext !== context} onTaskSaved={setSavedQuickTaskId}
         sedeName="Centro" onClear={() => setOpen(false)} onApply={saveExample} savedTaskIds={savedTaskIds}
       />
     </> : <PlanningStartScreen date={date} activeSede={{ id: 'demo', nombre: 'Centro' } as Sede} availableSedes={[]}
