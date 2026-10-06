@@ -73,5 +73,17 @@ try {
  let list=render('list',m.ReservationsList,listProps);const row=find(list,n=>n.props?.role==='button')[0];assert.ok(row);row.props.onKeyDown({target:1,currentTarget:1,key:'Enter',preventDefault(){}});list=render('list',m.ReservationsList,listProps);assert.equal(find(list,n=>n.type===m.ReservationDetailModal)[0].props.booking.id,sample.id);
  find(list,n=>n.props?.['aria-label']==='Editar reserva')[0].props.onClick();list=render('list',m.ReservationsList,listProps);assert.equal(find(list,n=>n.type===m.EditReservationForm)[0].props.reservation.id,sample.reservationId);
  find(list,n=>n.props?.['aria-label']==='Buscar tareas')[0].props.onChange({target:{value:'inexistente'}});list=render('list',m.ReservationsList,listProps);assert.match(text(list),/No hay reservas con estos filtros/);button(list,'Limpiar filtros').props.onClick();list=render('list',m.ReservationsList,listProps);assert.equal(find(list,n=>n.props?.role==='button').length,1);
+ m.fixture({});
+ const chronology={...listProps,onOpenCalendar:()=>m.calls.push(['calendar']),onAddTask:()=>m.calls.push(['add']),bookings:[{...sample,id:'later',cleaningDate:m.shiftDay(today,4),property:{...property,id:'other',nombre:'Otra casa'}},sample,{...sample,id:'past',cleaningDate:m.shiftDay(today,-2)}]};
+ let tasks=render('chronology',m.ReservationsList,chronology);
+ const taskRows=tree=>find(tree,n=>n.props?.className==='portal-task-row');
+ assert.equal(taskRows(tasks).length,2,'default shows future tasks across properties');assert.match(text(taskRows(tasks)[0]),/Casa de prueba/);assert.match(text(taskRows(tasks)[1]),/Otra casa/);
+ assert.match(text(find(tasks,n=>n.props?.className==='portal-next-task')[0]),/Casa de prueba/);
+ find(tasks,n=>n.type==='button'&&text(n).startsWith('Pasadas'))[0].props.onClick();tasks=render('chronology',m.ReservationsList,chronology);assert.equal(taskRows(tasks).length,1);assert.match(text(taskRows(tasks)[0]),/Pasada/);
+ find(tasks,n=>n.type==='button'&&text(n).startsWith('Todas'))[0].props.onClick();tasks=render('chronology',m.ReservationsList,chronology);assert.equal(taskRows(tasks).length,3);
+ find(tasks,n=>n.type==='Select')[0].props.onValueChange('other');tasks=render('chronology',m.ReservationsList,chronology);assert.equal(taskRows(tasks).length,1);assert.match(text(taskRows(tasks)[0]),/Otra casa/);
+ assert.equal(find(tasks,n=>n.props?.['aria-label']?.endsWith(', con limpieza')).length,3);
+ const monthBefore=text(find(tasks,n=>n.props?.className==='portal-mini-month')[0]);find(tasks,n=>n.props?.['aria-label']==='Mes siguiente')[0].props.onClick();tasks=render('chronology',m.ReservationsList,chronology);assert.notEqual(text(find(tasks,n=>n.props?.className==='portal-mini-month')[0]),monthBefore);find(tasks,n=>n.props?.['aria-label']==='Mes anterior')[0].props.onClick();tasks=render('chronology',m.ReservationsList,chronology);assert.equal(text(find(tasks,n=>n.props?.className==='portal-mini-month')[0]),monthBefore);
+ button(tasks,'Abrir calendario').props.onClick();button(tasks,'Añadir una tarea').props.onClick();assert.deepEqual(m.calls,[['calendar'],['add']]);
  console.log('portal-design: nightly occupancy, DST, turnover, calendar modes, detail, visibility, operational filters, creation and edit OK (local mocks, no network)');
 } finally { rmSync(temp,{recursive:true,force:true}); }

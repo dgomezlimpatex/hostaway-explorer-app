@@ -1,25 +1,9 @@
 import { useMemo, useState } from 'react';
-import { format, isFuture, isPast, isToday } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import {
-  AlertTriangle,
-  Building2,
-  Calendar,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Edit2,
-  Loader2,
-  MapPin,
-  MessageSquare,
-  Search,
-  Trash2,
-  Users,
-} from 'lucide-react';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { ArrowRight, Calendar, ChevronLeft, ChevronRight, Edit2, Home, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -36,9 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ClientReservation, PortalBooking } from '@/types/clientPortal';
 import { useCancelReservation } from '@/hooks/useClientPortal';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import { EditReservationForm } from './EditReservationForm';
 import { ReservationDetailModal } from './ReservationDetailModal';
+import { calendarDay, madridToday, shiftDay, weekOf } from './calendar/portalOccupancy';
 
 interface Property {
   id: string;
@@ -53,6 +37,8 @@ interface ReservationsListProps {
   bookings: PortalBooking[];
   properties: Property[];
   isLoading: boolean;
+  onOpenCalendar?: () => void;
+  onAddTask?: () => void;
 }
 
 type StatusFilter = 'all' | 'today' | 'upcoming' | 'past' | 'manual';
@@ -78,36 +64,15 @@ const bookingToReservation = (booking: PortalBooking): ClientReservation => ({
   } : undefined,
 });
 
-const normalizeDate = (value: string | Date) => {
-  const date = new Date(value);
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
-
-const getDaysUntil = (date: Date) => {
-  const today = normalizeDate(new Date());
-  const target = normalizeDate(date);
-  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-};
-
-const getNightsCount = (checkIn: Date, checkOut: Date) => {
-  return Math.max(0, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
-};
+const displayDate = (day: string, pattern: string) => format(new Date(`${calendarDay(day)}T12:00:00`), pattern, { locale: es });
 
 const getPropertyKey = (booking: PortalBooking) => {
   return booking.property?.id || booking.property?.codigo || booking.property?.nombre || '__sin_propiedad__';
 };
 
-const isPastBooking = (booking: PortalBooking) => {
-  const cleaningDate = new Date(booking.cleaningDate);
-  const checkOutDate = booking.checkOutDate ? new Date(booking.checkOutDate) : cleaningDate;
-  return isPast(checkOutDate) && !isToday(checkOutDate) && !isToday(cleaningDate);
-};
-
+const isPastBooking = (booking: PortalBooking) => (calendarDay(booking.cleaningDate) ?? '') < madridToday();
 const matchesStatusFilter = (booking: PortalBooking, filter: StatusFilter) => {
-  const cleaningDate = new Date(booking.cleaningDate);
-  if (filter === 'all') return true;
-  if (filter === 'today') return isToday(cleaningDate);
+  if (filter === 'today') return calendarDay(booking.cleaningDate) === madridToday();
   if (filter === 'upcoming') return !isPastBooking(booking) && booking.status !== 'cancelled';
   if (filter === 'past') return isPastBooking(booking);
   if (filter === 'manual') return booking.source === 'manual';
@@ -120,19 +85,21 @@ export const ReservationsList = ({
   bookings,
   properties,
   isLoading,
+  onOpenCalendar,
+  onAddTask,
 }: ReservationsListProps) => {
   const [editingBooking, setEditingBooking] = useState<PortalBooking | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<PortalBooking | null>(null);
   const [detailBooking, setDetailBooking] = useState<PortalBooking | null>(null);
-  const [expandedPast, setExpandedPast] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('upcoming');
   const [propertyFilter, setPropertyFilter] = useState('all');
+  const [month, setMonth] = useState(() => madridToday().slice(0, 7) + '-01');
   const { toast } = useToast();
   const cancelMutation = useCancelReservation();
 
   const metrics = useMemo(() => {
-    const today = bookings.filter((booking) => isToday(new Date(booking.cleaningDate))).length;
+    const today = bookings.filter((booking) => calendarDay(booking.cleaningDate) === madridToday()).length;
     const upcoming = bookings.filter((booking) => !isPastBooking(booking) && booking.status !== 'cancelled').length;
     const past = bookings.filter(isPastBooking).length;
     return { total: bookings.length, today, upcoming, past };
@@ -178,40 +145,17 @@ export const ReservationsList = ({
     });
   }, [bookings, propertyFilter, search, statusFilter]);
 
-  const groupedByProperty = useMemo(() => {
-    const groups = new Map<string, {
-      propertyId: string;
-      propertyName: string;
-      propertyCode: string;
-      propertyAddress: string;
-      bookings: PortalBooking[];
-    }>();
-
-    for (const booking of filteredBookings) {
-      const key = getPropertyKey(booking);
-      if (!groups.has(key)) {
-        groups.set(key, {
-          propertyId: booking.property?.id ?? '',
-          propertyName: booking.property?.nombre ?? 'Sin propiedad',
-          propertyCode: booking.property?.codigo ?? '',
-          propertyAddress: booking.property?.direccion ?? '',
-          bookings: [],
-        });
-      }
-      groups.get(key)!.bookings.push(booking);
-    }
-
-    for (const group of groups.values()) {
-      group.bookings.sort((a, b) => new Date(a.cleaningDate).getTime() - new Date(b.cleaningDate).getTime());
-    }
-
-    return Array.from(groups.values()).sort((a, b) =>
-      (a.propertyCode || a.propertyName).localeCompare(b.propertyCode || b.propertyName, 'es', {
-        numeric: true,
-        sensitivity: 'base',
-      }),
-    );
-  }, [filteredBookings]);
+  const sortedBookings = [...filteredBookings].sort((a, b) => statusFilter === 'past'
+    ? b.cleaningDate.localeCompare(a.cleaningDate) : a.cleaningDate.localeCompare(b.cleaningDate));
+  const nextBooking = [...bookings].filter(booking => matchesStatusFilter(booking, 'upcoming'))
+    .sort((a, b) => a.cleaningDate.localeCompare(b.cleaningDate))[0];
+  const monthStart = weekOf(month)[0];
+  const monthDays = Array.from({ length: 42 }, (_, index) => shiftDay(monthStart, index));
+  const changeMonth = (direction: number) => {
+    const date = new Date(`${month}T12:00:00Z`);
+    date.setUTCMonth(date.getUTCMonth() + direction);
+    setMonth(date.toISOString().slice(0, 10));
+  };
 
   const handleCancel = async () => {
     if (!cancellingBooking?.reservationId) return;
@@ -238,11 +182,9 @@ export const ReservationsList = ({
 
   const clearFilters = () => {
     setSearch('');
-    setStatusFilter('all');
+    setStatusFilter('upcoming');
     setPropertyFilter('all');
   };
-
-  const hasFilters = search.trim() || statusFilter !== 'all' || propertyFilter !== 'all';
 
   if (isLoading) {
     return (
@@ -257,336 +199,67 @@ export const ReservationsList = ({
     );
   }
 
-  if (bookings.length === 0) {
-    return (
-      <Card className="border-dashed border-slate-300 bg-white shadow-sm">
-        <CardContent className="py-16 text-center">
-          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-100">
-            <Calendar className="h-10 w-10 text-muted-foreground/60" />
-          </div>
-          <h3 className="mb-2 text-lg font-semibold text-slate-950">Sin reservas visibles</h3>
-          <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-            Cuando haya reservas o limpiezas asociadas a tus propiedades, aparecerán aquí organizadas por propiedad.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const renderBookingRow = (booking: PortalBooking) => {
-    const cleaningDate = new Date(booking.cleaningDate);
-    const checkInDate = booking.checkInDate ? new Date(booking.checkInDate) : cleaningDate;
-    const checkOutDate = booking.checkOutDate ? new Date(booking.checkOutDate) : cleaningDate;
-    const upcoming = isFuture(cleaningDate) || isToday(cleaningDate);
-    const stillActive = !isPast(checkOutDate) || isToday(checkOutDate) || isToday(cleaningDate);
-    const pastBooking = isPastBooking(booking);
-    const daysUntil = getDaysUntil(cleaningDate);
-    const nights = booking.source === 'manual' ? getNightsCount(checkInDate, checkOutDate) : null;
-
+    const day = calendarDay(booking.cleaningDate);
+    const today = day === madridToday();
+    const editable = booking.isEditable && !isPastBooking(booking) && booking.status === 'active';
     return (
-      <div
-        key={booking.id}
-        role="button"
-        tabIndex={0}
-        onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setDetailBooking(booking); } }}
+      <div key={booking.id} role="button" tabIndex={0} className="portal-task-row"
         onClick={() => setDetailBooking(booking)}
-        className="group relative block w-full p-2 text-left transition-colors"
-      >
-        {upcoming && (
-          <span
-            className={cn(
-              'absolute left-2 top-4 bottom-4 w-1 rounded-full',
-              isToday(cleaningDate) ? 'bg-violet-500' : daysUntil <= 3 ? 'bg-amber-500' : 'bg-primary',
-            )}
-          />
-        )}
-
-        <div
-          className={cn(
-            'flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 pl-5 shadow-sm transition-all group-hover:border-violet-100 group-hover:shadow-md sm:p-3.5 sm:pl-5',
-            pastBooking && 'bg-slate-50/70 shadow-none',
-          )}
-        >
-          <div
-            className={cn(
-              'hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl sm:flex',
-              pastBooking
-                ? 'bg-slate-100 text-slate-400'
-                : isToday(cleaningDate)
-                  ? 'bg-violet-50 text-violet-700 ring-1 ring-violet-100'
-                  : daysUntil <= 3 && daysUntil > 0
-                    ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
-                    : 'bg-violet-50 text-primary ring-1 ring-violet-100',
-            )}
-          >
-            <Calendar className="h-4 w-4" />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-              <span className={cn('flex items-center gap-1 text-sm font-semibold', pastBooking ? 'text-slate-500' : 'text-slate-950')}>
-                <Calendar className="h-3.5 w-3.5 shrink-0" />
-                {booking.source === 'external' ? (
-                  <span>{format(cleaningDate, "EEE d MMM yyyy", { locale: es })}</span>
-                ) : (
-                  <>
-                    <span>{format(checkInDate, 'd MMM', { locale: es })}</span>
-                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                    <span>{format(checkOutDate, 'd MMM yyyy', { locale: es })}</span>
-                    {nights !== null && <span className="text-xs text-muted-foreground">({nights}n)</span>}
-                  </>
-                )}
-              </span>
-
-              {isToday(cleaningDate) && (
-                <Badge className="h-5 border-violet-200 bg-violet-50 px-1.5 text-[10px] text-violet-700 hover:bg-violet-50">
-                  Hoy
-                </Badge>
-              )}
-              {!pastBooking && !isToday(cleaningDate) && daysUntil <= 3 && daysUntil > 0 && (
-                <Badge variant="outline" className="h-5 border-amber-200 bg-amber-50 px-1.5 text-[10px] text-amber-700">
-                  En {daysUntil}d
-                </Badge>
-              )}
-              {pastBooking && (
-                <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                  Completada
-                </Badge>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              {booking.guestCount && (
-                <span className="flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  {booking.guestCount} huésp.
-                </span>
-              )}
-              {booking.property?.direccion && (
-                <span className="flex min-w-0 items-center gap-1">
-                  <MapPin className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{booking.property.direccion}</span>
-                </span>
-              )}
-              {booking.specialRequests && (
-                <span className={cn('flex min-w-0 items-center gap-1', pastBooking ? 'text-slate-400' : 'text-amber-700')}>
-                  <MessageSquare className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{booking.specialRequests}</span>
-                </span>
-              )}
-            </div>
-          </div>
-
-          {booking.isEditable && stillActive && booking.status === 'active' && (
-            <div className="flex shrink-0 items-center gap-1" onClick={(event) => event.stopPropagation()}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-violet-50 hover:text-primary"
-                onClick={() => setEditingBooking(booking)}
-                aria-label="Editar reserva"
-              >
-                <Edit2 className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-rose-50 hover:text-destructive"
-                onClick={() => setCancellingBooking(booking)}
-                aria-label="Cancelar reserva"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+        onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setDetailBooking(booking); } }}>
+        <div className={`portal-task-date${today ? ' is-today' : ''}`}><strong>{day ? displayDate(day, 'd') : '—'}</strong><small>{day ? displayDate(day, 'MMM') : ''}</small></div>
+        <div className="portal-task-description">
+          <strong>{booking.property?.nombre ?? 'Sin propiedad'}</strong>
+          <p>{booking.checkInDate && booking.checkOutDate ? `Entrada ${displayDate(booking.checkInDate, 'd MMM')} → Salida ${displayDate(booking.checkOutDate, 'd MMM')}` : 'Limpieza'}{booking.guestCount ? ` · ${booking.guestCount} huéspedes` : ''}</p>
+          {booking.specialRequests && <p className="portal-task-note">{booking.specialRequests}</p>}
         </div>
+        <span className={`portal-task-state${today ? ' is-today' : ''}`}>{booking.status === 'cancelled' ? 'Cancelada' : today ? 'Hoy' : isPastBooking(booking) ? 'Pasada' : 'Programada'}</span>
+        {editable && <div className="portal-task-actions" onClick={event => event.stopPropagation()}>
+          <Button variant="ghost" size="icon" onClick={() => setEditingBooking(booking)} aria-label="Editar reserva"><Edit2 size={14} /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCancellingBooking(booking)} aria-label="Cancelar reserva"><Trash2 size={14} /></Button>
+        </div>}
+        <ChevronRight size={16} className="portal-task-arrow" />
       </div>
     );
   };
 
   return (
     <>
-      <Card className="portal-task-list overflow-hidden border-slate-200 bg-white shadow-sm">
-        <div className="border-b bg-gradient-to-br from-white via-violet-50/70 to-slate-50 p-4 sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">Tus alojamientos</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Consulta las próximas tareas o abre una para ver sus detalles.
-              </p>
+      <div className="portal-tasks-layout">
+        <section className="portal-task-list">
+          <div className="portal-next-task">
+            <span className="portal-next-icon"><Home size={24} /></span>
+            <div><small>PRÓXIMA LIMPIEZA</small><h2>{nextBooking ? `${calendarDay(nextBooking.cleaningDate) === madridToday() ? 'Hoy, ' : ''}${displayDate(nextBooking.cleaningDate, 'EEEE d')}` : 'Todo al día'}</h2><p>{nextBooking?.property?.nombre ?? 'No tienes tareas próximas.'}</p></div>
+            {nextBooking && <button type="button" onClick={() => setDetailBooking(nextBooking)}>Ver tarea <ArrowRight size={16} /></button>}
+          </div>
+          <div className="portal-task-filters">
+            <div className="portal-task-filter-tabs" aria-label="Estado de las tareas">
+              {([{ value: 'upcoming', label: 'Próximas', count: metrics.upcoming }, { value: 'past', label: 'Pasadas', count: metrics.past }, { value: 'all', label: 'Todas', count: metrics.total }] as const).map(item => <button type="button" key={item.value} aria-pressed={statusFilter === item.value} onClick={() => setStatusFilter(item.value)}>{item.label} <span>{item.count}</span></button>)}
             </div>
-
-            <div className="grid grid-cols-3 gap-2 lg:min-w-[360px]">
-              <ReservationMetric label="Hoy" value={metrics.today} tone="emerald" icon={Clock} />
-              <ReservationMetric label="Próximas" value={metrics.upcoming} tone="blue" icon={Calendar} />
-              <ReservationMetric label="Pasadas" value={metrics.past} tone="slate" icon={CheckCircle2} />
+            <div className="portal-task-search">
+              <label><Search size={16} /><Input value={search} onChange={event => setSearch(event.target.value)} aria-label="Buscar tareas" placeholder="Buscar propiedad o nota" /></label>
+              <Select value={propertyFilter} onValueChange={setPropertyFilter}><SelectTrigger aria-label="Filtrar por alojamiento"><SelectValue placeholder="Todas las propiedades" /></SelectTrigger><SelectContent><SelectItem value="all">Todas las propiedades</SelectItem>{propertyOptions.map(property => <SelectItem key={property.key} value={property.key}>{property.label}</SelectItem>)}</SelectContent></Select>
             </div>
           </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-[1.2fr_0.9fr_0.8fr_auto]">
-            <div className="relative col-span-2 lg:col-span-1">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                aria-label="Buscar tareas" placeholder="Buscar alojamiento o tarea..."
-                className="h-10 bg-white pl-9"
-              />
-            </div>
-
-            <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-              <SelectTrigger aria-label="Filtrar por alojamiento" className="h-10 bg-white">
-                <SelectValue placeholder="Propiedad" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las propiedades</SelectItem>
-                {propertyOptions.map((property) => (
-                  <SelectItem key={property.key} value={property.key}>
-                    {property.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
-              <SelectTrigger aria-label="Filtrar por fecha" className="h-10 bg-white">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="today">Hoy</SelectItem>
-                <SelectItem value="upcoming">Próximas</SelectItem>
-                <SelectItem value="past">Pasadas</SelectItem>
-                <SelectItem value="manual">Manuales</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button variant="ghost" onClick={clearFilters} disabled={!hasFilters} className="h-10">
-              Limpiar
-            </Button>
-          </div>
-        </div>
-
-        <CardContent className="p-0">
-          {filteredBookings.length === 0 ? (
-            <div className="py-14 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
-                <AlertTriangle className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <p className="font-medium text-slate-950">No hay reservas con estos filtros.</p>
-              <Button variant="link" onClick={clearFilters}>Limpiar filtros</Button>
-            </div>
-          ) : (
-            <Accordion type="multiple" defaultValue={groupedByProperty.map(group => group.propertyId || group.propertyCode || group.propertyName)} className="divide-y divide-slate-100">
-              {groupedByProperty.map((group) => {
-                const today = normalizeDate(new Date());
-                const upcoming: PortalBooking[] = [];
-                const past: PortalBooking[] = [];
-
-                for (const booking of group.bookings) {
-                  const date = normalizeDate(booking.cleaningDate);
-                  if (date.getTime() >= today.getTime()) upcoming.push(booking);
-                  else past.push(booking);
-                }
-
-                upcoming.sort((a, b) => new Date(a.cleaningDate).getTime() - new Date(b.cleaningDate).getTime());
-                past.sort((a, b) => new Date(b.cleaningDate).getTime() - new Date(a.cleaningDate).getTime());
-
-                const groupKey = group.propertyId || group.propertyCode || group.propertyName;
-                const isPastExpanded = expandedPast.has(groupKey);
-                const hasActive = upcoming.length > 0;
-
-                return (
-                  <AccordionItem key={groupKey} value={groupKey} className="border-0">
-                    <AccordionTrigger className="gap-3 px-4 py-3 text-left hover:bg-slate-50 hover:no-underline sm:px-5">
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <div className={cn(
-                          'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl',
-                          hasActive ? 'bg-violet-50 text-primary ring-1 ring-violet-100' : 'bg-slate-100 text-slate-500',
-                        )}>
-                          <Building2 className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            {group.propertyCode && (
-                              <span className="rounded-lg bg-slate-950 px-2 py-0.5 text-xs font-bold text-white">
-                                {group.propertyCode}
-                              </span>
-                            )}
-                            <span className="truncate text-sm font-semibold text-slate-950 sm:text-base">
-                              {group.propertyName}
-                            </span>
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                            <span>{group.bookings.length} limpieza{group.bookings.length === 1 ? '' : 's'}</span>
-                            {upcoming.length > 0 && (
-                              <Badge variant="outline" className="h-5 border-violet-200 bg-violet-50 px-1.5 text-[10px] text-violet-700">
-                                {upcoming.length} próxima{upcoming.length === 1 ? '' : 's'}
-                              </Badge>
-                            )}
-                            {past.length > 0 && (
-                              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                                {past.length} pasada{past.length === 1 ? '' : 's'}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-
-                    <AccordionContent className="pb-0">
-                      <div className="bg-slate-50/60">
-                        {upcoming.length > 0 && (
-                          <>
-                            <SectionHeader label="Próximas limpiezas" count={upcoming.length} />
-                            <div className="divide-y divide-slate-100 bg-white">
-                              {upcoming.map(renderBookingRow)}
-                            </div>
-                          </>
-                        )}
-
-                        {past.length > 0 && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setExpandedPast((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(groupKey)) next.delete(groupKey);
-                                  else next.add(groupKey);
-                                  return next;
-                                });
-                              }}
-                              className="flex w-full items-center gap-2 border-y border-slate-100 bg-slate-100/80 px-4 py-3 text-left transition-colors hover:bg-slate-100 sm:px-5"
-                            >
-                              <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
-                              <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-700">
-                                Limpiezas pasadas
-                              </span>
-                              <Badge variant="secondary" className="h-5 px-2 text-xs">
-                                {past.length}
-                              </Badge>
-                              <ChevronRight className={cn('ml-auto h-4 w-4 text-muted-foreground transition-transform', isPastExpanded && 'rotate-90')} />
-                            </button>
-                            {isPastExpanded && (
-                              <div className="divide-y divide-slate-100 bg-white">
-                                {past.map(renderBookingRow)}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
-          )}
-        </CardContent>
-      </Card>
+          <div className="portal-task-column-head"><span>FECHA DE LIMPIEZA / PROPIEDAD</span><span>ESTADO</span></div>
+          {sortedBookings.length ? sortedBookings.map(renderBookingRow) : <div className="portal-empty"><p>{bookings.length ? 'No hay reservas con estos filtros.' : 'Todavía no tienes tareas.'}</p>{bookings.length > 0 && <Button variant="link" onClick={clearFilters}>Limpiar filtros</Button>}</div>}
+          <footer className="portal-task-footer"><span>{sortedBookings.length} tarea{sortedBookings.length === 1 ? '' : 's'}{statusFilter === 'upcoming' ? ' próximas' : statusFilter === 'past' ? ' pasadas' : ''}</span><span>Abre una tarea para ver los detalles <ArrowRight size={12} /></span></footer>
+        </section>
+        <aside className="portal-tasks-sidebar">
+          <section className="portal-mini-calendar">
+            <header><h2>Un vistazo al mes</h2><Calendar size={17} /></header>
+            <div className="portal-mini-month"><strong>{displayDate(month, 'MMMM yyyy')}</strong><button type="button" aria-label="Mes anterior" onClick={() => changeMonth(-1)}><ChevronLeft size={16} /></button><button type="button" aria-label="Mes siguiente" onClick={() => changeMonth(1)}><ChevronRight size={16} /></button></div>
+            <div className="portal-mini-weekdays">{['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day, index) => <span key={index}>{day}</span>)}</div>
+            <div className="portal-mini-days">{monthDays.map(day => {
+              const hasCleaning = bookings.some(booking => booking.status !== 'cancelled' && calendarDay(booking.cleaningDate) === day);
+              return <span key={day} className={`${day.slice(0, 7) !== month.slice(0, 7) ? 'outside ' : ''}${day === madridToday() ? 'today' : ''}`} aria-label={`${displayDate(day, 'd MMMM yyyy')}${hasCleaning ? ', con limpieza' : ''}`}>{displayDate(day, 'd')}{hasCleaning && <i />}</span>;
+            })}</div>
+            <p className="portal-mini-legend"><i /> Día con limpieza</p>
+            {onOpenCalendar && <button type="button" className="portal-sidebar-link" onClick={onOpenCalendar}>Abrir calendario <ArrowRight size={16} /></button>}
+          </section>
+          {onAddTask && <section className="portal-add-hint"><Plus size={24} /><h3>¿Una nueva estancia?</h3><p>Indica la entrada y la salida. Tendrás la limpieza organizada por fecha y propiedad.</p><button type="button" className="portal-sidebar-link" onClick={onAddTask}>Añadir una tarea <ArrowRight size={16} /></button></section>}
+        </aside>
+      </div>
 
       <ReservationDetailModal
         booking={detailBooking}
@@ -638,42 +311,3 @@ export const ReservationsList = ({
     </>
   );
 };
-
-const ReservationMetric = ({
-  label,
-  value,
-  tone,
-  icon: Icon,
-}: {
-  label: string;
-  value: number;
-  tone: 'emerald' | 'blue' | 'slate' | 'amber';
-  icon: typeof Calendar;
-}) => {
-  const tones = {
-    emerald: 'bg-violet-50 text-violet-700 border-violet-100',
-    blue: 'bg-violet-50 text-violet-700 border-violet-100',
-    slate: 'bg-slate-50 text-slate-700 border-slate-100',
-    amber: 'bg-amber-50 text-amber-700 border-amber-100',
-  };
-
-  return (
-    <div className={cn('rounded-2xl border px-3 py-2.5', tones[tone])}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-medium opacity-80">{label}</span>
-        <Icon className="h-3.5 w-3.5" />
-      </div>
-      <div className="mt-1 text-xl font-bold tabular-nums">{value}</div>
-    </div>
-  );
-};
-
-const SectionHeader = ({ label, count }: { label: string; count: number }) => (
-  <div className="flex items-center gap-2 border-y border-slate-100 bg-violet-50/80 px-4 py-3 sm:px-5">
-    <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
-    <span className="text-xs font-bold uppercase tracking-[0.16em] text-violet-800">{label}</span>
-    <Badge variant="outline" className="h-5 border-violet-200 bg-white px-2 text-xs text-violet-700">
-      {count}
-    </Badge>
-  </div>
-);

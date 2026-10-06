@@ -141,6 +141,8 @@ export const ClientPortalDashboard = ({
               bookings={listBookings}
               properties={properties}
               isLoading={loadingBookings}
+              onOpenCalendar={() => setActiveTab('calendar')}
+              onAddTask={canCreateReservations ? () => setActiveTab('add') : undefined}
             />
           </TabsContent>
 
