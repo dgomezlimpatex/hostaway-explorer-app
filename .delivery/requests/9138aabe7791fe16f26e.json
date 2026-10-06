@@ -1,0 +1,21 @@
+{
+  "request": "Corregir el arrastre de tareas sin asignar desde el calendario que pierde el identificador y no asigna la tarea.",
+  "reason": "Reparación del transporte local de eventos de interfaz: conserva la tarea activa en una ref y elimina comprobaciones duplicadas de text/plain en las columnas. Mantiene el handler de asignación existente, sus validaciones y persistencia sin cambios. No ejecuta operaciones sobre datos reales ni cambia comunicaciones, sincronizaciones o backend.",
+  "verification": "Hook real probado con payload vacío, callback anterior al render, text/plain, JSON, JSON inválido, tarea asignada, cancelación, drop duplicado, externo y discrepante. Navegador Chromium con componentes reales UnassignedTasks, TaskCard, CalendarLayout, CalendarGrid, TimeSlot y WorkersColumn: arrastre nativo y payload vacío sobre hora y nombre, callback local exacto y retirada de tarjeta. Sin Supabase ni peticiones de red. Build y lint focalizado correctos; comparación de tipos de aplicación y Node contra la base sin errores nuevos. No se prueban escrituras ni emails reales.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarDragAndDropTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "382e958817f74f9db330f5aa14983dddf88577e28e694fcb731799081bec31da"
+}
