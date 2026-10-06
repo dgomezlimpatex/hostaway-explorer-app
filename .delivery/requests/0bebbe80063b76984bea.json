@@ -1,0 +1,21 @@
+{
+  "request": "Eliminar de la ficha de la tarea el bloque de textiles y amenities y el texto explicativo inferior señalado por Dani.",
+  "reason": "Retirada de contenido visual de una ficha existente. No modifica consultas, caché, datos, permisos, inicio, fotos ni finalización de tareas.",
+  "verification": "Build correcto; lint focalizado sin errores; tipos de aplicación sin nuevos diagnósticos y Node correcto. Prueba del componente real verifica ausencia del bloque antes y durante limpieza y conservación de notas y características. Navegador móvil/escritorio local con backend interceptado: bloque y texto ausentes, recarga offline y flujo de fotos y finalización correctos. La cola repite la prueba Node sin red y su smoke de navegador.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerPropertyDetailsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "801e33fd809334a1b9e9ff07e0993ec81e25fc9c5e85208c306b4033b96b589a"
+}

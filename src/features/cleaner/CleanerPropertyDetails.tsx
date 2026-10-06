@@ -12,13 +12,6 @@ const characteristics = [
   ['numero_camas', 'Camas grandes'], ['numero_camas_pequenas', 'Camas pequeñas'],
   ['numero_camas_suite', 'Camas suite'], ['numero_sofas_cama', 'Sofás cama'], ['numero_banos', 'Baños'],
 ] as const;
-const supplies = [
-  ['numero_sabanas', 'Sábanas grandes'], ['numero_sabanas_pequenas', 'Sábanas pequeñas'],
-  ['numero_sabanas_suite', 'Sábanas suite'], ['numero_toallas_grandes', 'Toallas grandes'],
-  ['numero_toallas_pequenas', 'Toallas pequeñas'], ['numero_alfombrines', 'Alfombrines'],
-  ['numero_fundas_almohada', 'Fundas de almohada'], ['kit_alimentario', 'Kit alimentario'],
-  ['cantidad_rollos_papel_higienico', 'Papel higiénico'], ['cantidad_rollos_papel_cocina', 'Papel de cocina'],
-] as const;
 
 export function CleanerPropertyDetails({ property, taskNotes, compact = false }: {
   property?: CleanerPropertyDetailsData | null; taskNotes?: string; compact?: boolean;
@@ -37,14 +30,6 @@ export function CleanerPropertyDetails({ property, taskNotes, compact = false }:
         </div>)}
         <div className="rounded-lg bg-muted p-2.5"><dt className="text-xs text-muted-foreground">Duración del servicio</dt>
           <dd className="mt-1 font-semibold">{property.duracion_servicio == null ? '—' : `${property.duracion_servicio} min`}</dd></div>
-      </dl>
-    </section>
-    <section aria-label="Textiles y amenities">
-      <h3 className="mb-2 text-sm font-semibold">Textiles y amenities</h3>
-      <dl className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-        {supplies.map(([field, label]) => <div key={field} className="flex items-center justify-between gap-3 rounded-lg bg-muted px-3 py-2">
-          <dt className="text-sm">{label}</dt><dd className="font-semibold tabular-nums">{property[field] === undefined ? '—' : property[field] ?? 0}</dd>
-        </div>)}
       </dl>
     </section>
   </div>;
