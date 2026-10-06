@@ -53,7 +53,7 @@ export const TaskReportModal: React.FC<TaskReportModalProps> = ({
     updateReportAsync,
     isCreatingReport,
     isUpdatingReport,
-  } = useTaskReports();
+  } = useTaskReports({ fetchReports: false });
   const { completeSubtask } = useAdditionalTasks();
   const processAutomaticConsumption = useProcessAutomaticConsumption();
   const realTaskId = useMemo(() => {

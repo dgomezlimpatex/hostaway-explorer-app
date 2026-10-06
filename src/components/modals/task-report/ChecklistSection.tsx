@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { useTaskReports } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage, shouldCompressImage } from '@/utils/imageCompression';
+import { useCleanerWorkActions } from '@/features/cleaner/CleanerWorkContext';
 
 interface ChecklistSectionProps {
   template: TaskChecklistTemplate | undefined;
@@ -34,7 +35,8 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   onIncompleteInfo,
 }) => {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const { uploadMediaAsync } = useTaskReports();
+  const { uploadMediaAsync } = useTaskReports({ fetchReports: false });
+  const cleanerWork = useCleanerWorkActions();
   const { toast } = useToast();
   const latestReportIdRef = useRef<string | undefined>(reportId);
   // CRITICAL: Ref to always have the latest checklist for concurrent uploads
@@ -95,7 +97,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
         media_urls: latest[key]?.media_urls || [],
       };
     } else {
-      delete newChecklist[key];
+      newChecklist[key] = { ...latest[key], completed: false };
     }
     
     checklistRef.current = newChecklist;
@@ -132,7 +134,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     }
     
     const currentMediaUrls = newChecklist[key].media_urls || [];
-    newChecklist[key].media_urls = [...currentMediaUrls, mediaUrl];
+    newChecklist[key].media_urls = Array.from(new Set([...currentMediaUrls, mediaUrl]));
     
     checklistRef.current = newChecklist;
     onChecklistChange(newChecklist);
@@ -143,6 +145,9 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     
     const key = `additional.${subtask.id}`;
     const itemData = checklistRef.current[key];
+    const next = { ...checklistRef.current, [key]: { ...itemData, completed } };
+    checklistRef.current = next;
+    onChecklistChange(next);
     
     onAdditionalTaskComplete(
       subtask.id, 
@@ -180,7 +185,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
     }
     
     const currentMediaUrls = newChecklist[key].media_urls || [];
-    newChecklist[key].media_urls = [...currentMediaUrls, mediaUrl];
+    newChecklist[key].media_urls = Array.from(new Set([...currentMediaUrls, mediaUrl]));
     
     checklistRef.current = newChecklist;
     onChecklistChange(newChecklist);
@@ -265,7 +270,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
   }, [getIncompleteItems, scrollToNextIncomplete, onIncompleteInfo, isReadOnly]);
 
   const totalItems = (template?.checklist_items.reduce((acc, cat) => acc + cat.items.length, 0) || 0) + additionalTasks.length;
-  const completedItems = Object.keys(checklist).filter(k => checklist[k]?.completed).length + additionalTasks.filter(t => t.completed).length;
+  const completedItems = Object.keys(checklist).filter(k => !k.startsWith('additional.') && checklist[k]?.completed).length + additionalTasks.filter(t => t.completed).length;
 
   if (!template && additionalTasks.length === 0) {
     return (
@@ -505,6 +510,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                               return;
                             }
 
+                            cleanerWork?.changePhotoPreparation(1);
                             try {
                               // Compress if needed
                               let fileToUpload = file;
@@ -526,11 +532,12 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                               handleMediaAdded(category.id, item.id, data.file_url);
                               // Auto-mark as completed now that photo evidence exists
                               handleItemToggle(category.id, item.id, true);
-                              toast({ title: "Foto subida", description: "Evidencia guardada correctamente" });
+                              toast({ title: cleanerWork ? "Foto guardada en este móvil" : "Foto subida", description: cleanerWork ? "Puedes seguir. El envío se confirmará con cobertura." : "Evidencia guardada correctamente" });
                             } catch (error) {
                               console.error('❌ Auto-capture upload failed:', error);
                               toast({ title: "Error al subir foto", description: "Inténtalo de nuevo", variant: "destructive" });
                             } finally {
+                              cleanerWork?.changePhotoPreparation(-1);
                               if (e.target) e.target.value = '';
                             }
                           }}
@@ -548,9 +555,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                             // If photo required and no photo yet, only open file picker (don't mark complete yet)
                             if (item.photo_required && !hasMedia) {
                               setExpandedItem(key);
-                              setTimeout(() => {
-                                fileInputRefs.current[key]?.click();
-                              }, 100);
+                              fileInputRefs.current[key]?.click();
                             } else {
                               // Mark as completed (no photo needed or already has photo)
                               handleItemToggle(category.id, item.id, true);

@@ -12,7 +12,8 @@ import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import { OwnerOnlyRoute } from "@/components/auth/OwnerOnlyRoute";
 import { useSessionTimeout } from "@/hooks/useSessionTimeout";
 import { LazyLoadErrorBoundary } from "@/components/common/LazyLoadErrorBoundary";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { CleanerOfflineProvider } from '@/features/cleaner/CleanerOfflineProvider';
+const AppLayout = React.lazy(() => import('./components/layout/AppLayout'));
 
 // Lazy load pages for better First Contentful Paint
 const Index = React.lazy(() => import("./pages/Index"));
@@ -114,6 +115,7 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <SedeContextProvider>
+            <CleanerOfflineProvider>
             <SecurityWrapper>
               <Toaster />
               <Sonner />
@@ -157,7 +159,7 @@ function App() {
                   {/* Layout persistente con sidebar - todas las páginas admin */}
                   <Route element={
                     <ProtectedRoute>
-                      <AppLayout />
+                      <FullPageSuspense><AppLayout /></FullPageSuspense>
                     </ProtectedRoute>
                   }>
                   {/* Inventario integrado en el layout persistente */}
@@ -361,6 +363,7 @@ function App() {
                 </Routes>
               </BrowserRouter>
             </SecurityWrapper>
+                      </CleanerOfflineProvider>
           </SedeContextProvider>
         </AuthProvider>
       </TooltipProvider>

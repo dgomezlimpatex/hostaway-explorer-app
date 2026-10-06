@@ -11,7 +11,7 @@ import { TaskChecklistTemplate, TaskReport } from '@/types/taskReports';
 interface ReportSummaryProps {
   task: Task;
   template: TaskChecklistTemplate | undefined;
-  checklist: Record<string, any>;
+  checklist: Record<string, { completed?: boolean; media_urls?: string[] }>;
   notes: string;
   completionPercentage: number;
   currentReport?: TaskReport;
@@ -30,9 +30,9 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
     0
   ) || 0;
   
-  const completedItems = Object.keys(checklist).length;
+  const completedItems = Object.entries(checklist).filter(([key, item]) => !key.startsWith('additional.') && item.completed).length + (task.additionalTasks || []).filter(item => item.completed).length;
   const totalPhotos = Object.values(checklist).reduce(
-    (acc: number, item: any) => acc + (item?.media_urls?.length || 0),
+    (acc: number, item) => acc + (item?.media_urls?.length || 0),
     0
   );
 
@@ -51,7 +51,8 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
     const date = new Date(dateString);
     return date.toLocaleTimeString('es-ES', { 
       hour: '2-digit', 
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Europe/Madrid',
     });
   };
 
@@ -104,6 +105,13 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
 
   return (
     <div className="space-y-6">
+      <Card><CardHeader><CardTitle className="text-base">Resumen de la limpieza</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p>{completedItems} de {totalItems + (task.additionalTasks?.length || 0)} puntos completados</p>
+          <p>{totalPhotos} fotos o vídeos adjuntos</p>
+          {notes && <p className="whitespace-pre-wrap rounded-lg bg-muted p-3">{notes}</p>}
+        </CardContent>
+      </Card>
       {/* Tiempo real del servicio */}
       {currentReport && (
         <Card className="border-blue-200 bg-blue-50">
@@ -148,10 +156,10 @@ export const ReportSummary: React.FC<ReportSummaryProps> = ({
           <div className="text-center">
             <CheckCircle className="h-14 w-14 mx-auto mb-3 text-green-500" />
             <h3 className="text-lg font-semibold text-green-700 mb-1">
-              Reporte Finalizado
+              {currentReport?.overall_status === 'completed' ? 'Limpieza finalizada' : 'Revisa antes de finalizar'}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Todas las tareas han sido completadas.
+              {currentReport?.overall_status === 'completed' ? 'Revisa el estado del envío para confirmar que coordinación lo ha recibido.' : 'Pulsa Finalizar limpieza para guardar la hora de fin.'}
             </p>
           </div>
         </CardContent>

@@ -5,6 +5,7 @@ import { Sede, SedeContextType } from '@/types/sede';
 import { sedeStorageService } from '@/services/storage/sedeStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { setGlobalSedeContext } from '@/services/storage/baseStorage';
+import { cacheCleanerData, readCleanerCache, withTimeout } from '@/features/cleaner/offlineStore';
 
 const SedeContext = createContext<SedeContextType | undefined>(undefined);
 
@@ -50,6 +51,8 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const loadedUserIdRef = useRef<string | null>(null);
+  const currentUserIdRef = useRef(user?.id);
+  currentUserIdRef.current = user?.id;
   const latestSedeStateRef = useRef({
     activeSede: null as Sede | null,
     availableSedes: [] as Sede[],
@@ -105,9 +108,27 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
 
   // Cargar sedes disponibles y sincronizar estado
   const refreshSedes = useCallback(async () => {
+    if (!user?.id) return;
+    const ownerId = user.id;
+    let cachedSedes: Sede[] = [];
     try {
       setLoading(true);
-      const sedes = await sedeStorageService.getUserAccessibleSedes();
+      const cached = await readCleanerCache<Sede[]>(`${ownerId}:sedes`).catch(() => undefined);
+      cachedSedes = cached?.data || [];
+      if (currentUserIdRef.current !== ownerId) return;
+      if (cachedSedes.length) {
+        setAvailableSedes(cachedSedes);
+        syncActiveSede(cachedSedes, activeSede || getSavedSedeFromStorage());
+        setLoading(false);
+        setIsInitialized(true);
+      }
+      if (!navigator.onLine) {
+        if (!cachedSedes.length) throw new Error('No se han descargado las sedes de esta cuenta.');
+        return;
+      }
+      const sedes = await withTimeout(sedeStorageService.getUserAccessibleSedes());
+      if (currentUserIdRef.current !== ownerId) return;
+      await cacheCleanerData(`${ownerId}:sedes`, sedes).catch(() => undefined);
       setAvailableSedes(sedes);
 
       // Obtener sede activa actual (desde estado o localStorage)
@@ -117,12 +138,23 @@ export const SedeProvider = ({ children }: SedeProviderProps) => {
 
     } catch (error) {
       console.error('🏢 SedeContext: Error loading sedes:', error);
-      setAvailableSedes([]);
+      if (currentUserIdRef.current === ownerId && !cachedSedes.length) {
+        setAvailableSedes([]);
+        setActiveSedeState(null);
+      }
     } finally {
-      setLoading(false);
-      setIsInitialized(true);
+      if (currentUserIdRef.current === ownerId) {
+        setLoading(false);
+        setIsInitialized(true);
+      }
     }
-  }, [activeSede, getSavedSedeFromStorage, syncActiveSede]);
+  }, [user?.id, activeSede, getSavedSedeFromStorage, syncActiveSede]);
+
+  useEffect(() => {
+    const refresh = () => { if (user?.id) void refreshSedes(); };
+    window.addEventListener('online', refresh);
+    return () => window.removeEventListener('online', refresh);
+  }, [user?.id, refreshSedes]);
 
   // Inicializar contexto cada vez que cambia el usuario autenticado.
   useEffect(() => {

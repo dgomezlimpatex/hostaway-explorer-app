@@ -4,6 +4,8 @@ import { Video, X, Eye } from 'lucide-react';
 import { TaskMedia } from '@/types/taskReports';
 import { useMediaManagement } from '@/hooks/useMediaManagement';
 import { useToast } from '@/hooks/use-toast';
+import { LocalMediaImage, openLocalMedia } from '@/features/cleaner/LocalMediaImage';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MediaGridProps {
   existingMedia: TaskMedia[] | string[];
@@ -18,6 +20,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
 }) => {
   const { deleteMedia, isDeleting } = useMediaManagement();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const removeMedia = async (media: TaskMedia) => {
     try {
@@ -61,7 +64,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
                     <Video className="h-6 w-6 text-gray-500" />
                   </div>
                 ) : (
-                  <img
+                  <LocalMediaImage
                     src={mediaUrl}
                     alt={`Media ${index + 1}`}
                     className="w-full h-full object-cover"
@@ -69,7 +72,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
                 )}
               </div>
               
-              {!isReadOnly && (
+              {!isReadOnly && (isTaskMediaObject || onMediaDeleted) && (
                 <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     type="button"
@@ -91,13 +94,14 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
                 </div>
               )}
 
-              <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute bottom-0 right-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={() => window.open(mediaUrl, '_blank')}
+                  className="h-11 w-11 p-0"
+                  aria-label={`Ver foto o vídeo ${index + 1}`}
+                  onClick={() => void openLocalMedia(mediaUrl, user?.id || '').catch(() => toast({ title: 'No se ha podido abrir la foto', description: 'Mantén la app abierta y vuelve a intentarlo.', variant: 'destructive' }))}
                 >
                   <Eye className="h-3 w-3" />
                 </Button>

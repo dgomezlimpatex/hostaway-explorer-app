@@ -240,13 +240,6 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       query = query.eq('sede_id', effectiveSedeId);
     }
     
-    const { data: assignedTasks, error: assignedError } = await query;
-    
-    if (assignedError) {
-      console.error('Error fetching assigned tasks for cleaner:', assignedError);
-      throw assignedError;
-    }
-    
     // Also fetch tasks directly assigned via cleaner_id field (legacy)
     let legacyQuery = supabase
       .from('tasks')
@@ -269,7 +262,10 @@ export class TaskStorageService extends BaseStorageService<Task, TaskCreateData>
       legacyQuery = legacyQuery.eq('sede_id', effectiveSedeId);
     }
     
-    const { data: legacyTasks, error: legacyError } = await legacyQuery;
+    const [assignedResult, legacyResult] = await Promise.all([query, legacyQuery]);
+    const { data: assignedTasks, error: assignedError } = assignedResult;
+    const { data: legacyTasks, error: legacyError } = legacyResult;
+    if (assignedError) throw assignedError;
     
     if (legacyError) {
       console.error('Error fetching legacy tasks for cleaner:', legacyError);

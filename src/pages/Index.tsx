@@ -3,7 +3,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { WelcomePage } from '@/components/dashboard/WelcomePage';
 import { CleanerDashboard } from '@/components/dashboard/CleanerDashboard';
-import { MainDashboard } from '@/components/dashboard/MainDashboard';
+import { lazy, Suspense } from 'react';
+import { CleanerEntryLoading } from '@/components/dashboard/CleanerEntryLoading';
+const MainDashboard = lazy(() => import('@/components/dashboard/MainDashboard').then(module => ({ default: module.MainDashboard })));
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserX, Clock } from 'lucide-react';
 
@@ -66,7 +68,7 @@ const Index = () => {
   }
 
   // Para admin, manager y supervisor: mostrar dashboard principal con navegación basada en roles
-  return <MainDashboard />;
+  return <Suspense fallback={<CleanerEntryLoading />}><MainDashboard /></Suspense>;
 };
 
 export default Index;

@@ -4,12 +4,14 @@ import { TaskReport, CreateTaskReportData, TaskMedia } from '@/types/taskReports
 import { useToast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
 import { useCacheInvalidation } from './useCacheInvalidation';
+import { useCleanerWorkActions } from '@/features/cleaner/CleanerWorkContext';
 
-export const useTaskReports = () => {
+export const useTaskReports = ({ fetchReports = true }: { fetchReports?: boolean } = {}) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { activeSede } = useSede();
   const { invalidateReports } = useCacheInvalidation();
+  const cleanerWork = useCleanerWorkActions();
 
   // Query para obtener todos los reportes con cache por sede
   const {
@@ -25,6 +27,7 @@ export const useTaskReports = () => {
     gcTime: 0, // Deshabilitar cache temporalmente
     refetchOnWindowFocus: true,
     refetchInterval: false,
+    enabled: fetchReports && !cleanerWork,
   });
 
   // Mutation para crear reporte
@@ -81,14 +84,17 @@ export const useTaskReports = () => {
 
   // Mutation para subir media (toasts manejados en useMediaUpload para evitar duplicados)
   const uploadMediaMutation = useMutation({
+    networkMode: cleanerWork ? 'always' : 'online',
     mutationFn: ({ file, reportId, checklistItemId }: {
       file: File;
       reportId: string;
       checklistItemId?: string;
-    }) => taskReportsStorageService.uploadMedia(file, reportId, checklistItemId),
+    }) => cleanerWork
+      ? cleanerWork.uploadPhoto(file, checklistItemId)
+      : taskReportsStorageService.uploadMedia(file, reportId, checklistItemId),
     onSuccess: (data, variables) => {
       // Solo invalidar cache, los toasts se manejan en useMediaUpload
-      queryClient.invalidateQueries({ queryKey: ['task-media', variables.reportId] });
+      if (!cleanerWork) queryClient.invalidateQueries({ queryKey: ['task-media', variables.reportId] });
     },
     onError: (error) => {
       console.error('Error uploading media:', error);

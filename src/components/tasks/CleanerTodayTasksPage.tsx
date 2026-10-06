@@ -13,14 +13,14 @@ import {
 } from 'lucide-react';
 import { OperationalModeSwitcher } from '@/components/auth/OperationalModeSwitcher';
 import { UserMenu } from '@/components/auth/UserMenu';
-import { TaskPreviewModal } from '@/components/modals/TaskPreviewModal';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/hooks/useAuth';
-import { useCleaners } from '@/hooks/useCleaners';
+import { useCleanerIdentity } from '@/features/cleaner/useCleanerData';
+import { CleanerSyncStatus } from '@/features/cleaner/CleanerSyncStatus';
+import { useMadridToday } from '@/features/cleaner/useMadridToday';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/types/calendar';
-import { formatMadridDate, getTodayMadrid } from '@/utils/date';
+import { formatMadridDate } from '@/utils/date';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import {
   getEffectiveTaskDurationMinutes,
@@ -33,6 +33,7 @@ interface CleanerTodayTasksPageProps {
   tasks: Task[];
   isLoading: boolean;
   onOpenReport: (task: Task) => void;
+  unavailable?: boolean;
 }
 
 const statusMeta: Record<Task['status'], {
@@ -136,18 +137,12 @@ const CleanerTaskRow = ({ task, onOpen }: { task: Task; onOpen: () => void }) =>
   );
 };
 
-export const CleanerTodayTasksPage = ({ tasks, isLoading, onOpenReport }: CleanerTodayTasksPageProps) => {
-  const { user } = useAuth();
-  const { cleaners, isInitialLoading: cleanersLoading } = useCleaners();
+export const CleanerTodayTasksPage = ({ tasks, isLoading, onOpenReport, unavailable = false }: CleanerTodayTasksPageProps) => {
+  const { data: currentCleaner, isLoading: cleanersLoading } = useCleanerIdentity();
   const [filter, setFilter] = useState<TodayTaskFilter>('all');
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const today = useMemo(() => getTodayMadrid(), []);
+  const today = useMadridToday();
   const todayKey = formatMadridDate(today);
 
-  const currentCleaner = useMemo(
-    () => cleaners.find((cleaner) => cleaner.user_id === user?.id) || null,
-    [cleaners, user?.id],
-  );
 
   const todayTasks = useMemo(
     () => tasks
@@ -271,6 +266,7 @@ export const CleanerTodayTasksPage = ({ tasks, isLoading, onOpenReport }: Cleane
         </nav>
 
         <section className="mt-5" aria-live="polite">
+          <CleanerSyncStatus className="mb-4" />
           {isLoading || cleanersLoading ? (
             <div className="space-y-3">
               {[0, 1, 2].map((item) => <Skeleton key={item} className="ml-[5rem] h-32 rounded-2xl" />)}
@@ -278,10 +274,10 @@ export const CleanerTodayTasksPage = ({ tasks, isLoading, onOpenReport }: Cleane
           ) : visibleTasks.length > 0 ? (
             <div className="space-y-3 sm:space-y-4">
               {visibleTasks.map((task) => (
-                <CleanerTaskRow key={task.id} task={task} onOpen={() => setSelectedTask(task)} />
+                <CleanerTaskRow key={task.id} task={task} onOpen={() => onOpenReport(task)} />
               ))}
             </div>
-          ) : todayTasks.length === 0 ? (
+          ) : unavailable ? null : todayTasks.length === 0 ? (
             <div className="rounded-[1.75rem] border border-dashed border-[#d8cbe5] bg-white/70 px-6 py-12 text-center">
               <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f0e8fa] text-[#6d40ca]">
                 <ListChecks className="h-7 w-7" aria-hidden="true" />
@@ -304,13 +300,6 @@ export const CleanerTodayTasksPage = ({ tasks, isLoading, onOpenReport }: Cleane
         </section>
       </main>
 
-      <TaskPreviewModal
-        task={selectedTask}
-        open={Boolean(selectedTask)}
-        onOpenChange={(open) => !open && setSelectedTask(null)}
-        onCreateReport={onOpenReport}
-        onViewReport={onOpenReport}
-      />
     </div>
   );
 };

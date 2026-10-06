@@ -1,8 +1,10 @@
 
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { passwordSignIn, type LoginError } from '@/auth/passwordSignIn';
+import { useQueryClient } from '@tanstack/react-query';
+import { cacheCleanerData, readCleanerCache, withTimeout } from '@/features/cleaner/offlineStore';
 import type { Database } from '@/integrations/supabase/types';
 import {
   canUseOperationalMode,
@@ -46,7 +48,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: LoginError | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
+  updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | { message: string } | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,157 +70,135 @@ export const useAuthProvider = (): AuthContextType => {
   const [operationalMode, setOperationalModeState] = useState<OperationalMode>('supervision');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Add state to prevent multiple processing calls
-  const [processingUser, setProcessingUser] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const activeUserRef = useRef<string | null>(null);
+  const processedUserRef = useRef<string | null>(null);
+  const processingRef = useRef<{ id: string; promise: Promise<void> } | null>(null);
 
-  const processUser = async (userId: string) => {
-    // Prevent multiple calls for the same user
-    if (processingUser === userId) {
-      console.log('🔍 Already processing user:', userId);
-      return;
-    }
+  const processUser = useCallback((authUser: User, force = false): Promise<void> => {
+    const userId = authUser.id;
+    if (processingRef.current?.id === userId) return processingRef.current.promise;
+    if (!force && processedUserRef.current === userId) return Promise.resolve();
 
-    try {
-      setProcessingUser(userId);
-      console.log('🔍 Processing user authentication:', userId);
-      
-      // Obtener perfil del usuario
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+    const applyIdentity = (profileData: Profile | null, role: AppRole | null, roles: AppRole[]) => {
+      if (activeUserRef.current !== userId) return;
+      const defaultMode = getDefaultOperationalMode(roles, role);
+      const storedMode = localStorage.getItem(`limpatex-operational-mode:${userId}`);
+      const mode = storedMode === 'cleaning' || storedMode === 'supervision' ? storedMode : defaultMode;
+      setProfile(profileData);
+      setUserRole(role);
+      setUserRoles(roles);
+      setOperationalModeState(canUseOperationalMode(roles, mode) ? mode : defaultMode);
+    };
 
-      if (profileError) {
-        console.error('❌ Error fetching profile:', profileError);
-        throw profileError;
+    const operation = (async () => {
+      const cached = await readCleanerCache<{ profile: Profile | null; role: AppRole; roles: AppRole[] }>(`${userId}:auth`).catch(() => undefined);
+      // Restore only the cleaning UI and only for the user in the SDK's existing session.
+      if (!navigator.onLine && cached?.data.roles.includes('cleaner')) {
+        applyIdentity(cached.data.profile, 'cleaner', ['cleaner']);
+        processedUserRef.current = userId;
+        return;
       }
-
-      console.log('👤 Profile data found:', !!profileData, profileData?.email);
-
-      // Verificar si hay invitaciones pendientes para este email
-      if (profileData?.email) {
-        console.log('🔍 Checking for pending invitations for:', profileData.email);
-        
-        const { data: pendingInvitations, error: invitationError } = await supabase
-          .from('user_invitations')
-          .select('*')
-          .eq('email', profileData.email)
-          .eq('status', 'pending')
-          .gt('expires_at', new Date().toISOString());
-
-        if (invitationError) {
-          console.error('❌ Error checking invitations:', invitationError);
-        } else if (pendingInvitations && pendingInvitations.length > 0) {
-          console.log('📧 Found pending invitations:', pendingInvitations.length);
-          
-          // Procesar la invitación más reciente
-          const latestInvitation = pendingInvitations[0];
-          console.log('🎯 Processing invitation:', latestInvitation.invitation_token);
-          
-          try {
-            const { data: assignedRole, error: acceptError } = await supabase
-              .rpc('accept_invitation', {
-                invitation_token: latestInvitation.invitation_token,
-                input_user_id: userId
-              });
-
-            if (acceptError) {
-              console.error('❌ Error auto-accepting invitation:', acceptError);
-            } else {
-              console.log('✅ Auto-accepted invitation, assigned role:', assignedRole);
-            }
-          } catch (acceptError) {
-            console.error('❌ Error in auto-accept process:', acceptError);
+      try {
+        const [profileResult, primaryRole, roleRows, invitations] = await withTimeout(Promise.all([
+          supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+          supabase.rpc('get_user_role', { _user_id: userId }),
+          supabase.from('user_roles').select('role').eq('user_id', userId),
+          authUser.email ? supabase.from('user_invitations').select('invitation_token')
+            .eq('email', authUser.email).eq('status', 'pending').gt('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false }).limit(1) : Promise.resolve({ data: [], error: null }),
+        ]));
+        if (profileResult.error) throw profileResult.error;
+        if (primaryRole.error) throw primaryRole.error;
+        if (roleRows.error) throw roleRows.error;
+        let role = primaryRole.data;
+        let roles = roleRows.data.map(row => row.role) as AppRole[];
+        if (!roles.length && role) roles = [role];
+        if (invitations.data?.[0] && activeUserRef.current === userId) {
+          const { error } = await supabase.rpc('accept_invitation', {
+            invitation_token: invitations.data[0].invitation_token, input_user_id: userId,
+          });
+          if (!error) {
+            const [nextPrimary, nextRoles] = await Promise.all([
+              supabase.rpc('get_user_role', { _user_id: userId }),
+              supabase.from('user_roles').select('role').eq('user_id', userId),
+            ]);
+            if (nextPrimary.error) throw nextPrimary.error;
+            if (nextRoles.error) throw nextRoles.error;
+            role = nextPrimary.data;
+            roles = nextRoles.data.map(row => row.role);
+            if (!roles.length && role) roles = [role];
           }
         }
+        if (activeUserRef.current !== userId) return;
+        applyIdentity(profileResult.data, role, roles);
+        processedUserRef.current = userId;
+        if (roles.includes('cleaner')) {
+          await cacheCleanerData(`${userId}:auth`, { profile: profileResult.data, role, roles }).catch(() => undefined);
+        }
+      } catch (error) {
+        if (activeUserRef.current !== userId) return;
+        if (cached?.data.roles.includes('cleaner')) applyIdentity(cached.data.profile, 'cleaner', ['cleaner']);
+        else applyIdentity(null, null, []);
+        console.error('No se pudo actualizar el perfil de acceso', error);
       }
-
-      // Obtener rol del usuario (después de procesar invitaciones)
-      const { data: roleData, error: roleError } = await supabase
-        .rpc('get_user_role', { _user_id: userId });
-
-      if (roleError) {
-        console.error('❌ Error fetching role:', roleError);
-      } else {
-        console.log('🎭 Role data found:', roleData);
-      }
-
-      const { data: userRoleRows, error: userRolesError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-
-      if (userRolesError) {
-        console.error('❌ Error fetching user roles:', userRolesError);
-      }
-
-      const resolvedRoles = (userRoleRows?.map((row) => row.role) || (roleData ? [roleData] : [])) as AppRole[];
-      const resolvedDefaultMode = getDefaultOperationalMode(resolvedRoles, roleData);
-      const storedMode = typeof window !== 'undefined'
-        ? window.localStorage.getItem(`limpatex-operational-mode:${userId}`)
-        : null;
-      const nextMode = storedMode === 'cleaning' || storedMode === 'supervision'
-        ? storedMode
-        : resolvedDefaultMode;
-
-      setProfile(profileData);
-      setUserRole(roleData || null);
-      setUserRoles(resolvedRoles);
-      setOperationalModeState(canUseOperationalMode(resolvedRoles, nextMode) ? nextMode : resolvedDefaultMode);
-    } catch (error) {
-      console.error('❌ Error in processUser:', error);
-      setProfile(null);
-      setUserRole(null);
-      setUserRoles([]);
-      setOperationalModeState('supervision');
-    } finally {
-      setProcessingUser(null);
-    }
-  };
+    })().finally(() => {
+      if (processingRef.current?.id === userId) processingRef.current = null;
+      if (activeUserRef.current === userId) setIsLoading(false);
+    });
+    processingRef.current = { id: userId, promise: operation };
+    return operation;
+  }, []);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id);
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          // Only process if not already processing this user
-          if (processingUser !== session.user.id) {
-            // Defer user processing to avoid blocking auth state change
-            setTimeout(() => {
-              processUser(session.user.id);
-            }, 100); // Slight delay to prevent race conditions
-          }
-        } else {
-          setProfile(null);
-          setUserRole(null);
-          setUserRoles([]);
-          setOperationalModeState('supervision');
-          setProcessingUser(null);
-        }
-        
-        setIsLoading(false);
+    let cancelled = false;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const applySession = (nextSession: Session | null, force = false) => {
+      if (cancelled) return;
+      const userId = nextSession?.user.id || null;
+      if (activeUserRef.current !== userId) {
+        activeUserRef.current = userId;
+        processedUserRef.current = null;
+        queryClient.clear();
+        setProfile(null); setUserRole(null); setUserRoles([]);
+        setOperationalModeState('supervision');
+        setIsLoading(Boolean(userId));
       }
-    );
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      if (nextSession?.user) {
+        // Never await Supabase queries inside its auth callback.
+        const timer = setTimeout(() => {
+          timers.delete(timer);
+          if (!cancelled) void processUser(nextSession.user, force);
+        }, 0);
+        timers.add(timer);
+      } else setIsLoading(false);
+    };
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user && processingUser !== session.user.id) {
-        processUser(session.user.id);
-      }
-      
-      setIsLoading(false);
+    // The SDK's persisted session can still identify local drafts while offline, even if token refresh waits.
+    if (!navigator.onLine) {
+      try {
+        const stored = localStorage.getItem('sb-qyipyygojlfhdghnraus-auth-token');
+        const existing = stored ? JSON.parse(stored) as Session : null;
+        if (existing?.user?.id && existing.access_token) applySession(existing);
+      } catch { /* The SDK handles an absent/corrupt session normally. */ }
+    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      applySession(nextSession, event === 'USER_UPDATED');
     });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    void supabase.auth.getSession().then(({ data: { session: existing }, error }) => {
+      if (!error) applySession(existing);
+      else if (!activeUserRef.current) setIsLoading(false);
+    }).catch(() => { if (!activeUserRef.current) setIsLoading(false); });
+    const refreshIdentity = () => {
+      if (navigator.onLine) void supabase.auth.getSession().then(({ data }) => {
+        if (data.session && !cancelled) void processUser(data.session.user, true);
+      });
+    };
+    window.addEventListener('online', refreshIdentity);
+    return () => { cancelled = true; timers.forEach(clearTimeout); subscription.unsubscribe(); window.removeEventListener('online', refreshIdentity); };
+  }, [processUser, queryClient]);
 
   const signIn = (email: string, password: string) => passwordSignIn({
     email,
@@ -226,7 +206,13 @@ export const useAuthProvider = (): AuthContextType => {
       getItem: (key) => localStorage.getItem(key),
       setItem: (key, value) => localStorage.setItem(key, value),
     },
-    authenticate: () => supabase.auth.signInWithPassword({ email, password }),
+    authenticate: async () => {
+      const result = await supabase.auth.signInWithPassword({ email, password });
+      if (!result.error && result.data.user && activeUserRef.current === result.data.user.id) {
+        await processUser(result.data.user);
+      }
+      return result;
+    },
     setLoading: setIsLoading,
   });
 
@@ -254,9 +240,12 @@ export const useAuthProvider = (): AuthContextType => {
     return { error };
   };
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     setIsLoading(true);
     await supabase.auth.signOut();
+    activeUserRef.current = null;
+    processedUserRef.current = null;
+    queryClient.clear();
     setUser(null);
     setSession(null);
     setProfile(null);
@@ -264,7 +253,7 @@ export const useAuthProvider = (): AuthContextType => {
     setUserRoles([]);
     setOperationalModeState('supervision');
     setIsLoading(false);
-  };
+  }, [queryClient]);
 
   const canSwitchOperationalMode =
     canUseOperationalMode(userRoles, 'supervision') && canUseOperationalMode(userRoles, 'cleaning');
