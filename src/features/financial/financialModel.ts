@@ -1,5 +1,5 @@
 export const COST_ITEMS = [
-  { id: 'labor', label: 'Personal', category: 'personal', unit: 'hora por trabajador', mills: 15500 },
+  { id: 'labor', label: 'Personal', category: 'personal', unit: 'hora por trabajador', mills: 14500 },
   { id: 'doubleSheet', label: 'Sábana matrimonio', category: 'laundry', unit: 'prenda', mills: 550 },
   { id: 'singleSheet', label: 'Sábana individual', category: 'laundry', unit: 'prenda', mills: 510 },
   { id: 'suiteSheet', label: 'Sábana suite', category: 'laundry', unit: 'prenda', mills: 570 },
@@ -25,6 +25,8 @@ export type Quantities = Partial<Record<ItemId, number>>;
 export interface Rate { item: ItemId; date: string; mills: number; workerId?: string }
 export interface WorkerHours { id: string; name: string; minutes: number | null; actual: boolean }
 export interface FinancialService {
+  additionalRevenue?: number;
+  unpricedConsumptions?: string[];
   type: string;
   id: string; date: string; clientId: string; clientName: string; propertyId: string; propertyName: string;
   revenue: number | null; revenueEstimated: boolean; workers: WorkerHours[]; quantities: Quantities;
@@ -35,7 +37,14 @@ export interface Expense {
   id: string; date: string; label: string; cents: number; category: Category;
   clientId: string; propertyId: string; workerId: string;
 }
-export interface FinanceSettings { version: 1; rates: Rate[]; adjustments: Record<string, ServiceAdjustment>; expenses: Expense[] }
+export interface ConsumptionPolicy { clientId: string; propertyId: string; laundry?: boolean; kits?: boolean; consumables?: boolean; minutes?: number; personnelOnly?: boolean }
+export interface FinancialIncome {
+  id: string; label: string; mode: 'manual' | 'monthly' | 'perCleaning'; start: string; end: string;
+  income: number; cost: number | null; weeklyHours: number; costCategory: Category;
+  clientId: string; propertyId: string; workerId: string; notes: string;
+  overrides: Record<string, { income: number; cost: number | null; weeklyHours: number }>;
+}
+export interface FinanceSettings { version: 1; rates: Rate[]; adjustments: Record<string, ServiceAdjustment>; expenses: Expense[]; incomes?: FinancialIncome[]; policies?: ConsumptionPolicy[] }
 export interface Filters { start: string; end: string; clients: string[]; properties: string[]; workers: string[] }
 export const newSettings = (): FinanceSettings => ({ version: 1, rates: [], adjustments: {}, expenses: [] });
 export const validDate = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) &&
@@ -60,7 +69,7 @@ export interface CalculatedService extends FinancialService {
 }
 export function calculateService(service: FinancialService, settings: FinanceSettings): CalculatedService {
   const adjustment = settings.adjustments[service.id];
-  const pending: string[] = [];
+  const pending: string[] = (service.unpricedConsumptions || []).map(name => `Tarifa pendiente: ${name}`);
   let laborMills = 0;
   let estimated = service.revenueEstimated;
   if (service.revenue === null) pending.push('Ingreso pendiente');
@@ -89,7 +98,7 @@ export function calculateService(service: FinancialService, settings: FinanceSet
   const cleaning = service.type.trim().toLowerCase().startsWith('limpieza') || service.type.trim().toLowerCase() === 'cleaning';
   if (!service.type.trim()) pending.push('Tipo de servicio pendiente para productos');
   if (cleaning && service.revenue === null) pending.push('Base de productos pendiente');
-  const products = cleaning && service.revenue !== null ? Math.round(service.revenue * priceAt(settings.rates, 'products', service.date) / 100000) : 0;
+  const products = cleaning && service.revenue !== null ? Math.round((service.revenue - (service.additionalRevenue || 0)) * priceAt(settings.rates, 'products', service.date) / 100000) : 0;
   const costs = { personal: Math.round(laborMills / 10), laundry: Math.round(laundryMills / 10), supplies: Math.round(supplyMills / 10), products, salary: 0, other: 0 };
   const expense = Object.values(costs).reduce((sum, amount) => sum + amount, 0);
   return { ...service, costs, expense, result: service.revenue === null ? null : service.revenue - expense, pending, estimated };
@@ -133,17 +142,19 @@ export function monthlySalaryExpenses(rates: Rate[], start: string, end: string)
 export function analyze(services: FinancialService[], settings: FinanceSettings, filters: Filters) {
   const inPeriod = (date: string) => date >= filters.start && date <= filters.end;
   const match = (ids: string[], id: string) => !ids.length || ids.includes(id);
-  const candidates = services.filter(service => inPeriod(service.date) && match(filters.clients, service.clientId) &&
+  const candidates = services.map(service => applyFinanceRules(service, settings)).filter(service => inPeriod(service.date) && match(filters.clients, service.clientId) &&
     match(filters.properties, service.propertyId) && (!filters.workers.length || service.workers.some(worker => filters.workers.includes(worker.id))));
   const excludedIncomeServices = candidates.filter(service => service.revenue === null || service.revenue <= 0);
   const selected = candidates.filter(service => service.revenue !== null && service.revenue > 0)
     .map(service => calculateService(service, settings));
   const expenses = [...settings.expenses, ...monthlySalaryExpenses(settings.rates, filters.start, filters.end)].filter(expense => inPeriod(expense.date) && match(filters.clients, expense.clientId) &&
     match(filters.properties, expense.propertyId) && match(filters.workers, expense.workerId));
-  const ids = [...new Set([...selected.map(service => service.clientId), ...expenses.filter(expense => expense.clientId).map(expense => expense.clientId)])];
+  const incomes = buildExternalIncomes(settings, filters);
+  const combined = [...selected, ...incomes];
+  const ids = [...new Set([...selected.map(service => service.clientId), ...incomes.filter(service => service.clientId).map(service => service.clientId), ...expenses.filter(expense => expense.clientId).map(expense => expense.clientId)])];
   const clients = ids.map(id => ({ id, name: services.find(service => service.clientId === id)?.clientName || 'Cliente sin servicios en este periodo',
-    ...summarize(selected.filter(service => service.clientId === id), expenses.filter(expense => !!id && expense.clientId === id)) }));
-  return { services: selected, excludedIncomeServices, expenses, clients, total: summarize(selected, expenses), general: summarize([], expenses.filter(expense => !expense.clientId)) };
+    ...summarize([...selected.filter(service => service.clientId === id), ...incomes.filter(service => !!id && service.clientId === id)], expenses.filter(expense => !!id && expense.clientId === id)) }));
+  return { services: selected, incomes, excludedIncomeServices, expenses, clients, total: { ...summarize(combined, expenses), services: selected.length }, general: summarize(incomes.filter(service => !service.clientId), expenses.filter(expense => !expense.clientId)) };
 }
 // Validate imported/local JSON before it can participate in a financial calculation.
 export function readSettings(value: unknown): FinanceSettings {
@@ -164,5 +175,72 @@ export function readSettings(value: unknown): FinanceSettings {
     for (const minutes of Object.values(adjustment.minutes || {})) if (!number(minutes, 1440)) throw new Error('Horas no válidas');
     if (adjustment.reviewed && QUANTITY_ITEMS.some(item => adjustment.quantities?.[item.id] === undefined)) throw new Error('Faltan cantidades revisadas');
   }
+  validateFinanceExtras(data);
   return data;
+}
+
+export function applyFinanceRules(service: FinancialService, settings: FinanceSettings): FinancialService {
+  let result = { ...service, quantities: { ...service.quantities } };
+  const policies = (settings.policies || []).filter(p => p.propertyId ? p.propertyId === service.propertyId : !!p.clientId && p.clientId === service.clientId)
+    .sort((a, b) => Number(!!a.propertyId) - Number(!!b.propertyId));
+  const checkIn = /^check[\s-]*in/i.test(service.propertyName) || /^check[\s-]*in$/i.test(service.type.trim());
+  if (checkIn) policies.push({ clientId: '', propertyId: service.propertyId, minutes: 60, personnelOnly: true });
+  const effective: ConsumptionPolicy = Object.assign({ clientId: '', propertyId: '' }, ...policies);
+  for (const p of [effective]) {
+    for (const item of QUANTITY_ITEMS) if (p.personnelOnly || item.category === 'laundry' && p.laundry === false || ['kitchenKit','bathKit','foodKit'].includes(item.id) && p.kits === false || item.id === 'toiletPaper' && p.consumables === false) result.quantities[item.id] = 0;
+    if (p.minutes !== undefined) result = { ...result, workers: result.workers.map(w => ({ ...w, minutes: p.minutes! / result.workers.length })) };
+    if (p.personnelOnly) result.type = 'check-in';
+    if (p.personnelOnly || p.laundry === false && p.kits === false && p.consumables === false) result.unpricedConsumptions = [];
+  }
+  if (result.revenue !== null && result.revenue > 0 && (result.type.trim().toLowerCase().startsWith('limpieza') || result.type.trim().toLowerCase() === 'cleaning')) {
+    const extra = (settings.incomes || []).filter(i => i.mode === 'perCleaning' && i.start <= service.date && (!i.end || i.end >= service.date) && (!i.clientId || i.clientId === service.clientId) && (!i.propertyId || i.propertyId === service.propertyId))
+      .filter(i => !i.workerId || service.workers.some(w => w.id === i.workerId)).reduce((n, i) => n + (i.overrides[service.date.slice(0,7)]?.income ?? i.income), 0);
+    result = { ...result, revenue: result.revenue + extra, additionalRevenue: extra };
+  }
+  return result;
+}
+
+export function buildExternalIncomes(settings: FinanceSettings, filters: Filters): CalculatedService[] {
+  if (!validDate(filters.start) || !validDate(filters.end) || filters.start > filters.end) return [];
+  const result: CalculatedService[] = [];
+  for (const entry of settings.incomes || []) {
+    if (entry.mode === 'perCleaning' || filters.clients.length && !filters.clients.includes(entry.clientId) || filters.properties.length && !filters.properties.includes(entry.propertyId) || filters.workers.length && !filters.workers.includes(entry.workerId)) continue;
+    const periods = new Map<string, { date: string; days: number; monthDays: number; labor: number }>();
+    const cursor = new Date(filters.start + 'T00:00:00Z');
+    while (cursor.toISOString().slice(0,10) <= filters.end) {
+      const day = cursor.toISOString().slice(0,10), month = day.slice(0,7);
+      if (day >= entry.start && (!entry.end || day <= entry.end) && (entry.mode !== 'manual' || day === entry.start)) {
+        const days = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth()+1,0)).getUTCDate();
+        const p = periods.get(month) || { date: day, days: 0, monthDays: days, labor: 0 };
+        const values = entry.overrides[month] || entry;
+        p.days++; p.date = day; p.labor += values.weeklyHours * 4.345 * priceAt(settings.rates, 'labor', day, entry.workerId) / 10 / days;
+        periods.set(month,p);
+      }
+      cursor.setUTCDate(cursor.getUTCDate()+1);
+    }
+    for (const [month,p] of periods) {
+      const values = entry.overrides[month] || entry, factor = entry.mode === 'manual' ? 1 : p.days / p.monthDays;
+      const costs = { personal: Math.round(p.labor), laundry: 0, supplies: 0, products: 0, salary: 0, other: 0 };
+      if (values.cost !== null) costs[entry.costCategory] += Math.round(values.cost * factor);
+      const expense = Object.values(costs).reduce((n,c)=>n+c,0), revenue = Math.round(values.income * factor);
+      result.push({ id: `income:${entry.id}:${month}`, type: 'external-income', date: p.date, clientId: entry.clientId, clientName: entry.label, propertyId: entry.propertyId, propertyName: entry.label, revenue, revenueEstimated: false, workers: [], quantities: {}, costs, expense, result: revenue-expense, pending: values.cost === null ? ['Coste externo pendiente'] : [], estimated: values.weeklyHours > 0 || values.cost === null });
+    }
+  }
+  return result;
+}
+
+function validateFinanceExtras(settings: FinanceSettings) {
+  const amount = (v: unknown) => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 && v <= 1000000000;
+  if (settings.incomes !== undefined && !Array.isArray(settings.incomes) || settings.policies !== undefined && !Array.isArray(settings.policies)) throw new Error('Configuración financiera no válida');
+  const ids = new Set<string>();
+  for (const i of settings.incomes || []) {
+    if (!i || typeof i.id !== 'string' || ids.has(i.id) || !['manual','monthly','perCleaning'].includes(i.mode) || !validDate(i.start) || i.end && (!validDate(i.end) || i.end < i.start) || !Object.keys({personal:0,laundry:0,supplies:0,products:0,salary:0,other:0}).includes(i.costCategory) || ['label','clientId','propertyId','workerId','notes','end'].some(k=>typeof i[k] !== 'string') || !i.label.trim()) throw new Error('Ingreso no válido');
+    ids.add(i.id);
+    if (!i.overrides || typeof i.overrides !== 'object' || Array.isArray(i.overrides)) throw new Error('Excepciones no válidas');
+    for (const [month,v] of Object.entries(i.overrides)) if (!/^\d{4}-\d{2}$/.test(month) || !validDate(month+'-01') || !v) throw new Error('Mes no válido');
+    for (const v of [i,...Object.values(i.overrides)]) if (!amount(v.income) || v.cost !== null && !amount(v.cost) || !Number.isFinite(v.weeklyHours) || v.weeklyHours < 0 || v.weeklyHours > 168) throw new Error('Importe de ingreso no válido');
+    if (i.mode === 'perCleaning' && [i,...Object.values(i.overrides)].some(v => v.cost !== 0 || v.weeklyHours !== 0)) throw new Error('El suplemento no admite costes duplicados');
+    if (i.mode === 'manual' && [i,...Object.values(i.overrides)].some(v => v.weeklyHours !== 0)) throw new Error('Un ingreso puntual no admite horas semanales');
+  }
+  for (const p of settings.policies || []) if (!p || typeof p.clientId !== 'string' || typeof p.propertyId !== 'string' || !p.clientId && !p.propertyId || ['laundry','kits','consumables','personnelOnly'].some(k=>p[k] !== undefined && typeof p[k] !== 'boolean') || p.minutes !== undefined && (!amount(p.minutes) || p.minutes > 1440)) throw new Error('Regla de consumos no válida');
 }

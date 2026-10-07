@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 try {
   await build({ stdin: { contents: "export * from './src/features/financial/financialModel'; export * from './src/features/financial/financialSource';", resolveDir: process.cwd(), loader: 'ts' }, outfile: join(dir, 'model.mjs'), bundle: true, platform: 'node', format: 'esm', logLevel: 'silent' });
   const { COST_ITEMS, newSettings, priceAt, setRate, calculateService, analyze, parseAmount, readSettings, buildServices, readAllPages, validDate, monthlySalaryExpenses } = await import(pathToFileURL(join(dir, 'model.mjs')));
-  assert.deepEqual(COST_ITEMS.map(item => item.mills), [15500,550,510,570,247,535,226,226,10537,3159,3159,150,870,890,1910,130,3000,2317000]);
+  assert.deepEqual(COST_ITEMS.map(item => item.mills), [14500,550,510,570,247,535,226,226,10537,3159,3159,150,870,890,1910,130,3000,2317000]);
   const monthly = monthlySalaryExpenses([], '2026-10-01', '2026-10-31');
   assert.equal(monthly.length, 1); assert.equal(monthly[0].cents, 231700); assert.equal(monthly[0].automatic, true);
   assert.equal(monthlySalaryExpenses([], '2026-10-01', '2026-11-30').reduce((sum, expense) => sum + expense.cents, 0), 463400);
@@ -30,7 +30,7 @@ try {
   const service = { type: 'limpieza-turistica', id: 's', date: '2026-10-06', clientId: 'c', clientName: 'Cliente', propertyId: 'p', propertyName: 'Apartamento', revenue: 10000, revenueEstimated: false,
     workers: [{ id: 'w1', name: 'Ana', minutes: 60, actual: true }, { id: 'w2', name: 'Bea', minutes: 60, actual: true }], quantities: { pillowcase: 3, bathTowel: 2 } };
   let computed = calculateService(service, settings);
-  assert.equal(computed.costs.personal, 3100); // Two people x one hour, never divide actual worked time.
+  assert.equal(computed.costs.personal, 2900); // Two people x one hour, never divide actual worked time.
   assert.equal(computed.costs.products, 300); // 3% of service income, once despite two workers.
   assert.equal(calculateService({ ...service, revenue: 5000 }, settings).costs.products, 150);
   assert.equal(calculateService({ ...service, revenue: 12345 }, settings).costs.products, 370);
@@ -48,10 +48,10 @@ try {
   settings.adjustments.s = { quantities: { ...quantities, pillowcase: 3, bathTowel: 2 }, reviewed: true };
   computed = calculateService(service, settings); assert.deepEqual(computed.pending, []); assert.equal(computed.estimated, false);
   settings.rates = setRate(settings.rates, { item: 'labor', date: '2026-11-01', mills: 20000 });
-  assert.equal(priceAt(settings.rates, 'labor', '2026-10-06'), 15500);
+  assert.equal(priceAt(settings.rates, 'labor', '2026-10-06'), 14500);
   assert.equal(priceAt(settings.rates, 'labor', '2026-11-01'), 20000);
   settings.rates = setRate(settings.rates, { item: 'labor', date: '2026-10-01', mills: 18000, workerId: 'w1' });
-  assert.equal(calculateService(service, settings).costs.personal, 3350);
+  assert.equal(calculateService(service, settings).costs.personal, 3250);
   settings.rates = setRate(settings.rates, { item: 'labor', date: '2026-10-01', mills: 19000, workerId: 'w1' });
   assert.equal(settings.rates.length, 3); assert.equal(priceAt(settings.rates, 'labor', service.date, 'w1'), 19000);
   const filters = { start: '2026-10-01', end: '2026-10-31', clients: [], properties: [], workers: [] };
@@ -80,13 +80,13 @@ try {
   assert.equal(worker.total.revenue, 10000); assert.equal(worker.services.length, 1); assert.equal(worker.expenses.length, 1);
   assert.equal(worker.total.costs.products, 300);
   assert.equal(all.total.costs.products, 300); assert.equal(all.clients[0].costs.products, 300);
-  assert.equal(worker.total.costs.personal, 3450); // Retain whole team cost alongside whole service revenue.
+  assert.equal(worker.total.costs.personal, 3350); // Retain whole team cost alongside whole service revenue.
   assert.equal(analyze([service], settings, { ...filters, clients: ['c'] }).general.expense, 0);
   assert.equal(analyze([service], settings, { ...filters, properties: ['missing'] }).total.services, 0);
   assert.equal(analyze([], settings, filters).total.expense, 6000); // Expenses without services must still count.
   assert.equal(analyze([], newSettings(), filters).total.margin, null);
   assert.ok(calculateService({ ...service, revenue: null, workers: [] }, settings).pending.length);
-  settings.adjustments.s.minutes = { w1: 90 }; assert.equal(calculateService(service, settings).costs.personal, 4400);
+  settings.adjustments.s.minutes = { w1: 90 }; assert.equal(calculateService(service, settings).costs.personal, 4300);
   assert.equal(parseAmount('0,247'), 247); assert.equal(parseAmount('15.50'), 15500);
   for (const invalid of ['-1', '', '1e3', 'abc', 'Infinity', '1.0001']) assert.equal(parseAmount(invalid), null);
   assert.equal(validDate('2026-02-30'), false); assert.equal(validDate('2026-10-06'), true);
@@ -101,15 +101,15 @@ try {
   assert.equal(mapped.revenue, 5500); assert.equal(mapped.revenueEstimated, true); assert.equal(mapped.quantities.doubleSheet, 2);
   assert.equal(calculateService(mapped, newSettings()).costs.products, 165);
   const zeroProperty = buildServices([source], [{ ...property, coste_servicio: 0 }], [])[0];
-  assert.equal(zeroProperty.revenue, 0); assert.equal(zeroProperty.revenueEstimated, false);
+  assert.equal(zeroProperty.revenue, 0); assert.equal(zeroProperty.revenueEstimated, true);
   const missingProperty = buildServices([source], [], [])[0];
-  assert.equal(missingProperty.revenue, 0); assert.equal(missingProperty.revenueEstimated, false);
+  assert.equal(missingProperty.revenue, null); assert.equal(missingProperty.revenueEstimated, true);
   const positiveTask = buildServices([{ ...source, coste: 42 }], [property], [])[0];
-  assert.equal(positiveTask.revenue, 4200); assert.equal(positiveTask.revenueEstimated, false);
+  assert.equal(positiveTask.revenue, 5500); assert.equal(positiveTask.revenueEstimated, true);
   assert.equal(buildServices([{ ...source, coste: null }], [property], [])[0].revenue, 5500);
-  assert.equal(buildServices([source], [{ ...property, coste_servicio: -1 }], [])[0].revenue, 0);
-  assert.equal(buildServices([source], [{ ...property, coste_servicio: Infinity }], [])[0].revenue, 0);
-  assert.equal(calculateService(mapped, newSettings()).costs.personal, 3100);
+  assert.equal(buildServices([source], [{ ...property, coste_servicio: -1 }], [])[0].revenue, null);
+  assert.equal(buildServices([source], [{ ...property, coste_servicio: Infinity }], [])[0].revenue, null);
+  assert.equal(calculateService(mapped, newSettings()).costs.personal, 2900);
   assert.equal(buildServices([{ ...source, status: 'pending' }], [property], []).length, 1);
   assert.equal(buildServices([{ ...source, status: 'cancelled' }], [property], []).length, 0);
   const report = id => ({ cleaner_id: id, overall_status: 'completed', start_time: '2026-10-06T08:00:00Z', end_time: '2026-10-06T09:30:00Z' });
@@ -121,15 +121,15 @@ try {
   const threeAssignments = [...source.task_assignments, { cleaner_id: 'w3', cleaner_name: 'Cris' }];
   const montellos = buildServices([{ ...source, duracion: 540, task_assignments: threeAssignments, start_time: '13:00', end_time: '22:00' }], [{ ...property, duracion_servicio: 540 }], [])[0];
   assert.deepEqual(montellos.workers.map(w => w.minutes), [180,180,180]);
-  assert.equal(calculateService(montellos, newSettings()).costs.personal, 13950);
+  assert.equal(calculateService(montellos, newSettings()).costs.personal, 13050);
   const twoPeople = buildServices([{ ...source, duracion: 540 }], [{ ...property, duracion_servicio: 540 }], [])[0];
   assert.deepEqual(twoPeople.workers.map(w => w.minutes), [270,270]);
-  assert.equal(calculateService(twoPeople, newSettings()).costs.personal, 13950);
+  assert.equal(calculateService(twoPeople, newSettings()).costs.personal, 13050);
   const onePerson = buildServices([{ ...source, duracion: 540, task_assignments: [source.task_assignments[0]] }], [{ ...property, duracion_servicio: 540 }], [])[0];
   assert.equal(onePerson.workers[0].minutes, 540);
-  assert.equal(calculateService(onePerson, newSettings()).costs.personal, 13950);
+  assert.equal(calculateService(onePerson, newSettings()).costs.personal, 13050);
   const thirds = buildServices([{ ...source, duracion: 100, task_assignments: threeAssignments }], [{ ...property, duracion_servicio: 100 }], [])[0];
-  assert.equal(calculateService(thirds, newSettings()).costs.personal, Math.round(100 * 1550 / 60)); // No rounding inflation per person.
+  assert.equal(calculateService(thirds, newSettings()).costs.personal, Math.round(100 * 1450 / 60)); // No rounding inflation per person.
   const windowFallback = buildServices([{ ...source, duracion: null }], [], [])[0];
   assert.deepEqual(windowFallback.workers.map(w => w.minutes), [30,30]);
   assert.equal(buildServices([{ ...source, duracion: -1 }], [property], [])[0].workers[0].minutes, 60);
@@ -137,7 +137,7 @@ try {
   assert.deepEqual(alreadySplit.workers.map(w => w.minutes), [180,180,180]); // Do not divide planner-saved per-person duration twice.
   assert.equal(buildServices([{ ...source, duracion: 120 }], [], [])[0].workers[0].minutes, 60);
   const adjustedTeam = newSettings(); adjustedTeam.adjustments.s = { minutes: { w1: 240 } };
-  assert.equal(calculateService(montellos, adjustedTeam).costs.personal, 15500); // Manual worker correction remains explicit.
+  assert.equal(calculateService(montellos, adjustedTeam).costs.personal, 14500); // Manual worker correction remains explicit.
   const unassigned = { ...source, date: '2026-09-30', coste: null, start_time: '', end_time: '', task_assignments: [], cleaner_id: null };
   assert.equal(buildServices([unassigned], [], [], [], '2026-10-01').length, 0);
   assert.equal(buildServices([{ ...unassigned, status: 'completed', task_reports: [report('w1')] }], [], [], [], '2026-10-01').length, 0);
