@@ -62,6 +62,7 @@ export interface Property extends BaseEntity {
   
   // Linen control (null = inherit from client)
   linenControlEnabled: boolean | null;
+  amenitiesControlEnabled?: boolean | null;
   
   // Active status (null = inherit from client)
   isActive: boolean | null;
@@ -115,6 +116,7 @@ export interface CreatePropertyData {
   notas: string;
   clienteId: string;
   linenControlEnabled?: boolean | null;
+  amenitiesControlEnabled?: boolean | null;
   isActive?: boolean | null;
   excludeFromExport?: boolean;
 }

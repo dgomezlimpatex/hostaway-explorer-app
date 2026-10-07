@@ -65,7 +65,7 @@ export const getLegacyFieldForStockProduct = (product: Pick<StockProduct, 'name'
   if (name.includes('amenities') && name.includes('cocina')) return 'amenitiesCocina';
   if (name.includes('papel') && name.includes('higienico')) return 'cantidadRollosPapelHigienico';
   if (name.includes('papel') && name.includes('cocina')) return 'cantidadRollosPapelCocina';
-  if ((name.includes('panos') || name.includes('bayetas')) && name.includes('cocina')) return 'bayetasCocina';
+  if ((name.includes('pano') || name.includes('bayeta')) && name.includes('cocina')) return 'bayetasCocina';
   if (name.includes('bolsas') && name.includes('basura')) {
     if (name.includes('10l') || name.includes('10 l')) return null;
     if (name.includes('30l') || name.includes('30 l') || name === 'bolsas basura' || name === 'bolsas de basura') {
@@ -74,6 +74,11 @@ export const getLegacyFieldForStockProduct = (product: Pick<StockProduct, 'name'
   }
 
   return null;
+};
+
+export const isManagedAmenityProduct = (product: Pick<StockProduct, 'name'>) => {
+  const field = getLegacyFieldForStockProduct(product);
+  return field === 'amenitiesBano' || field === 'amenitiesCocina' || field === 'kitAlimentario' || field === 'bayetasCocina';
 };
 
 export const calculateDefaultPropertyConsumptions = (

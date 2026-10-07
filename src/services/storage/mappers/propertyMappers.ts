@@ -61,6 +61,7 @@ export const mapPropertyFromDB = (row: any): Property => {
     hostaway_listing_id: row.hostaway_listing_id,
     hostaway_internal_name: row.hostaway_internal_name,
     linenControlEnabled: row.linen_control_enabled,
+    amenitiesControlEnabled: row.amenities_control_enabled ?? null,
     isActive: row.is_active,
     clientIsActive: client?.is_active ?? null,
     clientName: client?.nombre ?? null,
@@ -113,6 +114,7 @@ export const mapPropertyToDB = (property: Partial<CreatePropertyData>): any => {
   if (property.notas !== undefined) updateData.notas = property.notas;
   if (property.clienteId !== undefined) updateData.cliente_id = property.clienteId;
   if (property.linenControlEnabled !== undefined) updateData.linen_control_enabled = property.linenControlEnabled;
+  if (property.amenitiesControlEnabled !== undefined) updateData.amenities_control_enabled = property.amenitiesControlEnabled;
   if (property.isActive !== undefined) updateData.is_active = property.isActive;
   if (property.excludeFromExport !== undefined) updateData.exclude_from_export = property.excludeFromExport;
 

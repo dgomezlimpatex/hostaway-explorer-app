@@ -21,6 +21,7 @@ export interface Client extends BaseEntity {
   supervisor: string;
   factura: boolean;
   linenControlEnabled?: boolean;
+  amenitiesControlEnabled?: boolean;
   photosVisibleToClient?: boolean;
   isActive: boolean;
   
@@ -42,6 +43,7 @@ export interface CreateClientData {
   supervisor: string;
   factura: boolean;
   linenControlEnabled?: boolean;
+  amenitiesControlEnabled?: boolean;
   photosVisibleToClient?: boolean;
   isActive?: boolean;
 }

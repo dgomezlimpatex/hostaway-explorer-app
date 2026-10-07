@@ -31,5 +31,6 @@ export function duplicatePropertyData(property: Property): CreatePropertyData {
         bolsasBasura: property.bolsasBasura,
         notas: property.notas,
         clienteId: property.clienteId,
+        amenitiesControlEnabled: property.amenitiesControlEnabled ?? null,
       };
 }

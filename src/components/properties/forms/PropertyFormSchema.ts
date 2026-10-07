@@ -32,6 +32,7 @@ export const propertySchema = z.object({
   notas: z.string().optional(),
   clienteId: z.string().min(1, 'Debe seleccionar un cliente'),
   linenControlEnabled: z.boolean().nullable().optional(),
+  amenitiesControlEnabled: z.boolean().nullable().optional(),
   isActive: z.boolean().nullable().optional(),
   excludeFromExport: z.boolean().optional(),
 });

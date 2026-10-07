@@ -154,6 +154,30 @@ export const ServiceSection = ({ control }: ServiceSectionProps) => {
 
       <FormField
         control={control}
+        name="amenitiesControlEnabled"
+        render={({ field }) => {
+          const clientEnabled = selectedClient?.amenitiesControlEnabled ?? true;
+          return (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">🧴 Gestión de amenities</FormLabel>
+                <FormDescription>
+                  {field.value == null
+                    ? `Heredado del cliente (${clientEnabled ? 'Activado' : 'Desactivado'})`
+                    : 'Configuración personalizada para esta propiedad'}
+                </FormDescription>
+                <p className="text-xs text-muted-foreground">Kits de baño, cocina y alimentación, y paño de cocina.</p>
+              </div>
+              <FormControl>
+                <Switch checked={field.value ?? clientEnabled} onCheckedChange={field.onChange} />
+              </FormControl>
+            </FormItem>
+          );
+        }}
+      />
+
+      <FormField
+        control={control}
         name="excludeFromExport"
         render={({ field }) => (
           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
