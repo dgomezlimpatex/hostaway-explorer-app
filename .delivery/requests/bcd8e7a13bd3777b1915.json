@@ -1,7 +1,7 @@
 {
   "request": "Cuando una propiedad tiene la gestión de lavandería desactivada, todas las tipologías de lencería deben aparecer en 0.",
   "reason": "Cambio local de presentación: aplica la configuración efectiva de propiedad o cliente al formulario y al panel Consumos. No cambia cantidades almacenadas ni las mutaciones existentes. Abrir la ficha y alternar el interruptor no escriben datos; al reactivar se recuperan las cantidades configuradas.",
-  "verification": "Build correcto; TypeScript raíz y Node correctos. Tipos de aplicación: los mismos 102 diagnósticos antes y después, sin nuevos. Lint focalizado correcto. Prueba de navegador con componentes reales y fixtures locales: herencia y overrides, todas las tipologías de catálogo y legacy, restauración de edición, recálculo, amenities/consumibles sin cambios, carga/error, escritorio/móvil sin desbordamiento, sin solicitudes de red ni cliente Supabase. Contrato de propiedades: 12 comprobaciones correctas. Revisión React: hooks incondicionales, estado derivado sin efectos adicionales, inputs asociados a etiquetas y bloqueo nativo. No se probó una sesión real ni se hicieron escrituras productivas.",
+  "verification": "Build correcto; TypeScript raíz y Node correctos. Tipos de aplicación: los mismos 102 diagnósticos antes y después, sin nuevos. Lint focalizado correcto. Prueba de navegador con componentes reales y fixtures locales: herencia y overrides, todas las tipologías de catálogo y legacy, restauración de edición, recálculo, amenities/consumibles sin cambios, carga/error, escritorio/móvil sin desbordamiento, sin solicitudes de red ni cliente Supabase. Contrato de propiedades: 12 comprobaciones correctas. Revisión React: hooks incondicionales, estado derivado sin efectos adicionales, inputs asociados a etiquetas y bloqueo nativo. No se probó una sesión real ni se hicieron escrituras productivas. La cola no instala Chromium antes de las pruebas funcionales; se añade test de renderizado de los componentes reales sin navegador para repetir herencia, overrides, catálogo/legacy, valores conservados, error/carga y recálculo en Linux aislado. La prueba interactiva local se conserva y sigue correcta.",
   "effects": {
     "productionData": false,
     "database": false,
@@ -13,10 +13,10 @@
     "infrastructure": false
   },
   "tests": [
-    "scripts/propertyLaundryDisplayTest.mjs",
+    "scripts/propertyLaundryRenderTest.mjs",
     "scripts/propertiesUiContractTest.mjs"
   ],
   "version": 1,
   "scope": "application",
-  "digest": "22158135cdb68e8b717d92252497c1879caa1f613118f9f3d0ade045a898ba4e"
+  "digest": "b8beaa914f9a0209f07b79bcb8d106435ccb9bf362b24a7694b3ac11774f4f46"
 }
