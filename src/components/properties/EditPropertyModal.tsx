@@ -72,6 +72,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         notas: property.notas || '',
         clienteId: property.clienteId,
         linenControlEnabled: property.linenControlEnabled ?? null,
+        amenitiesControlEnabled: property.amenitiesControlEnabled ?? null,
         isActive: property.isActive ?? null,
         excludeFromExport: property.excludeFromExport ?? false,
     } : undefined,
@@ -112,6 +113,7 @@ export const EditPropertyModal: React.FC<EditPropertyModalProps> = ({
         notas: property.notas || '',
         clienteId: property.clienteId,
         linenControlEnabled: property.linenControlEnabled ?? null,
+        amenitiesControlEnabled: property.amenitiesControlEnabled ?? null,
         isActive: property.isActive ?? null,
         excludeFromExport: property.excludeFromExport ?? false,
       });

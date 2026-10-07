@@ -8,8 +8,9 @@ import { usePropertyStockConsumptionRules, useStockProducts } from '@/hooks/useS
 import type { Property } from '@/types/property';
 import type { StockProduct } from '@/types/stock';
 import { PropertyFormData } from './PropertyFormSchema';
-import { buildInitialStockConsumptions, normalizeStockName } from './propertyStockConsumption';
+import { buildInitialStockConsumptions, isManagedAmenityProduct, normalizeStockName } from './propertyStockConsumption';
 import { usePropertyLaundryEnabled } from './usePropertyLaundryEnabled';
+import { usePropertyAmenitiesEnabled } from './usePropertyAmenitiesEnabled';
 
 interface StockConsumptionSectionProps {
   control: Control<PropertyFormData>;
@@ -27,6 +28,7 @@ const groupLabels: Record<ProductGroupKey, string> = {
 };
 
 const getProductGroup = (product: StockProduct): ProductGroupKey => {
+  if (isManagedAmenityProduct(product)) return 'amenities';
   if (product.category?.kind === 'laundry') return 'laundry';
 
   const categoryName = normalizeStockName(product.category?.name || '');
@@ -40,8 +42,9 @@ export const StockConsumptionSection = ({ control, setValue, property }: StockCo
   const { data: products = [], isLoading: isLoadingProducts } = useStockProducts();
   const { data: rules = [], isLoading: isLoadingRules } = usePropertyStockConsumptionRules(property?.id);
   const initializedKeyRef = useRef<string | null>(null);
-  const [linenControlEnabled, clientId] = useWatch({ control, name: ['linenControlEnabled', 'clienteId'] });
+  const [linenControlEnabled, amenitiesControlEnabled, clientId] = useWatch({ control, name: ['linenControlEnabled', 'amenitiesControlEnabled', 'clienteId'] });
   const laundryEnabled = usePropertyLaundryEnabled(linenControlEnabled, clientId);
+  const amenitiesEnabled = usePropertyAmenitiesEnabled(amenitiesControlEnabled, clientId);
 
   const consumableProducts = useMemo(
     () => products.filter((product) => product.is_consumable),
@@ -81,6 +84,11 @@ export const StockConsumptionSection = ({ control, setValue, property }: StockCo
       {laundryEnabled === false && (
         <p className="text-sm text-muted-foreground">
           Gestión de lavandería desactivada: toda la lencería se muestra en 0.
+        </p>
+      )}
+      {amenitiesEnabled === false && (
+        <p className="text-sm text-muted-foreground">
+          Gestión de amenities desactivada: los kits de baño, cocina y alimentación, y el paño de cocina se muestran en 0.
         </p>
       )}
 
@@ -125,8 +133,8 @@ export const StockConsumptionSection = ({ control, setValue, property }: StockCo
                             type="number"
                             min="0"
                             step="1"
-                            value={groupKey === 'laundry' && laundryEnabled === false ? 0 : field.value ?? 0}
-                            disabled={groupKey === 'laundry' && laundryEnabled !== true}
+                            value={(groupKey === 'laundry' && laundryEnabled === false) || (isManagedAmenityProduct(product) && amenitiesEnabled === false) ? 0 : field.value ?? 0}
+                            disabled={(groupKey === 'laundry' && laundryEnabled !== true) || (isManagedAmenityProduct(product) && amenitiesEnabled !== true)}
                             onChange={(event) => field.onChange(parseInt(event.target.value, 10) || 0)}
                           />
                         </FormControl>

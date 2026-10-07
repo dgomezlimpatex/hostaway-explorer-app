@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Control } from 'react-hook-form';
 import { ClientFormData } from './ClientFormSchema';
+import { AmenitiesManagementField } from './AmenitiesManagementField';
 
 interface ServiceInfoSectionProps {
   control: Control<ClientFormData>;
@@ -169,6 +170,8 @@ export const ServiceInfoSection = ({ control }: ServiceInfoSectionProps) => {
             </FormItem>
           )}
         />
+
+        <AmenitiesManagementField control={control} />
 
         <FormField
           control={control}

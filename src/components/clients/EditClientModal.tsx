@@ -27,6 +27,7 @@ import { useUpdateClient } from '@/hooks/useClients';
 import { CreateClientData, Client } from '@/types/client';
 import { Edit } from 'lucide-react';
 import { ClientPortalSection } from '@/components/client-portal/ClientPortalSection';
+import { AmenitiesManagementField } from './forms/AmenitiesManagementField';
 
 interface EditClientModalProps {
   client: Client;
@@ -52,6 +53,7 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
       supervisor: client.supervisor,
       factura: client.factura,
       linenControlEnabled: client.linenControlEnabled || false,
+      amenitiesControlEnabled: client.amenitiesControlEnabled ?? true,
       photosVisibleToClient: client.photosVisibleToClient || false,
       isActive: client.isActive !== false,
     },
@@ -369,6 +371,8 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
                     </FormItem>
                   )}
                 />
+
+                <AmenitiesManagementField control={form.control} />
 
                 <FormField
                   control={form.control}

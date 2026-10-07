@@ -46,6 +46,7 @@ export function ClientDetailPanel({ client }: { client: Client }) {
           <dl className="grid gap-4  sm:grid-cols-2">
             <Field label="Tipo de servicio">{CLIENT_SERVICE_LABELS[client.tipoServicio] || client.tipoServicio}</Field>
             <Field label="Control de lencería">{client.linenControlEnabled ? 'Activado' : 'Desactivado'}</Field>
+            <Field label="Gestión de amenities">{client.amenitiesControlEnabled !== false ? 'Activado' : 'Desactivado'}</Field>
             <Field label="Fotos visibles para el cliente">{client.photosVisibleToClient ? 'Sí' : 'No'}</Field>
           </dl>
           <p className="mt-3 text-xs text-slate-500">Gestiona los datos, el estado y el acceso al portal desde «Editar cliente».</p>

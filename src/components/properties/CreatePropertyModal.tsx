@@ -61,6 +61,7 @@ export const CreatePropertyModal = () => {
       notas: '',
       clienteId: '',
       linenControlEnabled: null,
+      amenitiesControlEnabled: null,
       isActive: null,
     },
   });
@@ -138,6 +139,7 @@ export const CreatePropertyModal = () => {
       notas: data.notas || '',
       clienteId: data.clienteId,
       linenControlEnabled: data.linenControlEnabled ?? null,
+      amenitiesControlEnabled: data.amenitiesControlEnabled ?? null,
       isActive: data.isActive ?? null,
     };
 
