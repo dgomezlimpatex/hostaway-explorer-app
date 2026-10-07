@@ -18,7 +18,8 @@ const modules = {
     data.tasks.push({...task,id:'excluded-nc',coste:999,task_assignments:[{cleaner_id:'nc',cleaner_name:'Nombre antiguo'}]},
       {...task,id:'excluded-past',date:'2000-01-01',coste:999,cleaner_id:null,task_assignments:[]},
       {...task,id:'excluded-cancelled',status:'cancelled',coste:999});
-    export const supabase={from(table){const calls=[];const q={select(...a){calls.push(['select',...a]);return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},range(from,to){window.reads=window.reads||[];window.reads.push({table,calls,from,to});return Promise.resolve({data:data[table].slice(from,to+1),error:null})}};return q}};
+    data.stock_property_consumption_rules=[];
+    export const supabase={from(table){const calls=[];let payload=null;const q={select(...a){calls.push(['select',...a]);return q},insert(value){payload=value;return q},update(value){payload=value;return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},async maybeSingle(){if(table!=='financial_settings')throw new Error('Unexpected table');if(window.failFinance)return {data:null,error:{message:'Fallo simulado'}};return fetch('https://financial.local.test/config',{method:payload?'POST':'GET',headers:{'Content-Type':'application/json'},body:payload?JSON.stringify({payload,calls}):undefined}).then(r=>r.json())},range(from,to){window.reads=window.reads||[];window.reads.push({table,calls,from,to});return Promise.resolve({data:data[table].slice(from,to+1),error:null})}};return q}};
   `,
 };
 const built = await build({ stdin: { contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import Page from './src/features/financial/FinancialAnalysisPage';createRoot(document.getElementById('root')).render(<MemoryRouter><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><Page/></QueryClientProvider></MemoryRouter>);`, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic', metafile: true, define: { 'process.env.NODE_ENV': '"production"' }, plugins: [{ name: 'financial-fixture', setup(plugin) {
@@ -33,11 +34,21 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1050 } });
   const errors = [], requests = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.route('**/*', route => route.request().url() === 'https://financial.local.test/' ? route.fulfill({ contentType: 'text/html', body: html }) : (requests.push(route.request().url()), route.abort()));
+  let shared={document:{version:1,rates:[],expenses:[],adjustments:{}},revision:1};
+  const handle=async route=>{
+    if(route.request().url()==='https://financial.local.test/')return route.fulfill({contentType:'text/html',body:html});
+    if(route.request().url()==='https://financial.local.test/config'){
+      let data=shared;
+      if(route.request().method()==='POST') {const {payload,calls}=route.request().postDataJSON();const expected=calls.find(c=>c[0]==='eq' && c[1]==='revision')?.[2];if(expected!==shared.revision)data=null;else shared=data={document:payload.document,revision:payload.revision};}
+      return route.fulfill({contentType:'application/json',body:JSON.stringify({data,error:null})});
+    }
+    requests.push(route.request().url());return route.abort();
+  };
+  await page.route('**/*',handle);
   await page.goto('https://financial.local.test/');
   await expect(page.getByRole('heading', { name: 'Análisis financiero', exact: true })).toBeVisible();
   await expect(page.getByText('100,00 €', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('31,00 €', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('29,00 €', { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/1 servicios contabilizados/)).toBeVisible();
   await page.locator('summary').filter({hasText:'Servicios fuera del balance:'}).click();
   await expect(page.getByText(/1 con ingreso cero · 1 con precio pendiente/)).toBeVisible();
@@ -47,8 +58,8 @@ try {
   await expect(page.getByText('Productos de limpieza', { exact: true })).toBeVisible();
   await expect(page.getByText('3,00 €', { exact: true }).first()).toBeVisible();
   const reads = await page.evaluate(() => window.reads);
-  assert.equal(reads.length, 4);
-  for (const read of reads) { assert.deepEqual(read.calls.find(call => call[0] === 'eq'), ['eq', 'sede_id', 's']); assert.deepEqual([read.from,read.to], [0,499]); }
+  assert.equal(reads.length, 5);
+  for (const read of reads) { assert.deepEqual(read.calls.find(call => call[0] === 'eq'), ['eq', read.table==='stock_property_consumption_rules'?'property.sede_id':'sede_id', 's']); assert.deepEqual([read.from,read.to], [0,499]); }
   const previousEnd = await page.getByLabel('Hasta', { exact: true }).inputValue();
   const [year, month] = previousEnd.split('-').map(Number);
   const monthEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
@@ -65,7 +76,7 @@ try {
   await page.getByLabel('Concepto', { exact: true }).selectOption('kitchenKit');
   await page.getByLabel('Precio unitario sin IVA').fill('1,17');
   await page.getByRole('button', { name: 'Guardar tarifa' }).click();
-  await expect(page.getByRole('status')).toContainText('guardados');
+  await expect(page.getByRole('status')).toContainText('Borrador actualizado');
   await page.getByLabel('Concepto', { exact: true }).selectOption('products');
   await page.getByLabel('Porcentaje sobre limpieza').fill('4,2');
   await page.getByRole('button', { name: 'Guardar tarifa' }).click();
@@ -83,7 +94,7 @@ try {
   await page.locator('summary').filter({ hasText: 'Trabajadores:' }).click();
   await expect(page.getByText('Gastos generales incluidos:')).toContainText('0,00 €');
   await expect(page.getByText('100,00 €', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('31,00 €', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('29,00 €', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Ver todo · mes actual' }).click();
   await page.getByRole('button', { name: 'Servicios', exact: true }).click();
   await page.getByRole('button', { name: 'Revisar costes' }).click();
@@ -93,10 +104,74 @@ try {
   await dialog.getByLabel('He revisado todas las cantidades de este servicio').check();
   await dialog.getByRole('button', { name: 'Guardar ajustes del análisis' }).click();
   await expect(dialog).not.toBeVisible();
-  await expect(page.getByText('38,75 €', { exact: true })).toBeVisible();
+  await expect(page.getByText('36,25 €', { exact: true })).toBeVisible();
+  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('guardados y compartidos');
   await page.reload();
-  await expect(page.getByText('38,75 €', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('36,25 €', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Gastos generales incluidos:')).toContainText('50,00 €');
+  await page.getByRole('button',{name:'Otros ingresos',exact:true}).click();
+  await page.getByLabel('Concepto del ingreso').fill('Lavandería externa de prueba');
+  await page.getByLabel('Ingreso sin IVA',{exact:true}).fill('300');
+  await page.getByLabel('Coste externo sin IVA').fill('200');
+  await page.getByLabel('Categoría del coste').selectOption('laundry');
+  await page.getByRole('button',{name:'Añadir ingreso',exact:true}).click();
+  await expect(page.getByRole('row').filter({hasText:'Lavandería externa de prueba'})).toContainText('100,00 €');
+  await page.getByLabel('Concepto del ingreso').fill('Recepción de prueba');
+  await page.getByLabel('Tipo de ingreso').selectOption('monthly');
+  await page.getByLabel('Ingreso sin IVA',{exact:true}).fill('1329,60');
+  await page.getByLabel('Horas de personal por semana').fill('16');
+  await page.getByLabel('Cliente del ingreso').selectOption('c2');
+  await page.getByRole('button',{name:'Añadir ingreso',exact:true}).click();
+  await page.getByLabel('Hasta',{exact:true}).fill(monthEnd);
+  await expect(page.getByRole('row').filter({hasText:'Recepción de prueba'})).toContainText('1008,04 €');
+  await page.getByLabel('Concepto del ingreso').fill('Virtual por limpieza de prueba');
+  await page.getByLabel('Tipo de ingreso').selectOption('perCleaning');
+  await page.getByLabel('Ingreso sin IVA',{exact:true}).fill('2,75');
+  await page.getByLabel('Cliente del ingreso').selectOption('c');
+  await page.getByRole('button',{name:'Añadir ingreso',exact:true}).click();
+  await page.getByRole('button',{name:'General',exact:true}).click();
+  await expect(page.getByRole('row').filter({hasText:'Cliente de prueba'}).first()).toContainText('102,75 €');
+  await page.getByRole('button',{name:'Por cliente',exact:true}).click();
+  await expect(page.getByRole('row').filter({hasText:'Cliente de prueba'}).first()).toContainText('4,20 €');
+  await expect(page.getByRole('row').filter({hasText:'Cliente sin servicios'})).toContainText('1329,60 €');
+  await page.getByRole('button',{name:'Otros ingresos',exact:true}).click();
+  await page.locator('div.rounded-lg').filter({hasText:'Recepción de prueba'}).getByRole('button',{name:'Editar ingreso'}).click();
+  await page.getByLabel('Cambiar importes solo este mes · opcional').fill(previousEnd.slice(0,7));
+  await page.getByLabel('Ingreso sin IVA',{exact:true}).fill('1500');
+  await page.getByRole('button',{name:'Actualizar ingreso',exact:true}).click();
+  await expect(page.getByRole('row').filter({hasText:'Recepción de prueba'})).toContainText('1500,00 €');
+  await page.evaluate(()=>{window.failFinance=true});
+  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('Tu borrador se conserva');
+  assert.equal(shared.document.incomes,undefined,'Failed save must not persist draft');
+  await page.evaluate(()=>{window.failFinance=false});
+  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('guardados y compartidos');
+  const second=await browser.newPage();await second.route('**/*',handle);await second.goto('https://financial.local.test/');
+  await second.getByRole('button',{name:'Otros ingresos',exact:true}).click();
+  await expect(second.getByText('Lavandería externa de prueba',{exact:true})).toBeVisible();
+  assert.equal(await second.evaluate(()=>localStorage.length),0,'Shared settings work without browser-local configuration');
+  await second.close();
+  shared={...shared,revision:shared.revision+1};
+  await page.getByLabel('Concepto del ingreso').fill('Borrador en conflicto');
+  await page.getByRole('button',{name:'Añadir ingreso',exact:true}).click();
+  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('Otra persona ha cambiado');
+  assert.ok(!shared.document.incomes.some(i=>i.label==='Borrador en conflicto'));
+  await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
+  await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
+  await page.evaluate(()=>{window.failFinance=true});
+  await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
+  await expect(page.getByText('Ingresos totales',{exact:true})).not.toBeVisible();
+  await expect(page.getByText(/Configuración sin cargar/)).toBeVisible();
+  await page.evaluate(()=>{window.failFinance=false});
+  await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
+  await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Servicios',exact:true}).click();
+  await page.getByRole('button',{name:'Margen inferior al 10%',exact:true}).click();
+  await expect(page.getByText('No hay servicios contabilizables con estos filtros.')).toBeVisible();
+  await page.getByRole('button',{name:'General',exact:true}).click();
   await page.screenshot({ path: join(tmpdir(), 'limpatex-financial-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('heading', { name: 'Análisis financiero', exact: true })).toBeVisible();

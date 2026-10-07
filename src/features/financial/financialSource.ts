@@ -15,8 +15,10 @@ export interface SourceProperty {
   numero_fundas_almohada?: number; numero_toallas_grandes?: number; numero_toallas_pequenas?: number;
   numero_alfombrines?: number; amenities_cocina?: number; amenities_bano?: number; kit_alimentario?: number;
   cantidad_rollos_papel_higienico?: number;
+  amenities_control_enabled?: boolean | null;
 }
-export interface DirectoryEntry { id: string; name: string }
+export interface ConsumptionRule { property_id: string; quantity_per_cleaning: number; product: { name: string } | null }
+export interface DirectoryEntry { id: string; name: string; amenitiesControlEnabled?: boolean }
 const quantityFields = {
   doubleSheet: 'numero_sabanas', singleSheet: 'numero_sabanas_pequenas', suiteSheet: 'numero_sabanas_suite',
   pillowcase: 'numero_fundas_almohada', bathTowel: 'numero_toallas_grandes', handTowel: 'numero_toallas_pequenas',
@@ -24,7 +26,7 @@ const quantityFields = {
   foodKit: 'kit_alimentario', toiletPaper: 'cantidad_rollos_papel_higienico',
 } as const;
 export function buildServices(tasks: SourceTask[], properties: SourceProperty[], clients: DirectoryEntry[],
-  workers: DirectoryEntry[] = [], today = formatMadridDate(new Date())): FinancialService[] {
+  workers: DirectoryEntry[] = [], today = formatMadridDate(new Date()), rules: ConsumptionRule[] = []): FinancialService[] {
   const propertyMap = new Map(properties.map(property => [property.id, property]));
   const clientMap = new Map(clients.map(client => [client.id, client.name]));
   const isNotCount = (name: string) => name.trim().toUpperCase() === 'NOT COUNT';
@@ -39,10 +41,19 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
     const property = propertyMap.get(task.propiedad_id || '');
     const clientId = task.cliente_id || property?.cliente_id || '';
     const quantities: Quantities = {};
+    const unpricedConsumptions: string[] = [];
     if (property) for (const [item, field] of Object.entries(quantityFields)) {
       const value = property[field];
       if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) quantities[item] = value;
     }
+    // Active property rules replace the corresponding legacy field; do not add both.
+    for (const rule of rules.filter(rule => rule.property_id === task.propiedad_id)) {
+      const item = consumptionItem(rule.product?.name || '');
+      if (item && Number.isFinite(Number(rule.quantity_per_cleaning)) && Number(rule.quantity_per_cleaning) >= 0) quantities[item] = Number(rule.quantity_per_cleaning);
+      if (!item && Number(rule.quantity_per_cleaning) > 0) unpricedConsumptions.push(rule.product?.name || 'Producto sin identificar');
+    }
+    const amenitiesEnabled = property?.amenities_control_enabled ?? clients.find(client => client.id === clientId)?.amenitiesControlEnabled;
+    if (amenitiesEnabled === false) for (const item of ['kitchenKit', 'bathKit', 'foodKit']) quantities[item] = 0;
     const windowMinutes = getWindowDurationMinutes(task.start_time, task.end_time);
     const propertyMinutes = property?.duracion_servicio;
     const positiveDuration = (value: number | null | undefined) => typeof value === 'number' && Number.isFinite(value) && value > 0;
@@ -52,16 +63,22 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
     // Duration is the team's total work, never a separate full duration for each person.
     const plannedMinutes = totalMinutes !== null && assignmentMap.size ? totalMinutes / assignmentMap.size : null;
     const workers = [...assignmentMap].map(([id, name]) => ({ id, name, minutes: plannedMinutes, actual: false }));
-    const hasRevenue = typeof task.coste === 'number' && Number.isFinite(task.coste) && task.coste >= 0;
     const propertyRevenue = property?.coste_servicio;
-    const positivePropertyRevenue = typeof propertyRevenue === 'number' && Number.isFinite(propertyRevenue) && propertyRevenue > 0;
-    const usePropertyRevenue = !hasRevenue || (task.coste === 0 && positivePropertyRevenue);
-    const revenueValue = usePropertyRevenue ? propertyRevenue : task.coste;
+    const revenueValue = propertyRevenue;
     return [{ id: task.id, type: task.type || '', date: task.date, clientId, clientName: clientMap.get(clientId) || 'Sin cliente identificado',
-      propertyId: task.propiedad_id || '', propertyName: property?.nombre || task.property, workers, quantities,
+      propertyId: task.propiedad_id || '', propertyName: property?.nombre || task.property, workers, quantities, unpricedConsumptions,
       revenue: typeof revenueValue === 'number' && Number.isFinite(revenueValue) && revenueValue >= 0 ? Math.round(revenueValue * 100) : null,
-      revenueEstimated: usePropertyRevenue }];
+      revenueEstimated: true }];
   });
+}
+
+export function consumptionItem(name: string): string | undefined {
+  const key = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  return ({ 'sabanas matrimonio':'doubleSheet', 'sabanas individuales':'singleSheet', 'sabanas suite':'suiteSheet',
+    'fundas de almohada':'pillowcase', 'toallas grandes':'bathTowel', 'toallas pequenas':'handTowel', 'alfombrines ducha':'bathMat',
+    'edredones':'duvet', 'almohadas':'pillow', 'protectores de colchon':'mattressCover', 'panos de cocina':'kitchenCloth',
+    'amenities bano':'bathKit', 'amenities de bano':'bathKit', 'amenities cocina':'kitchenKit', 'amenities de cocina':'kitchenKit',
+    'kit alimentario':'foodKit', 'amenities de alimentacion':'foodKit', 'papel higienico':'toiletPaper' } as Record<string,string>)[key];
 }
 
 export async function readAllPages<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
