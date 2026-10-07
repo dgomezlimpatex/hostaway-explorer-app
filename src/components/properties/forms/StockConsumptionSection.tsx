@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Control, UseFormSetValue } from 'react-hook-form';
+import { Control, UseFormSetValue, useWatch } from 'react-hook-form';
 import { Package, Shirt } from 'lucide-react';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import type { Property } from '@/types/property';
 import type { StockProduct } from '@/types/stock';
 import { PropertyFormData } from './PropertyFormSchema';
 import { buildInitialStockConsumptions, normalizeStockName } from './propertyStockConsumption';
+import { usePropertyLaundryEnabled } from './usePropertyLaundryEnabled';
 
 interface StockConsumptionSectionProps {
   control: Control<PropertyFormData>;
@@ -39,6 +40,8 @@ export const StockConsumptionSection = ({ control, setValue, property }: StockCo
   const { data: products = [], isLoading: isLoadingProducts } = useStockProducts();
   const { data: rules = [], isLoading: isLoadingRules } = usePropertyStockConsumptionRules(property?.id);
   const initializedKeyRef = useRef<string | null>(null);
+  const [linenControlEnabled, clientId] = useWatch({ control, name: ['linenControlEnabled', 'clienteId'] });
+  const laundryEnabled = usePropertyLaundryEnabled(linenControlEnabled, clientId);
 
   const consumableProducts = useMemo(
     () => products.filter((product) => product.is_consumable),
@@ -74,6 +77,12 @@ export const StockConsumptionSection = ({ control, setValue, property }: StockCo
         <Package className="h-5 w-5 text-muted-foreground" />
         <h3 className="text-lg font-semibold">Consumo por limpieza</h3>
       </div>
+
+      {laundryEnabled === false && (
+        <p className="text-sm text-muted-foreground">
+          Gestión de lavandería desactivada: toda la lencería se muestra en 0.
+        </p>
+      )}
 
       {isLoadingProducts || isLoadingRules ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -116,7 +125,8 @@ export const StockConsumptionSection = ({ control, setValue, property }: StockCo
                             type="number"
                             min="0"
                             step="1"
-                            value={field.value ?? 0}
+                            value={groupKey === 'laundry' && laundryEnabled === false ? 0 : field.value ?? 0}
+                            disabled={groupKey === 'laundry' && laundryEnabled !== true}
                             onChange={(event) => field.onChange(parseInt(event.target.value, 10) || 0)}
                           />
                         </FormControl>
