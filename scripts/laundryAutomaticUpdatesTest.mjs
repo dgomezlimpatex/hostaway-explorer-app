@@ -116,3 +116,15 @@ const workflowSource = readFileSync('supabase/functions/laundry-route-workflow/i
 assert.match(workflowSource, /fetchTasksForDates\(supabase, currentRouteDates, sedeId, getDayOfWeek\(deliveryDate\)\)/);
 assert.match(workflowSource, /fetchTasksForDates\(supabase, nextRouteDates, sedeId, getDayOfWeek\(nextDate\)\)/);
 console.log('PASS: configured order across all seven days, both route groups, legacy fallback, partial order, sede isolation, live reorder');
+
+// From 08/10, all preparation dates use the property quantity, including overdue services.
+for (const date of ['2026-10-07','2026-10-08','2026-10-09']) {
+  const sackTask={...task,date,properties:{...task.properties,sede_id:'sede',stock_property_consumption_rules:[{is_active:true,quantity_per_cleaning:2,stock_products:{name:'Sacos de basura 100 L',sku:'SACOS-BASURA-100L',sede_id:'sede',is_active:true,is_consumable:true}}]}};
+  const bag=workflow.mapTask(sackTask,new Map(),new Map(),new Map(),new Set());
+  assert.equal(bag.amenities.trashSacks100L,2);
+  assert.equal(management.bagContent(sackTask).amenities.trashSacks100L,2);
+  const previous={...structuredClone(bag),amenities:{...bag.amenities,trashSacks100L:0}};
+  const updated=workflow.mapTask(sackTask,new Map([[task.id,{status:'prepared',content_snapshot:previous}]]),new Map(),new Map(),new Set());
+  assert.equal(updated.bagStatus.status,'pending','Prepared bags lacking sacks must be checked before reconfirming');
+}
+console.log('PASS preparation sacks for overdue, today and future services; both backend paths agree');

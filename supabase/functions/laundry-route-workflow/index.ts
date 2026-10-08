@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { trashSackQuantity, isTrashSack } from "../_shared/trashSacks.ts";
+import { preparationTrashSackQuantity, isTrashSack } from "../_shared/trashSacks.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { bagRequirementsChanged } from "../_shared/laundryBagRequirements.ts";
 import {
@@ -373,7 +373,7 @@ function mapTask(
       kitchenAmenities: numberValue(property?.amenities_cocina),
       bathroomAirFreshener: numberValue(property?.ambientador_bano),
       trashBags: numberValue(property?.bolsas_basura),
-      trashSacks100L: trashSackQuantity(property, String(task.date ?? "")),
+      trashSacks100L: preparationTrashSackQuantity(property),
       dishwasherDetergent: numberValue(property?.detergente_lavavajillas),
       kitchenCloths: numberValue(property?.bayetas_cocina),
       sponges: numberValue(property?.estropajos),
