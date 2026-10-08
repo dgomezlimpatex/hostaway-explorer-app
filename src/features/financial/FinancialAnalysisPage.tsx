@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, ChevronLeft, ChevronRight, Download, Plus, Settings2, ArrowUpRight, ArrowDownRight, Wallet, Percent } from 'lucide-react';
+import { BarChart3, ChevronLeft, ChevronRight, Download, Plus, Settings2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSede } from '@/contexts/SedeContext';
 import { formatMadridDate } from '@/utils/date';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useFinancialData } from './useFinancialData';
 import { COST_ITEMS, QUANTITY_ITEMS, analyze, newSettings, parseAmount, priceAt, readSettings, setRate, validDate,
-  type Category, type FinanceSettings, type FinancialService, type Filters, type Summary, type ItemId } from './financialModel';
+  type Category, type FinanceSettings, type FinancialService, type Filters, type ItemId } from './financialModel';
 import type { DirectoryEntry } from './financialSource';
 import { loadFinance, saveFinance } from './financialPersistence';
 import { IncomePanel, ConsumptionPanel } from './FinancialConfiguration';
@@ -20,6 +20,9 @@ import { FinancialAnnual } from './FinancialAnnual';
 import { FinancialDetail } from './FinancialDetail';
 import { isIncomeConcept } from './financialDrilldown';
 import { money, percent, decimal, financialName } from './financialFormat';
+import { FinancialIndicators } from './FinancialIndicators';
+import { FinancialClientTable } from './FinancialClientTable';
+import { financialHistoryRange, financialInsights } from './financialInsights';
 
 
 const rateMoney = (mills: number) => decimal(mills / 1000, 2, 3) + ' €';
@@ -42,34 +45,6 @@ function MultiFilter({ label, entries, selected, onChange }: { label: string; en
     </div>
   </details>;
 }
-function Indicators({ summary }: { summary: Summary }) {
-  const icons = [ArrowUpRight, ArrowDownRight, Wallet, Percent];
-  return <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-    {[['Ingresos totales', money(summary.revenue)], ['Gastos incluidos', money(summary.expense)],
-      ['Resultado provisional', money(summary.result)], ['Margen provisional', percent(summary.margin)]].map(([label, value], index) =>
-      <div key={label} className={index === 2 ? 'rounded-2xl bg-gradient-to-br from-[#310984] to-violet-700 p-5 text-white shadow-sm' : panel}>
-        <div className="flex items-center justify-between gap-2"><p className={`text-sm ${index === 2 ? 'text-violet-200' : 'text-slate-500'}`}>{label}</p>{(() => { const Icon = icons[index]; return <Icon aria-hidden="true" className={`h-5 w-5 ${index === 2 ? 'text-violet-200' : 'text-violet-500'}`} />; })()}</div>
-        <p className={`mt-3 text-xl font-semibold tracking-tight tabular-nums sm:text-3xl ${index === 2 && summary.result < 0 ? 'text-rose-100' : ''}`}>{value}</p>
-        <p className={`mt-2 text-xs ${index === 2 ? 'text-violet-200' : 'text-slate-500'}`}>Sin IVA · periodo seleccionado</p>
-      </div>)}
-  </div>;
-}
-function ClientTable({ result, names, onClient, compact = false }: { result: ReturnType<typeof analyze>; names: DirectoryEntry[]; onClient: (id: string) => void; compact?: boolean }) {
-  const rows = [...result.clients.map(client => ({ ...client, name: names.find(entry => entry.id === client.id)?.name || client.name })),
-    { id: '__general', name: 'Actividad general · sin repartir', ...result.general }];
-  return <div className="overflow-x-auto"><table className="w-full text-sm">
-    <caption className="sr-only">Ingresos y gastos por cliente y gastos generales sin IVA</caption>
-    <thead className="bg-violet-50 text-[#310984]"><tr>{(compact ? ['Cliente', 'Ingresos', 'Gastos', 'Resultado', 'Margen'] : ['Cliente', 'Ingresos', 'Personal', 'Lavandería', 'Consumibles', 'Productos', 'Dirección turismo', 'Otros', 'Total gastos', 'Resultado', 'Margen']).map(title => <th key={title} scope="col" className="whitespace-nowrap p-3 text-left">{title}</th>)}</tr></thead>
-    <tbody>{rows.map(row => <tr key={row.id} className="border-b border-violet-50">
-      <th scope="row" className="p-3 text-left font-medium">{row.id !== '__general' ? <button className="inline-flex items-center gap-1 text-[#310984] hover:underline" onClick={() => onClient(row.id)}>{financialName(row.name)}<ChevronRight className="h-4 w-4" /></button> : row.name}
-        {!!row.pending && <span className="block text-xs font-normal text-amber-700">{row.pending} servicios incompletos</span>}</th>
-      {(compact ? [row.revenue, row.expense, row.result] : [row.revenue, row.costs.personal, row.costs.laundry, row.costs.supplies, row.costs.products, row.costs.salary, row.costs.other, row.expense, row.result]).map((amount, i) => <td key={i} className="whitespace-nowrap p-3 tabular-nums">{money(amount)}</td>)}
-      <td className="p-3">{percent(row.margin)}</td>
-    </tr>)}</tbody>
-    <tfoot className="bg-violet-50 font-semibold"><tr><th className="p-3 text-left">Total del análisis</th>{(compact ? [result.total.revenue, result.total.expense, result.total.result] : [result.total.revenue, result.total.costs.personal, result.total.costs.laundry, result.total.costs.supplies, result.total.costs.products, result.total.costs.salary, result.total.costs.other, result.total.expense, result.total.result]).map((amount, i) => <td className="p-3" key={i}>{money(amount)}</td>)}<td className="p-3">{percent(result.total.margin)}</td></tr></tfoot>
-  </table></div>;
-}
-
 export default function FinancialAnalysisPage() {
   const { activeSede } = useSede();
   const { user } = useAuth();
@@ -109,12 +84,14 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   const [drilldown, setDrilldown] = useState<FinancialDrilldown | undefined>(view.drilldown);
   const workspace = useRef<HTMLElement>(null);
   const chartFocus = useRef<{ concept: string; month?: string } | null>(null);
-  const [trendView, setTrendView] = useState<FinancialTrendView>({ open: false, matchingDays: true, comparison: 'balance' });
+  const [trendView, setTrendView] = useState<FinancialTrendView>({ open: true, matchingDays: true, comparison: 'balance', chart: 'lines' });
   const [editing, setEditing] = useState<FinancialService | null>(null);
   const [profitFilter, setProfitFilter] = useState(view.profitFilter);
   useEffect(() => { saveFinancialView(storageKey, { filters, tab, profitFilter, ...(drilldown ? { drilldown } : {}), ...(monthlyPeriod ? { monthlyPeriod } : {}), annualComparison }); }, [storageKey, filters, tab, profitFilter, drilldown, monthlyPeriod, annualComparison]);
   const [imported, setImported] = useState<FinanceSettings | null>(null);
-  const query = useFinancialData(sedeId, filters.start, filters.end);
+  const history = financialHistoryRange(filters);
+  const query = useFinancialData(sedeId, history.start, history.end);
+  const insights = useMemo(() => financialInsights(query.data?.services || [], settings, filters), [query.data, settings, filters]);
   const result = useMemo(() => analyze(query.data?.services || [], settings, filters), [query.data, settings, filters]);
   const data = query.data;
   useEffect(() => {
@@ -229,7 +206,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
       {!filters.start || !filters.end || filters.start > filters.end ? <p role="alert">Selecciona un intervalo de fechas válido.</p> : storageError ? <p role="alert" className={panel}>Configuración sin cargar. No se muestran balances; pulsa Descartar y recargar para reintentar.</p> : query.error ?
         <div role="alert" className={panel}><p>No se pudieron cargar los datos. No se muestran totales parciales.</p><Button variant="outline" onClick={() => query.refetch()}>Reintentar</Button></div> : query.isPending ?
           <p role="status" className={panel}>Cargando servicios y costes…</p> : !sharedReady ? <p role="status">Cargando configuración compartida…</p> : <>
-            <Indicators summary={result.total} />
+            <FinancialIndicators summary={result.total} insights={insights} />
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600"><p>{result.total.services} servicios contabilizados · {result.incomes.length} ingresos externos · {result.total.estimated} registros con estimaciones</p>{result.total.pending > 0 && <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-900">{result.total.pending} con datos pendientes · resultado provisional</span>}</div>
             <details className="text-sm text-slate-600"><summary className="cursor-pointer text-[#310984]">Cómo se calcula</summary><p className="mt-2 leading-relaxed">
               {' '}Ingresos por fecha del servicio; no representan facturas ni cobros. El personal se estima repartiendo la duración total de la tarea entre sus personas asignadas; los ajustes manuales por persona prevalecen.
@@ -246,25 +223,25 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
             {tab === 'general' && <>
               {annualYear && <FinancialAnnual services={data?.services || []} settings={settings} filters={filters} comparison={annualComparison} onComparison={setAnnualComparison} onDetails={openDetails} />}
               <FinancialDashboard result={result} names={data?.clients || []} onClient={selectClient} onServices={() => { setProfitFilter('all'); setTab('services'); }} onIncomes={() => setTab('incomes')} onEdit={setEditing} onDetails={openDetails} />
-              {!annualYear && <FinancialTrend sedeId={sedeId} settings={settings} filters={filters} view={trendView} onViewChange={patch => setTrendView(current => ({ ...current, ...patch }))} onDetails={openDetails} />}
-              <details className={panel}><summary className="cursor-pointer font-medium text-[#310984]">Tabla de resultados por cliente</summary><div className="mt-4"><ClientTable compact result={result} names={data?.clients || []} onClient={selectClient} /></div></details>
+              {!annualYear && <FinancialTrend services={data?.services || []} settings={settings} filters={filters} view={trendView} onViewChange={patch => setTrendView(current => ({ ...current, ...patch }))} onDetails={openDetails} />}
+              <section className={panel} aria-label="Tabla de resultados por cliente"><h2 className="mb-4 text-lg font-semibold text-[#310984]">Tabla de resultados por cliente</h2><FinancialClientTable compact result={result} names={data?.clients || []} onClient={selectClient} /></section>
             </>}
             {tab === 'details' && drilldown && <FinancialDetail result={result} settings={settings} concept={drilldown.concept} filters={filters} clients={data?.clients || []} onBack={returnToChart} />}
-            {tab === 'clients' && <section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Todos los clientes del análisis</h2><ClientTable result={result} names={data?.clients || []} onClient={selectClient} /></section>}
+            {tab === 'clients' && <section className={panel}><h2 className="text-lg mb-4 font-semibold text-[#310984]">Todos los clientes del análisis</h2><FinancialClientTable result={result} names={data?.clients || []} onClient={selectClient} /></section>}
             {tab === 'incomes' && <IncomePanel settings={settings} result={result} clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} date={filters.start} onChange={commit} />}
-            {tab === 'services' && <><ExternalIncomeDetail result={result} onManage={() => setTab('incomes')} /><section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Servicios · origen de cada importe</h2>
+            {tab === 'services' && <><ExternalIncomeDetail result={result} onManage={() => setTab('incomes')} /><section className={panel}><h2 className="text-lg mb-4 font-semibold text-[#310984]">Servicios · origen de cada importe</h2>
               <div className="mb-3 flex flex-wrap gap-2">{([['all','Todos los servicios'],['negative','Resultado negativo'],['low','Margen inferior al 10%']] as const).map(([id,label])=><Button key={id} variant={profitFilter===id?'default':'outline'} onClick={()=>setProfitFilter(id)}>{label}</Button>)}</div>
               {!visibleServices.length ? <p className="py-8 text-center text-slate-500">No hay servicios contabilizables con estos filtros.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-violet-50 text-[#310984]"><tr>{['Fecha / propiedad', 'Cliente / equipo', 'Ingresos', 'Personal', 'Lavandería', 'Consumibles', 'Productos', 'Resultado', 'Margen', 'Revisión'].map(title => <th className="p-3 text-left" key={title}>{title}</th>)}</tr></thead><tbody>
-                {visibleServices.map(service => <tr key={service.id} className="border-b"><td className="p-3"><p>{service.date.split('-').reverse().join('/')}</p><button className="font-semibold text-[#310984] hover:underline" onClick={() => setFilters(current => ({ ...current, properties: [service.propertyId] }))} disabled={!service.propertyId}>{service.propertyName}</button></td><td className="p-3">{service.clientName}<p className="text-xs text-slate-500">{service.workers.map(worker => worker.name).join(', ') || 'Sin asignar'}</p></td>
-                  <td className="p-3">{service.revenue === null ? 'Pendiente' : money(service.revenue)}</td>{[service.costs.personal, service.costs.laundry, service.costs.supplies, service.costs.products].map((value, i) => <td key={i} className="p-3">{money(value)}</td>)}<td className="p-3">{service.result === null ? '—' : money(service.result)}</td>
-                  <td className="p-3">{service.revenue ? percent((service.result || 0)/service.revenue*100):'—'}</td><td className="p-3"><Button variant="outline" size="sm" onClick={() => setEditing(service)}>Revisar costes</Button><p className="mt-1 text-xs text-amber-700">{service.pending.length ? 'Datos pendientes' : service.estimated ? 'Estimado' : 'Revisado'}</p></td></tr>)}
+                {visibleServices.map(service => <tr key={service.id} className="border-b"><td className="p-3 tabular-nums"><p>{service.date.split('-').reverse().join('/')}</p><button className="font-semibold text-[#310984] hover:underline" onClick={() => setFilters(current => ({ ...current, properties: [service.propertyId] }))} disabled={!service.propertyId}>{service.propertyName}</button></td><td className="p-3 tabular-nums">{service.clientName}<p className="text-xs text-slate-500">{service.workers.map(worker => worker.name).join(', ') || 'Sin asignar'}</p></td>
+                  <td className="p-3 tabular-nums">{service.revenue === null ? 'Pendiente' : money(service.revenue)}</td>{[service.costs.personal, service.costs.laundry, service.costs.supplies, service.costs.products].map((value, i) => <td key={i} className="p-3">{money(value)}</td>)}<td className="p-3 tabular-nums">{service.result === null ? '—' : money(service.result)}</td>
+                  <td className={`p-3 tabular-nums ${service.result === null ? "text-slate-500" : service.result < 0 ? "text-rose-700" : "text-emerald-700"}`}>{service.revenue ? percent((service.result || 0)/service.revenue*100):'—'}</td><td className="p-3 tabular-nums"><Button variant="outline" size="sm" onClick={() => setEditing(service)}>Revisar costes</Button><p className="mt-1 text-xs text-amber-700">{service.pending.length ? 'Datos pendientes' : service.estimated ? 'Estimado' : 'Revisado'}</p></td></tr>)}
               </tbody></table></div>}
             </section></>}
-            {tab === 'expenses' && <section className={panel}><h2 className="mb-2 font-semibold text-[#310984]">Gastos adicionales del análisis</h2><p className="mb-4 text-sm text-slate-500">Registra solo gastos no incluidos ya en los servicios. Sin cliente, se consideran generales. El salario de dirección de turismo se calcula automáticamente; no lo añadas de nuevo.</p>
+            {tab === 'expenses' && <section className={panel}><h2 className="text-lg mb-2 font-semibold text-[#310984]">Gastos adicionales del análisis</h2><p className="mb-4 text-sm text-slate-500">Registra solo gastos no incluidos ya en los servicios. Sin cliente, se consideran generales. El salario de dirección de turismo se calcula automáticamente; no lo añadas de nuevo.</p>
               <ExpenseForm clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} date={today} onAdd={expense => commit({ ...settings, expenses: [...settings.expenses, expense] })} />
               <div className="mt-5 space-y-2">{result.expenses.map(expense => <div key={expense.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-violet-50 p-3 text-sm"><div><strong>{expense.label}</strong><p>{expense.date} · {expense.clientId ? clientName(expense.clientId) : 'General'} · {categoryNames[expense.category]}</p></div><div className="flex items-center gap-3"><strong>{money(expense.cents)}</strong><>{expense.automatic ? <span className="text-xs text-violet-700">Calculado desde Tarifas</span> : <Button size="sm" variant="outline" onClick={() => commit({ ...settings, expenses: settings.expenses.filter(item => item.id !== expense.id) })}>Quitar del análisis</Button>}</></div></div>)}{!result.expenses.length && <p className="text-sm text-slate-500">Sin gastos adicionales en este periodo.</p>}</div>
             </section>}
-            {tab === 'rates' && <section className={`${panel} space-y-5`}><h2 className="flex items-center gap-2 font-semibold text-[#310984]"><Settings2 className="h-5 w-5" />Tarifas personalizables · sin IVA</h2><p className="text-sm text-slate-500">Conservamos tres decimales por unidad y redondeamos cada categoría por servicio a céntimos. Los precios iniciales se aplican hasta que exista una tarifa fechada.</p>
+            {tab === 'rates' && <section className={`${panel} space-y-5`}><h2 className="text-lg flex items-center gap-2 font-semibold text-[#310984]"><Settings2 className="h-5 w-5" />Tarifas personalizables · sin IVA</h2><p className="text-sm text-slate-500">Conservamos tres decimales por unidad y redondeamos cada categoría por servicio a céntimos. Los precios iniciales se aplican hasta que exista una tarifa fechada.</p>
               <RateForm workers={data?.workers || []} today={today} onSave={rate => commit({ ...settings, rates: setRate(settings.rates, rate) })} />
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{COST_ITEMS.map(item => <div key={item.id} className="rounded-xl bg-violet-50 p-3 text-sm"><p className="font-medium">{item.label}</p><p className="text-[#310984]">{formatRate(item.id, priceAt(settings.rates, item.id, filters.end))} / {item.unit}</p></div>)}</div>
               <p className="text-xs text-slate-500">Tarifa general vigente al {filters.end}. Las excepciones por trabajador figuran en el historial.</p>
@@ -325,11 +302,11 @@ function ServiceEditorForm({ service, settings, onSave }: { service: FinancialSe
     <p className="text-sm text-slate-500">{service.date} · {service.clientName}. Estos ajustes solo afectan al análisis. No cambian tareas, fichajes ni stock.</p>
     <p className="rounded-lg bg-violet-50 p-3 text-sm">Tarifa de propiedad: {service.revenue===null?'pendiente':money(service.revenue-(service.additionalRevenue || 0))}{!!((service.additionalRevenue || 0)-(service.kitchenClothRevenue || 0)) && ` · otros suplementos: ${money((service.additionalRevenue || 0)-(service.kitchenClothRevenue || 0))}`}{!!service.kitchenClothRevenue && ` · paño de cocina: ${money(service.kitchenClothRevenue)}`}</p>
     {!!service.unpricedConsumptions?.length && <p role="alert" className="text-sm text-amber-800">Productos configurados sin tarifa: {service.unpricedConsumptions.join(', ')}. Su coste queda pendiente; no se interpreta como gratuito.</p>}
-    <h3 className="font-semibold text-[#310984]">Personal · horas por trabajador</h3>
+    <h3 className="text-sm font-semibold text-[#310984]">Personal · horas por trabajador</h3>
     {service.workers.map(worker => <label className="block text-sm" key={worker.id}>{worker.name}<span className="ml-2 text-xs text-slate-500">{worker.minutes === null ? 'Sin horas' : `${decimal(worker.minutes / 60, 2)} h ${worker.actual ? 'de reporte' : 'previstas'}`} · {rateMoney(priceAt(settings.rates, 'labor', service.date, worker.id))}/h</span><Input inputMode="decimal" placeholder="Mantener horas de la app" value={hours[worker.id]} onChange={event => setHours({ ...hours, [worker.id]: event.target.value })} /></label>)}
     {!service.workers.length && <p className="text-sm text-amber-700">No hay trabajadores identificados. El coste de personal queda pendiente.</p>}
     <p className="rounded-lg bg-violet-50 p-3 text-sm text-[#310984]">Productos de limpieza: {formatRate('products', priceAt(settings.rates, 'products', service.date))} del importe de cada limpieza sin IVA. Se calcula automáticamente; no se añade a las cantidades.</p>
-    <h3 className="font-semibold text-[#310984]">Lavandería y consumibles · unidades utilizadas</h3><div className="grid gap-3 sm:grid-cols-2">{QUANTITY_ITEMS.map(item => <label className="text-sm" key={item.id}>{item.label}<span className="ml-1 text-xs text-slate-500">{rateMoney(priceAt(settings.rates, item.id, service.date))}</span><Input inputMode="numeric" placeholder="Cantidad pendiente" value={quantities[item.id]} onChange={event => setQuantities({ ...quantities, [item.id]: event.target.value })} /></label>)}</div>
+    <h3 className="text-sm font-semibold text-[#310984]">Lavandería y consumibles · unidades utilizadas</h3><div className="grid gap-3 sm:grid-cols-2">{QUANTITY_ITEMS.map(item => <label className="text-sm" key={item.id}>{item.label}<span className="ml-1 text-xs text-slate-500">{rateMoney(priceAt(settings.rates, item.id, service.date))}</span><Input inputMode="numeric" placeholder="Cantidad pendiente" value={quantities[item.id]} onChange={event => setQuantities({ ...quantities, [item.id]: event.target.value })} /></label>)}</div>
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} />He revisado todas las cantidades de este servicio</label>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}<Button type="submit" className="bg-[#310984]">Guardar ajustes del análisis</Button>
   </form>;

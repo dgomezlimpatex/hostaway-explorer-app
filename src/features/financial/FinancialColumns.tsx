@@ -1,7 +1,8 @@
 import { Bar, BarChart, CartesianGrid, Cell, Rectangle, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import './financialColumns.css';
-import { money, shortMoney, type ColumnGroup, type ColumnSeries } from './financialCharts';
+import { money, type ColumnGroup, type ColumnSeries } from './financialCharts';
 import { FinancialTooltip } from './FinancialTooltip';
+import { FinancialMoneyTick } from './FinancialMoneyTick';
 
 interface Props {
   groups: ColumnGroup[];
@@ -45,7 +46,7 @@ export function FinancialColumns({ groups, series, label, onSelect, compact = fa
           <BarChart accessibilityLayer={false} data={points} barGap={compact ? 3 : 5} barCategoryGap={single ? '24%' : compact ? '15%' : '18%'} margin={{ left: 0, right: 20, top: 20, bottom: 8 }}>
             <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" />
             <XAxis dataKey="name" height={single ? 62 : 30} interval={single ? 0 : undefined} tick={single ? <ConceptTick /> : { fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={shortMoney} width={65} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+            <YAxis width={80} tick={<FinancialMoneyTick />} axisLine={false} tickLine={false} />
             <Tooltip shared={false} content={<FinancialTooltip />} cursor={{ fill: '#ede9fe', fillOpacity: .5 }} />
             <ReferenceLine y={0} stroke="#cbd5e1" />
             {single ? <Bar dataKey="value" maxBarSize={52} isAnimationActive={false} shape={(props: { x?: number; y?: number; width?: number; height?: number; index?: number }) => <ColumnShape {...props} column={series[props.index || 0]} index={0} groups={groups} onSelect={onSelect} />}>
@@ -63,6 +64,5 @@ export function FinancialColumns({ groups, series, label, onSelect, compact = fa
         {onSelect ? <button data-financial-concept={column.id} className="text-left hover:underline focus-visible:outline-violet-600" onClick={() => onSelect(column.id)} aria-label={`Ver concepto: ${column.name}`}>{column.name}</button> : column.name}
       </li>)}
     </ul>
-    <p className="mt-3 text-center text-xs text-slate-500">Una columna por concepto · misma escala · sin IVA{onSelect && <span className="block">Pulsa una barra o su leyenda para ver el desglose.</span>}<span className="block sm:hidden">Desliza el gráfico para ver todas las columnas.</span></p>
   </div>;
 }

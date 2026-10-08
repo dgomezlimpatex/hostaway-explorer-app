@@ -20,7 +20,7 @@ export function FinancialClientChart({ clients, metric, onClient }: { clients: C
           <Bar dataKey="value" maxBarSize={22} isAnimationActive={false} shape={(props: { x?: number; y?: number; width?: number; height?: number; index?: number }) => {
             const row = rows[props.index || 0];
             if (!props.width || !props.height) return null;
-            return <Rectangle x={props.x} y={props.y} width={props.width} height={props.height} radius={4} fill={(row.value || 0) < 0 ? '#e11d48' : '#7c3aed'}
+            return <Rectangle x={props.x} y={props.y} width={props.width} height={props.height} radius={4} fill={(row.value || 0) < 0 ? '#e11d48' : '#047857'}
               data-client-id={row.id} className="financial-client-column" role="button" tabIndex={0}
               aria-label={`Ver detalle de ${row.name} · ${format(row.value || 0)}${row.pending ? ' · Datos pendientes' : ''}`}
               onClick={() => onClient(row.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onClient(row.id); } }} />;
