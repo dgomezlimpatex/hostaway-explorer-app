@@ -1,3 +1,4 @@
+import { trashSackQuantity } from "../_shared/trashSacks.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { bagRequirementsSignature } from "../_shared/laundryBagRequirements.ts";
 import {
@@ -63,6 +64,7 @@ const routeTaskSelect = `
     amenities_bano,
     amenities_cocina,
     ambientador_bano,
+    stock_property_consumption_rules(quantity_per_cleaning,is_active,stock_products(name,sku,sede_id,is_active,is_consumable)),
     bolsas_basura,
     detergente_lavavajillas,
     bayetas_cocina,
@@ -211,6 +213,7 @@ function bagContent(task: JsonRecord): JsonRecord {
       kitchenAmenities: numberValue(property?.amenities_cocina),
       bathroomAirFreshener: numberValue(property?.ambientador_bano),
       trashBags: numberValue(property?.bolsas_basura),
+      trashSacks100L: trashSackQuantity(property, String(task.date ?? "")),
       dishwasherDetergent: numberValue(property?.detergente_lavavajillas),
       kitchenCloths: numberValue(property?.bayetas_cocina),
       sponges: numberValue(property?.estropajos),

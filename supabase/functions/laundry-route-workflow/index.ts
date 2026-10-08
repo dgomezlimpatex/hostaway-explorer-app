@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { trashSackQuantity, isTrashSack } from "../_shared/trashSacks.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { bagRequirementsChanged } from "../_shared/laundryBagRequirements.ts";
 import {
@@ -151,6 +152,7 @@ async function fetchTasksForDates(
         amenities_bano,
         amenities_cocina,
         ambientador_bano,
+        stock_property_consumption_rules(quantity_per_cleaning,is_active,stock_products(name,sku,sede_id,is_active,is_consumable)),
         bolsas_basura,
         detergente_lavavajillas,
         bayetas_cocina,
@@ -263,7 +265,7 @@ async function fetchStockConsumablesByProperty(
       ? product.stock_categories as JsonRecord
       : null;
     const propertyId = String(row.property_id ?? "");
-    if (!propertyId || !product) continue;
+    if (!propertyId || !product || isTrashSack(product)) continue;
     if (product.is_active !== true || product.is_consumable !== true) continue;
     if (category?.kind === "laundry") continue;
     if (typeof product.sede_id === "string" && propertySedes.get(propertyId) && product.sede_id !== propertySedes.get(propertyId)) continue;
@@ -371,6 +373,7 @@ function mapTask(
       kitchenAmenities: numberValue(property?.amenities_cocina),
       bathroomAirFreshener: numberValue(property?.ambientador_bano),
       trashBags: numberValue(property?.bolsas_basura),
+      trashSacks100L: trashSackQuantity(property, String(task.date ?? "")),
       dishwasherDetergent: numberValue(property?.detergente_lavavajillas),
       kitchenCloths: numberValue(property?.bayetas_cocina),
       sponges: numberValue(property?.estropajos),
@@ -804,6 +807,9 @@ serve(async (req) => {
 
       if (action === "prepare") {
         const bag = [...workflow.currentRouteBags, ...workflow.nextRouteBags].find((item) => item.taskId === taskId);
+        if (Number(bag?.amenities?.trashSacks100L) > 0 && body.bagContentsVersion !== 2) {
+          return json({ error: "Recarga la página para ver los sacos de 100 L antes de preparar esta bolsa" }, 409);
+        }
         await upsertPreparation(supabase, String(workflow.link.id), taskId, "prepared", undefined, access.actor, bag);
       } else if (action === "issue") {
         if (issueReason.length < 3) return json({ error: "El motivo de incidencia es obligatorio" }, 400);

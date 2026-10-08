@@ -1,4 +1,7 @@
+import { TRASH_SACK_START } from '@/utils/trashSacks';
+
 export const COST_ITEMS = [
+  { id: 'trashSack100L', label: 'Sacos de basura 100 L', category: 'supplies', unit: 'saco', mills: 100 },
   { id: 'labor', label: 'Personal', category: 'personal', unit: 'hora por trabajador', mills: 14500 },
   { id: 'doubleSheet', label: 'Sábana matrimonio', category: 'laundry', unit: 'prenda', mills: 550 },
   { id: 'singleSheet', label: 'Sábana individual', category: 'laundry', unit: 'prenda', mills: 510 },
@@ -87,7 +90,7 @@ export function calculateService(service: FinancialService, settings: FinanceSet
   let laundryMills = 0;
   let supplyMills = 0;
   for (const item of QUANTITY_ITEMS) {
-    const quantity = quantities[item.id];
+    const quantity = item.id === 'trashSack100L' && service.date < TRASH_SACK_START ? 0 : quantities[item.id] ?? (item.id === 'trashSack100L' ? 0 : undefined);
     if (quantity === undefined) {
       if (!adjustment?.reviewed) pending.push(`Cantidad pendiente: ${item.label}`);
       continue;
@@ -175,7 +178,7 @@ export function readSettings(value: unknown): FinanceSettings {
     if (!adjustment || typeof adjustment !== 'object' || (adjustment.reviewed !== undefined && typeof adjustment.reviewed !== 'boolean')) throw new Error('Ajuste no válido');
     for (const [key, quantity] of Object.entries(adjustment.quantities || {})) if (!QUANTITY_ITEMS.some(item => item.id === key) || !number(quantity, 100000)) throw new Error('Cantidad no válida');
     for (const minutes of Object.values(adjustment.minutes || {})) if (!number(minutes, 1440)) throw new Error('Horas no válidas');
-    if (adjustment.reviewed && QUANTITY_ITEMS.some(item => adjustment.quantities?.[item.id] === undefined)) throw new Error('Faltan cantidades revisadas');
+    if (adjustment.reviewed && QUANTITY_ITEMS.some(item => item.id !== 'trashSack100L' && adjustment.quantities?.[item.id] === undefined)) throw new Error('Faltan cantidades revisadas');
   }
   validateFinanceExtras(data);
   return data;
@@ -189,7 +192,7 @@ export function applyFinanceRules(service: FinancialService, settings: FinanceSe
   if (checkIn) policies.push({ clientId: '', propertyId: service.propertyId, minutes: 60, personnelOnly: true });
   const effective: ConsumptionPolicy = Object.assign({ clientId: '', propertyId: '' }, ...policies);
   for (const p of [effective]) {
-    for (const item of QUANTITY_ITEMS) if (p.personnelOnly || item.category === 'laundry' && p.laundry === false || ['kitchenKit','bathKit','foodKit'].includes(item.id) && p.kits === false || item.id === 'toiletPaper' && p.consumables === false) result.quantities[item.id] = 0;
+    for (const item of QUANTITY_ITEMS) if (p.personnelOnly || item.category === 'laundry' && p.laundry === false || ['kitchenKit','bathKit','foodKit'].includes(item.id) && p.kits === false || ['toiletPaper', 'trashSack100L'].includes(item.id) && p.consumables === false) result.quantities[item.id] = 0;
     if (p.minutes !== undefined) result = { ...result, workers: result.workers.map(w => ({ ...w, minutes: p.minutes! / result.workers.length })) };
     if (p.personnelOnly) result.type = 'check-in';
     if (p.personnelOnly || p.laundry === false && p.kits === false && p.consumables === false) result.unpricedConsumptions = [];

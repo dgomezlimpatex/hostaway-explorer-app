@@ -128,6 +128,7 @@ const invokeWorkflow = async (
       token,
       sessionToken,
       action: action || 'load',
+      bagContentsVersion: 2,
       taskId,
       taskIds,
       issueReason,
@@ -205,7 +206,7 @@ type BagGuideLayer = {
 };
 
 const bagLayerDefinitions: Array<Omit<BagGuideLayer, 'items'>> = [
-  { id: 'trash_bags', step: 1, title: 'Bolsas de basura', hint: 'Fondo de la bolsa' },
+  { id: 'trash_bags', step: 1, title: 'Bolsas y sacos de basura', hint: 'Fondo de la bolsa' },
   { id: 'bath_mats', step: 2, title: 'Alfombrines de ducha', hint: 'Sobre las bolsas' },
   { id: 'small_towels', step: 3, title: 'Toallas pequeñas', hint: 'Sobre los alfombrines' },
   { id: 'pillow_cases', step: 4, title: 'Fundas de almohada', hint: 'Antes de las sábanas' },
@@ -237,6 +238,7 @@ const formatCatalogItemLabel = (quantity: number, value: string) => {
   const name = normalizeItemName(value);
   const suffix = getBagSizeSuffix(value);
 
+  if (name.includes('saco') && name.includes('basura')) return quantity === 1 ? `SACO DE BASURA${suffix}` : `SACOS DE BASURA${suffix}`;
   if (name.includes('bolsa') && name.includes('basura')) {
     return quantity === 1 ? `BOLSA DE BASURA${suffix}` : `BOLSAS DE BASURA${suffix}`;
   }
@@ -322,6 +324,7 @@ const buildBagGuideLayers = (bag: RouteBag): BagGuideLayer[] => {
     plural: 'Toallas grandes',
   });
 
+  pushItem('trash_bags', bag.amenities.trashSacks100L || 0, 'Sacos de basura 100 L');
   if (bag.stockConsumables.length > 0) {
     bag.stockConsumables.forEach((stockItem) => {
       pushItem(classifyStockConsumable(stockItem.name), stockItem.quantity, stockItem.name);

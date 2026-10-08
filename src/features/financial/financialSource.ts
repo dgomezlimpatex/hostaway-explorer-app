@@ -1,3 +1,4 @@
+import { isTrashSack, TRASH_SACK_START } from '@/utils/trashSacks';
 import type { FinancialService, Quantities } from './financialModel';
 import { formatMadridDate } from '@/utils/date';
 import { getWindowDurationMinutes } from '@/utils/cleaning-planning/capacity';
@@ -40,7 +41,7 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
     if (!assignmentMap.size && task.date < today) return [];
     const property = propertyMap.get(task.propiedad_id || '');
     const clientId = task.cliente_id || property?.cliente_id || '';
-    const quantities: Quantities = {};
+    const quantities: Quantities = { trashSack100L: 0 };
     const unpricedConsumptions: string[] = [];
     if (property) for (const [item, field] of Object.entries(quantityFields)) {
       const value = property[field];
@@ -50,6 +51,7 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
     for (const rule of rules.filter(rule => rule.property_id === task.propiedad_id)) {
       // Bags are covered by the products percentage; workers supply their own cloths.
       if (coveredConsumption(rule.product?.name || '')) continue;
+      if (isTrashSack(rule.product || {}) && (task.date < TRASH_SACK_START || !/^(limpieza|cleaning)/i.test(task.type))) continue;
       const item = consumptionItem(rule.product?.name || '');
       if (item && Number.isFinite(Number(rule.quantity_per_cleaning)) && Number(rule.quantity_per_cleaning) >= 0) quantities[item] = Number(rule.quantity_per_cleaning);
       if (!item && Number(rule.quantity_per_cleaning) > 0) unpricedConsumptions.push(rule.product?.name || 'Producto sin identificar');
@@ -80,6 +82,7 @@ export function coveredConsumption(name: string): boolean {
 }
 
 export function consumptionItem(name: string): string | undefined {
+  if (isTrashSack({ name })) return 'trashSack100L';
   const key = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   return ({ 'sabanas matrimonio':'doubleSheet', 'sabanas individuales':'singleSheet', 'sabanas suite':'suiteSheet',
     'fundas de almohada':'pillowcase', 'toallas grandes':'bathTowel', 'toallas pequenas':'handTowel', 'alfombrines ducha':'bathMat',

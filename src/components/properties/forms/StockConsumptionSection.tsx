@@ -43,6 +43,7 @@ export const StockConsumptionSection = ({ control, setValue, property }: StockCo
   const { data: rules = [], isLoading: isLoadingRules } = usePropertyStockConsumptionRules(property?.id);
   const initializedKeyRef = useRef<string | null>(null);
   const [linenControlEnabled, amenitiesControlEnabled, clientId] = useWatch({ control, name: ['linenControlEnabled', 'amenitiesControlEnabled', 'clienteId'] });
+  const kitchens = useWatch({ control, name: 'numeroCocinas' });
   const laundryEnabled = usePropertyLaundryEnabled(linenControlEnabled, clientId);
   const amenitiesEnabled = usePropertyAmenitiesEnabled(amenitiesControlEnabled, clientId);
 
@@ -67,12 +68,12 @@ export const StockConsumptionSection = ({ control, setValue, property }: StockCo
     const key = `${property?.id || 'new'}:${consumableProducts.map((product) => product.id).join(',')}:${rules.length}`;
     if (initializedKeyRef.current === key) return;
 
-    setValue('stockConsumptions', buildInitialStockConsumptions(consumableProducts, rules, property), {
+    setValue('stockConsumptions', buildInitialStockConsumptions(consumableProducts, rules, property, kitchens), {
       shouldDirty: false,
       shouldTouch: false,
     });
     initializedKeyRef.current = key;
-  }, [consumableProducts, isLoadingProducts, isLoadingRules, property, rules, setValue]);
+  }, [kitchens, consumableProducts, isLoadingProducts, isLoadingRules, property, rules, setValue]);
 
   return (
     <div className="space-y-4">
