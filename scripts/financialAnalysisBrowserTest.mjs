@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { chromium, expect } from '@playwright/test';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import postcss from 'postcss';
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 const modules = {
@@ -27,7 +30,10 @@ const built = await build({ stdin: { contents: `import React from 'react';import
   plugin.onLoad({ filter: /.*/, namespace: 'fixture' }, args => ({ contents: modules[args.path], loader: 'js', resolveDir: process.cwd() }));
 } }] });
 assert.ok(!Object.keys(built.metafile.inputs).some(path => path.startsWith('src/integrations/supabase')), 'Real production client must not be bundled');
-const css = readFileSync(join('dist/assets', readdirSync('dist/assets').find(file => /^index-.*\.css$/.test(file))), 'utf8');
+// Functional checks run before the production build. Compile actual app styles
+// directly, omitting font downloads so this fixture remains fully offline.
+const cssSource = readFileSync('src/index.css', 'utf8').replace(/^\s*@import\s+"@fontsource\/[^"\n]+";\s*$/gm, '');
+const { css } = await postcss([tailwindcss('tailwind.config.ts'), autoprefixer]).process(cssSource, { from: 'src/index.css' });
 const html = `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body><div id="root"></div><script>${built.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></body></html>`;
 const browser = await chromium.launch({ headless: true });
 try {
@@ -185,7 +191,8 @@ try {
   await page.getByRole('button',{name:'Revisar costes',exact:true}).click();
   await expect(page.getByRole('dialog')).toContainText('paño de cocina: 0,25 €');
   await expect(page.getByRole('dialog')).toContainText('otros suplementos: 2,75 €');
-  await page.keyboard.press('Escape');
+  await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
   await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('guardados y compartidos');
   assert.equal(shared.document.policies.find(p=>p.propertyId==='p').kitchenClothIncome,true);
