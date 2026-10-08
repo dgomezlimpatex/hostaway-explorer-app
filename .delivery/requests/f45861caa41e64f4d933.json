@@ -1,0 +1,21 @@
+{
+  "request": "Mover Eliminar edificio a la barra inferior, a la izquierda de Descartar.",
+  "reason": "Reubica la accion existente sin ampliar los edificios eliminables ni cambiar el servicio, la confirmacion o las escrituras. Solo cambia presentacion y estado deshabilitado equivalente a la ocultacion previa.",
+  "verification": "Navegador local escritorio/movil: accion deshabilitada con relaciones y borrado del edificio vacio; flujo existente pasa. Build, lint y tipos Node correctos; mismos errores previos de aplicacion.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/buildingSideEditorBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "b01e3490fabe269e3aebbde4eadbc909a65d40506f7bd8cec06d9bfc8c860356"
+}

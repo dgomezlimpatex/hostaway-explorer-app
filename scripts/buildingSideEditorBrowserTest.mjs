@@ -60,6 +60,7 @@ try {
   await page.getByRole('button',{name:'Editar Marina 30',exact:true}).click();
   const editor=page.getByRole('region',{name:'Editar Marina 30'});
   await expect(editor.getByLabel('Rol de Ana López')).toBeVisible();
+  await expect(editor.getByRole('button',{name:'Eliminar edificio',exact:true})).toBeDisabled();
   assert.equal(await page.evaluate(()=>window.writes.length),0);
   await editor.getByLabel('Rol de Ana López').selectOption('secondary');
   await expect(editor.getByText('1 cambio pendiente',{exact:true})).toBeVisible();
@@ -106,7 +107,7 @@ try {
   const newEditor=page.getByRole('region',{name:'Editar Nuevo edificio'});
   await expect(newEditor).toBeVisible();
   page.once('dialog',dialog=>dialog.accept());
-  await newEditor.getByRole('button',{name:'Eliminar edificio vacío'}).click();
+  await newEditor.getByRole('button',{name:'Eliminar edificio',exact:true}).click();
   await expect(newEditor).toHaveCount(0);
   await page.evaluate(()=>window.failCatalog=true);
   await page.getByRole('button',{name:'Actualizar edificios'}).click();
