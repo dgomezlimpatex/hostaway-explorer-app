@@ -1,0 +1,26 @@
+{
+  "request": "Implementar el plan de UI del análisis financiero: gráficos, origen de ingresos, rentabilidad por cliente, revisión de incidencias, filtros simplificados y evolución mensual.",
+  "reason": "Presentación y agregación local de los resultados del motor financiero existente. La evolución usa el lector de solo lectura ya disponible al solicitarla. No se cambian reglas de negocio, datos reales, permisos, backend ni dependencias. Los formularios conservan su guardado explícito.",
+  "verification": "Conciliación en céntimos con analyze en general y filtros, ingresos externos sin limpiezas, suplementos y paños sin duplicados, costes generales una vez, pérdidas y vacíos. Límites de meses y bisiestos, periodos comparables y prorrateo mensual. Navegador real con datos locales y sin red: gráficos, meses, euros/porcentaje, cliente con solo recepción, accesos de revisión, evolución con carga/error/reintento, guardado/borradores/concurrencia, conservación al cambiar pestaña y recargar, móvil poblado y vacío sin desbordamiento. Capturas revisadas. Build y lint focalizado correctos. TypeScript app 102 errores heredados sin nuevos; Node cero. Sin sesión productiva ni escrituras reales.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialViewTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "fc6662b7c6fd5b58d66cc59577969ab9c94fa583c065e2bd83683f1b0998508d"
+}
