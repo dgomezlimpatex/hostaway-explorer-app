@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 const folder = mkdtempSync(join(tmpdir(), 'financial-charts-'));
 try {
   await build({ stdin: { contents: "export * from './src/features/financial/financialCharts';export * from './src/features/financial/financialModel';", resolveDir: process.cwd(), loader: 'ts' }, outfile: join(folder, 'model.mjs'), bundle: true, platform: 'node', format: 'esm', logLevel: 'silent' });
-  const { analyze, dashboardSeries, monthlyTrend, trendPeriods, adjacentMonth, monthlyColumns, periodColumns, incomeColor, QUANTITY_ITEMS } = await import(pathToFileURL(join(folder, 'model.mjs')));
+  const { analyze, dashboardSeries, monthlyTrend, trendPeriods, annualPeriods, annualTrend, adjacentMonth, monthlyColumns, periodColumns, incomeColor, QUANTITY_ITEMS } = await import(pathToFileURL(join(folder, 'model.mjs')));
   const quantities = Object.fromEntries(QUANTITY_ITEMS.map(item => [item.id, 0]));
   const service = { id: 'cleaning', type: 'cleaning', date: '2026-09-08', clientId: 'c', clientName: 'Cliente', propertyId: 'p', propertyName: 'Propiedad', revenue: 10000, revenueEstimated: true, workers: [{ id: 'w', name: 'Trabajador', minutes: 120, actual: false }], quantities: { ...quantities, kitchenCloth: 2 } };
   const income = { id: 'reception', label: 'Recepción', mode: 'monthly', start: '2026-08-01', end: '', income: 31000, cost: 10000, weeklyHours: 16, costCategory: 'other', clientId: 'external', propertyId: '', workerId: '', notes: '', overrides: {} };
@@ -55,6 +55,28 @@ try {
   const partialStructure = analyze([service], structureSettings, { ...filters, end: '2026-09-15' });
   assert.equal(periodColumns(partialStructure.total).values.personal, 133750, 'Partial periods retain the existing direction salary proration');
   const structureMonths = monthlyTrend([service], structureSettings, filters, false);
+  assert.deepEqual(annualPeriods('2024')[1],{start:'2024-02-01',end:'2024-02-29'});
+  assert.deepEqual(annualPeriods('2026')[1],{start:'2026-02-01',end:'2026-02-28'});
+  assert.deepEqual(annualPeriods('9999').at(-1),{start:'9999-12-01',end:'9999-12-31'});
+  for(const year of ['', '2026-09', '0000', 'bad'])assert.deepEqual(annualPeriods(year),[]);
+  const yearFilters={...filters,start:'2026-01-01',end:'2026-12-31'};
+  const yearServices=[...services,{...service,id:'january',date:'2026-01-01'},{...service,id:'december',date:'2026-12-31'},{...service,id:'prior-year',date:'2025-12-31'},{...service,id:'next-year',date:'2027-01-01'}];
+  for(const config of [settings,structureSettings])for(const selection of [yearFilters,{...yearFilters,clients:['c']},{...yearFilters,clients:['external']},{...yearFilters,properties:['p']},{...yearFilters,workers:['w']},{...yearFilters,clients:['missing']}]){
+    const yearly=analyze(yearServices,config,selection),months=annualTrend(yearServices,config,selection);
+    assert.equal(months.length,12);assert.equal(months[0].start,'2026-01-01');assert.equal(months.at(-1).end,'2026-12-31');
+    for(const key of ['revenue','expense','result','services','pending','estimated'])assert.equal(months.reduce((sum,row)=>sum+row[key],0),yearly.total[key],`Annual ${key} reconciles with all twelve full months`);
+    for(const category of ['personal','salary','laundry','supplies','products','other'])assert.equal(months.reduce((sum,row)=>sum+row.costs[category],0),yearly.total.costs[category]);
+    for(const mode of ['balance','costs','incomes']){
+      const chart=monthlyColumns(months,mode);assert.equal(chart.groups.length,12);
+      for(const [index,group] of chart.groups.entries()){
+        assert.equal(group.start,months[index].start);
+        assert.equal(chart.series.reduce((sum,column)=>sum+(group.values[column.id]||0),0),mode==='balance'?months[index].revenue+months[index].expense:mode==='costs'?months[index].expense:months[index].revenue);
+      }
+    }
+    assert.equal(months.reduce((sum,row)=>sum+row.manualCount,0),config!==settings || selection.clients.includes('c') || selection.clients.includes('missing') || selection.properties.length || selection.workers.length?0:1,'Manual September income counts once, not every month');
+  }
+  const structureYear=annualTrend([service],structureSettings,yearFilters);
+  assert.equal(structureYear.reduce((sum,row)=>sum+row.costs.salary,0),12*231700+5000,'Direction salary counted once per month, plus explicit additional direction expense');
   for (const view of ['balance', 'costs']) {
     const columns = monthlyColumns(structureMonths, view);
     assert.equal(columns.groups.at(-1).values.personal, 249600);
@@ -105,5 +127,5 @@ try {
   const partial = monthlyTrend(services, settings, { ...filters, start: '2026-09-05', end: '2026-09-08', clients: ['external'] }, true).at(-1);
   assert.equal(partial.start, '2026-09-01'); assert.equal(partial.revenue, Math.round(31000 * 8 / 30)); assert.equal(partial.manualCount, 0);
   assert.equal(JSON.stringify({ settings, services }), snapshot, 'Charts must never mutate settings or source services');
-  console.log('financial-charts: five ordered concepts, personnel including direction/structure once, other expenses, filtered/external-only/empty/loss, supplements, monthly reconciliation and proration passed');
+  console.log('financial-charts: ordered concepts, personnel including direction/structure once, filters, monthly/annual reconciliation, twelve months, leap years, external incomes, supplements and proration passed');
 } finally { rmSync(folder, { recursive: true, force: true }); }

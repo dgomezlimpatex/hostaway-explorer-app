@@ -1,5 +1,5 @@
 import { analyze, validDate, type Category, type Filters, type FinancialService, type FinanceSettings } from './financialModel';
-import { financialMonthRange } from './financialView';
+import { financialMonthRange, financialYearRange } from './financialView';
 
 export type FinancialAnalysis = ReturnType<typeof analyze>;
 export const categoryNames: Record<Category, string> = { personal: 'Personal', laundry: 'Lavandería', supplies: 'Amenities y consumibles', products: 'Productos de limpieza', salary: 'Salario dirección turismo', other: 'Otros gastos' };
@@ -77,14 +77,25 @@ export function trendPeriods(end: string, matchingDays: boolean) {
   });
 }
 
-export function monthlyTrend(services: FinancialService[], settings: FinanceSettings, filters: Filters, matchingDays: boolean) {
-  return trendPeriods(filters.end, matchingDays).map(period => {
+export function annualPeriods(year: string) {
+  const range = financialYearRange(year);
+  if (!range) return [];
+  return Array.from({ length: 12 }, (_, index) => index === 11 ? { start: `${year}-12-01`, end: range.end } : financialMonthRange(`${year}-${String(index + 1).padStart(2, '0')}`)!);
+}
+function periodTrend(services: FinancialService[], settings: FinanceSettings, filters: Filters, periods: Pick<Filters, 'start' | 'end'>[]) {
+  return periods.map(period => {
     const result = analyze(services, settings, { ...filters, ...period });
     const manualCount = (settings.incomes || []).filter(income => income.mode === 'manual' && income.start >= period.start && income.start <= period.end &&
       (!filters.clients.length || filters.clients.includes(income.clientId)) && (!filters.properties.length || filters.properties.includes(income.propertyId)) && (!filters.workers.length || filters.workers.includes(income.workerId))).length;
     return { ...period, ...result.total, incomeSources: dashboardSeries(result).incomes, manualCount, excludedPrices: result.excludedIncomeServices.filter(service => service.revenue === null).length,
       name: new Intl.DateTimeFormat('es-ES', { month: 'short', year: '2-digit', timeZone: 'Europe/Madrid' }).format(new Date(period.start + 'T12:00:00Z')) };
   });
+}
+export function monthlyTrend(services: FinancialService[], settings: FinanceSettings, filters: Filters, matchingDays: boolean) {
+  return periodTrend(services, settings, filters, trendPeriods(filters.end, matchingDays));
+}
+export function annualTrend(services: FinancialService[], settings: FinanceSettings, filters: Filters) {
+  return periodTrend(services, settings, filters, annualPeriods(filters.start.slice(0, 4)));
 }
 
 export function monthlyColumns(rows: ReturnType<typeof monthlyTrend>, view: ComparisonView): { series: ColumnSeries[]; groups: ColumnGroup[] } {

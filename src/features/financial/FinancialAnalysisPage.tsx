@@ -13,9 +13,10 @@ import { COST_ITEMS, QUANTITY_ITEMS, analyze, newSettings, parseAmount, priceAt,
 import type { DirectoryEntry } from './financialSource';
 import { loadFinance, saveFinance } from './financialPersistence';
 import { IncomePanel, ConsumptionPanel } from './FinancialConfiguration';
-import { loadFinancialView, saveFinancialView, financialMonthRange, selectedFinancialMonth, validDetailConcept, type FinancialDrilldown } from './financialView';
+import { loadFinancialView, saveFinancialView, financialMonthRange, selectedFinancialMonth, financialYearRange, selectedFinancialYear, validDetailConcept, type FinancialDrilldown } from './financialView';
 import { FinancialDashboard, FinancialTrend, ExternalIncomeDetail, type FinancialTrendView } from './FinancialDashboard';
-import { adjacentMonth, categoryNames } from './financialCharts';
+import { adjacentMonth, categoryNames, type ComparisonView } from './financialCharts';
+import { FinancialAnnual } from './FinancialAnnual';
 import { FinancialDetail } from './FinancialDetail';
 import { isIncomeConcept } from './financialDrilldown';
 
@@ -79,6 +80,9 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   const today = formatMadridDate(new Date());
   const [view] = useState(() => loadFinancialView(storageKey, today));
   const [filters, setFilters] = useState<Filters>(view.filters);
+  const [monthlyPeriod, setMonthlyPeriod] = useState(view.monthlyPeriod);
+  const [annualComparison, setAnnualComparison] = useState<ComparisonView>(view.annualComparison || 'balance');
+  const annualYear = selectedFinancialYear(filters);
   const [loaded] = useState(() => {
     try { const saved = localStorage.getItem(storageKey); return { settings: saved ? readSettings(JSON.parse(saved)) : newSettings(), hasLocal: !!saved, error: '' }; }
     catch { return { settings: newSettings(), hasLocal: false, error: 'No se pudo leer la configuración antigua del navegador.' }; }
@@ -107,7 +111,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   const [trendView, setTrendView] = useState<FinancialTrendView>({ open: false, matchingDays: true, comparison: 'balance' });
   const [editing, setEditing] = useState<FinancialService | null>(null);
   const [profitFilter, setProfitFilter] = useState(view.profitFilter);
-  useEffect(() => { saveFinancialView(storageKey, { filters, tab, profitFilter, ...(drilldown ? { drilldown } : {}) }); }, [storageKey, filters, tab, profitFilter, drilldown]);
+  useEffect(() => { saveFinancialView(storageKey, { filters, tab, profitFilter, ...(drilldown ? { drilldown } : {}), ...(monthlyPeriod ? { monthlyPeriod } : {}), annualComparison }); }, [storageKey, filters, tab, profitFilter, drilldown, monthlyPeriod, annualComparison]);
   const [imported, setImported] = useState<FinanceSettings | null>(null);
   const query = useFinancialData(sedeId, filters.start, filters.end);
   const result = useMemo(() => analyze(query.data?.services || [], settings, filters), [query.data, settings, filters]);
@@ -115,12 +119,15 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   useEffect(() => {
     if (tab !== 'general' || !sharedReady || query.isPending || query.error || !chartFocus.current) return;
     const target = chartFocus.current;
-    const region = target.month ? workspace.current?.querySelector('[aria-label="Evolución mensual"]') : workspace.current;
+    const region = target.month ? workspace.current?.querySelector(annualYear ? '[aria-label="Resumen anual por meses"]' : '[aria-label="Evolución mensual"]') : workspace.current;
     if (!region) return;
     // ResponsiveContainer measures after mounting. Restore focus once its SVG
     // exists, rather than focusing a temporary legend before the bars appear.
     const observer = new MutationObserver(() => restoreFocus());
     const restoreFocus = () => {
+      if (annualYear && region.querySelector('[data-financial-empty]')) {
+        observer.disconnect(); chartFocus.current = null; (region as HTMLElement).focus(); return;
+      }
       const candidates = [...region.querySelectorAll<HTMLElement | SVGElement>('[data-financial-concept]')].filter(node => node.getAttribute('data-financial-concept') === target.concept).flatMap(node => {
         const element = node.matches('button') ? node : node.querySelector<SVGElement>('[role="button"]');
         return element ? [{ element, month: node.getAttribute('data-period-start') }] : [];
@@ -132,7 +139,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
     observer.observe(region, { childList: true, subtree: true });
     restoreFocus();
     return () => observer.disconnect();
-  }, [tab, sharedReady, query.isPending, query.error]);
+  }, [tab, sharedReady, query.isPending, query.error, annualYear]);
   const visibleServices = result.services.filter(service => profitFilter === 'all' || profitFilter === 'negative' && (service.result ?? 0) < 0 || profitFilter === 'low' && service.revenue! > 0 && (service.result ?? 0) / service.revenue! < .1);
   const commit = (next: FinanceSettings) => {
     if (!sharedReady || saving) return false;
@@ -155,10 +162,21 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   };
   const returnToChart = () => {
     if (drilldown) chartFocus.current = { concept: drilldown.concept, ...(drilldown.monthly ? { month: filters.start } : {}) };
-    if (drilldown?.monthly) { setFilters(drilldown.returnFilters); setTrendView(current => ({ ...current, open: true })); }
+    if (drilldown?.monthly) { setFilters(drilldown.returnFilters); if (!selectedFinancialYear(drilldown.returnFilters)) setTrendView(current => ({ ...current, open: true })); }
     setTab('general');
   };
-  const moveMonth = (offset: number) => { const range = adjacentMonth(filters.start, offset); if (range) setFilters(current => ({ ...current, ...range })); };
+  const moveMonth = (offset: number) => { const range = annualYear ? financialYearRange(String(Number(annualYear) + offset).padStart(4, '0')) : adjacentMonth(filters.start, offset); if (range) setFilters(current => ({ ...current, ...range })); };
+  const showAnnual = () => {
+    const range = financialYearRange(filters.end.slice(0, 4));
+    if (!range) return;
+    if (!annualYear) setMonthlyPeriod({ start: filters.start, end: filters.end });
+    setFilters(current => ({ ...current, ...range })); setTab('general');
+  };
+  const showMonthly = () => {
+    const range = monthlyPeriod?.start.slice(0, 4) === annualYear ? monthlyPeriod : financialMonthRange(`${annualYear}-${(monthlyPeriod?.end || today).slice(5, 7)}`);
+    if (range) setFilters(current => ({ ...current, ...range }));
+    setTab('general');
+  };
   const updateFilter = (key: 'clients' | 'properties' | 'workers', ids: string[]) => setFilters(current => ({ ...current, [key]: ids }));
   const csv = () => {
     const cell = (text: string) => '"' + (/^[=+\-@]/.test(text) ? "'" + text : text).split('"').join('""') + '"';
@@ -187,7 +205,12 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
       {message && <p role="status" className="text-sm text-[#310984]">{message}</p>}
       <section className={`${panel} space-y-3`} aria-label="Filtros del análisis">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="flex max-w-full items-end gap-2"><Button variant="outline" size="icon" aria-label="Mes anterior" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button><label className="min-w-0 text-sm font-medium text-[#310984]">Mes<Input className="mt-1 w-full text-base font-semibold sm:w-56" type="month" aria-label="Mes del análisis" value={selectedFinancialMonth(filters)} onChange={event => { const range = financialMonthRange(event.target.value); if (range) setFilters(current => ({ ...current, ...range })); }} /></label><Button variant="outline" size="icon" aria-label="Mes siguiente" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button></div>
+          <div className="flex max-w-full flex-wrap items-end gap-2"><div className="flex max-w-full items-end gap-2"><Button variant="outline" size="icon" aria-label={annualYear ? 'Año anterior' : 'Mes anterior'} onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+            {annualYear ? <label className="min-w-0 text-sm font-medium text-[#310984]">Año<select className={`${selectClass} mt-1 text-base font-semibold sm:w-56`} aria-label="Año del análisis" value={annualYear} onChange={event => { const range = financialYearRange(event.target.value); if (range) setFilters(current => ({ ...current, ...range })); }}>{[...new Set([...Array.from({ length: 26 }, (_, index) => String(Number(today.slice(0, 4)) - 20 + index)), annualYear])].sort((a, b) => Number(b) - Number(a)).map(year => <option key={year} value={year}>{year}</option>)}</select></label>
+              : <label className="min-w-0 text-sm font-medium text-[#310984]">Mes<Input className="mt-1 w-full text-base font-semibold sm:w-56" type="month" aria-label="Mes del análisis" value={selectedFinancialMonth(filters)} onChange={event => { const range = financialMonthRange(event.target.value); if (range) setFilters(current => ({ ...current, ...range })); }} /></label>}
+            <Button variant="outline" size="icon" aria-label={annualYear ? 'Año siguiente' : 'Mes siguiente'} onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button></div>
+            <Button aria-pressed={!!annualYear} variant={annualYear ? 'default' : 'outline'} onClick={showAnnual}>Vista Anual</Button>{annualYear && <Button variant="outline" onClick={showMonthly}>Vista Mensual</Button>}
+          </div>
           <div className="text-sm"><p className="font-medium text-[#310984]">{filters.start.split('-').reverse().join('/')} – {filters.end.split('-').reverse().join('/')} · Sin IVA</p><p className="mt-1 text-xs text-slate-500">{filters.clients.length ? filters.clients.map(clientName).join(', ') : 'Toda la sede'}{filters.properties.length > 0 && ` · ${filters.properties.length} propiedades`}{filters.workers.length > 0 && ` · ${filters.workers.length} trabajadores`}</p></div>
         </div>
         <details className="border-t border-violet-100 pt-3"><summary className="cursor-pointer text-sm font-medium text-[#310984]">Fechas personalizadas y filtros{filters.clients.length + filters.properties.length + filters.workers.length > 0 ? ` · ${filters.clients.length + filters.properties.length + filters.workers.length} seleccionados` : ''}</summary><div className="mt-3 grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -197,7 +220,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
           <MultiFilter label="Propiedades" entries={data?.properties || []} selected={filters.properties} onChange={ids => updateFilter('properties', ids)} />
           <MultiFilter label="Trabajadores" entries={data?.workers || []} selected={filters.workers} onChange={ids => updateFilter('workers', ids)} />
         </div></details>
-        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>{selectedFinancialMonth(filters) ? 'Mes completo seleccionado' : 'Periodo personalizado · selecciona un mes o ajusta las fechas'}</span><button className="text-[#310984] underline" onClick={() => setFilters({ start: `${today.slice(0, 7)}-01`, end: today, clients: [], properties: [], workers: [] })}>Ver todo · mes actual</button>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>{annualYear ? `Año ${annualYear} completo seleccionado` : selectedFinancialMonth(filters) ? 'Mes completo seleccionado' : 'Periodo personalizado · selecciona un mes o ajusta las fechas'}</span><button className="text-[#310984] underline" onClick={() => setFilters({ start: `${today.slice(0, 7)}-01`, end: today, clients: [], properties: [], workers: [] })}>Ver todo · mes actual</button>
           {!!filters.workers.length && <span>Servicios en los que participa el trabajador; ingreso único y coste de todo el equipo.</span>}
           {(!!filters.clients.length || !!filters.properties.length || !!filters.workers.length) && <span>Los gastos generales sin vínculo quedan fuera de estos filtros.</span>}
         </div>
@@ -220,8 +243,9 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
             <nav aria-label="Vistas del análisis" className="flex gap-2 overflow-x-auto pb-1">{([['general', 'General'], ['clients', 'Por cliente'], ['services', 'Servicios'], ['incomes', 'Otros ingresos'], ['expenses', 'Otros gastos'], ['rates', 'Tarifas']] as const).map(([id, title]) =>
               <Button key={id} aria-pressed={tab === id} variant={tab === id ? 'default' : 'outline'} className={tab === id ? 'bg-[#310984] hover:bg-[#45209a]' : ''} onClick={() => setTab(id)}>{title}</Button>)}{tab === 'details' && drilldown && <Button aria-pressed="true" className="bg-[#310984]" onClick={() => setTab('details')}>{isIncomeConcept(drilldown.concept) ? 'Ingresos' : 'Desglose de gastos'}</Button>}</nav>
             {tab === 'general' && <>
+              {annualYear && <FinancialAnnual services={data?.services || []} settings={settings} filters={filters} comparison={annualComparison} onComparison={setAnnualComparison} onDetails={openDetails} />}
               <FinancialDashboard result={result} names={data?.clients || []} onClient={selectClient} onServices={() => { setProfitFilter('all'); setTab('services'); }} onIncomes={() => setTab('incomes')} onEdit={setEditing} onDetails={openDetails} />
-              <FinancialTrend sedeId={sedeId} settings={settings} filters={filters} view={trendView} onViewChange={patch => setTrendView(current => ({ ...current, ...patch }))} onDetails={openDetails} />
+              {!annualYear && <FinancialTrend sedeId={sedeId} settings={settings} filters={filters} view={trendView} onViewChange={patch => setTrendView(current => ({ ...current, ...patch }))} onDetails={openDetails} />}
               <details className={panel}><summary className="cursor-pointer font-medium text-[#310984]">Tabla de resultados por cliente</summary><div className="mt-4"><ClientTable compact result={result} names={data?.clients || []} onClient={selectClient} /></div></details>
             </>}
             {tab === 'details' && drilldown && <FinancialDetail result={result} settings={settings} concept={drilldown.concept} filters={filters} clients={data?.clients || []} onBack={returnToChart} />}
