@@ -334,7 +334,7 @@ BEGIN
       OR (cleaning.date + cleaning.end_time) AT TIME ZONE 'Europe/Madrid' > now()
       OR NOT EXISTS (SELECT 1 FROM public.stock_sede_settings s
         WHERE s.sede_id = cleaning.sede_id AND s.estimated_amenities_enabled
-          
+
           AND (cleaning.date + cleaning.end_time) AT TIME ZONE 'Europe/Madrid'
             >= s.estimated_amenities_started_at) THEN CONTINUE; END IF;
     attempts := attempts + 1;
@@ -450,4 +450,3 @@ END;
 $function$
 ;
 COMMIT;
-
