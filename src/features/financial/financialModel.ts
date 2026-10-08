@@ -55,7 +55,11 @@ export const newSettings = (): FinanceSettings => ({ version: 1, rates: [], adju
 export const validDate = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) &&
   Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date;
 export const parseAmount = (value: string, decimals = 3): number | null => {
-  const normalized = value.trim().replace(',', '.');
+  const input = value.trim();
+  // A comma makes Spanish thousands grouping unambiguous. Keep standalone
+  // decimal dots working for existing prices such as 0.247 or 15.50.
+  const grouped = new RegExp(`^\\d{1,3}(?:\\.\\d{3})+,\\d{1,${decimals}}$`).test(input);
+  const normalized = (grouped ? input.replace(/\./g, '') : input).replace(',', '.');
   if (!new RegExp(`^\\d+(?:\\.\\d{1,${decimals}})?$`).test(normalized)) return null;
   const result = Math.round(Number(normalized) * 10 ** decimals);
   return Number.isSafeInteger(result) && result <= 1000000000 ? result : null;

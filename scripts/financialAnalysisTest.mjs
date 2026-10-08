@@ -88,6 +88,13 @@ try {
   assert.ok(calculateService({ ...service, revenue: null, workers: [] }, settings).pending.length);
   settings.adjustments.s.minutes = { w1: 90 }; assert.equal(calculateService(service, settings).costs.personal, 4300);
   assert.equal(parseAmount('0,247'), 247); assert.equal(parseAmount('15.50'), 15500);
+  assert.equal(parseAmount('4.058,45', 2), 405845);
+  assert.equal(parseAmount(' 3.418,43 ', 2), 341843);
+  assert.equal(parseAmount('1.234.567,89', 2), 123456789);
+  assert.equal(parseAmount('4058,45', 2), 405845);
+  assert.equal(parseAmount('4058.45', 2), 405845);
+  assert.equal(parseAmount('0.247'), 247, 'Decimal dots must retain their existing meaning');
+  for (const invalid of ['4.05,45', '40.58,45', '4058.000,45', '4.058,450', '4,058.45', '4..058,45', '1.234.567.890,00']) assert.equal(parseAmount(invalid, 2), null);
   for (const invalid of ['-1', '', '1e3', 'abc', 'Infinity', '1.0001']) assert.equal(parseAmount(invalid), null);
   assert.equal(validDate('2026-02-30'), false); assert.equal(validDate('2026-10-06'), true);
   assert.deepEqual(readSettings(JSON.parse(JSON.stringify(settings))), settings);

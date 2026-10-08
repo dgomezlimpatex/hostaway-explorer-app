@@ -40,6 +40,8 @@ Las copias JSON anteriores siguen siendo válidas. Importarlas requiere revisar 
 
 ## Reglas acordadas e ingresos externos
 
+Los importes admiten decimales con coma o punto y miles con punto cuando llevan coma decimal (por ejemplo, 1234,56, 1234.56 o 1.234,56). Se rechazan agrupaciones incorrectas y exceso de decimales. Un punto decimal sin coma conserva su significado anterior, incluido 0.247 en las tarifas. El formulario de ingresos identifica si el error corresponde al ingreso o al coste; añadirlo sigue creando un borrador hasta «Guardar cambios».
+
 - Personal general 14,50 €/h; Montse 1,5 h totales, sin lavandería ni amenities/consumibles; check-in por tipo o nombre de propiedad: 1 h total, solo personal.
 - Marina30: sin lavandería, kits ni papel; Panfalas: lavandería según ficha, sin kits. Las reglas son editables por cliente/propiedad; la de propiedad tiene prioridad. Los ajustes manuales explícitos por servicio permanecen prioritarios.
 - Productos: 3% sobre la tarifa base de limpieza; se excluye el suplemento de recepción virtual.
