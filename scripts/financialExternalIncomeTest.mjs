@@ -55,7 +55,7 @@ try {
   const task={id:'t',type:'limpieza',date:'2026-09-10',status:'pending',coste:9.93,cliente_id:'c',propiedad_id:'p',property:'Casa',cleaner_id:'w1',cleaner:'A',start_time:'10:00',end_time:'11:00',task_assignments:[]};
   const custom=buildServices([task],[property],[{id:'c',name:'Cliente',amenitiesControlEnabled:false}],[],'2026-10-07',[{property_id:'p',quantity_per_cleaning:2,product:{name:'Sabanas matrimonio'}},{property_id:'p',quantity_per_cleaning:1,product:{name:'PAÑOS DE COCINA'}},{property_id:'p',quantity_per_cleaning:2,product:{name:'BOLSAS DE BASURA 30L'}}])[0];
   assert.equal(custom.revenue,2035);assert.equal(custom.quantities.doubleSheet,2);assert.equal(custom.quantities.kitchenCloth,1);assert.equal(custom.quantities.bathKit,0);
-  assert.ok(analyze([custom],settings,filters).services[0].pending.some(p=>p.includes('BOLSAS')));
+  assert.ok(!analyze([custom],settings,filters).services[0].pending.some(p=>p.includes('BOLSAS')));
   assert.deepEqual(readSettings(JSON.parse(JSON.stringify(rules))),rules);
   for(const invalid of [{...base,income:-1},{...base,cost:-1},{...base,weeklyHours:NaN},{...base,weeklyHours:169},{...base,end:'2026-08-31'},{...base,overrides:{'2026-9':{income:1,cost:0,weeklyHours:0}}},{...supplement,cost:1},{...laundry,weeklyHours:1}])assert.throws(()=>readSettings({...settings,incomes:[invalid]}));
   assert.throws(()=>readSettings({...settings,incomes:[base,base]}));

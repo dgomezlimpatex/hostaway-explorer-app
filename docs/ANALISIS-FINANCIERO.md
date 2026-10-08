@@ -1,5 +1,17 @@
 # Análisis financiero · configuración compartida
 
+## Conservación de la vista
+
+Recuperar el foco de la pestaña del navegador no vuelve a consultar automáticamente las fuentes financieras. «Actualizar datos» permite solicitar una consulta expresamente; la pantalla y los formularios permanecen montados mientras se actualizan los datos ya cargados. Los errores de fuente siguen ocultando los totales parciales.
+
+Fechas, filtros, sección y filtro de rentabilidad se conservan en sessionStorage por usuario y sede para volver al apartado o recargar en la misma pestaña. Esta memoria de presentación no guarda ajustes financieros ni sustituye «Guardar cambios».
+
+## Consumos y cobro de paños
+
+Las bolsas de basura forman parte del 3% de productos de limpieza; las bayetas son propias del trabajador. Ninguna genera un gasto adicional ni un aviso de tarifa pendiente. Otros artículos sin precio conservan sus avisos.
+
+El paño tiene un coste inicial de 0,15 € por unidad configurada y un ingreso inicial de 0,25 € una vez por limpieza con paño. El cobro se activa inicialmente solo para Turquoise y únicamente si la propiedad tiene cantidad positiva; no se aplica a check-in ni a servicios sin ingreso. Las reglas de Consumos personalizados permiten activar o excluir ese cobro por cliente o propiedad. Ambos precios se pueden editar por fecha en Tarifas. El suplemento se muestra separado de la tarifa de propiedad y no aumenta la base del 3%.
+
 Petición de Dani: vista general y por cliente, personalizada por fechas, clientes, propiedades y trabajadores; colores morados de Limpatex; precios iniciales sin IVA facilitados el 06/10/2026.
 
 Ruta: `/financial-analysis`, desde Facturación en los menús de escritorio y móvil. Usa el módulo existente `reports` sin modificar roles, permisos ni políticas.

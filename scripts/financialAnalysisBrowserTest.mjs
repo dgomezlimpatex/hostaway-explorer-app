@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { chromium, expect } from '@playwright/test';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+import postcss from 'postcss';
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 const modules = {
@@ -19,7 +22,7 @@ const modules = {
       {...task,id:'excluded-past',date:'2000-01-01',coste:999,cleaner_id:null,task_assignments:[]},
       {...task,id:'excluded-cancelled',status:'cancelled',coste:999});
     data.stock_property_consumption_rules=[];
-    export const supabase={from(table){const calls=[];let payload=null;const q={select(...a){calls.push(['select',...a]);return q},insert(value){payload=value;return q},update(value){payload=value;return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},async maybeSingle(){if(table!=='financial_settings')throw new Error('Unexpected table');if(window.failFinance)return {data:null,error:{message:'Fallo simulado'}};return fetch('https://financial.local.test/config',{method:payload?'POST':'GET',headers:{'Content-Type':'application/json'},body:payload?JSON.stringify({payload,calls}):undefined}).then(r=>r.json())},range(from,to){window.reads=window.reads||[];window.reads.push({table,calls,from,to});return Promise.resolve({data:data[table].slice(from,to+1),error:null})}};return q}};
+    export const supabase={from(table){const calls=[];let payload=null;const q={select(...a){calls.push(['select',...a]);return q},insert(value){payload=value;return q},update(value){payload=value;return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},async maybeSingle(){if(table!=='financial_settings')throw new Error('Unexpected table');if(window.failFinance)return {data:null,error:{message:'Fallo simulado'}};return fetch('https://financial.local.test/config',{method:payload?'POST':'GET',headers:{'Content-Type':'application/json'},body:payload?JSON.stringify({payload,calls}):undefined}).then(r=>r.json())},range(from,to){window.reads=window.reads||[];window.reads.push({table,calls,from,to});return new Promise(resolve=>setTimeout(()=>resolve({data:data[table].slice(from,to+1),error:null}),window.sourceDelay || 0))}};return q}};
   `,
 };
 const built = await build({ stdin: { contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import Page from './src/features/financial/FinancialAnalysisPage';createRoot(document.getElementById('root')).render(<MemoryRouter><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><Page/></QueryClientProvider></MemoryRouter>);`, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic', metafile: true, define: { 'process.env.NODE_ENV': '"production"' }, plugins: [{ name: 'financial-fixture', setup(plugin) {
@@ -27,11 +30,18 @@ const built = await build({ stdin: { contents: `import React from 'react';import
   plugin.onLoad({ filter: /.*/, namespace: 'fixture' }, args => ({ contents: modules[args.path], loader: 'js', resolveDir: process.cwd() }));
 } }] });
 assert.ok(!Object.keys(built.metafile.inputs).some(path => path.startsWith('src/integrations/supabase')), 'Real production client must not be bundled');
-const css = readFileSync(join('dist/assets', readdirSync('dist/assets').find(file => /^index-.*\.css$/.test(file))), 'utf8');
+// Functional checks run before the production build. Compile actual app styles
+// directly, omitting font downloads so this fixture remains fully offline.
+const cssSource = readFileSync('src/index.css', 'utf8').replace(/^\s*@import\s+"@fontsource\/[^"\n]+";\s*$/gm, '');
+const { css } = await postcss([tailwindcss('tailwind.config.ts'), autoprefixer]).process(cssSource, { from: 'src/index.css' });
 const html = `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body><div id="root"></div><script>${built.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></body></html>`;
-const browser = await chromium.launch({ headless: true });
+// Offline functional checks run before Playwright's download step in delivery.
+// Use the runner's installed Chrome when present; never download or skip checks.
+const executablePath = process.platform === 'linux' && existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined;
+const browser = await chromium.launch({ headless: true, executablePath });
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1050 } });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1050 } });
+  const page = await context.newPage();
   const errors = [], requests = [];
   page.on('pageerror', error => errors.push(error.message));
   let shared={document:{version:1,rates:[],expenses:[],adjustments:{}},revision:1};
@@ -109,6 +119,8 @@ try {
   await expect(page.getByRole('status')).toContainText('guardados y compartidos');
   await page.reload();
   await expect(page.getByText('36,25 €', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Servicios · origen de cada importe',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'General',exact:true}).click();
   await expect(page.getByText('Gastos generales incluidos:')).toContainText('50,00 €');
   await page.getByRole('button',{name:'Otros ingresos',exact:true}).click();
   await page.getByLabel('Concepto del ingreso').fill('Lavandería externa de prueba');
@@ -171,6 +183,52 @@ try {
   await page.getByRole('button',{name:'Servicios',exact:true}).click();
   await page.getByRole('button',{name:'Margen inferior al 10%',exact:true}).click();
   await expect(page.getByText('No hay servicios contabilizables con estos filtros.')).toBeVisible();
+  await page.getByRole('button',{name:'Todos los servicios',exact:true}).click();
+  await page.getByRole('button',{name:'Revisar costes',exact:true}).click();
+  await page.getByRole('dialog').getByLabel(/^Paño de cocina/).fill('1');
+  await page.getByRole('dialog').getByRole('button',{name:'Guardar ajustes del análisis',exact:true}).click();
+  await page.getByRole('button',{name:'Tarifas',exact:true}).click();
+  await page.getByLabel('Cliente de la regla').selectOption('c');
+  await page.getByLabel('Propiedad de la regla').selectOption('p');
+  await page.getByLabel(/^Cobro de paño de cocina/).selectOption('yes');
+  await page.getByRole('button',{name:'Aplicar regla al borrador',exact:true}).click();
+  await page.getByRole('button',{name:'Servicios',exact:true}).click();
+  await expect(page.getByRole('row').filter({hasText:'Apartamento Centro'})).toContainText('103,00 €');
+  await page.getByRole('button',{name:'Revisar costes',exact:true}).click();
+  await expect(page.getByRole('dialog')).toContainText('paño de cocina: 0,25 €');
+  await expect(page.getByRole('dialog')).toContainText('otros suplementos: 2,75 €');
+  await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('guardados y compartidos');
+  assert.equal(shared.document.policies.find(p=>p.propertyId==='p').kitchenClothIncome,true);
+  await page.getByRole('button',{name:'Otros ingresos',exact:true}).click();
+  await page.getByLabel('Concepto del ingreso').fill('Formulario que debe mantenerse');
+  const beforeFocus=await page.evaluate(()=>window.reads.length);
+  const otherTab=await page.context().newPage();
+  await otherTab.goto('about:blank');
+  await otherTab.bringToFront();
+  await page.bringToFront();
+  await page.evaluate(async()=>{
+    // Exercise the event React Query subscribes to deterministically as well.
+    let state='hidden';Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>state});
+    document.dispatchEvent(new Event('visibilitychange'));state='visible';document.dispatchEvent(new Event('visibilitychange'));
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  });
+  await otherTab.close();
+  assert.equal(await page.evaluate(()=>window.reads.length),beforeFocus,'Returning to browser tab must not refetch');
+  await expect(page.getByLabel('Concepto del ingreso')).toHaveValue('Formulario que debe mantenerse');
+  await page.evaluate(()=>{window.sourceDelay=250});
+  await page.getByRole('button',{name:'Actualizar datos',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Actualizando datos…',exact:true})).toBeVisible();
+  await expect(page.getByLabel('Concepto del ingreso')).toHaveValue('Formulario que debe mantenerse');
+  await expect(page.getByRole('button',{name:'Actualizar datos',exact:true})).toBeEnabled();
+  assert.equal(await page.evaluate(()=>window.reads.length),beforeFocus+5,'Explicit update must read every source');
+  await expect(page.getByLabel('Concepto del ingreso')).toHaveValue('Formulario que debe mantenerse');
+  const retainedEnd=await page.getByLabel('Hasta',{exact:true}).inputValue();
+  await page.reload();
+  await expect(page.getByLabel('Concepto del ingreso')).toBeVisible();
+  await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue(retainedEnd);
   await page.getByRole('button',{name:'General',exact:true}).click();
   await page.screenshot({ path: join(tmpdir(), 'limpatex-financial-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
