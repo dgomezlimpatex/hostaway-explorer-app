@@ -13,6 +13,7 @@ import { COST_ITEMS, QUANTITY_ITEMS, analyze, newSettings, parseAmount, priceAt,
 import type { DirectoryEntry } from './financialSource';
 import { loadFinance, saveFinance } from './financialPersistence';
 import { IncomePanel, ConsumptionPanel } from './FinancialConfiguration';
+import { loadFinancialView, saveFinancialView } from './financialView';
 
 const money = (cents: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 const rateMoney = (mills: number) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(mills / 1000) + ' €';
@@ -72,7 +73,8 @@ export default function FinancialAnalysisPage() {
 
 export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKey: string; sedeId: string; sedeName: string }) {
   const today = formatMadridDate(new Date());
-  const [filters, setFilters] = useState<Filters>({ start: `${today.slice(0, 7)}-01`, end: today, clients: [], properties: [], workers: [] });
+  const [view] = useState(() => loadFinancialView(storageKey, today));
+  const [filters, setFilters] = useState<Filters>(view.filters);
   const [loaded] = useState(() => {
     try { const saved = localStorage.getItem(storageKey); return { settings: saved ? readSettings(JSON.parse(saved)) : newSettings(), hasLocal: !!saved, error: '' }; }
     catch { return { settings: newSettings(), hasLocal: false, error: 'No se pudo leer la configuración antigua del navegador.' }; }
@@ -94,9 +96,10 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
     return () => { active = false; };
   }, [sedeId, reload]);
   const [message, setMessage] = useState('');
-  const [tab, setTab] = useState<'general' | 'clients' | 'services' | 'expenses' | 'rates' | 'incomes'>('general');
+  const [tab, setTab] = useState(view.tab);
   const [editing, setEditing] = useState<FinancialService | null>(null);
-  const [profitFilter, setProfitFilter] = useState<'all' | 'negative' | 'low'>('all');
+  const [profitFilter, setProfitFilter] = useState(view.profitFilter);
+  useEffect(() => { saveFinancialView(storageKey, { filters, tab, profitFilter }); }, [storageKey, filters, tab, profitFilter]);
   const [imported, setImported] = useState<FinanceSettings | null>(null);
   const query = useFinancialData(sedeId, filters.start, filters.end);
   const result = useMemo(() => analyze(query.data?.services || [], settings, filters), [query.data, settings, filters]);
@@ -131,7 +134,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3"><div className="rounded-2xl bg-[#310984] p-3 text-white"><BarChart3 className="h-6 w-6" /></div>
           <div><p className="text-xs font-semibold uppercase tracking-widest text-violet-600">APP GESTIÓN LIMPATEX · {sedeName}</p><h1 className="text-2xl font-bold text-[#310984] sm:text-3xl">Análisis financiero</h1><p className="text-sm text-slate-500">Toda la actividad, con detalle por cliente · siempre sin IVA</p></div></div>
-        <div className="flex gap-2"><Button variant="outline" disabled={!data || !sharedReady || query.isFetching || !!query.error || !!storageError} onClick={csv}><Download className="mr-2 h-4 w-4" />Exportar tabla</Button><Button variant="outline" asChild><Link to="/">Volver</Link></Button></div>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!sharedReady || query.isFetching} onClick={() => query.refetch()}>{query.isFetching ? 'Actualizando datos…' : 'Actualizar datos'}</Button><Button variant="outline" disabled={!data || !sharedReady || query.isFetching || !!query.error || !!storageError} onClick={csv}><Download className="mr-2 h-4 w-4" />Exportar tabla</Button><Button variant="outline" asChild><Link to="/">Volver</Link></Button></div>
       </header>
       <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-[#310984]">
         Configuración compartida por sede · Los cambios quedan en borrador hasta «Guardar cambios». Los servicios utilizan siempre la tarifa actual de la propiedad. Todo sin IVA.
@@ -154,7 +157,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
         </div>
       </section>
       {!filters.start || !filters.end || filters.start > filters.end ? <p role="alert">Selecciona un intervalo de fechas válido.</p> : storageError ? <p role="alert" className={panel}>Configuración sin cargar. No se muestran balances; pulsa Descartar y recargar para reintentar.</p> : query.error ?
-        <div role="alert" className={panel}><p>No se pudieron cargar los datos. No se muestran totales parciales.</p><Button variant="outline" onClick={() => query.refetch()}>Reintentar</Button></div> : query.isPending || query.isFetching ?
+        <div role="alert" className={panel}><p>No se pudieron cargar los datos. No se muestran totales parciales.</p><Button variant="outline" onClick={() => query.refetch()}>Reintentar</Button></div> : query.isPending ?
           <p role="status" className={panel}>Cargando servicios y costes…</p> : !sharedReady ? <p role="status">Cargando configuración compartida…</p> : <>
             <Indicators summary={result.total} />
             <p className="text-sm text-slate-600">{result.total.services} servicios contabilizados · {result.incomes.length} ingresos externos · {result.total.estimated} registros con estimaciones · {result.total.pending} con datos pendientes.

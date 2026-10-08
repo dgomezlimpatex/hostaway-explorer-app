@@ -9,6 +9,7 @@ export function useFinancialData(sedeId: string | undefined, start: string, end:
   return useQuery({
     queryKey: ['financial-analysis', sedeId, start, end, today],
     enabled: !!sedeId && !!start && !!end && start <= end,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const [tasks, properties, clients, workers, rules] = await Promise.all([
         readAllPages((from, to) => supabase.from('tasks')

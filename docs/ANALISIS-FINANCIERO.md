@@ -1,5 +1,11 @@
 # Análisis financiero · configuración compartida
 
+## Conservación de la vista
+
+Recuperar el foco de la pestaña del navegador no vuelve a consultar automáticamente las fuentes financieras. «Actualizar datos» permite solicitar una consulta expresamente; la pantalla y los formularios permanecen montados mientras se actualizan los datos ya cargados. Los errores de fuente siguen ocultando los totales parciales.
+
+Fechas, filtros, sección y filtro de rentabilidad se conservan en sessionStorage por usuario y sede para volver al apartado o recargar en la misma pestaña. Esta memoria de presentación no guarda ajustes financieros ni sustituye «Guardar cambios».
+
 ## Consumos y cobro de paños
 
 Las bolsas de basura forman parte del 3% de productos de limpieza; las bayetas son propias del trabajador. Ninguna genera un gasto adicional ni un aviso de tarifa pendiente. Otros artículos sin precio conservan sus avisos.
