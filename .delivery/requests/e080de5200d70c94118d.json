@@ -1,0 +1,25 @@
+{
+  "request": "Corregir el rechazo de importes con punto de miles y coma decimal en el formulario financiero.",
+  "reason": "Esta revision cubre solo validacion local de importes y errores de formulario. El alta real pedida por Dani se coordina y verifica aparte mediante la reserva de publicacion revisada.",
+  "verification": "Build final correcto; ESLint focalizado correcto; tipos de aplicacion 102 heredados y 0 nuevos, Node 0; pruebas de modelo, ingresos externos, consumos y desglose correctas. Navegador con pagina real y backend simulado: error en ingreso/coste mal formado, importes con miles, borrador, guardado, recarga, no duplicacion y regresiones de filtros, graficos, movil y concurrencia. Sin red productiva en pruebas.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialDetailTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "73e317efdb853ed6ec32c0c92f416b8c5c92a3257d56ed1c632bb5b07ca9803d"
+}

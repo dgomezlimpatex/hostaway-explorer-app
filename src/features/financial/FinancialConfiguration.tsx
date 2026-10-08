@@ -40,7 +40,9 @@ function IncomeForm({entry,date,onSave,onCancel,...directories}: Directories & {
   const [notes,setNotes]=useState(entry?.notes || '');const [month,setMonth]=useState('');const [error,setError]=useState('');
   const selectMonth=(value:string)=>{setMonth(value);const values=entry?.overrides[value] || entry;if(values){setIncome(String(values.income/100));setCost(values.cost===null?'':String(values.cost/100));setHours(String(values.weeklyHours));}};
   return <form className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={e=>{e.preventDefault();const amount=parseAmount(income,2),expense=cost.trim()?parseAmount(cost,2):null,weekly=Number(hours.replace(',','.'));
-    if(!label.trim() || amount===null || cost.trim() && expense===null || !validDate(start) || end && (!validDate(end) || end<start) || !Number.isFinite(weekly) || weekly<0 || weekly>168 || month && (!entry || !validDate(month+'-01') || month+'-01'<start.slice(0,7)+'-01' || end && month>end.slice(0,7))) {setError('Revisa el concepto, las fechas, los importes y las horas.');return;}
+    if(amount===null){setError('Introduce un ingreso válido, por ejemplo 1234,56 o 1.234,56.');return;}
+    if(cost.trim() && expense===null){setError('Introduce un coste válido, por ejemplo 1234,56 o 1.234,56.');return;}
+    if(!label.trim() || !validDate(start) || end && (!validDate(end) || end<start) || !Number.isFinite(weekly) || weekly<0 || weekly>168 || month && (!entry || !validDate(month+'-01') || month+'-01'<start.slice(0,7)+'-01' || end && month>end.slice(0,7))) {setError('Revisa el concepto, las fechas y las horas.');return;}
     const values={income:amount,cost:mode==='perCleaning'?0:expense,weeklyHours:mode==='monthly'?weekly:0};
     const result:FinancialIncome={id:entry?.id || crypto.randomUUID(),label:label.trim(),mode,start,end:mode==='manual'?'':end,clientId,propertyId,workerId,notes,costCategory:category,...values,overrides:entry?.mode===mode?{...entry.overrides}:{}};
     if(month && entry && mode!=='manual'){Object.assign(result,{income:entry.income,cost:entry.cost,weeklyHours:entry.weeklyHours});result.overrides[month]=values;}
