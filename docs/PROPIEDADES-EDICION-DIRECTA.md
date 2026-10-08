@@ -25,3 +25,12 @@ El guardado de consumos y ficha sigue utilizando dos operaciones, sin transacci�
 - Capturas locales de escritorio y móvil revisadas. No se ha iniciado sesión ni guardado datos en producción como prueba.
 
 Base verificada: 04e4438a83345a3160200d09718fbd6808314440. Ambos dominios canónicos servían dpl_9j24XLhD9K69NJWvfm5b6r9usbfs con ese commit antes de la entrega. La reserva debe volver a verificar producción y la base antes de integrar.
+
+
+## Guardado en segundo plano — 8 de octubre de 2026
+
+Dani solicita poder cambiar de propiedad inmediatamente después de pulsar Guardar cambios. La sesión del formulario vive ahora por separado de la ficha visible: se conserva mientras guarda y, si falla, mientras quedan cambios pendientes. Al terminar un guardado oculto no se cambia la propiedad seleccionada ni se modifican los borradores de otras propiedades. Una sesión oculta correcta se libera al finalizar.
+
+El directorio muestra la propiedad que se está guardando y permite volver a ella. Si falla, muestra el aviso con acceso al borrador conservado para reintentar. En móvil se puede cerrar la ficha mientras guarda y abrir otra. Los campos de una misma propiedad siguen bloqueados mientras su propio guardado está en curso, evitando escrituras simultáneas sobre ella. Cambiar filtros o seleccionar otra propiedad no cancela guardados. Salir de la página o recargar sigue protegido mientras quedan operaciones pendientes; no se añade persistencia offline ni guardado tras cerrar el navegador.
+
+Se mantienen las operaciones de datos existentes sin modificaciones. La prueba de navegador controla respuestas pendientes de dos propiedades independientes, verifica navegación inmediata en escritorio/móvil, ausencia de cambios prematuros en los datos, finalización sin saltos de selección, fallo en segundo plano, recuperación del borrador y reintento sin duplicar el guardado de la otra propiedad.
