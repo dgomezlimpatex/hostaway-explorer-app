@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, ChevronRight, Download, Plus, Settings2, Wallet } from 'lucide-react';
+import { BarChart3, ChevronLeft, ChevronRight, Download, Plus, Settings2, ArrowUpRight, ArrowDownRight, Wallet, Percent } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSede } from '@/contexts/SedeContext';
 import { formatMadridDate } from '@/utils/date';
@@ -14,11 +14,12 @@ import type { DirectoryEntry } from './financialSource';
 import { loadFinance, saveFinance } from './financialPersistence';
 import { IncomePanel, ConsumptionPanel } from './FinancialConfiguration';
 import { loadFinancialView, saveFinancialView, financialMonthRange, selectedFinancialMonth } from './financialView';
+import { FinancialDashboard, FinancialTrend, ExternalIncomeDetail } from './FinancialDashboard';
+import { adjacentMonth, categoryNames } from './financialCharts';
 
 const money = (cents: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 const rateMoney = (mills: number) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(mills / 1000) + ' €';
 const formatRate = (item: ItemId, mills: number) => item === 'products' ? new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3 }).format(mills / 1000) + ' %' : rateMoney(mills);
-const categoryNames: Record<Category, string> = { personal: 'Personal', laundry: 'Lavandería', supplies: 'Amenities y consumibles', products: 'Productos de limpieza', salary: 'Salario dirección turismo', other: 'Otros gastos' };
 const panel = 'min-w-0 rounded-2xl border border-violet-100 bg-white p-5 shadow-sm';
 const selectClass = 'h-10 rounded-md border border-input bg-background px-3 text-sm w-full';
 function download(filename: string, content: string, type: string) {
@@ -38,12 +39,13 @@ function MultiFilter({ label, entries, selected, onChange }: { label: string; en
   </details>;
 }
 function Indicators({ summary }: { summary: Summary }) {
-  return <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+  const icons = [ArrowUpRight, ArrowDownRight, Wallet, Percent];
+  return <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
     {[['Ingresos totales', money(summary.revenue)], ['Gastos incluidos', money(summary.expense)],
       ['Resultado provisional', money(summary.result)], ['Margen provisional', summary.margin === null ? '—' : `${summary.margin.toFixed(1)} %`]].map(([label, value], index) =>
-      <div key={label} className={index === 2 ? 'rounded-2xl bg-[#310984] p-5 text-white shadow-sm' : panel}>
-        <p className={`text-sm ${index === 2 ? 'text-violet-200' : 'text-slate-500'}`}>{label}</p>
-        <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
+      <div key={label} className={index === 2 ? 'rounded-2xl bg-gradient-to-br from-[#310984] to-violet-700 p-5 text-white shadow-sm' : panel}>
+        <div className="flex items-center justify-between gap-2"><p className={`text-sm ${index === 2 ? 'text-violet-200' : 'text-slate-500'}`}>{label}</p>{(() => { const Icon = icons[index]; return <Icon aria-hidden="true" className={`h-5 w-5 ${index === 2 ? 'text-violet-200' : 'text-violet-500'}`} />; })()}</div>
+        <p className={`mt-3 text-xl font-semibold tracking-tight tabular-nums sm:text-3xl ${index === 2 && summary.result < 0 ? 'text-rose-100' : ''}`}>{value}</p>
         <p className={`mt-2 text-xs ${index === 2 ? 'text-violet-200' : 'text-slate-500'}`}>Sin IVA · periodo seleccionado</p>
       </div>)}
   </div>;
@@ -117,7 +119,8 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
     finally { setSaving(false); }
   };
   const clientName = (id: string) => data?.clients.find(client => client.id === id)?.name || 'Sin cliente identificado';
-  const selectClient = (id: string) => { setFilters({ ...filters, clients: [id] }); setTab('services'); };
+  const selectClient = (id: string) => { setFilters({ ...filters, clients: [id] }); setProfitFilter('all'); setTab('services'); };
+  const moveMonth = (offset: number) => { const range = adjacentMonth(filters.start, offset); if (range) setFilters(current => ({ ...current, ...range })); };
   const updateFilter = (key: 'clients' | 'properties' | 'workers', ids: string[]) => setFilters(current => ({ ...current, [key]: ids }));
   const csv = () => {
     const cell = (text: string) => '"' + (/^[=+\-@]/.test(text) ? "'" + text : text).split('"').join('""') + '"';
@@ -136,22 +139,26 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
           <div><p className="text-xs font-semibold uppercase tracking-widest text-violet-600">APP GESTIÓN LIMPATEX · {sedeName}</p><h1 className="text-2xl font-bold text-[#310984] sm:text-3xl">Análisis financiero</h1><p className="text-sm text-slate-500">Toda la actividad, con detalle por cliente · siempre sin IVA</p></div></div>
         <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!sharedReady || query.isFetching} onClick={() => query.refetch()}>{query.isFetching ? 'Actualizando datos…' : 'Actualizar datos'}</Button><Button variant="outline" disabled={!data || !sharedReady || query.isFetching || !!query.error || !!storageError} onClick={csv}><Download className="mr-2 h-4 w-4" />Exportar tabla</Button><Button variant="outline" asChild><Link to="/">Volver</Link></Button></div>
       </header>
-      <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-[#310984]">
+      <details open={dirty || !!storageError || revision === null} className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-[#310984]">
+        <summary className="cursor-pointer font-medium">{dirty ? 'Cambios sin guardar' : 'Configuración compartida de esta sede'}</summary>
         Configuración compartida por sede · Los cambios quedan en borrador hasta «Guardar cambios». Los servicios utilizan siempre la tarifa actual de la propiedad. Todo sin IVA.
         <div className="mt-2 flex flex-wrap gap-2"><Button disabled={!sharedReady || saving || !dirty && revision !== null} onClick={save}>{saving ? 'Guardando…' : 'Guardar cambios'}</Button><Button variant="outline" disabled={saving} onClick={() => { setMessage(''); setReload(n => n + 1); }}>Descartar y recargar</Button>
           {dirty && <span className="self-center">Cambios sin guardar</span>}</div>
-      </div>
+      </details>
       {storageError && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-amber-900">{storageError}</p>}
       {message && <p role="status" className="text-sm text-[#310984]">{message}</p>}
       <section className={`${panel} space-y-3`} aria-label="Filtros del análisis">
-        <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <label className="text-sm font-medium">Mes<Input type="month" aria-label="Mes del análisis" value={selectedFinancialMonth(filters)} onChange={event => { const range = financialMonthRange(event.target.value); if (range) setFilters(current => ({ ...current, ...range })); }} /></label>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex max-w-full items-end gap-2"><Button variant="outline" size="icon" aria-label="Mes anterior" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button><label className="min-w-0 text-sm font-medium text-[#310984]">Mes<Input className="mt-1 w-full text-base font-semibold sm:w-56" type="month" aria-label="Mes del análisis" value={selectedFinancialMonth(filters)} onChange={event => { const range = financialMonthRange(event.target.value); if (range) setFilters(current => ({ ...current, ...range })); }} /></label><Button variant="outline" size="icon" aria-label="Mes siguiente" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button></div>
+          <div className="text-sm"><p className="font-medium text-[#310984]">{filters.start.split('-').reverse().join('/')} – {filters.end.split('-').reverse().join('/')} · Sin IVA</p><p className="mt-1 text-xs text-slate-500">{filters.clients.length ? filters.clients.map(clientName).join(', ') : 'Toda la sede'}{filters.properties.length > 0 && ` · ${filters.properties.length} propiedades`}{filters.workers.length > 0 && ` · ${filters.workers.length} trabajadores`}</p></div>
+        </div>
+        <details className="border-t border-violet-100 pt-3"><summary className="cursor-pointer text-sm font-medium text-[#310984]">Fechas personalizadas y filtros{filters.clients.length + filters.properties.length + filters.workers.length > 0 ? ` · ${filters.clients.length + filters.properties.length + filters.workers.length} seleccionados` : ''}</summary><div className="mt-3 grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <label className="text-sm font-medium">Desde<Input type="date" value={filters.start} onChange={event => setFilters({ ...filters, start: event.target.value })} /></label>
           <label className="text-sm font-medium">Hasta<Input type="date" value={filters.end} onChange={event => setFilters({ ...filters, end: event.target.value })} /></label>
           <MultiFilter label="Clientes" entries={data?.clients || []} selected={filters.clients} onChange={ids => updateFilter('clients', ids)} />
           <MultiFilter label="Propiedades" entries={data?.properties || []} selected={filters.properties} onChange={ids => updateFilter('properties', ids)} />
           <MultiFilter label="Trabajadores" entries={data?.workers || []} selected={filters.workers} onChange={ids => updateFilter('workers', ids)} />
-        </div>
+        </div></details>
         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>{selectedFinancialMonth(filters) ? 'Mes completo seleccionado' : 'Periodo personalizado · selecciona un mes o ajusta las fechas'}</span><button className="text-[#310984] underline" onClick={() => setFilters({ start: `${today.slice(0, 7)}-01`, end: today, clients: [], properties: [], workers: [] })}>Ver todo · mes actual</button>
           {!!filters.workers.length && <span>Servicios en los que participa el trabajador; ingreso único y coste de todo el equipo.</span>}
           {(!!filters.clients.length || !!filters.properties.length || !!filters.workers.length) && <span>Los gastos generales sin vínculo quedan fuera de estos filtros.</span>}
@@ -161,35 +168,34 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
         <div role="alert" className={panel}><p>No se pudieron cargar los datos. No se muestran totales parciales.</p><Button variant="outline" onClick={() => query.refetch()}>Reintentar</Button></div> : query.isPending ?
           <p role="status" className={panel}>Cargando servicios y costes…</p> : !sharedReady ? <p role="status">Cargando configuración compartida…</p> : <>
             <Indicators summary={result.total} />
-            <p className="text-sm text-slate-600">{result.total.services} servicios contabilizados · {result.incomes.length} ingresos externos · {result.total.estimated} registros con estimaciones · {result.total.pending} con datos pendientes.
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600"><p>{result.total.services} servicios contabilizados · {result.incomes.length} ingresos externos · {result.total.estimated} registros con estimaciones</p>{result.total.pending > 0 && <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-900">{result.total.pending} con datos pendientes · resultado provisional</span>}</div>
+            <details className="text-sm text-slate-600"><summary className="cursor-pointer text-[#310984]">Cómo se calcula</summary><p className="mt-2 leading-relaxed">
               {' '}Ingresos por fecha del servicio; no representan facturas ni cobros. El personal se estima repartiendo la duración total de la tarea entre sus personas asignadas; los ajustes manuales por persona prevalecen.
               {' '}Se utiliza siempre la tarifa actual de la propiedad, también cuando el importe antiguo de la tarea es distinto.
               {' '}Los servicios sin ingreso no suman gastos. Los gastos generales se mantienen por separado.
               {' '}Se incluyen las pendientes asignadas. Se excluyen las canceladas, las tareas pasadas sin asignar y las asignadas a NOT COUNT.
-              {' '}Las cantidades de la ficha son estimaciones actuales; revísalas por servicio. El resultado no es definitivo mientras falten costes.</p>
+              {' '}Las cantidades de la ficha son estimaciones actuales; revísalas por servicio. El resultado no es definitivo mientras falten costes.</p></details>
             {!!result.excludedIncomeServices.length && <details className={panel}><summary className="cursor-pointer font-medium text-[#310984]">Servicios fuera del balance: {result.excludedIncomeServices.filter(service => service.revenue === 0).length} con ingreso cero · {result.excludedIncomeServices.filter(service => service.revenue === null).length} con precio pendiente</summary>
               <p className="mt-2 text-sm text-slate-600">Estas tareas no aportan ingresos ni costes de personal, lavandería, consumibles o productos. Un precio pendiente debe revisarse; no implica que el servicio sea gratuito.</p>
               <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm">{result.excludedIncomeServices.map(service => <li key={service.id}>{service.date.split('-').reverse().join('/')} · {service.propertyName} · {service.revenue === null ? 'Precio pendiente' : money(service.revenue)}</li>)}</ul>
             </details>}
             <nav aria-label="Vistas del análisis" className="flex gap-2 overflow-x-auto pb-1">{([['general', 'General'], ['clients', 'Por cliente'], ['services', 'Servicios'], ['incomes', 'Otros ingresos'], ['expenses', 'Otros gastos'], ['rates', 'Tarifas']] as const).map(([id, title]) =>
               <Button key={id} aria-pressed={tab === id} variant={tab === id ? 'default' : 'outline'} className={tab === id ? 'bg-[#310984] hover:bg-[#45209a]' : ''} onClick={() => setTab(id)}>{title}</Button>)}</nav>
-            {tab === 'general' && <div className="grid gap-5 lg:grid-cols-[1fr_2fr]">
-              <section className={panel}><h2 className="mb-5 flex items-center gap-2 font-semibold text-[#310984]"><Wallet className="h-5 w-5" />Distribución de gastos</h2>
-                {(Object.keys(categoryNames) as Category[]).map((category, i) => <div className="mb-4" key={category}><div className="flex justify-between gap-2 text-sm"><span>{categoryNames[category]}</span><strong>{money(result.total.costs[category])}</strong></div><div className="mt-2 h-2 rounded-full bg-violet-50"><div className={['bg-[#310984]', 'bg-violet-600', 'bg-violet-400', 'bg-violet-500', 'bg-[#6741b3]', 'bg-violet-300'][i] + ' h-2 rounded-full'} style={{ width: `${result.total.expense ? result.total.costs[category] / result.total.expense * 100 : 0}%` }} /></div></div>)}
-                <div className="border-t pt-3 text-sm"><p>Gastos generales incluidos: <strong>{money(result.general.expense)}</strong></p><p className="mt-1 text-xs text-slate-500">Se cuentan una vez y no se reparten entre clientes. Dirección de turismo: 2.317 €/mes inicialmente, proporcional a los días seleccionados; editable en Tarifas.</p></div>
-              </section>
-              <section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Resultado por cliente</h2><ClientTable compact result={result} names={data?.clients || []} onClient={selectClient} /></section>
-            </div>}
+            {tab === 'general' && <>
+              <FinancialDashboard result={result} names={data?.clients || []} onClient={selectClient} onServices={() => { setProfitFilter('all'); setTab('services'); }} onIncomes={() => setTab('incomes')} onEdit={setEditing} />
+              <FinancialTrend sedeId={sedeId} settings={settings} filters={filters} />
+              <details className={panel}><summary className="cursor-pointer font-medium text-[#310984]">Tabla de resultados por cliente</summary><div className="mt-4"><ClientTable compact result={result} names={data?.clients || []} onClient={selectClient} /></div></details>
+            </>}
             {tab === 'clients' && <section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Todos los clientes del análisis</h2><ClientTable result={result} names={data?.clients || []} onClient={selectClient} /></section>}
             {tab === 'incomes' && <IncomePanel settings={settings} result={result} clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} date={filters.start} onChange={commit} />}
-            {tab === 'services' && <section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Servicios · origen de cada importe</h2>
+            {tab === 'services' && <><ExternalIncomeDetail result={result} onManage={() => setTab('incomes')} /><section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Servicios · origen de cada importe</h2>
               <div className="mb-3 flex flex-wrap gap-2">{([['all','Todos los servicios'],['negative','Resultado negativo'],['low','Margen inferior al 10%']] as const).map(([id,label])=><Button key={id} variant={profitFilter===id?'default':'outline'} onClick={()=>setProfitFilter(id)}>{label}</Button>)}</div>
               {!visibleServices.length ? <p className="py-8 text-center text-slate-500">No hay servicios contabilizables con estos filtros.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-violet-50 text-[#310984]"><tr>{['Fecha / propiedad', 'Cliente / equipo', 'Ingresos', 'Personal', 'Lavandería', 'Consumibles', 'Productos', 'Resultado', 'Margen', 'Revisión'].map(title => <th className="p-3 text-left" key={title}>{title}</th>)}</tr></thead><tbody>
-                {visibleServices.map(service => <tr key={service.id} className="border-b"><td className="p-3"><p>{service.date.split('-').reverse().join('/')}</p><strong>{service.propertyName}</strong></td><td className="p-3">{service.clientName}<p className="text-xs text-slate-500">{service.workers.map(worker => worker.name).join(', ') || 'Sin asignar'}</p></td>
+                {visibleServices.map(service => <tr key={service.id} className="border-b"><td className="p-3"><p>{service.date.split('-').reverse().join('/')}</p><button className="font-semibold text-[#310984] hover:underline" onClick={() => setFilters(current => ({ ...current, properties: [service.propertyId] }))} disabled={!service.propertyId}>{service.propertyName}</button></td><td className="p-3">{service.clientName}<p className="text-xs text-slate-500">{service.workers.map(worker => worker.name).join(', ') || 'Sin asignar'}</p></td>
                   <td className="p-3">{service.revenue === null ? 'Pendiente' : money(service.revenue)}</td>{[service.costs.personal, service.costs.laundry, service.costs.supplies, service.costs.products].map((value, i) => <td key={i} className="p-3">{money(value)}</td>)}<td className="p-3">{service.result === null ? '—' : money(service.result)}</td>
                   <td className="p-3">{service.revenue ? ((service.result || 0)/service.revenue*100).toFixed(1)+' %':'—'}</td><td className="p-3"><Button variant="outline" size="sm" onClick={() => setEditing(service)}>Revisar costes</Button><p className="mt-1 text-xs text-amber-700">{service.pending.length ? 'Datos pendientes' : service.estimated ? 'Estimado' : 'Revisado'}</p></td></tr>)}
               </tbody></table></div>}
-            </section>}
+            </section></>}
             {tab === 'expenses' && <section className={panel}><h2 className="mb-2 font-semibold text-[#310984]">Gastos adicionales del análisis</h2><p className="mb-4 text-sm text-slate-500">Registra solo gastos no incluidos ya en los servicios. Sin cliente, se consideran generales. El salario de dirección de turismo se calcula automáticamente; no lo añadas de nuevo.</p>
               <ExpenseForm clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} date={today} onAdd={expense => commit({ ...settings, expenses: [...settings.expenses, expense] })} />
               <div className="mt-5 space-y-2">{result.expenses.map(expense => <div key={expense.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-violet-50 p-3 text-sm"><div><strong>{expense.label}</strong><p>{expense.date} · {expense.clientId ? clientName(expense.clientId) : 'General'} · {categoryNames[expense.category]}</p></div><div className="flex items-center gap-3"><strong>{money(expense.cents)}</strong><>{expense.automatic ? <span className="text-xs text-violet-700">Calculado desde Tarifas</span> : <Button size="sm" variant="outline" onClick={() => commit({ ...settings, expenses: settings.expenses.filter(item => item.id !== expense.id) })}>Quitar del análisis</Button>}</></div></div>)}{!result.expenses.length && <p className="text-sm text-slate-500">Sin gastos adicionales en este periodo.</p>}</div>
