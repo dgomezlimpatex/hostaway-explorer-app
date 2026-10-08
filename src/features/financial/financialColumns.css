@@ -10,8 +10,11 @@
 }
 .financial-column[role='button'] { cursor: pointer; }
 .financial-column:focus-visible { outline: 2px solid #310984; outline-offset: 3px; }
+.financial-client-column { cursor: pointer; transform-box: fill-box; transform-origin: center; transition: transform 180ms ease, filter 180ms ease; }
+.financial-client-column:hover, .financial-client-column:focus-visible { transform: scaleY(1.12); filter: brightness(1.08); }
+.financial-client-column:focus-visible { outline: 2px solid #310984; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
-  .financial-column { transition: none; }
+  .financial-column, .financial-client-column { transition: none; }
   .financial-column:hover,
-  .financial-column:focus-visible { transform: none; }
+  .financial-column:focus-visible, .financial-client-column:hover, .financial-client-column:focus-visible { transform: none; }
 }

@@ -19,10 +19,11 @@ import { adjacentMonth, categoryNames, type ComparisonView } from './financialCh
 import { FinancialAnnual } from './FinancialAnnual';
 import { FinancialDetail } from './FinancialDetail';
 import { isIncomeConcept } from './financialDrilldown';
+import { money, percent, decimal, financialName } from './financialFormat';
 
-const money = (cents: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
-const rateMoney = (mills: number) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(mills / 1000) + ' €';
-const formatRate = (item: ItemId, mills: number) => item === 'products' ? new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3 }).format(mills / 1000) + ' %' : rateMoney(mills);
+
+const rateMoney = (mills: number) => decimal(mills / 1000, 2, 3) + ' €';
+const formatRate = (item: ItemId, mills: number) => item === 'products' ? decimal(mills / 1000, 0, 3) + '%' : rateMoney(mills);
 const panel = 'min-w-0 rounded-2xl border border-violet-100 bg-white p-5 shadow-sm';
 const selectClass = 'h-10 rounded-md border border-input bg-background px-3 text-sm w-full';
 function download(filename: string, content: string, type: string) {
@@ -36,7 +37,7 @@ function MultiFilter({ label, entries, selected, onChange }: { label: string; en
     <div className="absolute z-20 mt-1 max-h-64 w-64 overflow-auto rounded-xl border bg-white p-3 shadow-xl">
       <button className="mb-2 text-sm text-[#310984] underline" onClick={() => onChange([])}>Mostrar todos</button>
       {entries.map(entry => <label key={entry.id} className="flex items-center gap-2 py-1.5 text-sm">
-        <input type="checkbox" checked={selected.includes(entry.id)} onChange={event => onChange(event.target.checked ? [...selected, entry.id] : selected.filter(id => id !== entry.id))} />{entry.name}
+        <input type="checkbox" checked={selected.includes(entry.id)} onChange={event => onChange(event.target.checked ? [...selected, entry.id] : selected.filter(id => id !== entry.id))} />{financialName(entry.name)}
       </label>)}{!entries.length && <p className="text-sm text-slate-500">Sin registros disponibles</p>}
     </div>
   </details>;
@@ -45,7 +46,7 @@ function Indicators({ summary }: { summary: Summary }) {
   const icons = [ArrowUpRight, ArrowDownRight, Wallet, Percent];
   return <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
     {[['Ingresos totales', money(summary.revenue)], ['Gastos incluidos', money(summary.expense)],
-      ['Resultado provisional', money(summary.result)], ['Margen provisional', summary.margin === null ? '—' : `${summary.margin.toFixed(1)} %`]].map(([label, value], index) =>
+      ['Resultado provisional', money(summary.result)], ['Margen provisional', percent(summary.margin)]].map(([label, value], index) =>
       <div key={label} className={index === 2 ? 'rounded-2xl bg-gradient-to-br from-[#310984] to-violet-700 p-5 text-white shadow-sm' : panel}>
         <div className="flex items-center justify-between gap-2"><p className={`text-sm ${index === 2 ? 'text-violet-200' : 'text-slate-500'}`}>{label}</p>{(() => { const Icon = icons[index]; return <Icon aria-hidden="true" className={`h-5 w-5 ${index === 2 ? 'text-violet-200' : 'text-violet-500'}`} />; })()}</div>
         <p className={`mt-3 text-xl font-semibold tracking-tight tabular-nums sm:text-3xl ${index === 2 && summary.result < 0 ? 'text-rose-100' : ''}`}>{value}</p>
@@ -60,12 +61,12 @@ function ClientTable({ result, names, onClient, compact = false }: { result: Ret
     <caption className="sr-only">Ingresos y gastos por cliente y gastos generales sin IVA</caption>
     <thead className="bg-violet-50 text-[#310984]"><tr>{(compact ? ['Cliente', 'Ingresos', 'Gastos', 'Resultado', 'Margen'] : ['Cliente', 'Ingresos', 'Personal', 'Lavandería', 'Consumibles', 'Productos', 'Dirección turismo', 'Otros', 'Total gastos', 'Resultado', 'Margen']).map(title => <th key={title} scope="col" className="whitespace-nowrap p-3 text-left">{title}</th>)}</tr></thead>
     <tbody>{rows.map(row => <tr key={row.id} className="border-b border-violet-50">
-      <th scope="row" className="p-3 text-left font-medium">{row.id !== '__general' ? <button className="inline-flex items-center gap-1 text-[#310984] hover:underline" onClick={() => onClient(row.id)}>{row.name}<ChevronRight className="h-4 w-4" /></button> : row.name}
+      <th scope="row" className="p-3 text-left font-medium">{row.id !== '__general' ? <button className="inline-flex items-center gap-1 text-[#310984] hover:underline" onClick={() => onClient(row.id)}>{financialName(row.name)}<ChevronRight className="h-4 w-4" /></button> : row.name}
         {!!row.pending && <span className="block text-xs font-normal text-amber-700">{row.pending} servicios incompletos</span>}</th>
       {(compact ? [row.revenue, row.expense, row.result] : [row.revenue, row.costs.personal, row.costs.laundry, row.costs.supplies, row.costs.products, row.costs.salary, row.costs.other, row.expense, row.result]).map((amount, i) => <td key={i} className="whitespace-nowrap p-3 tabular-nums">{money(amount)}</td>)}
-      <td className="p-3">{row.margin === null ? '—' : `${row.margin.toFixed(1)} %`}</td>
+      <td className="p-3">{percent(row.margin)}</td>
     </tr>)}</tbody>
-    <tfoot className="bg-violet-50 font-semibold"><tr><th className="p-3 text-left">Total del análisis</th>{(compact ? [result.total.revenue, result.total.expense, result.total.result] : [result.total.revenue, result.total.costs.personal, result.total.costs.laundry, result.total.costs.supplies, result.total.costs.products, result.total.costs.salary, result.total.costs.other, result.total.expense, result.total.result]).map((amount, i) => <td className="p-3" key={i}>{money(amount)}</td>)}<td className="p-3">{result.total.margin === null ? '—' : `${result.total.margin.toFixed(1)} %`}</td></tr></tfoot>
+    <tfoot className="bg-violet-50 font-semibold"><tr><th className="p-3 text-left">Total del análisis</th>{(compact ? [result.total.revenue, result.total.expense, result.total.result] : [result.total.revenue, result.total.costs.personal, result.total.costs.laundry, result.total.costs.supplies, result.total.costs.products, result.total.costs.salary, result.total.costs.other, result.total.expense, result.total.result]).map((amount, i) => <td className="p-3" key={i}>{money(amount)}</td>)}<td className="p-3">{percent(result.total.margin)}</td></tr></tfoot>
   </table></div>;
 }
 
@@ -152,7 +153,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
     catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo guardar. El borrador se conserva.'); }
     finally { setSaving(false); }
   };
-  const clientName = (id: string) => data?.clients.find(client => client.id === id)?.name || 'Sin cliente identificado';
+  const clientName = (id: string) => financialName(data?.clients.find(client => client.id === id)?.name || 'Sin cliente identificado');
   const selectClient = (id: string) => { setFilters({ ...filters, clients: [id] }); setProfitFilter('all'); setTab('services'); };
   const openDetails = (concept: string, period?: Pick<Filters, 'start' | 'end'>) => {
     if (!validDetailConcept(concept)) return;
@@ -256,7 +257,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
               {!visibleServices.length ? <p className="py-8 text-center text-slate-500">No hay servicios contabilizables con estos filtros.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-violet-50 text-[#310984]"><tr>{['Fecha / propiedad', 'Cliente / equipo', 'Ingresos', 'Personal', 'Lavandería', 'Consumibles', 'Productos', 'Resultado', 'Margen', 'Revisión'].map(title => <th className="p-3 text-left" key={title}>{title}</th>)}</tr></thead><tbody>
                 {visibleServices.map(service => <tr key={service.id} className="border-b"><td className="p-3"><p>{service.date.split('-').reverse().join('/')}</p><button className="font-semibold text-[#310984] hover:underline" onClick={() => setFilters(current => ({ ...current, properties: [service.propertyId] }))} disabled={!service.propertyId}>{service.propertyName}</button></td><td className="p-3">{service.clientName}<p className="text-xs text-slate-500">{service.workers.map(worker => worker.name).join(', ') || 'Sin asignar'}</p></td>
                   <td className="p-3">{service.revenue === null ? 'Pendiente' : money(service.revenue)}</td>{[service.costs.personal, service.costs.laundry, service.costs.supplies, service.costs.products].map((value, i) => <td key={i} className="p-3">{money(value)}</td>)}<td className="p-3">{service.result === null ? '—' : money(service.result)}</td>
-                  <td className="p-3">{service.revenue ? ((service.result || 0)/service.revenue*100).toFixed(1)+' %':'—'}</td><td className="p-3"><Button variant="outline" size="sm" onClick={() => setEditing(service)}>Revisar costes</Button><p className="mt-1 text-xs text-amber-700">{service.pending.length ? 'Datos pendientes' : service.estimated ? 'Estimado' : 'Revisado'}</p></td></tr>)}
+                  <td className="p-3">{service.revenue ? percent((service.result || 0)/service.revenue*100):'—'}</td><td className="p-3"><Button variant="outline" size="sm" onClick={() => setEditing(service)}>Revisar costes</Button><p className="mt-1 text-xs text-amber-700">{service.pending.length ? 'Datos pendientes' : service.estimated ? 'Estimado' : 'Revisado'}</p></td></tr>)}
               </tbody></table></div>}
             </section></>}
             {tab === 'expenses' && <section className={panel}><h2 className="mb-2 font-semibold text-[#310984]">Gastos adicionales del análisis</h2><p className="mb-4 text-sm text-slate-500">Registra solo gastos no incluidos ya en los servicios. Sin cliente, se consideran generales. El salario de dirección de turismo se calcula automáticamente; no lo añadas de nuevo.</p>
@@ -301,7 +302,7 @@ function ExpenseForm({ clients, properties, workers, date, onAdd }: { clients: D
     <label className="text-sm">Concepto del gasto<Input value={label} maxLength={200} onChange={event => setLabel(event.target.value)} /></label><label className="text-sm">Importe sin IVA<Input inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} /></label>
     <label className="text-sm">Fecha del gasto<Input type="date" value={expenseDate} onChange={event => setDate(event.target.value)} /></label>
     <label className="text-sm">Categoría<select className={selectClass} value={category} onChange={event => setCategory(event.target.value as Category)}>{Object.entries(categoryNames).map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select></label>
-    <label className="text-sm">Cliente del gasto<select className={selectClass} value={clientId} onChange={event => { setClient(event.target.value); setProperty(''); }}><option value="">General · sin cliente</option>{clients.map(client => <option value={client.id} key={client.id}>{client.name}</option>)}</select></label>
+    <label className="text-sm">Cliente del gasto<select className={selectClass} value={clientId} onChange={event => { setClient(event.target.value); setProperty(''); }}><option value="">General · sin cliente</option>{clients.map(client => <option value={client.id} key={client.id}>{financialName(client.name)}</option>)}</select></label>
     <label className="text-sm">Propiedad del gasto<select className={selectClass} value={propertyId} onChange={event => { const id = event.target.value; setProperty(id); if (id) setClient(properties.find(property => property.id === id)!.clientId); }}><option value="">Sin propiedad</option>{properties.filter(property => !clientId || property.clientId === clientId).map(property => <option value={property.id} key={property.id}>{property.name}</option>)}</select></label>
     <label className="text-sm">Trabajador del gasto<select className={selectClass} value={workerId} onChange={event => setWorker(event.target.value)}><option value="">Sin trabajador</option>{workers.map(worker => <option value={worker.id} key={worker.id}>{worker.name}</option>)}</select></label>
     <Button className="bg-[#310984]" type="submit"><Plus className="mr-2 h-4 w-4" />Añadir al análisis</Button>{error && <p role="alert" className="col-span-full text-sm text-red-700">{error}</p>}
@@ -325,7 +326,7 @@ function ServiceEditorForm({ service, settings, onSave }: { service: FinancialSe
     <p className="rounded-lg bg-violet-50 p-3 text-sm">Tarifa de propiedad: {service.revenue===null?'pendiente':money(service.revenue-(service.additionalRevenue || 0))}{!!((service.additionalRevenue || 0)-(service.kitchenClothRevenue || 0)) && ` · otros suplementos: ${money((service.additionalRevenue || 0)-(service.kitchenClothRevenue || 0))}`}{!!service.kitchenClothRevenue && ` · paño de cocina: ${money(service.kitchenClothRevenue)}`}</p>
     {!!service.unpricedConsumptions?.length && <p role="alert" className="text-sm text-amber-800">Productos configurados sin tarifa: {service.unpricedConsumptions.join(', ')}. Su coste queda pendiente; no se interpreta como gratuito.</p>}
     <h3 className="font-semibold text-[#310984]">Personal · horas por trabajador</h3>
-    {service.workers.map(worker => <label className="block text-sm" key={worker.id}>{worker.name}<span className="ml-2 text-xs text-slate-500">{worker.minutes === null ? 'Sin horas' : `${(worker.minutes / 60).toFixed(2)} h ${worker.actual ? 'de reporte' : 'previstas'}`} · {rateMoney(priceAt(settings.rates, 'labor', service.date, worker.id))}/h</span><Input inputMode="decimal" placeholder="Mantener horas de la app" value={hours[worker.id]} onChange={event => setHours({ ...hours, [worker.id]: event.target.value })} /></label>)}
+    {service.workers.map(worker => <label className="block text-sm" key={worker.id}>{worker.name}<span className="ml-2 text-xs text-slate-500">{worker.minutes === null ? 'Sin horas' : `${decimal(worker.minutes / 60, 2)} h ${worker.actual ? 'de reporte' : 'previstas'}`} · {rateMoney(priceAt(settings.rates, 'labor', service.date, worker.id))}/h</span><Input inputMode="decimal" placeholder="Mantener horas de la app" value={hours[worker.id]} onChange={event => setHours({ ...hours, [worker.id]: event.target.value })} /></label>)}
     {!service.workers.length && <p className="text-sm text-amber-700">No hay trabajadores identificados. El coste de personal queda pendiente.</p>}
     <p className="rounded-lg bg-violet-50 p-3 text-sm text-[#310984]">Productos de limpieza: {formatRate('products', priceAt(settings.rates, 'products', service.date))} del importe de cada limpieza sin IVA. Se calcula automáticamente; no se añade a las cantidades.</p>
     <h3 className="font-semibold text-[#310984]">Lavandería y consumibles · unidades utilizadas</h3><div className="grid gap-3 sm:grid-cols-2">{QUANTITY_ITEMS.map(item => <label className="text-sm" key={item.id}>{item.label}<span className="ml-1 text-xs text-slate-500">{rateMoney(priceAt(settings.rates, item.id, service.date))}</span><Input inputMode="numeric" placeholder="Cantidad pendiente" value={quantities[item.id]} onChange={event => setQuantities({ ...quantities, [item.id]: event.target.value })} /></label>)}</div>
