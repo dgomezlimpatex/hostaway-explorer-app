@@ -1,0 +1,26 @@
+{
+  "request": "Cambiar los gráficos financieros a columnas de colores distintas, una al lado de otra, como la imagen de referencia de Dani, para comparar ingresos y tipos de gasto.",
+  "reason": "Cambio de visualización y agrupación local de importes ya calculados. No modifica el motor financiero ni sus tarifas, fuentes, reglas, guardado, datos reales o dependencias. La evolución existente incorpora vistas de conceptos con el mismo lector de solo lectura.",
+  "verification": "Conciliación exacta de ingresos/gastos/resultados y cada categoría/concepto por mes con analyze; filtros, suplementos/paños, vacíos, pérdidas y prorrateos. Navegador offline con página real: geometría de columnas adyacentes, cero compartido, resultado negativo, colores, cambio Balance/Tipos de gasto/Origen de ingresos, leyenda con navegación, errores/reintento, filtros/borradores/persistencia, escritorio y móvil sin desbordamiento. Capturas revisadas frente a la referencia. Build y lint focalizado pasan. Tipos app 102 errores previos sin nuevos, Node cero. Sin sesión productiva ni escrituras reales.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialViewTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "1ed0d57c61675d1cca00fb12c61ddb39c003f6b49661f9e7deb9f79b570cdbbb"
+}
