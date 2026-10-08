@@ -69,10 +69,10 @@ export function adjacentMonth(start: string, offset: number) {
 
 // Monthly totals are recalculated by the engine, never bucketed by the final
 // date of a recurring income (which would create artificial month-end spikes).
-export function trendPeriods(end: string, matchingDays: boolean) {
+export function trendPeriods(end: string, matchingDays: boolean, count = 6) {
   if (!validDate(end)) return [];
-  return Array.from({ length: 6 }, (_, index) => {
-    const full = adjacentMonth(end, index - 5)!;
+  return Array.from({ length: count }, (_, index) => {
+    const full = adjacentMonth(end, index - count + 1)!;
     const day = matchingDays ? Math.min(Number(end.slice(8)), Number(full.end.slice(8))) : Number(full.end.slice(8));
     return { start: full.start, end: full.start.slice(0, 8) + String(day).padStart(2, '0') };
   });
@@ -92,8 +92,8 @@ function periodTrend(services: FinancialService[], settings: FinanceSettings, fi
       name: new Intl.DateTimeFormat('es-ES', { month: 'short', year: '2-digit', timeZone: 'Europe/Madrid' }).format(new Date(period.start + 'T12:00:00Z')) };
   });
 }
-export function monthlyTrend(services: FinancialService[], settings: FinanceSettings, filters: Filters, matchingDays: boolean) {
-  return periodTrend(services, settings, filters, trendPeriods(filters.end, matchingDays));
+export function monthlyTrend(services: FinancialService[], settings: FinanceSettings, filters: Filters, matchingDays: boolean, count = 6) {
+  return periodTrend(services, settings, filters, trendPeriods(filters.end, matchingDays, count));
 }
 export function annualTrend(services: FinancialService[], settings: FinanceSettings, filters: Filters) {
   return periodTrend(services, settings, filters, annualPeriods(filters.start.slice(0, 4)));

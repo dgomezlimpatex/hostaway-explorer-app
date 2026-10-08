@@ -1,0 +1,27 @@
+import { useState } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { financialName, money, percent } from './financialFormat';
+import { sortFinancialClients, type ClientSort } from './financialClientSorting';
+import type { FinancialAnalysis } from './financialCharts';
+import type { DirectoryEntry } from './financialSource';
+import type { Summary } from './financialModel';
+
+export function FinancialClientTable({ result, names, onClient, compact = false }: { result: FinancialAnalysis; names: DirectoryEntry[]; onClient: (id: string) => void; compact?: boolean }) {
+  const [sort, setSort] = useState<{ key: ClientSort; descending: boolean }>({ key: 'result', descending: true });
+  const [page, setPage] = useState(1), [pageSize, setPageSize] = useState(10);
+  const rows = sortFinancialClients(result.clients.map(row => ({ ...row, name: financialName(names.find(entry => entry.id === row.id)?.name || row.name) })), sort.key, sort.descending);
+  const pages = Math.max(1, Math.ceil(rows.length / pageSize)), currentPage = Math.min(page, pages), start = (currentPage - 1) * pageSize;
+  const columns: { key: ClientSort; label: string }[] = compact ? [{ key: 'revenue', label: 'Ingresos' }, { key: 'expense', label: 'Gastos' }, { key: 'result', label: 'Resultado' }] : [
+    { key: 'revenue', label: 'Ingresos' }, { key: 'personal', label: 'Personal' }, { key: 'laundry', label: 'Lavandería' }, { key: 'supplies', label: 'Consumibles' }, { key: 'products', label: 'Productos' }, { key: 'salary', label: 'Dirección turismo' }, { key: 'other', label: 'Otros' }, { key: 'expense', label: 'Total gastos' }, { key: 'result', label: 'Resultado' }];
+  const header = (key: ClientSort, label: string) => <th key={key} scope="col" aria-sort={sort.key === key ? sort.descending ? 'descending' : 'ascending' : 'none'} className="whitespace-nowrap p-3 text-left"><button aria-label={`Ordenar por ${label}`} onClick={() => { setSort({ key, descending: sort.key === key ? !sort.descending : key !== 'name' }); setPage(1); }} className="inline-flex items-center gap-1.5 rounded hover:text-violet-600 focus-visible:outline-violet-600">{label}{sort.key === key ? sort.descending ? <ArrowDown aria-hidden className="h-3.5 w-3.5" /> : <ArrowUp aria-hidden className="h-3.5 w-3.5" /> : <ArrowUpDown aria-hidden className="h-3.5 w-3.5 opacity-50" />}</button></th>;
+  const amounts = (row: Summary) => <>{columns.map(column => { const value = column.key in row.costs ? row.costs[column.key as keyof Summary['costs']] : row[column.key as 'revenue' | 'expense' | 'result']; return <td key={column.key} className={`whitespace-nowrap p-3 text-right tabular-nums ${column.key === 'result' ? value < 0 ? 'text-rose-700' : 'text-emerald-700' : ''}`}>{money(value)}</td>; })}<td className={`whitespace-nowrap p-3 text-right tabular-nums ${row.margin === null ? 'text-slate-500' : row.margin < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{percent(row.margin)}</td></>;
+  return <div className="space-y-4">
+    <div className="overflow-x-auto"><table className="w-full text-sm"><caption className="sr-only">Ingresos y gastos por cliente y gastos generales sin IVA</caption>
+      <thead className="bg-violet-50 text-[#310984]"><tr>{header('name', 'Cliente')}{columns.map(column => header(column.key, column.label))}{header('margin', 'Margen')}</tr></thead>
+      <tbody>{rows.slice(start, start + pageSize).map(row => <tr key={row.id} className="border-b border-violet-50 hover:bg-slate-50"><th scope="row" className="p-3 text-left font-medium"><button className="inline-flex items-center gap-1 text-[#310984] hover:underline focus-visible:outline-violet-600" onClick={() => onClient(row.id)}>{row.name}<ChevronRight aria-hidden className="h-4 w-4 shrink-0" /></button>{row.pending > 0 && <span className="block text-xs font-normal text-amber-700">{row.pending} registros incompletos</span>}</th>{amounts(row)}</tr>)}{!rows.length && <tr><td colSpan={columns.length + 2} className="p-6 text-center text-slate-500">Sin actividad de clientes en este periodo.</td></tr>}</tbody>
+      <tfoot><tr className="border-t-2 border-violet-100 bg-slate-50"><th className="p-3 text-left font-medium">Actividad general · sin repartir</th>{amounts(result.general)}</tr><tr className="bg-violet-50 font-semibold"><th className="p-3 text-left">Total del análisis</th>{amounts(result.total)}</tr></tfoot>
+    </table></div>
+    <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600"><p role="status">{rows.length ? `${start + 1}–${Math.min(start + pageSize, rows.length)} de ${rows.length} clientes` : '0 clientes'} · Total de todo el análisis</p><div className="flex flex-wrap items-center gap-2"><label>Clientes por página<select className="ml-2 rounded-md border bg-white px-2 py-1.5" value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1); }}>{[10, 25, 50].map(size => <option key={size} value={size}>{size}</option>)}</select></label><Button size="sm" variant="outline" aria-label="Página anterior de clientes" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Anterior</Button><span className="tabular-nums">{currentPage} / {pages}</span><Button size="sm" variant="outline" aria-label="Página siguiente de clientes" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}>Siguiente</Button></div></div>
+  </div>;
+}

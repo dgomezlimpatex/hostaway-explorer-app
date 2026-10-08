@@ -1,0 +1,31 @@
+{
+  "request": "Implementar P0 y P1 por fases de la lista adjunta de análisis financiero. Tras publicar P0, esta entrega cubre P1.",
+  "reason": "Mejoras solicitadas de UI y cálculos comparativos locales. Usa Recharts existente y el mismo motor; amplía el intervalo del lector de solo lectura para comparación y evolución con una sola carga paginada. Los filtros siguen calculándose en memoria. No cambia tarifas, reglas financieras, configuración compartida, guardado, permisos, backend ni infraestructura.",
+  "verification": "Diff exacto revisado y reconciliado con P0 ya publicado. KPI con deltas en euros/porcentaje, margen en puntos porcentuales, bases cero/nulas/negativas y dirección inversa de gastos; meses completos/parciales/bisiestos, intervalos equivalentes y año anterior conciliados con analyze y filtros. No se inventa un cierre contable: todos los distintivos son Provisional porque no existe registro de cierre. Línea de 12 meses abierta, 6 meses de sparklines, columnas interactivas y vista anual conservadas. Tabla visible, ordenación estable por columna, null al final, 10/25/50 clientes por página; actividad general y total del análisis fuera de la paginación y sin repartir. Ayuda única por sección, teclado/cierre/foco, tooltip y leyendas. Browser de la página y lector reales con backend simulado comprueba modos mensual/anual, detalle/retorno/foco, caché al cambiar pestaña, actualización conjunta, errores sin cifras parciales, borradores/guardado/conflictos y móvil. Prueba visual adicional con 26 clientes verifica deltas, ordenación, paginación y totales fijos en 375/768/1024/1440; capturas inspeccionadas. Build y lint focalizado correctos; tipos reales app/Node sin errores nuevos frente a P0. Todas las pruebas son locales y no acreditan sesión autenticada de producción. No hay escrituras productivas al navegar o calcular.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialInsightsTest.mjs",
+    "scripts/financialDesignBrowserTest.mjs",
+    "scripts/financialFormattingTest.mjs",
+    "scripts/financialChartPresentationBrowserTest.mjs",
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialViewTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialDetailTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "ad0ad6788295d098c7a577f600984eaad66af3d51af550198a6aacb9c66abe6a"
+}
