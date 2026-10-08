@@ -17,6 +17,7 @@ export const COST_ITEMS = [
   { id: 'toiletPaper', label: 'Papel higiénico', category: 'supplies', unit: 'rollo', mills: 130 },
   { id: 'products', label: 'Productos de limpieza', category: 'products', unit: 'importe de limpieza', mills: 3000 },
   { id: 'tourismSalary', label: 'Salario dirección turismo', category: 'salary', unit: 'mes · coste de empresa', mills: 2317000 },
+  { id: 'kitchenClothIncome', label: 'Cobro de paño de cocina', category: 'income', unit: 'limpieza con paño configurado', mills: 250 },
 ] as const;
 export const QUANTITY_ITEMS = COST_ITEMS.filter(item => item.category === 'laundry' || item.category === 'supplies');
 export type ItemId = typeof COST_ITEMS[number]['id'];
@@ -26,6 +27,7 @@ export interface Rate { item: ItemId; date: string; mills: number; workerId?: st
 export interface WorkerHours { id: string; name: string; minutes: number | null; actual: boolean }
 export interface FinancialService {
   additionalRevenue?: number;
+  kitchenClothRevenue?: number;
   unpricedConsumptions?: string[];
   type: string;
   id: string; date: string; clientId: string; clientName: string; propertyId: string; propertyName: string;
@@ -37,7 +39,7 @@ export interface Expense {
   id: string; date: string; label: string; cents: number; category: Category;
   clientId: string; propertyId: string; workerId: string;
 }
-export interface ConsumptionPolicy { clientId: string; propertyId: string; laundry?: boolean; kits?: boolean; consumables?: boolean; minutes?: number; personnelOnly?: boolean }
+export interface ConsumptionPolicy { clientId: string; propertyId: string; laundry?: boolean; kits?: boolean; consumables?: boolean; minutes?: number; personnelOnly?: boolean; kitchenClothIncome?: boolean }
 export interface FinancialIncome {
   id: string; label: string; mode: 'manual' | 'monthly' | 'perCleaning'; start: string; end: string;
   income: number; cost: number | null; weeklyHours: number; costCategory: Category;
@@ -193,9 +195,14 @@ export function applyFinanceRules(service: FinancialService, settings: FinanceSe
     if (p.personnelOnly || p.laundry === false && p.kits === false && p.consumables === false) result.unpricedConsumptions = [];
   }
   if (result.revenue !== null && result.revenue > 0 && (result.type.trim().toLowerCase().startsWith('limpieza') || result.type.trim().toLowerCase() === 'cleaning')) {
+    // Existing inventory quantities on other clients do not imply a billing agreement.
+    const chargeCloth = effective.kitchenClothIncome ?? service.clientId === '669948a6-e5c3-4a73-a151-6ccca5c82adf';
+    const clothQuantity = settings.adjustments[service.id]?.quantities?.kitchenCloth ?? result.quantities.kitchenCloth;
+    const kitchenClothRevenue = chargeCloth && effective.laundry !== false && (clothQuantity ?? 0) > 0
+      ? Math.round(priceAt(settings.rates, 'kitchenClothIncome', service.date) / 10) : 0;
     const extra = (settings.incomes || []).filter(i => i.mode === 'perCleaning' && i.start <= service.date && (!i.end || i.end >= service.date) && (!i.clientId || i.clientId === service.clientId) && (!i.propertyId || i.propertyId === service.propertyId))
       .filter(i => !i.workerId || service.workers.some(w => w.id === i.workerId)).reduce((n, i) => n + (i.overrides[service.date.slice(0,7)]?.income ?? i.income), 0);
-    result = { ...result, revenue: result.revenue + extra, additionalRevenue: extra };
+    result = { ...result, revenue: result.revenue + extra + kitchenClothRevenue, additionalRevenue: extra + kitchenClothRevenue, kitchenClothRevenue };
   }
   return result;
 }
@@ -242,5 +249,5 @@ function validateFinanceExtras(settings: FinanceSettings) {
     if (i.mode === 'perCleaning' && [i,...Object.values(i.overrides)].some(v => v.cost !== 0 || v.weeklyHours !== 0)) throw new Error('El suplemento no admite costes duplicados');
     if (i.mode === 'manual' && [i,...Object.values(i.overrides)].some(v => v.weeklyHours !== 0)) throw new Error('Un ingreso puntual no admite horas semanales');
   }
-  for (const p of settings.policies || []) if (!p || typeof p.clientId !== 'string' || typeof p.propertyId !== 'string' || !p.clientId && !p.propertyId || ['laundry','kits','consumables','personnelOnly'].some(k=>p[k] !== undefined && typeof p[k] !== 'boolean') || p.minutes !== undefined && (!amount(p.minutes) || p.minutes > 1440)) throw new Error('Regla de consumos no válida');
+  for (const p of settings.policies || []) if (!p || typeof p.clientId !== 'string' || typeof p.propertyId !== 'string' || !p.clientId && !p.propertyId || ['laundry','kits','consumables','personnelOnly','kitchenClothIncome'].some(k=>p[k] !== undefined && typeof p[k] !== 'boolean') || p.minutes !== undefined && (!amount(p.minutes) || p.minutes > 1440)) throw new Error('Regla de consumos no válida');
 }

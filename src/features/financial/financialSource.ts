@@ -48,6 +48,8 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
     }
     // Active property rules replace the corresponding legacy field; do not add both.
     for (const rule of rules.filter(rule => rule.property_id === task.propiedad_id)) {
+      // Bags are covered by the products percentage; workers supply their own cloths.
+      if (coveredConsumption(rule.product?.name || '')) continue;
       const item = consumptionItem(rule.product?.name || '');
       if (item && Number.isFinite(Number(rule.quantity_per_cleaning)) && Number(rule.quantity_per_cleaning) >= 0) quantities[item] = Number(rule.quantity_per_cleaning);
       if (!item && Number(rule.quantity_per_cleaning) > 0) unpricedConsumptions.push(rule.product?.name || 'Producto sin identificar');
@@ -70,6 +72,11 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
       revenue: typeof revenueValue === 'number' && Number.isFinite(revenueValue) && revenueValue >= 0 ? Math.round(revenueValue * 100) : null,
       revenueEstimated: true }];
   });
+}
+
+export function coveredConsumption(name: string): boolean {
+  const key = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  return ['bolsas basura', 'bolsas de basura 10l', 'bolsas de basura 30l', 'bayetas cocina'].includes(key);
 }
 
 export function consumptionItem(name: string): string | undefined {
