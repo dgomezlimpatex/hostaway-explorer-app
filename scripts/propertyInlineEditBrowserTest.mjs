@@ -85,7 +85,3 @@ for(const width of [1440,390]) {
  assert.deepEqual(errors,[]);console.log('PASS inline property editing '+width+': tabs, discard, scoped save, validation, failure/retry, partial save, navigation');await page.close();
 }
 } finally {await browser.close()}
-
-
-
-
