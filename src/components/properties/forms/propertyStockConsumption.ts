@@ -1,3 +1,4 @@
+import { isTrashSack } from '@/utils/trashSacks';
 import type { CreatePropertyData, Property } from '@/types/property';
 import type { StockProduct, StockPropertyConsumptionRule } from '@/types/stock';
 import type { UseFormSetValue } from 'react-hook-form';
@@ -118,7 +119,7 @@ export const buildDefaultStockConsumptions = (
 
   return products.reduce<StockConsumptionValues>((values, product) => {
     const legacyField = getLegacyFieldForStockProduct(product);
-    values[product.id] = legacyField ? defaults[legacyField] || 0 : 0;
+    values[product.id] = isTrashSack(product) ? Math.max(0, Number(characteristics.numeroCocinas) || 0) : legacyField ? defaults[legacyField] || 0 : 0;
     return values;
   }, {});
 };
@@ -147,7 +148,8 @@ export const applyDefaultPropertyConsumptionsToForm = (
 export const buildInitialStockConsumptions = (
   products: StockProduct[],
   rules: StockPropertyConsumptionRule[],
-  property?: Property | null
+  property?: Property | null,
+  newPropertyKitchens = 0
 ): StockConsumptionValues => {
   const ruleByProduct = new Map(rules.map((rule) => [rule.product_id, rule.quantity_per_cleaning]));
 
@@ -160,7 +162,7 @@ export const buildInitialStockConsumptions = (
     }
 
     const legacyField = property ? getLegacyFieldForStockProduct(product) : null;
-    values[product.id] = legacyField ? Number(property[legacyField]) || 0 : 0;
+    values[product.id] = isTrashSack(product) ? Math.max(0, Number(property?.numeroCocinas ?? newPropertyKitchens) || 0) : legacyField ? Number(property[legacyField]) || 0 : 0;
     return values;
   }, {});
 };

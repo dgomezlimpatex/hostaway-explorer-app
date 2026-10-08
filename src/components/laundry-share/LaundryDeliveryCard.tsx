@@ -1,3 +1,4 @@
+import { isTrashSack } from '@/utils/trashSacks';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -106,10 +107,12 @@ export const LaundryDeliveryCard = ({
     task.toiletPaperRolls > 0 || task.kitchenPaperRolls > 0 ||
     task.kitchenCloths > 0 || task.bathroomAmenities > 0 || task.kitchenAmenities > 0;
 
-  const hasStockConsumables = !!task.stockConsumables?.length;
+  const sacks = (task.stockConsumables || []).filter(isTrashSack);
+  const otherConsumables = (task.stockConsumables || []).filter(item => !isTrashSack(item));
+  const hasStockConsumables = otherConsumables.length > 0;
   const kitchenClothsQuantity = task.kitchenCloths || 0;
   const shouldShowKitchenCloths = kitchenClothsQuantity > 0 && !hasKitchenClothStockItem(task.stockConsumables);
-  const hasAmenities = hasStockConsumables || hasLegacyAmenities || shouldShowKitchenCloths;
+  const hasAmenities = sacks.length > 0 || hasStockConsumables || hasLegacyAmenities || shouldShowKitchenCloths;
 
   return (
     <Card className={cn(
@@ -171,8 +174,9 @@ export const LaundryDeliveryCard = ({
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Amenities y consumibles:</p>
             <div className="flex flex-wrap gap-2">
+              {sacks.map(item => <QuantityBadge key={item.productId} label={item.name} quantity={item.quantity} />)}
               {hasStockConsumables ? (
-                task.stockConsumables!.map((item) => (
+                otherConsumables.map((item) => (
                   <Badge key={item.productId} variant="outline">
                     {item.name.toUpperCase()}: {item.quantity}
                   </Badge>

@@ -26,6 +26,7 @@ const built=await build({stdin:{resolveDir:process.cwd(),loader:'tsx',contents:`
     {id:'kitchen',name:'Kit de amenities de cocina',category:{kind:'amenity'}},
     {id:'food',name:'Kit de alimentación',category:{kind:'amenity'}},
     {id:'cloth',name:'Paño de cocina',category:{kind:'other',name:'Consumibles'}},
+    {id:'sack',name:'Sacos de basura 100 L',category:{kind:'amenity',name:'Consumibles'}},
     {id:'paper',name:'Papel higiénico',category:{kind:'other',name:'Consumibles'}}
   ].map(p=>({...p,is_consumable:true,unit_of_measure:'ud.'}));
   window.rules=window.products.map((p,i)=>({product_id:p.id,quantity_per_cleaning:i+1}));
@@ -73,7 +74,10 @@ try{
     const details=page.locator('#detail section').filter({has:page.getByRole('heading',{name:'Amenities',exact:true})});
     await expect(details.locator('dd')).toHaveCount(4);for(const dd of await details.locator('dd').all())await expect(dd).toHaveText('0 ud.');
   };
-  await checkZero();await expect(sheet).toHaveValue('1');await expect(paper).toHaveValue('6');await expect(paper).toBeEnabled();
+  const sack=editor.getByRole('spinbutton',{name:'Sacos de basura 100 L(ud.)'});
+  await expect(sack).toBeEnabled();await sack.fill('0');assert.equal(await page.evaluate(()=>window.form.getValues('stockConsumptions.sack')),0);
+  await sack.fill('3');assert.equal(await page.evaluate(()=>window.form.getValues('stockConsumptions.sack')),3);
+  await checkZero();await expect(sheet).toHaveValue('1');await expect(paper).toHaveValue('7');await expect(paper).toBeEnabled();
   await toggle.click();await expect(inputs.first()).toHaveValue('2');
   await group.getByRole('spinbutton',{name:'Paño de cocina(ud.)'}).fill('8');
   assert.equal(await page.evaluate(()=>window.saved.length),0,'Toggle/edit are drafts');

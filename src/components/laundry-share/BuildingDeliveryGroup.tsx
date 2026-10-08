@@ -1,3 +1,4 @@
+import { isTrashSack } from '@/utils/trashSacks';
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ const shouldMoveItemToBottom = (value: string) => {
 
 const buildApartmentItems = (apt: LaundryApartment): string[] => {
   const { textiles, amenities } = apt;
+  const consumables = apt.stockConsumables.filter(item => !isTrashSack(item));
   const items: string[] = [];
   const bottomItems: string[] = [];
   const kitchenClothsQuantity = amenities.kitchenCloths || 0;
@@ -53,8 +55,9 @@ const buildApartmentItems = (apt: LaundryApartment): string[] => {
     else items.push(formatted);
   };
 
-  if (apt.stockConsumables.length > 0) {
-    apt.stockConsumables.forEach((item) => {
+  apt.stockConsumables.filter(isTrashSack).forEach(item => pushItem(item.quantity, item.name));
+  if (consumables.length > 0) {
+    consumables.forEach((item) => {
       pushItem(item.quantity, item.name);
     });
     if (kitchenClothsQuantity > 0 && !hasKitchenClothStockItem(apt.stockConsumables)) {
@@ -75,7 +78,7 @@ const buildApartmentItems = (apt: LaundryApartment): string[] => {
   if (textiles.sheetsSuite > 0) pushItem(textiles.sheetsSuite, 'SÁBANAS SUITE');
   if (textiles.towelsLarge > 0) pushItem(textiles.towelsLarge, 'TOALLAS GRANDES');
 
-  if (apt.stockConsumables.length === 0) {
+  if (consumables.length === 0) {
     if (amenities.toiletPaper > 0) pushItem(amenities.toiletPaper, 'PAPEL HIGIÉNICO', true);
     if (amenities.kitchenPaper > 0) pushItem(amenities.kitchenPaper, 'PAPEL COCINA', true);
     if (amenities.shampoo > 0) pushItem(amenities.shampoo, 'CHAMPÚ', true);

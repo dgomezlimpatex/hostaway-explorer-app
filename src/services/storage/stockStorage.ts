@@ -480,10 +480,12 @@ class StockStorageService {
     propertyId: string,
     rules: SaveStockPropertyConsumptionRuleData[]
   ): Promise<void> {
+    const existingRules = await this.getPropertyConsumptionRules(propertyId);
+    const existingByProduct = new Map(existingRules.map(rule => [rule.product_id, rule]));
     const normalizedRules = rules.map((rule) => ({
       property_id: propertyId,
       product_id: rule.product_id,
-      warehouse_id: rule.warehouse_id || null,
+      warehouse_id: rule.warehouse_id === undefined ? existingByProduct.get(rule.product_id)?.warehouse_id ?? null : rule.warehouse_id || null,
       quantity_per_cleaning: Math.max(0, Number(rule.quantity_per_cleaning) || 0),
       notes: rule.notes || null,
       is_active: true,

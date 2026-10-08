@@ -1,3 +1,4 @@
+import { trashSackQuantity } from "../_shared/trashSacks.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
 const corsHeaders = {
@@ -128,7 +129,7 @@ Deno.serve(async (req) => {
         'Amenities Baño', 'Amenities Cocina',
         'Papel Higiénico', 'Papel Cocina', 'Kit Alimentario',
         'Paño', 'Bolsas Basura',
-        'Fecha exportación'];
+        'Fecha exportación', 'Sacos basura 100 L'];
       return new Response(headers.map(h => escapeCSV(h)).join(',') + '\n', {
         headers: { ...corsHeaders, 'Content-Type': 'text/csv; charset=utf-8' },
       });
@@ -162,7 +163,7 @@ Deno.serve(async (req) => {
     // Batch fetch properties, clients, sedes
     const [propertiesRes, clientsRes, sedesRes] = await Promise.all([
       propertyIds.length > 0
-        ? supabase.from('properties').select('id, nombre, codigo, direccion, cliente_id, coste_servicio, duracion_servicio, sede_id, exclude_from_export, numero_sabanas, numero_sabanas_pequenas, numero_sabanas_suite, numero_fundas_almohada, numero_toallas_grandes, numero_toallas_pequenas, numero_alfombrines, amenities_bano, amenities_cocina, cantidad_rollos_papel_higienico, cantidad_rollos_papel_cocina, kit_alimentario, bayetas_cocina, bolsas_basura').in('id', propertyIds)
+        ? supabase.from('properties').select('id, nombre, codigo, direccion, cliente_id, coste_servicio, duracion_servicio, sede_id, exclude_from_export, numero_sabanas, numero_sabanas_pequenas, numero_sabanas_suite, numero_fundas_almohada, numero_toallas_grandes, numero_toallas_pequenas, numero_alfombrines, amenities_bano, amenities_cocina, cantidad_rollos_papel_higienico, cantidad_rollos_papel_cocina, kit_alimentario, bayetas_cocina, bolsas_basura, stock_property_consumption_rules(quantity_per_cleaning,is_active,stock_products(name,sku,sede_id,is_active,is_consumable))').in('id', propertyIds)
         : { data: [], error: null },
       clienteIds.length > 0
         ? supabase.from('clients').select('id, nombre, supervisor, metodo_pago').in('id', clienteIds)
@@ -257,6 +258,7 @@ Deno.serve(async (req) => {
         property?.bayetas_cocina ?? 0,
         property?.bolsas_basura ?? 0,
         exportTimestamp,
+        /^(limpieza|cleaning)/i.test(task.type) ? trashSackQuantity(property, String(task.date)) : 0,
       ].map(escapeCSV).join(',');
     });
 

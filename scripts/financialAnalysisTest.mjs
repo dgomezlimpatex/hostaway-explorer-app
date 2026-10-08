@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 try {
   await build({ stdin: { contents: "export * from './src/features/financial/financialModel'; export * from './src/features/financial/financialSource';", resolveDir: process.cwd(), loader: 'ts' }, outfile: join(dir, 'model.mjs'), bundle: true, platform: 'node', format: 'esm', logLevel: 'silent' });
   const { COST_ITEMS, newSettings, priceAt, setRate, calculateService, analyze, parseAmount, readSettings, buildServices, readAllPages, validDate, monthlySalaryExpenses } = await import(pathToFileURL(join(dir, 'model.mjs')));
-  assert.deepEqual(COST_ITEMS.map(item => item.mills), [14500,550,510,570,247,535,226,226,10537,3159,3159,150,870,890,1910,130,3000,2317000,250]);
+  assert.deepEqual(COST_ITEMS.map(item => item.mills), [100,14500,550,510,570,247,535,226,226,10537,3159,3159,150,870,890,1910,130,3000,2317000,250]);
   const monthly = monthlySalaryExpenses([], '2026-10-01', '2026-10-31');
   assert.equal(monthly.length, 1); assert.equal(monthly[0].cents, 231700); assert.equal(monthly[0].automatic, true);
   assert.equal(monthlySalaryExpenses([], '2026-10-01', '2026-11-30').reduce((sum, expense) => sum + expense.cents, 0), 463400);
