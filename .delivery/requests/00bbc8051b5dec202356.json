@@ -1,0 +1,27 @@
+{
+  "request": "Hacer interactivos los gráficos financieros: animación al pasar sobre cada barra y clic que lleva al desglose, incluyendo una página de ingresos al pulsar Ingresos.",
+  "reason": "Interacción y navegación local dentro de la pantalla existente. Añade efecto de hover/foco, tooltip individual, teclado/táctil, vista de desglose de ingresos y cada gasto, navegación por concepto y mes y retorno al gráfico con los filtros previos. Los registros provienen del análisis y ajustes existentes; sus totales se concilian con la barra. No cambia el motor financiero, tarifas, permisos ni guardado compartido. Solo se persiste la selección visual por usuario/sede en sessionStorage. El detalle mensual usa el lector existente de solo lectura con la sede y rango seleccionados. No hay datos productivos, SQL ni comunicaciones nuevas.",
+  "verification": "Pruebas locales con código real: conciliación de cada concepto con registros de servicios, ingresos externos y gastos, estructura/dirección una vez, filtros, tareas excluidas, ingresos base/suplementos/paños, contratos con el mismo nombre, prorrateo mensual/parcial, horas y cantidades ajustadas manualmente sin mutar fuentes. Vista preservada y validación de JSON, aislada por usuario/sede. Navegador offline con página/lector/estilos reales: hover con animación y tooltip individual, clic en ingreso total y categorías, teclado Enter y foco restaurado tras medir SVG, acceso a mes concreto y recuperación del intervalo/evolución, leyenda, recarga del desglose, entrada táctil y móvil sin desbordamiento. También pasan regresiones de tarifas, horas compartidas, formularios, borradores, guardado simulado, errores/reintento y conservación de pestaña de navegador. Capturas revisadas. Build y lint focalizado correctos. Tipos app: 102 errores heredados, cero nuevos; Node: cero. Sin sesión productiva autenticada ni escrituras reales.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialDetailTest.mjs",
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialViewTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "4767418b1c1ff7b624aaf69a819c055d95d0cdae8f47eea69c1c64629e12df4e"
+}
