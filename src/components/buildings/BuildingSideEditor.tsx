@@ -85,7 +85,7 @@ function BuildingSideEditorForm({ groupId, cleaners, properties, assignments, re
   const reconcile = async () => {
     if (savingRef.current) return;
     savingRef.current = true; setSaving(true);
-    try { reset(await reload()); await refreshCaches(); setNeedsReload(false); setMessage('Estado actualizado. Revisa los cambios guardados antes de continuar.'); }
+    try { const latest = await reload(); await refreshCaches(); if (latest.group.retiredAt) { onDeleted(); return; } reset(latest); setNeedsReload(false); setMessage('Estado actualizado. Revisa los cambios guardados antes de continuar.'); }
     catch { setMessage('No se pudo comprobar el estado. El guardado sigue bloqueado; vuelve a recargar cuando haya conexión.'); }
     finally { savingRef.current = false; setSaving(false); }
   };
@@ -94,11 +94,11 @@ function BuildingSideEditorForm({ groupId, cleaners, properties, assignments, re
   const availableProperties = properties.filter(item => item.isActive !== false && item.clientIsActive !== false && !draft.propertyIds.includes(item.id) && !assignments.some(assignment => assignment.propertyId === item.id && assignment.propertyGroupId !== groupId) && `${item.codigo} ${item.nombre}`.toLocaleLowerCase('es').includes(normalizedSearch));
   const openPicker = (value: 'team' | 'properties') => { setPicker(picker === value ? null : value); setSearch(''); };
   const title = base.group.displayName || base.group.name;
-  const deleteEmpty = async () => {
-    if (savingRef.current || readOnly || count || needsReload || !window.confirm(`¿Eliminar el edificio vacío ${title}? Esta acción no se puede deshacer.`)) return;
+  const retire = async () => {
+    if (savingRef.current || readOnly || count || needsReload || !window.confirm(`¿Retirar ${title} de la gestión? Su personal y sus propiedades quedarán desvinculados y disponibles para otros edificios. Se conservará el historial de supervisión y almacén, junto con una copia de sus vínculos actuales.`)) return;
     savingRef.current = true; setSaving(true);
-    try { await propertyGroupStorage.deleteEmptyPropertyGroup(groupId); await refreshCaches(); onDeleted(); }
-    catch { setNeedsReload(true); setMessage('No se pudo confirmar la eliminación. Recarga el estado antes de continuar.'); }
+    try { await propertyGroupStorage.retirePropertyGroup(groupId); await refreshCaches(); onDeleted(); }
+    catch { setNeedsReload(true); setMessage('No se pudo confirmar la retirada. Recarga el estado antes de continuar.'); }
     finally { savingRef.current = false; setSaving(false); }
   };
   return <section aria-label={`Editar ${title}`} className="flex h-full min-h-0 flex-col bg-white">
@@ -141,9 +141,9 @@ function BuildingSideEditorForm({ groupId, cleaners, properties, assignments, re
     </div>
     <footer className="space-y-3 border-t border-violet-200 bg-violet-50 p-4">
       {message && <p role={needsReload ? 'alert' : 'status'} className={`text-sm ${needsReload ? 'text-amber-900' : 'text-emerald-800'}`}>{message}</p>}
-      {(base.team.length > 0 || base.properties.length > 0) && <p className="text-xs text-slate-500">Para eliminarlo, retira primero el personal y las propiedades vinculadas y guarda los cambios.</p>}
+      <p className="text-xs text-slate-500">Eliminar retira el edificio de la gestión y libera sus vínculos. El personal, las propiedades y el historial se conservan.</p>
       <p aria-live="polite" className="text-xs font-medium text-[#310984]">{count ? `${count} cambio${count === 1 ? '' : 's'} pendiente${count === 1 ? '' : 's'}` : 'Sin cambios pendientes'}</p>
-      {needsReload ? <Button className="w-full" disabled={saving} onClick={() => void reconcile()}>Recargar estado guardado</Button> : <div className="flex flex-wrap items-center justify-end gap-2"><Button variant="ghost" size="sm" className="mr-auto px-2 text-xs text-red-700" title={base.team.length || base.properties.length ? "Solo se pueden eliminar edificios sin personal ni propiedades vinculadas." : "Eliminar edificio vacío"} disabled={saving || readOnly || !!count || needsReload || !!base.team.length || !!base.properties.length} onClick={() => void deleteEmpty()}>Eliminar edificio</Button><Button variant="outline" size="sm" className="px-2 text-xs" disabled={saving || !count} onClick={() => { reset(base); setMessage(''); }}>Descartar</Button><Button size="sm" className="bg-[#310984] px-2 text-xs hover:bg-[#4c1bb0]" disabled={saving || readOnly || !count} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar cambios'}</Button></div>}
+      {needsReload ? <Button className="w-full" disabled={saving} onClick={() => void reconcile()}>Recargar estado guardado</Button> : <div className="flex flex-wrap items-center justify-end gap-2"><Button variant="ghost" size="sm" className="mr-auto px-2 text-xs text-red-700" title={count ? "Guarda o descarta los cambios antes de retirar el edificio." : "Retirar edificio conservando el historial"} disabled={saving || readOnly || !!count || needsReload} onClick={() => void retire()}>Eliminar edificio</Button><Button variant="outline" size="sm" className="px-2 text-xs" disabled={saving || !count} onClick={() => { reset(base); setMessage(''); }}>Descartar</Button><Button size="sm" className="bg-[#310984] px-2 text-xs hover:bg-[#4c1bb0]" disabled={saving || readOnly || !count} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar cambios'}</Button></div>}
     </footer>
   </section>;
 }
