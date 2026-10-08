@@ -10,7 +10,9 @@ export interface SourceTask {
   duracion?: number | null;
   task_assignments: { cleaner_id: string; cleaner_name: string }[];
 }
+export interface SourceBuilding { id: string; name: string; display_name?: string | null; is_active: boolean }
 export interface SourceProperty {
+  property_group_assignments?: { property_group_id: string; group: SourceBuilding | SourceBuilding[] | null }[];
   id: string; nombre: string; cliente_id: string; coste_servicio: number | null; duracion_servicio: number | null;
   numero_sabanas?: number; numero_sabanas_pequenas?: number; numero_sabanas_suite?: number;
   numero_fundas_almohada?: number; numero_toallas_grandes?: number; numero_toallas_pequenas?: number;
@@ -70,7 +72,7 @@ export function buildServices(tasks: SourceTask[], properties: SourceProperty[],
     const propertyRevenue = property?.coste_servicio;
     const revenueValue = propertyRevenue;
     return [{ id: task.id, type: task.type || '', date: task.date, clientId, clientName: clientMap.get(clientId) || 'Sin cliente identificado',
-      propertyId: task.propiedad_id || '', propertyName: property?.nombre || task.property, workers, quantities, unpricedConsumptions,
+      propertyId: task.propiedad_id || '', propertyName: property?.nombre || task.property, buildingIds: property?.property_group_assignments?.map(group => group.property_group_id) || [], workers, quantities, unpricedConsumptions,
       revenue: typeof revenueValue === 'number' && Number.isFinite(revenueValue) && revenueValue >= 0 ? Math.round(revenueValue * 100) : null,
       revenueEstimated: true }];
   });

@@ -67,7 +67,7 @@ try {
   await expect(page.getByText(/1 servicios contabilizados/)).toBeVisible();
   await page.locator('summary').filter({hasText:'Servicios fuera del balance:'}).click();
   await expect(page.getByText(/1 con ingreso cero · 1 con precio pendiente/)).toBeVisible();
-  await expect(page.getByRole('listitem').filter({hasText:'Jornada Hotel de prueba'})).toBeVisible();
+  await expect(page.locator('details').filter({has:page.locator('summary').filter({hasText:'Servicios fuera del balance:'})}).getByRole('listitem').filter({hasText:'Jornada Hotel de prueba'})).toBeVisible();
   await expect(page.getByRole('listitem').filter({hasText:'Servicio con precio pendiente'})).toBeVisible();
   await page.locator('summary').filter({hasText:'Servicios fuera del balance:'}).click();
   await expect(page.getByText('Productos', { exact: true }).first()).toBeVisible();

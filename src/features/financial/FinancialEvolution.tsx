@@ -7,14 +7,16 @@ import { FinancialHelp } from './FinancialHelp';
 import { monthlyTrend, monthlyColumns, type ComparisonView } from './financialCharts';
 import { money } from './financialFormat';
 import type { Filters, FinanceSettings, FinancialService } from './financialModel';
+import type { Allocation } from './financialAnalytics';
 
 export interface FinancialTrendView { open: boolean; matchingDays: boolean; comparison: ComparisonView; chart: 'lines' | 'columns'; tableOpen?: boolean }
-export function FinancialTrend({ services, settings, filters, view, onViewChange, onDetails }: {
+export function FinancialTrend({ services, settings, filters, view, onViewChange, onDetails, allocation = 'none' }: {
   services: FinancialService[]; settings: FinanceSettings; filters: Filters; view: FinancialTrendView;
   onViewChange: (patch: Partial<FinancialTrendView>) => void; onDetails: (id: string, period: Pick<Filters, 'start' | 'end'>) => void;
+  allocation?: Allocation;
 }) {
   const { open, matchingDays, comparison, chart } = view;
-  const rows = useMemo(() => monthlyTrend(services, settings, filters, matchingDays, 12), [services, settings, filters, matchingDays]);
+  const rows = useMemo(() => monthlyTrend(services, settings, filters, matchingDays, 12, allocation), [services, settings, filters, matchingDays, allocation]);
   const columns = useMemo(() => monthlyColumns(rows, comparison), [rows, comparison]);
   return <section className="min-w-0 rounded-2xl border border-violet-100 bg-white p-5 shadow-sm sm:p-6" aria-label="Evolución mensual">
     <div className="flex flex-wrap items-start justify-between gap-3"><h2 className="flex items-center gap-2 text-lg font-semibold text-[#310984]"><TrendingUp aria-hidden className="h-5 w-5" />Evolución mensual</h2><div className="flex flex-wrap items-center gap-2"><FinancialHelp section="Evolución mensual"><p>Doce meses hasta el mes seleccionado, con los mismos filtros. Importes sin IVA y tarifas actuales de las propiedades.</p><p>{matchingDays ? `Del día 1 al ${Number(filters.end.slice(8))} de cada mes, limitado al último día de los meses cortos.` : 'Comparación de meses completos; el mes en curso puede incluir tareas futuras.'} Esta evolución utiliza sus propios meses aunque el periodo superior sea personalizado.</p><p>Personal incluye dirección y estructura. En columnas, cada barra abre ese concepto y mes; la leyenda abre el último mes. En líneas, la leyenda permite mostrar u ocultar series. En móvil se puede deslizar el gráfico.</p><p>Comparación provisional: los ingresos puntuales solo cuentan si están registrados; su ausencia no confirma ingreso real cero. Revisa los costes pendientes y las entradas manuales.</p></FinancialHelp><Button variant="outline" size="sm" aria-expanded={open} onClick={() => onViewChange({ open: !open })}>{open ? 'Ocultar evolución' : 'Ver evolución mensual'}</Button></div></div>

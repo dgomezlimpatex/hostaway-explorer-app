@@ -21,7 +21,7 @@ export function FinancialDetail({ result, settings, concept, filters, clients, o
   return <section className="min-w-0 rounded-2xl border border-violet-100 bg-white p-5 shadow-sm sm:p-6" aria-label="Desglose del gráfico">
     <Button variant="outline" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" />Volver al gráfico</Button>
     <div className="my-5 flex flex-wrap items-start justify-between gap-3"><div>
-      <h2 ref={heading} tabIndex={-1} className="text-xl font-semibold text-[#310984]">{income ? 'Ingresos' : 'Gastos'} · desglose{concept !== 'revenue' && ` · ${financialName(detail.label)}`}</h2>
+      <h2 ref={heading} tabIndex={-1} className="text-xl font-semibold text-[#310984]">{concept === 'result' ? 'Resultado' : income ? 'Ingresos' : 'Gastos'} · desglose{concept !== 'revenue' && concept !== 'result' && ` · ${financialName(detail.label)}`}</h2>
       <p className="mt-1 text-sm text-slate-500">{filters.start.split('-').reverse().join('/')} – {filters.end.split('-').reverse().join('/')} · Mismos filtros del análisis · Sin IVA</p>
     </div><div className="rounded-xl bg-violet-50 px-5 py-3 text-right"><p className="text-xs text-violet-700">Total del concepto</p><strong className="text-2xl tabular-nums text-[#310984]">{money(detail.total)}</strong></div></div>
     {concept === 'personal' && <p className="mb-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">Incluye personal de servicios, costes externos de personal y dirección/estructura. Dirección y estructura: <strong>{money(result.total.costs.salary)}</strong>, ya incluidos en el total.</p>}

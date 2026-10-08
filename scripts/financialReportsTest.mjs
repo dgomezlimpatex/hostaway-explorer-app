@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
+import XLSX from 'xlsx';
+const path = join(tmpdir(), `financial-report-tests-${process.pid}.cjs`);
+const built = await build({ stdin: { contents: "export * from './src/features/financial/financialReporting';export * from './src/features/financial/financialPdf';export * from './src/features/financial/financialModel';export * from './src/features/financial/financialAnalytics';export * from './src/features/financial/financialCharts';", resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'cjs' });
+writeFileSync(path, built.outputFiles[0].text);
+try {
+  const { financialReportTables, financialCsv, financialExcel, financialPdf, analyzeWithAllocation, monthlyTrend, QUANTITY_ITEMS } = await import(pathToFileURL(path).href).then(module => module.default);
+  const settings = { version: 1, rates: [], expenses: [], adjustments: {} }, filters = { start: '2026-09-01', end: '2026-09-30', clients: [], properties: [], workers: [] };
+  const services = Array.from({ length: 45 }, (_, index) => ({ id: `s${index}`, date: '2026-09-10', type: 'limpieza', clientId: `c${index}`, clientName: `Cliente ${index}`, propertyId: `p${index}`, propertyName: `Ático ${index} · propiedad con nombre largo para comprobar el ajuste de líneas de la tabla`, revenue: index ? 10000 : 1000, revenueEstimated: false, workers: [{ id: 'w', name: 'Ana', minutes: 60, actual: true }], quantities: Object.fromEntries(QUANTITY_ITEMS.map(item => [item.id, 0])) }));
+  const result = analyzeWithAllocation(services, settings, filters, 'revenue');
+  const input = { result, filters, sedeName: 'Sede de prueba', clients: services.map(service => ({ id: service.clientId, name: service.id === 's0' ? '=SUM(1;2)' : `Cliente ${service.id}` })), properties: services.map(service => ({ id: service.propertyId, name: service.propertyName })), workers: [{ id: 'w', name: 'Ana' }], buildings: [], allocation: 'revenue', rows: monthlyTrend(services, settings, filters, false, 12, 'revenue'), draft: true };
+  const before = JSON.stringify(input), tables = financialReportTables(input), clients = tables.find(table => table.id === 'clients');
+  assert.equal(clients.rows.length, 47, 'Exports include all clients, general activity and total, never only the visible page');
+  assert.equal(clients.rows.at(-1)[1], result.total.revenue / 100); assert.equal(clients.rows.at(-1)[7], result.total.expense / 100); assert.equal(clients.rows.at(-1)[8], result.total.result / 100);
+  assert.equal(tables.find(table => table.id === 'properties').rows.length, 45);
+  assert.equal(tables.find(table => table.id === 'services').rows.length, 45);
+  assert.equal(tables.find(table => table.id === 'months').rows.length, 12);
+  const csv = financialCsv(clients); assert.ok(csv.startsWith('\uFEFF')); assert.ok(csv.includes('"\'=SUM(1;2)"')); assert.ok(clients.rows[0][8] < 0); assert.ok(csv.includes(String(clients.rows[0][8]).replace('.', ',')));
+  assert.ok(financialCsv(clients, tables[0]).includes('# Estado: Provisional · configuración sin guardar'));
+  assert.ok(financialCsv({ headers: ['Texto'], rows: [['  +TEST'], ['@TEST'], ['"quoted"\nname'], [null]], name: 'Safety', id: 'safety' }).includes('"\'  +TEST"'));
+  const workbook = XLSX.read(await financialExcel(tables), { type: 'array' });
+  assert.equal(workbook.SheetNames.length, 8); assert.equal(workbook.Sheets.Clientes.B48.v, result.total.revenue / 100);
+  assert.equal(workbook.Sheets.Clientes.A2.t, 's'); assert.equal(workbook.Sheets.Clientes.A2.v, '=SUM(1;2)'); assert.equal(workbook.Sheets.Clientes.A2.f, undefined, 'A formula-shaped name must remain a string cell');
+  const summary = XLSX.utils.sheet_to_json(workbook.Sheets.Resumen, { header: 1 }); assert.ok(summary.some(row => row.includes('Provisional · configuración sin guardar'))); assert.ok(summary.some(row => row.includes('EUR · sin IVA')));
+  const document = financialPdf(input); assert.ok(document.getNumberOfPages() >= 4, 'Long tables should paginate');
+  const text = document.internal.pages.flat().join('\n'); assert.ok(text.includes('TOTAL DEL ANÁLISIS')); assert.ok(text.includes('Propiedades')); assert.ok(text.includes('Sin IVA')); assert.ok(text.includes('Ingresos y gastos desglosados'));
+  const file = join(tmpdir(), 'limpatex-financial-p2-report-demo.pdf'); writeFileSync(file, Buffer.from(document.output('arraybuffer')));
+  assert.equal(JSON.stringify(input), before, 'Generating reports must not mutate the selected balance or settings');
+  console.log(JSON.stringify({ test: 'financial-reports', passed: 'Full tables, scope/partial/draft metadata, CSV quoting/formula text and decimal commas, numeric Excel reread, PDF content and pagination', pages: document.getNumberOfPages(), fixturePdf: file }));
+} finally { unlinkSync(path); }
