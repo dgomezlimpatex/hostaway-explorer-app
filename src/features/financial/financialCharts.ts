@@ -14,6 +14,25 @@ export const balanceColumns: ColumnSeries[] = [
   { id: 'expense', name: 'Gastos', color: '#d97706' },
   { id: 'result', name: 'Resultado', color: '#059669' },
 ];
+const revenueColumn = balanceColumns[0];
+const expenseColumns: ColumnSeries[] = [
+  { id: 'personal', name: 'Personal', color: chartColors[1] },
+  { id: 'laundry', name: 'Lavandería', color: chartColors[2] },
+  { id: 'supplies', name: 'Amenities y consumibles', color: chartColors[3] },
+  { id: 'products', name: 'Productos', color: chartColors[4] },
+  { id: 'other', name: 'Otros gastos', color: chartColors[5] },
+];
+// Direction/structure remains a separate accounting category. Combine it with
+// personnel only for display, after the engine has applied the chosen filters.
+export function groupedCosts(costs: FinancialAnalysis['total']['costs']) {
+  return { personal: costs.personal + costs.salary, laundry: costs.laundry, supplies: costs.supplies, products: costs.products, other: costs.other };
+}
+function visibleExpenseColumns(costs: FinancialAnalysis['total']['costs'][]) {
+  return expenseColumns.filter(column => column.id !== 'other' || costs.some(cost => cost.other !== 0));
+}
+export function periodColumns(total: FinancialAnalysis['total']) {
+  return { series: [revenueColumn, ...visibleExpenseColumns([total.costs])], values: { revenue: total.revenue, ...groupedCosts(total.costs) } };
+}
 export function incomeColor(id: string) {
   const fixed = { cleaning: '#6d28d9', services: '#4f46e5', supplements: '#0284c7', cloth: '#0f766e' };
   if (id in fixed) return fixed[id as keyof typeof fixed];
@@ -23,7 +42,8 @@ export function incomeColor(id: string) {
 
 // Presentation only: every amount comes from the same analysis as the tables.
 export function dashboardSeries(analysis: FinancialAnalysis) {
-  const costs = (Object.keys(categoryNames) as Category[]).map((id, index) => ({ id, name: categoryNames[id], value: analysis.total.costs[id], color: chartColors[index] }));
+  const values = groupedCosts(analysis.total.costs);
+  const costs = visibleExpenseColumns([analysis.total.costs]).map(column => ({ ...column, value: values[column.id as keyof typeof values] }));
   const incomes = new Map<string, { id: string; name: string; value: number; source: 'services' | 'incomes' }>();
   const add = (id: string, name: string, value: number, source: 'services' | 'incomes') => {
     const row = incomes.get(id) || { id, name, value: 0, source };
@@ -68,10 +88,9 @@ export function monthlyTrend(services: FinancialService[], settings: FinanceSett
 }
 
 export function monthlyColumns(rows: ReturnType<typeof monthlyTrend>, view: ComparisonView): { series: ColumnSeries[]; groups: ColumnGroup[] } {
-  if (view === 'balance') return { series: balanceColumns, groups: rows.map(row => ({ name: row.name, values: { revenue: row.revenue, expense: row.expense, result: row.result } })) };
-  if (view === 'costs') return {
-    series: (Object.keys(categoryNames) as Category[]).map((id, index) => ({ id, name: categoryNames[id], color: chartColors[index] })),
-    groups: rows.map(row => ({ name: row.name, values: row.costs })),
+  if (view === 'balance' || view === 'costs') return {
+    series: [...(view === 'balance' ? [revenueColumn] : []), ...visibleExpenseColumns(rows.map(row => row.costs))],
+    groups: rows.map(row => ({ name: row.name, values: view === 'balance' ? { revenue: row.revenue, ...groupedCosts(row.costs) } : groupedCosts(row.costs) })),
   };
   const sources = new Map<string, ColumnSeries>();
   for (const row of rows) for (const source of row.incomeSources) sources.set(source.id, { id: source.id, name: source.name, color: source.color });

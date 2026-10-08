@@ -1,0 +1,26 @@
+{
+  "request": "Segmentar las columnas de análisis financiero en este orden: Ingresos, Personal incluyendo estructura/dirección, Lavandería, Amenities y consumibles y Productos.",
+  "reason": "Agrupación visual local de importes que ya calcula el motor financiero. Personal suma las categorías existentes personal y salary después de aplicar los filtros. El mismo desglose se aplica al periodo y a la comparación mensual. Otros gastos aparece como columna adicional si tiene importe para conservar la conciliación. No cambia el motor, tarifas, fuentes, guardado, datos reales, permisos ni dependencias.",
+  "verification": "Pruebas con el motor real: personal operativo más estructura y dirección una sola vez, costes adicionales de ambas categorías, prorrateo mensual/parcial, exclusión de gastos generales en filtros por cliente/propiedad/trabajador, conciliación de todas las columnas con gastos e ingresos, visibilidad condicional de otros gastos, colores estables y meses sin actividad. Página y lector reales con datos locales offline: orden y geometría de cinco columnas adyacentes, colores y cero común, total de Personal 2346 EUR incluyendo dirección 2317 EUR y trabajo 29 EUR, filtrado de cliente y restauración, sexta columna de otros gastos, vistas mensuales y regresiones de formularios, persistencia y errores. Capturas revisadas en escritorio/móvil sin desbordamiento de página. Build y lint focalizado pasan; tipos app mantienen 102 errores heredados sin nuevos, Node cero. No se comprobó una sesión productiva autenticada ni se hicieron escrituras reales.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialViewTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "f9ba171988e6b4b5f702e9f6a0c5fc7c6bdfe680ab92dfd1d78770620f911722"
+}

@@ -67,7 +67,7 @@ try {
   await expect(page.getByRole('listitem').filter({hasText:'Jornada Hotel de prueba'})).toBeVisible();
   await expect(page.getByRole('listitem').filter({hasText:'Servicio con precio pendiente'})).toBeVisible();
   await page.locator('summary').filter({hasText:'Servicios fuera del balance:'}).click();
-  await expect(page.getByText('Productos de limpieza', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Productos', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('3,00 €', { exact: true }).first()).toBeVisible();
   const reads = await page.evaluate(() => window.reads);
   assert.equal(reads.length, 5);
@@ -87,18 +87,31 @@ try {
   await expect(page.getByLabel('Desde',{exact:true})).toHaveValue(previousEnd.slice(0,7)+'-01');
   await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue(monthEnd);
   await expect(page.getByText('2317,00 €', { exact: true }).first()).toBeVisible();
+  const graph=page.getByRole('region',{name:'Comparativa del periodo'});
+  const costChart=page.getByRole('region',{name:'Distribución de gastos'});
+  await expect(costChart.getByRole('listitem').filter({hasText:'Personal'}).last()).toContainText('2346,00 €');
+  await expect(graph.locator('[aria-label="Desglose de Personal"]')).toContainText('29,00 €');
+  await expect(graph.locator('[aria-label="Desglose de Personal"]')).toContainText('2317,00 €');
+  assert.deepEqual(await graph.locator('ul[aria-label]').first().getByRole('listitem').allTextContents(), ['Ingresos', 'Personal', 'Lavandería', 'Amenities y consumibles', 'Productos']);
+  await page.locator('summary').filter({hasText:'Clientes:'}).click();
+  await page.getByLabel('Cliente de prueba',{exact:true}).check();
+  await expect(costChart.getByRole('listitem').filter({hasText:'Personal'}).last()).toContainText('29,00 €');
+  await expect(graph.locator('[aria-label="Desglose de Personal"]')).toContainText('0,00 € de dirección y estructura');
+  await page.getByLabel('Cliente de prueba',{exact:true}).uncheck();
+  await page.locator('summary').filter({hasText:'Clientes:'}).click();
+  await expect(costChart.getByRole('listitem').filter({hasText:'Personal'}).last()).toContainText('2346,00 €');
+  await graph.screenshot({path:join(tmpdir(),'limpatex-financial-segmented-personal-demo.png')});
   await page.getByLabel('Hasta', { exact: true }).fill(previousEnd);
   if(previousEnd!==monthEnd)await expect(page.getByLabel('Mes del análisis',{exact:true})).toHaveValue('');
-  const graph=page.getByRole('region',{name:'Comparativa del periodo'});
   await expect(graph.locator('svg.recharts-surface')).toBeVisible();
   const balanceBars=await graph.locator('.recharts-bar-rectangle .recharts-rectangle').evaluateAll(nodes=>nodes.map(node=>({x:node.getBBox().x,y:node.getBBox().y,height:node.getBBox().height,color:node.getAttribute('fill')})));
-  assert.equal(balanceBars.length,3);
-  assert.equal(new Set(balanceBars.map(bar=>bar.color)).size,3,'Each balance concept has its own color');
-  assert.ok(balanceBars[0].x<balanceBars[1].x && balanceBars[1].x<balanceBars[2].x,'Columns must be side by side');
-  assert.ok(Math.abs((balanceBars[0].y+balanceBars[0].height)-(balanceBars[1].y+balanceBars[1].height))<1,'Income and expense share a zero baseline');
-  assert.ok(Math.abs(balanceBars[2].y-(balanceBars[0].y+balanceBars[0].height))<1,'Negative result extends below the zero baseline');
-  const costChart=page.getByRole('region',{name:'Distribución de gastos'});
-  assert.equal(await costChart.locator('.recharts-bar').count(),6,'One expense column per category');
+  assert.equal(balanceBars.length,5);
+  assert.equal(new Set(balanceBars.map(bar=>bar.color)).size,5,'Each income/expense concept has its own color');
+  for (const [index,bar] of balanceBars.entries()) {
+    if(index>0)assert.ok(balanceBars[index-1].x<bar.x,'Columns must be side by side');
+    assert.ok(Math.abs((bar.y+bar.height)-(balanceBars[0].y+balanceBars[0].height))<1,'All income and expense columns share a zero baseline');
+  }
+  assert.equal(await costChart.locator('.recharts-bar').count(),4,'Direction is included in the personnel column, not repeated separately');
   assert.equal(await costChart.locator('.recharts-pie').count(),0);
 
   await expect(page.getByRole('region',{name:'Distribución de gastos'}).locator('svg.recharts-surface')).toBeVisible();
@@ -119,10 +132,10 @@ try {
   await expect(page.getByRole('region',{name:'Evolución mensual'}).locator('svg.recharts-surface').first()).toBeVisible();
   await expect(page.getByRole('region',{name:'Evolución mensual'}).getByRole('row')).toHaveCount(7);
   const trend=page.getByRole('region',{name:'Evolución mensual'});
-  await expect(trend.locator('.recharts-bar')).toHaveCount(3);
+  await expect(trend.locator('.recharts-bar')).toHaveCount(5);
   await expect(trend.locator('.recharts-line')).toHaveCount(0);
   await trend.getByRole('button',{name:'Tipos de gasto',exact:true}).click();
-  await expect(trend.locator('.recharts-bar')).toHaveCount(6);
+  await expect(trend.locator('.recharts-bar')).toHaveCount(4);
   await expect(trend.getByRole('button',{name:'Tipos de gasto',exact:true})).toHaveAttribute('aria-pressed','true');
   await trend.getByRole('button',{name:'Origen de ingresos',exact:true}).click();
   await expect(trend.locator('.recharts-bar')).toHaveCount(1);
@@ -162,10 +175,14 @@ try {
   await expect(page.getByText('Alquiler de prueba', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'General', exact: true }).click();
   await expect(page.getByText('Gastos generales incluidos:')).toContainText('50,00 €');
+  await expect(graph.locator('.recharts-bar')).toHaveCount(6);
+  await expect(costChart.getByRole('listitem').filter({hasText:'Otros gastos'}).last()).toContainText('50,00 €');
   await page.locator('summary').filter({ hasText: 'Trabajadores:' }).click();
   await page.getByLabel('Ana', { exact: true }).check();
   await page.locator('summary').filter({ hasText: 'Trabajadores:' }).click();
   await expect(page.getByText('Gastos generales incluidos:')).toContainText('0,00 €');
+  await expect(graph.locator('.recharts-bar')).toHaveCount(5);
+  await expect(graph.locator('[aria-label="Desglose de Personal"]')).toContainText('0,00 € de dirección y estructura');
   await expect(page.getByText('100,00 €', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('29,00 €', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Ver todo · mes actual' }).click();

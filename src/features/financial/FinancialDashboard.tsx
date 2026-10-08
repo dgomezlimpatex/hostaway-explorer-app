@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, ChevronRight, CircleAlert, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFinancialData } from './useFinancialData';
-import { dashboardSeries, money, monthlyTrend, trendPeriods, balanceColumns, monthlyColumns, type ComparisonView, type FinancialAnalysis } from './financialCharts';
+import { dashboardSeries, money, monthlyTrend, trendPeriods, balanceColumns, monthlyColumns, periodColumns, type ComparisonView, type FinancialAnalysis } from './financialCharts';
 import type { CalculatedService, Filters, FinanceSettings } from './financialModel';
 import type { DirectoryEntry } from './financialSource';
 import { FinancialColumns } from './FinancialColumns';
@@ -13,6 +13,7 @@ type Props = { result: FinancialAnalysis; names: DirectoryEntry[]; onClient: (id
 
 export function FinancialDashboard({ result, names, onClient, onServices, onIncomes, onEdit }: Props) {
   const series = useMemo(() => dashboardSeries(result), [result]);
+  const comparison = useMemo(() => periodColumns(result.total), [result.total]);
   const [metric, setMetric] = useState<'result' | 'margin'>('result');
   const clients = [...result.clients].map(client => ({ ...client, name: names.find(entry => entry.id === client.id)?.name || client.name })).sort((a, b) => (b[metric] ?? -Infinity) - (a[metric] ?? -Infinity));
   const maxClient = Math.max(1, ...clients.map(client => Math.abs(client[metric] ?? 0)));
@@ -22,13 +23,14 @@ export function FinancialDashboard({ result, names, onClient, onServices, onInco
   const reviewRows = reviewMode === 'low' ? low : pending;
   return <>
     <section className={panel} aria-label="Comparativa del periodo">
-      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-[#310984]">Comparativa del periodo</h2><p className={note}>Ingresos, gastos y resultado, uno al lado del otro para comparar sus importes.</p></div><span className={`rounded-full px-3 py-1 text-sm font-medium ${result.total.result < 0 ? 'bg-rose-50 text-rose-800' : 'bg-emerald-50 text-emerald-800'}`}>{result.total.result < 0 ? 'Resultado negativo' : 'Resultado incluido'} · {money(result.total.result)}</span></div>
-      <FinancialColumns label="Balance del periodo" series={balanceColumns} groups={[{ name: 'Periodo seleccionado', values: { revenue: result.total.revenue, expense: result.total.expense, result: result.total.result } }]} />
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-[#310984]">Comparativa del periodo</h2><p className={note}>Ingresos y cada tipo de gasto, uno al lado del otro para comparar sus importes.</p></div><span className={`rounded-full px-3 py-1 text-sm font-medium ${result.total.result < 0 ? 'bg-rose-50 text-rose-800' : 'bg-emerald-50 text-emerald-800'}`}>{result.total.result < 0 ? 'Resultado negativo' : 'Resultado provisional'} · {money(result.total.result)}</span></div>
+      <FinancialColumns label="Ingresos y gastos del periodo" series={comparison.series} groups={[{ name: 'Periodo seleccionado', values: comparison.values }]} />
+      <p className="mt-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-900" aria-label="Desglose de Personal">Personal incluye <strong>{money(result.total.costs.personal)}</strong> de actividad y otros costes de personal, más <strong>{money(result.total.costs.salary)}</strong> de dirección y estructura.</p>
       <ol className="mt-5 grid gap-3 text-sm sm:grid-cols-3">{balanceColumns.map(column => <li key={column.id} className="rounded-xl bg-slate-50 p-3"><span className="mb-1 flex items-center gap-2 text-xs text-slate-600"><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: column.color }} />{column.name}</span><strong className="tabular-nums">{money(result.total[column.id])}</strong></li>)}</ol>
       <p className="mt-4 text-xs text-slate-500">Gastos generales incluidos: <strong>{money(result.general.expense)}</strong>. Se cuentan una vez y no se reparten entre clientes.</p>
     </section>
     <div className="grid gap-5 xl:grid-cols-2">
-      <section className={panel} aria-label="Distribución de gastos"><h2 className="text-lg font-semibold text-[#310984]">Distribución de gastos</h2><p className={note}>Cada categoría tiene su propia columna y color, con una escala común.</p>
+      <section className={panel} aria-label="Distribución de gastos"><h2 className="text-lg font-semibold text-[#310984]">Distribución de gastos</h2><p className={note}>Cada categoría tiene su propia columna y color. Personal incluye dirección y estructura.</p>
         <FinancialColumns label="Tipos de gasto del periodo" series={series.costs} groups={[{ name: 'Periodo seleccionado', values: Object.fromEntries(series.costs.map(row => [row.id, row.value])) }]} />
         <ul className="mt-5 space-y-3">{series.costs.map(row => <li key={row.id} className="flex items-center justify-between gap-3 text-sm"><span className="flex items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: row.color }} />{row.name}</span><span className="shrink-0 tabular-nums"><strong>{money(row.value)}</strong><span className="ml-2 text-xs text-slate-500">{result.total.expense ? (row.value / result.total.expense * 100).toFixed(1) : '0'} %</span></span></li>)}</ul>
       </section>
