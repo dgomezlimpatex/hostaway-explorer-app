@@ -22,7 +22,7 @@ const modules = {
       {...task,id:'excluded-past',date:'2000-01-01',coste:999,cleaner_id:null,task_assignments:[]},
       {...task,id:'excluded-cancelled',status:'cancelled',coste:999});
     data.stock_property_consumption_rules=[];
-    export const supabase={from(table){const calls=[];let payload=null;const q={select(...a){calls.push(['select',...a]);return q},insert(value){payload=value;return q},update(value){payload=value;return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},async maybeSingle(){if(table!=='financial_settings')throw new Error('Unexpected table');if(window.failFinance)return {data:null,error:{message:'Fallo simulado'}};return fetch('https://financial.local.test/config',{method:payload?'POST':'GET',headers:{'Content-Type':'application/json'},body:payload?JSON.stringify({payload,calls}):undefined}).then(r=>r.json())},range(from,to){window.reads=window.reads||[];window.reads.push({table,calls,from,to});return new Promise(resolve=>setTimeout(()=>resolve({data:data[table].slice(from,to+1),error:null}),window.sourceDelay || 0))}};return q}};
+    export const supabase={from(table){const calls=[];let payload=null;const q={select(...a){calls.push(['select',...a]);return q},insert(value){payload=value;return q},update(value){payload=value;return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},async maybeSingle(){if(table!=='financial_settings')throw new Error('Unexpected table');if(window.failFinance)return {data:null,error:{message:'Fallo simulado'}};return fetch('https://financial.local.test/config',{method:payload?'POST':'GET',headers:{'Content-Type':'application/json'},body:payload?JSON.stringify({payload,calls}):undefined}).then(r=>r.json())},range(from,to){if(window.failSource)return Promise.resolve({data:null,error:{message:'Source unavailable'}});window.reads=window.reads||[];window.reads.push({table,calls,from,to});return new Promise(resolve=>setTimeout(()=>resolve({data:data[table].slice(from,to+1),error:null}),window.sourceDelay || 0))}};return q}};
   `,
 };
 const built = await build({ stdin: { contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import Page from './src/features/financial/FinancialAnalysisPage';createRoot(document.getElementById('root')).render(<MemoryRouter><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><Page/></QueryClientProvider></MemoryRouter>);`, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic', metafile: true, define: { 'process.env.NODE_ENV': '"production"' }, plugins: [{ name: 'financial-fixture', setup(plugin) {
@@ -43,6 +43,8 @@ try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1050 } });
   const page = await context.newPage();
   const errors = [], requests = [];
+  const openDetails = async text => { const summary=page.locator('summary').filter({hasText:text}); if(!await summary.evaluate(element=>element.parentElement.open)) await summary.click(); };
+
   page.on('pageerror', error => errors.push(error.message));
   let shared={document:{version:1,rates:[],expenses:[],adjustments:{}},revision:1};
   const handle=async route=>{
@@ -65,11 +67,19 @@ try {
   await expect(page.getByRole('listitem').filter({hasText:'Jornada Hotel de prueba'})).toBeVisible();
   await expect(page.getByRole('listitem').filter({hasText:'Servicio con precio pendiente'})).toBeVisible();
   await page.locator('summary').filter({hasText:'Servicios fuera del balance:'}).click();
-  await expect(page.getByText('Productos de limpieza', { exact: true })).toBeVisible();
+  await expect(page.getByText('Productos de limpieza', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('3,00 €', { exact: true }).first()).toBeVisible();
   const reads = await page.evaluate(() => window.reads);
   assert.equal(reads.length, 5);
   for (const read of reads) { assert.deepEqual(read.calls.find(call => call[0] === 'eq'), ['eq', read.table==='stock_property_consumption_rules'?'property.sede_id':'sede_id', 's']); assert.deepEqual([read.from,read.to], [0,499]); }
+  await openDetails('Fechas personalizadas y filtros');
+  await page.getByRole('button',{name:/^Costes pendientes ·/}).click();
+  await page.getByRole('region',{name:'Revisar',exact:true}).getByRole('button',{name:/Apartamento Centro/}).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await page.getByRole('button',{name:/^Fuera del balance ·/}).click();
+  await expect(page.getByRole('region',{name:'Revisar',exact:true})).toContainText('Precio pendiente');
   const previousEnd = await page.getByLabel('Hasta', { exact: true }).inputValue();
   const [year, month] = previousEnd.split('-').map(Number);
   const monthEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
@@ -79,6 +89,36 @@ try {
   await expect(page.getByText('2317,00 €', { exact: true }).first()).toBeVisible();
   await page.getByLabel('Hasta', { exact: true }).fill(previousEnd);
   if(previousEnd!==monthEnd)await expect(page.getByLabel('Mes del análisis',{exact:true})).toHaveValue('');
+  const graph=page.getByRole('region',{name:'Del ingreso al resultado'});
+  await expect(graph.locator('svg.recharts-surface')).toBeVisible();
+  await expect(page.getByRole('region',{name:'Distribución de gastos'}).locator('svg.recharts-surface')).toBeVisible();
+  await expect(page.getByRole('region',{name:'Origen de los ingresos'})).toContainText('Limpiezas · tarifa base');
+  await page.getByRole('button',{name:'Mes anterior',exact:true}).click();
+  const earlierMonth=await page.getByLabel('Mes del análisis').inputValue();
+  assert.notEqual(earlierMonth,previousEnd.slice(0,7));
+  await page.getByRole('button',{name:'Mes siguiente',exact:true}).click();
+  await expect(page.getByLabel('Mes del análisis')).toHaveValue(previousEnd.slice(0,7));
+  await page.getByLabel('Hasta',{exact:true}).fill(previousEnd);
+  await page.getByRole('button',{name:'Margen %',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Margen %',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.getByRole('button',{name:'Ver detalle de Cliente de prueba',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Servicios · origen de cada importe'})).toBeVisible();
+  await page.getByRole('button',{name:'Ver todo · mes actual'}).click();
+  await page.getByRole('button',{name:'General',exact:true}).click();
+  await page.getByRole('button',{name:'Ver evolución mensual',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Evolución mensual'}).locator('svg.recharts-surface').first()).toBeVisible();
+  await expect(page.getByRole('region',{name:'Evolución mensual'}).getByRole('row')).toHaveCount(7);
+  await page.getByLabel(/Comparar del día 1 al/).uncheck();
+  await expect(page.getByText(/Comparación de meses completos/)).toBeVisible();
+  await page.evaluate(()=>{window.failSource=true});
+  await page.getByRole('button',{name:'Actualizar evolución',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Evolución mensual'}).getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('region',{name:'Evolución mensual'}).getByRole('table')).not.toBeVisible();
+  await page.evaluate(()=>{window.failSource=false});
+  await page.getByRole('button',{name:'Reintentar evolución',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Evolución mensual'}).getByRole('table')).toBeVisible();
+  await page.getByRole('region',{name:'Evolución mensual'}).screenshot({path:join(tmpdir(),'limpatex-financial-trend.png')});
+  await page.getByRole('button',{name:'Ocultar evolución',exact:true}).click();
   await page.getByRole('button', { name: 'Tarifas', exact: true }).click();
   await expect(page.getByText('0,247 € / prenda')).toBeVisible();
   await expect(page.getByText('2317,00 € / mes · coste de empresa')).toBeVisible();
@@ -138,6 +178,7 @@ try {
   await page.getByLabel('Horas de personal por semana').fill('16');
   await page.getByLabel('Cliente del ingreso').selectOption('c2');
   await page.getByRole('button',{name:'Añadir ingreso',exact:true}).click();
+  await openDetails('Fechas personalizadas y filtros');
   await page.getByLabel('Hasta',{exact:true}).fill(monthEnd);
   await expect(page.getByRole('row').filter({hasText:'Recepción de prueba'})).toContainText('1008,04 €');
   await page.getByLabel('Concepto del ingreso').fill('Virtual por limpieza de prueba');
@@ -146,7 +187,15 @@ try {
   await page.getByLabel('Cliente del ingreso').selectOption('c');
   await page.getByRole('button',{name:'Añadir ingreso',exact:true}).click();
   await page.getByRole('button',{name:'General',exact:true}).click();
+  await openDetails('Tabla de resultados por cliente');
   await expect(page.getByRole('row').filter({hasText:'Cliente de prueba'}).first()).toContainText('102,75 €');
+  await expect(page.getByRole('region',{name:'Origen de los ingresos'})).toContainText('Suplementos por limpieza');
+  await page.getByRole('button',{name:'Ver detalle de Cliente sin servicios',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Ingresos externos de esta selección'})).toBeVisible();
+  await expect(page.getByRole('row').filter({hasText:'Recepción de prueba'})).toContainText('1329,60 €');
+  await expect(page.getByText('No hay servicios contabilizables con estos filtros.')).toBeVisible();
+  await page.getByRole('button',{name:'Ver todo · mes actual'}).click();
+  await page.getByLabel('Hasta',{exact:true}).fill(monthEnd);
   await page.getByRole('button',{name:'Por cliente',exact:true}).click();
   await expect(page.getByRole('row').filter({hasText:'Cliente de prueba'}).first()).toContainText('4,20 €');
   await expect(page.getByRole('row').filter({hasText:'Cliente sin servicios'})).toContainText('1329,60 €');
@@ -174,13 +223,17 @@ try {
   await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('Otra persona ha cambiado');
   assert.ok(!shared.document.incomes.some(i=>i.label==='Borrador en conflicto'));
+  await openDetails(/^(Configuración compartida de esta sede|Cambios sin guardar)$/);
   await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
+  await expect(page.locator('summary').filter({hasText:/^Configuración compartida de esta sede$/})).toBeVisible();
   await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
   await page.evaluate(()=>{window.failFinance=true});
+  await openDetails(/^(Configuración compartida de esta sede|Cambios sin guardar)$/);
   await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
   await expect(page.getByText('Ingresos totales',{exact:true})).not.toBeVisible();
   await expect(page.getByText(/Configuración sin cargar/)).toBeVisible();
   await page.evaluate(()=>{window.failFinance=false});
+  await openDetails(/^(Configuración compartida de esta sede|Cambios sin guardar)$/);
   await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
   await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Servicios',exact:true}).click();
@@ -235,6 +288,13 @@ try {
   await page.getByRole('button',{name:'General',exact:true}).click();
   await page.screenshot({ path: join(tmpdir(), 'limpatex-financial-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  await openDetails('Fechas personalizadas y filtros');
+  await page.locator('summary').filter({hasText:'Clientes:'}).click();
+  await expect(page.getByLabel('Cliente de prueba',{exact:true})).toBeVisible();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Open mobile filters fit the viewport');
+  await page.locator('summary').filter({hasText:'Clientes:'}).click();
+  await page.locator('summary').filter({hasText:'Fechas personalizadas y filtros'}).click();
+  await page.screenshot({path:join(tmpdir(),'limpatex-financial-mobile-populated.png'),fullPage:true});
   await page.getByLabel('Mes del análisis',{exact:true}).fill('2024-02');
   await expect(page.getByLabel('Desde',{exact:true})).toHaveValue('2024-02-01');
   await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue('2024-02-29');
@@ -245,6 +305,13 @@ try {
   await expect(page.getByRole('heading', { name: 'Análisis financiero', exact: true })).toBeVisible();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'No page-level horizontal overflow on mobile');
   await page.screenshot({ path: join(tmpdir(), 'limpatex-financial-mobile.png'), fullPage: true });
+  await page.evaluate(()=>{window.failSource=true});
+  await page.getByRole('button',{name:'Actualizar datos',exact:true}).click();
+  await expect(page.getByText('No se pudieron cargar los datos. No se muestran totales parciales.')).toBeVisible();
+  await expect(page.getByText('Ingresos totales',{exact:true})).not.toBeVisible();
+  await page.evaluate(()=>{window.failSource=false});
+  await page.getByRole('button',{name:'Reintentar',exact:true}).click();
+  await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
   assert.deepEqual(errors, []); assert.deepEqual(requests.filter(url => !url.endsWith('.woff') && !url.endsWith('.woff2')), []);
   console.log('financial-browser: real page + real reader, offline fixtures, filters, multi-worker, tariffs, expenses, editor, persistence, desktop and mobile passed');
 } finally { await browser.close(); }
