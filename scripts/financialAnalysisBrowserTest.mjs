@@ -89,8 +89,18 @@ try {
   await expect(page.getByText('2317,00 €', { exact: true }).first()).toBeVisible();
   await page.getByLabel('Hasta', { exact: true }).fill(previousEnd);
   if(previousEnd!==monthEnd)await expect(page.getByLabel('Mes del análisis',{exact:true})).toHaveValue('');
-  const graph=page.getByRole('region',{name:'Del ingreso al resultado'});
+  const graph=page.getByRole('region',{name:'Comparativa del periodo'});
   await expect(graph.locator('svg.recharts-surface')).toBeVisible();
+  const balanceBars=await graph.locator('.recharts-bar-rectangle .recharts-rectangle').evaluateAll(nodes=>nodes.map(node=>({x:node.getBBox().x,y:node.getBBox().y,height:node.getBBox().height,color:node.getAttribute('fill')})));
+  assert.equal(balanceBars.length,3);
+  assert.equal(new Set(balanceBars.map(bar=>bar.color)).size,3,'Each balance concept has its own color');
+  assert.ok(balanceBars[0].x<balanceBars[1].x && balanceBars[1].x<balanceBars[2].x,'Columns must be side by side');
+  assert.ok(Math.abs((balanceBars[0].y+balanceBars[0].height)-(balanceBars[1].y+balanceBars[1].height))<1,'Income and expense share a zero baseline');
+  assert.ok(Math.abs(balanceBars[2].y-(balanceBars[0].y+balanceBars[0].height))<1,'Negative result extends below the zero baseline');
+  const costChart=page.getByRole('region',{name:'Distribución de gastos'});
+  assert.equal(await costChart.locator('.recharts-bar').count(),6,'One expense column per category');
+  assert.equal(await costChart.locator('.recharts-pie').count(),0);
+
   await expect(page.getByRole('region',{name:'Distribución de gastos'}).locator('svg.recharts-surface')).toBeVisible();
   await expect(page.getByRole('region',{name:'Origen de los ingresos'})).toContainText('Limpiezas · tarifa base');
   await page.getByRole('button',{name:'Mes anterior',exact:true}).click();
@@ -108,6 +118,16 @@ try {
   await page.getByRole('button',{name:'Ver evolución mensual',exact:true}).click();
   await expect(page.getByRole('region',{name:'Evolución mensual'}).locator('svg.recharts-surface').first()).toBeVisible();
   await expect(page.getByRole('region',{name:'Evolución mensual'}).getByRole('row')).toHaveCount(7);
+  const trend=page.getByRole('region',{name:'Evolución mensual'});
+  await expect(trend.locator('.recharts-bar')).toHaveCount(3);
+  await expect(trend.locator('.recharts-line')).toHaveCount(0);
+  await trend.getByRole('button',{name:'Tipos de gasto',exact:true}).click();
+  await expect(trend.locator('.recharts-bar')).toHaveCount(6);
+  await expect(trend.getByRole('button',{name:'Tipos de gasto',exact:true})).toHaveAttribute('aria-pressed','true');
+  await trend.getByRole('button',{name:'Origen de ingresos',exact:true}).click();
+  await expect(trend.locator('.recharts-bar')).toHaveCount(1);
+  await trend.getByRole('button',{name:'Balance',exact:true}).click();
+
   await page.getByLabel(/Comparar del día 1 al/).uncheck();
   await expect(page.getByText(/Comparación de meses completos/)).toBeVisible();
   await page.evaluate(()=>{window.failSource=true});
@@ -190,6 +210,16 @@ try {
   await openDetails('Tabla de resultados por cliente');
   await expect(page.getByRole('row').filter({hasText:'Cliente de prueba'}).first()).toContainText('102,75 €');
   await expect(page.getByRole('region',{name:'Origen de los ingresos'})).toContainText('Suplementos por limpieza');
+  const incomeChart=page.getByRole('region',{name:'Origen de los ingresos'});
+  await expect(incomeChart.locator('.recharts-bar')).toHaveCount(4);
+  await incomeChart.getByRole('button',{name:'Ver concepto: Recepción de prueba',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Otros ingresos · sin IVA'})).toBeVisible();
+  await page.getByRole('button',{name:'General',exact:true}).click();
+  await page.getByRole('button',{name:'Ver evolución mensual',exact:true}).click();
+  await page.getByRole('region',{name:'Evolución mensual'}).getByRole('button',{name:'Origen de ingresos',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Evolución mensual'}).locator('.recharts-bar')).toHaveCount(4);
+  await page.getByRole('button',{name:'Ocultar evolución',exact:true}).click();
+
   await page.getByRole('button',{name:'Ver detalle de Cliente sin servicios',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Ingresos externos de esta selección'})).toBeVisible();
   await expect(page.getByRole('row').filter({hasText:'Recepción de prueba'})).toContainText('1329,60 €');
@@ -287,6 +317,7 @@ try {
   await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue(retainedEnd);
   await page.getByRole('button',{name:'General',exact:true}).click();
   await page.screenshot({ path: join(tmpdir(), 'limpatex-financial-desktop.png'), fullPage: true });
+  await page.getByRole('region',{name:'Comparativa del periodo'}).screenshot({path:join(tmpdir(),'limpatex-financial-grouped-demo.png')});
   await page.setViewportSize({ width: 390, height: 844 });
   await openDetails('Fechas personalizadas y filtros');
   await page.locator('summary').filter({hasText:'Clientes:'}).click();
