@@ -19,6 +19,9 @@ try {
   const view={filters:{start:'2026-09-01',end:'2026-09-30',clients:['c'],properties:['p'],workers:['w']},tab:'services',profitFilter:'low'};
   saveFinancialView('user:site',view);assert.deepEqual(loadFinancialView('user:site','2026-10-08'),view);
   for(const owner of ['another-user:site','user:another-site'])assert.deepEqual(loadFinancialView(owner,'2026-10-08'),defaults);
+  const detailView={...view,tab:'details',drilldown:{concept:'personal',returnFilters:{...view.filters,start:'2026-10-01',end:'2026-10-08'},monthly:true}};
+  saveFinancialView('user:site',detailView);assert.deepEqual(loadFinancialView('user:site','2026-10-08'),detailView,'Detail category and return period persist across reload');
+  for(const bad of [{...detailView,drilldown:undefined},{...detailView,drilldown:{...detailView.drilldown,concept:'salary'}},{...detailView,drilldown:{...detailView.drilldown,monthly:'yes'}},{...detailView,drilldown:{...detailView.drilldown,returnFilters:{...view.filters,start:'invalid'}}}]){values.set('user:site:view',JSON.stringify(bad));assert.deepEqual(loadFinancialView('user:site','2026-10-08'),defaults);}
   for(const bad of [null,{...view,tab:'unknown'},{...view,profitFilter:'unknown'},{...view,filters:{...view.filters,start:'2026-02-30'}},{...view,filters:{...view.filters,start:'2026-10-01'}},{...view,filters:{...view.filters,clients:null}},{...view,filters:{...view.filters,workers:[1]}}]){values.set('user:site:view',JSON.stringify(bad));assert.deepEqual(loadFinancialView('user:site','2026-10-08'),defaults);}
   values.set('user:site:view','broken json');assert.deepEqual(loadFinancialView('user:site','2026-10-08'),defaults);
   globalThis.sessionStorage={getItem(){throw Error('blocked')},setItem(){throw Error('blocked')}};

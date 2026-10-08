@@ -1,12 +1,22 @@
 import { validDate, type Filters } from './financialModel';
 
+export type FinancialDetailConcept = 'revenue' | 'personal' | 'laundry' | 'supplies' | 'products' | 'other' | 'cleaning' | 'services' | 'supplements' | 'cloth' | `external:${string}`;
+export function validDetailConcept(value: unknown): value is FinancialDetailConcept {
+  return typeof value === 'string' && (['revenue', 'personal', 'laundry', 'supplies', 'products', 'other', 'cleaning', 'services', 'supplements', 'cloth'].includes(value) || value.startsWith('external:') && value.slice(9).trim().length > 0);
+}
+export interface FinancialDrilldown { concept: FinancialDetailConcept; returnFilters: Filters; monthly: boolean }
 export interface FinancialView {
   filters: Filters;
-  tab: 'general' | 'clients' | 'services' | 'expenses' | 'rates' | 'incomes';
+  tab: 'general' | 'clients' | 'services' | 'expenses' | 'rates' | 'incomes' | 'details';
   profitFilter: 'all' | 'negative' | 'low';
+  drilldown?: FinancialDrilldown;
 }
-const tabs = ['general', 'clients', 'services', 'expenses', 'rates', 'incomes'];
+const tabs = ['general', 'clients', 'services', 'expenses', 'rates', 'incomes', 'details'];
 const profits = ['all', 'negative', 'low'];
+function validFilters(value: Filters | undefined) {
+  return !!value && validDate(value.start) && validDate(value.end) && value.start <= value.end &&
+    ['clients', 'properties', 'workers'].every(key => Array.isArray(value[key]) && value[key].every((id: unknown) => typeof id === 'string'));
+}
 
 export function financialMonthRange(month: string): Pick<Filters, 'start' | 'end'> | null {
   if (!/^\d{4}-\d{2}$/.test(month) || !validDate(`${month}-01`)) return null;
@@ -26,8 +36,8 @@ export function loadFinancialView(ownerKey: string, today: string): FinancialVie
   const fallback: FinancialView = { filters: { start: `${today.slice(0, 7)}-01`, end: today, clients: [], properties: [], workers: [] }, tab: 'general', profitFilter: 'all' };
   try {
     const value = JSON.parse(sessionStorage.getItem(`${ownerKey}:view`) || 'null') as FinancialView | null;
-    if (!value?.filters || !validDate(value.filters.start) || !validDate(value.filters.end) || value.filters.start > value.filters.end || !tabs.includes(value.tab) || !profits.includes(value.profitFilter) ||
-      ['clients', 'properties', 'workers'].some(key => !Array.isArray(value.filters[key]) || value.filters[key].some((id: unknown) => typeof id !== 'string'))) return fallback;
+    if (!value || !validFilters(value.filters) || !tabs.includes(value.tab) || !profits.includes(value.profitFilter) ||
+      value.tab === 'details' && !value.drilldown || value.drilldown && (!validDetailConcept(value.drilldown.concept) || !validFilters(value.drilldown.returnFilters) || typeof value.drilldown.monthly !== 'boolean')) return fallback;
     return value;
   } catch { return fallback; }
 }

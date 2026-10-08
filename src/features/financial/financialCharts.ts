@@ -8,7 +8,7 @@ export const shortMoney = (cents: number) => new Intl.NumberFormat('es-ES', { no
 export const chartColors = ['#6d28d9', '#2563eb', '#db2777', '#d97706', '#0f766e', '#64748b'];
 export type ComparisonView = 'balance' | 'costs' | 'incomes';
 export interface ColumnSeries { id: string; name: string; color: string }
-export interface ColumnGroup { name: string; values: Record<string, number> }
+export interface ColumnGroup { name: string; start?: string; values: Record<string, number> }
 export const balanceColumns: ColumnSeries[] = [
   { id: 'revenue', name: 'Ingresos', color: '#6d28d9' },
   { id: 'expense', name: 'Gastos', color: '#d97706' },
@@ -90,9 +90,9 @@ export function monthlyTrend(services: FinancialService[], settings: FinanceSett
 export function monthlyColumns(rows: ReturnType<typeof monthlyTrend>, view: ComparisonView): { series: ColumnSeries[]; groups: ColumnGroup[] } {
   if (view === 'balance' || view === 'costs') return {
     series: [...(view === 'balance' ? [revenueColumn] : []), ...visibleExpenseColumns(rows.map(row => row.costs))],
-    groups: rows.map(row => ({ name: row.name, values: view === 'balance' ? { revenue: row.revenue, ...groupedCosts(row.costs) } : groupedCosts(row.costs) })),
+    groups: rows.map(row => ({ name: row.name, start: row.start, values: view === 'balance' ? { revenue: row.revenue, ...groupedCosts(row.costs) } : groupedCosts(row.costs) })),
   };
   const sources = new Map<string, ColumnSeries>();
   for (const row of rows) for (const source of row.incomeSources) sources.set(source.id, { id: source.id, name: source.name, color: source.color });
-  return { series: [...sources.values()], groups: rows.map(row => ({ name: row.name, values: Object.fromEntries(row.incomeSources.map(source => [source.id, source.value])) })) };
+  return { series: [...sources.values()], groups: rows.map(row => ({ name: row.name, start: row.start, values: Object.fromEntries(row.incomeSources.map(source => [source.id, source.value])) })) };
 }

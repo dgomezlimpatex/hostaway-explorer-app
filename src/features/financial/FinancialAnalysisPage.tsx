@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, ChevronLeft, ChevronRight, Download, Plus, Settings2, ArrowUpRight, ArrowDownRight, Wallet, Percent } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,9 +13,11 @@ import { COST_ITEMS, QUANTITY_ITEMS, analyze, newSettings, parseAmount, priceAt,
 import type { DirectoryEntry } from './financialSource';
 import { loadFinance, saveFinance } from './financialPersistence';
 import { IncomePanel, ConsumptionPanel } from './FinancialConfiguration';
-import { loadFinancialView, saveFinancialView, financialMonthRange, selectedFinancialMonth } from './financialView';
-import { FinancialDashboard, FinancialTrend, ExternalIncomeDetail } from './FinancialDashboard';
+import { loadFinancialView, saveFinancialView, financialMonthRange, selectedFinancialMonth, validDetailConcept, type FinancialDrilldown } from './financialView';
+import { FinancialDashboard, FinancialTrend, ExternalIncomeDetail, type FinancialTrendView } from './FinancialDashboard';
 import { adjacentMonth, categoryNames } from './financialCharts';
+import { FinancialDetail } from './FinancialDetail';
+import { isIncomeConcept } from './financialDrilldown';
 
 const money = (cents: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 const rateMoney = (mills: number) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(mills / 1000) + ' €';
@@ -99,13 +101,38 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   }, [sedeId, reload]);
   const [message, setMessage] = useState('');
   const [tab, setTab] = useState(view.tab);
+  const [drilldown, setDrilldown] = useState<FinancialDrilldown | undefined>(view.drilldown);
+  const workspace = useRef<HTMLElement>(null);
+  const chartFocus = useRef<{ concept: string; month?: string } | null>(null);
+  const [trendView, setTrendView] = useState<FinancialTrendView>({ open: false, matchingDays: true, comparison: 'balance' });
   const [editing, setEditing] = useState<FinancialService | null>(null);
   const [profitFilter, setProfitFilter] = useState(view.profitFilter);
-  useEffect(() => { saveFinancialView(storageKey, { filters, tab, profitFilter }); }, [storageKey, filters, tab, profitFilter]);
+  useEffect(() => { saveFinancialView(storageKey, { filters, tab, profitFilter, ...(drilldown ? { drilldown } : {}) }); }, [storageKey, filters, tab, profitFilter, drilldown]);
   const [imported, setImported] = useState<FinanceSettings | null>(null);
   const query = useFinancialData(sedeId, filters.start, filters.end);
   const result = useMemo(() => analyze(query.data?.services || [], settings, filters), [query.data, settings, filters]);
   const data = query.data;
+  useEffect(() => {
+    if (tab !== 'general' || !sharedReady || query.isPending || query.error || !chartFocus.current) return;
+    const target = chartFocus.current;
+    const region = target.month ? workspace.current?.querySelector('[aria-label="Evolución mensual"]') : workspace.current;
+    if (!region) return;
+    // ResponsiveContainer measures after mounting. Restore focus once its SVG
+    // exists, rather than focusing a temporary legend before the bars appear.
+    const observer = new MutationObserver(() => restoreFocus());
+    const restoreFocus = () => {
+      const candidates = [...region.querySelectorAll<HTMLElement | SVGElement>('[data-financial-concept]')].filter(node => node.getAttribute('data-financial-concept') === target.concept).flatMap(node => {
+        const element = node.matches('button') ? node : node.querySelector<SVGElement>('[role="button"]');
+        return element ? [{ element, month: node.getAttribute('data-period-start') }] : [];
+      });
+      const selected = candidates.find(candidate => !target.month || candidate.month === target.month) || candidates.at(-1);
+      if (!selected?.element.closest('section')?.querySelector('svg.recharts-surface')) return;
+      observer.disconnect(); chartFocus.current = null; selected.element.focus();
+    };
+    observer.observe(region, { childList: true, subtree: true });
+    restoreFocus();
+    return () => observer.disconnect();
+  }, [tab, sharedReady, query.isPending, query.error]);
   const visibleServices = result.services.filter(service => profitFilter === 'all' || profitFilter === 'negative' && (service.result ?? 0) < 0 || profitFilter === 'low' && service.revenue! > 0 && (service.result ?? 0) / service.revenue! < .1);
   const commit = (next: FinanceSettings) => {
     if (!sharedReady || saving) return false;
@@ -120,6 +147,17 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   };
   const clientName = (id: string) => data?.clients.find(client => client.id === id)?.name || 'Sin cliente identificado';
   const selectClient = (id: string) => { setFilters({ ...filters, clients: [id] }); setProfitFilter('all'); setTab('services'); };
+  const openDetails = (concept: string, period?: Pick<Filters, 'start' | 'end'>) => {
+    if (!validDetailConcept(concept)) return;
+    setDrilldown({ concept, returnFilters: filters, monthly: !!period });
+    if (period) setFilters(current => ({ ...current, ...period }));
+    setTab('details');
+  };
+  const returnToChart = () => {
+    if (drilldown) chartFocus.current = { concept: drilldown.concept, ...(drilldown.monthly ? { month: filters.start } : {}) };
+    if (drilldown?.monthly) { setFilters(drilldown.returnFilters); setTrendView(current => ({ ...current, open: true })); }
+    setTab('general');
+  };
   const moveMonth = (offset: number) => { const range = adjacentMonth(filters.start, offset); if (range) setFilters(current => ({ ...current, ...range })); };
   const updateFilter = (key: 'clients' | 'properties' | 'workers', ids: string[]) => setFilters(current => ({ ...current, [key]: ids }));
   const csv = () => {
@@ -132,7 +170,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
     rows.push(['Sin IVA · resultado provisional · cantidades de ficha estimadas · gastos generales excluidos al filtrar cliente/propiedad/trabajador']);
     download(`analisis-financiero-${filters.start}-${filters.end}.csv`, '\uFEFF' + rows.map(row => row.map(cell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
   };
-  return <main className="min-h-screen bg-[#f7f5fc] p-4 sm:p-6">
+  return <main ref={workspace} className="min-h-screen bg-[#f7f5fc] p-4 sm:p-6">
     <div className="mx-auto max-w-[1500px] space-y-5">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3"><div className="rounded-2xl bg-[#310984] p-3 text-white"><BarChart3 className="h-6 w-6" /></div>
@@ -180,12 +218,13 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
               <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm">{result.excludedIncomeServices.map(service => <li key={service.id}>{service.date.split('-').reverse().join('/')} · {service.propertyName} · {service.revenue === null ? 'Precio pendiente' : money(service.revenue)}</li>)}</ul>
             </details>}
             <nav aria-label="Vistas del análisis" className="flex gap-2 overflow-x-auto pb-1">{([['general', 'General'], ['clients', 'Por cliente'], ['services', 'Servicios'], ['incomes', 'Otros ingresos'], ['expenses', 'Otros gastos'], ['rates', 'Tarifas']] as const).map(([id, title]) =>
-              <Button key={id} aria-pressed={tab === id} variant={tab === id ? 'default' : 'outline'} className={tab === id ? 'bg-[#310984] hover:bg-[#45209a]' : ''} onClick={() => setTab(id)}>{title}</Button>)}</nav>
+              <Button key={id} aria-pressed={tab === id} variant={tab === id ? 'default' : 'outline'} className={tab === id ? 'bg-[#310984] hover:bg-[#45209a]' : ''} onClick={() => setTab(id)}>{title}</Button>)}{tab === 'details' && drilldown && <Button aria-pressed="true" className="bg-[#310984]" onClick={() => setTab('details')}>{isIncomeConcept(drilldown.concept) ? 'Ingresos' : 'Desglose de gastos'}</Button>}</nav>
             {tab === 'general' && <>
-              <FinancialDashboard result={result} names={data?.clients || []} onClient={selectClient} onServices={() => { setProfitFilter('all'); setTab('services'); }} onIncomes={() => setTab('incomes')} onEdit={setEditing} />
-              <FinancialTrend sedeId={sedeId} settings={settings} filters={filters} />
+              <FinancialDashboard result={result} names={data?.clients || []} onClient={selectClient} onServices={() => { setProfitFilter('all'); setTab('services'); }} onIncomes={() => setTab('incomes')} onEdit={setEditing} onDetails={openDetails} />
+              <FinancialTrend sedeId={sedeId} settings={settings} filters={filters} view={trendView} onViewChange={patch => setTrendView(current => ({ ...current, ...patch }))} onDetails={openDetails} />
               <details className={panel}><summary className="cursor-pointer font-medium text-[#310984]">Tabla de resultados por cliente</summary><div className="mt-4"><ClientTable compact result={result} names={data?.clients || []} onClient={selectClient} /></div></details>
             </>}
+            {tab === 'details' && drilldown && <FinancialDetail result={result} settings={settings} concept={drilldown.concept} filters={filters} clients={data?.clients || []} onBack={returnToChart} />}
             {tab === 'clients' && <section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Todos los clientes del análisis</h2><ClientTable result={result} names={data?.clients || []} onClient={selectClient} /></section>}
             {tab === 'incomes' && <IncomePanel settings={settings} result={result} clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} date={filters.start} onChange={commit} />}
             {tab === 'services' && <><ExternalIncomeDetail result={result} onManage={() => setTab('incomes')} /><section className={panel}><h2 className="mb-4 font-semibold text-[#310984]">Servicios · origen de cada importe</h2>
