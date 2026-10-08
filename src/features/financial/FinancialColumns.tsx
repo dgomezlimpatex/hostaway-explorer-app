@@ -7,6 +7,7 @@ interface Props {
   series: ColumnSeries[];
   label: string;
   onSelect?: (id: string, groupIndex?: number) => void;
+  compact?: boolean;
 }
 
 function ColumnShape({ x, y, width, height, index = 0, column, groups, onSelect }: {
@@ -20,14 +21,14 @@ function ColumnShape({ x, y, width, height, index = 0, column, groups, onSelect 
     onKeyDown={onSelect ? event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); onSelect(column.id, index); } } : undefined} /></g>;
 }
 
-export function FinancialColumns({ groups, series, label, onSelect }: Props) {
+export function FinancialColumns({ groups, series, label, onSelect, compact = false }: Props) {
   const hasValues = groups.some(group => series.some(column => (group.values[column.id] ?? 0) !== 0));
-  if (!hasValues) return <p className="py-10 text-center text-sm text-slate-500">Sin importes registrados para esta comparación.</p>;
+  if (!hasValues) return <p data-financial-empty className="py-10 text-center text-sm text-slate-500">Sin importes registrados para esta comparación.</p>;
   return <div className="mt-5">
     <div className="overflow-x-auto rounded-xl bg-slate-50/50" tabIndex={0} aria-label={label}>
-      <div className="h-72" style={{ minWidth: Math.max(320, groups.length * series.length * 24 + 80) }} aria-hidden={onSelect ? undefined : true}>
+      <div className="h-72" style={{ minWidth: Math.max(320, groups.length * series.length * (compact ? 18 : 24) + 80) }} aria-hidden={onSelect ? undefined : true}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={groups} barGap={5} barCategoryGap="18%" margin={{ left: 0, right: 20, top: 20, bottom: 8 }}>
+          <BarChart data={groups} barGap={compact ? 3 : 5} barCategoryGap={compact ? '15%' : '18%'} margin={{ left: 0, right: 20, top: 20, bottom: 8 }}>
             <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" />
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={shortMoney} width={65} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
