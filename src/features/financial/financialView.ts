@@ -7,6 +7,19 @@ export interface FinancialView {
 }
 const tabs = ['general', 'clients', 'services', 'expenses', 'rates', 'incomes'];
 const profits = ['all', 'negative', 'low'];
+
+export function financialMonthRange(month: string): Pick<Filters, 'start' | 'end'> | null {
+  if (!/^\d{4}-\d{2}$/.test(month) || !validDate(`${month}-01`)) return null;
+  const start = `${month}-01`;
+  const end = new Date(`${start}T00:00:00Z`);
+  end.setUTCMonth(end.getUTCMonth() + 1, 0);
+  return { start, end: end.toISOString().slice(0, 10) };
+}
+export function selectedFinancialMonth(filters: Pick<Filters, 'start' | 'end'>): string {
+  const month = filters.start.slice(0, 7);
+  const range = financialMonthRange(month);
+  return range?.start === filters.start && range.end === filters.end ? month : '';
+}
 // Only presentation choices, scoped by account and site in this browser tab.
 // Shared financial settings and unsaved business adjustments are not stored here.
 export function loadFinancialView(ownerKey: string, today: string): FinancialView {

@@ -7,7 +7,13 @@ import {pathToFileURL} from 'node:url';
 const temp=mkdtempSync(join(tmpdir(),'financial-view-'));
 try {
   await build({entryPoints:['src/features/financial/financialView.ts'],outfile:join(temp,'view.mjs'),bundle:true,platform:'node',format:'esm',logLevel:'silent'});
-  const {loadFinancialView,saveFinancialView}=await import(pathToFileURL(join(temp,'view.mjs')));
+  const {loadFinancialView,saveFinancialView,financialMonthRange,selectedFinancialMonth}=await import(pathToFileURL(join(temp,'view.mjs')));
+  for (const [month,end] of [['2026-09','2026-09-30'],['2026-12','2026-12-31'],['2027-01','2027-01-31'],['2026-02','2026-02-28'],['2024-02','2024-02-29']]) {
+    const range=financialMonthRange(month);assert.deepEqual(range,{start:month+'-01',end});assert.equal(selectedFinancialMonth(range),month);
+    assert.equal(selectedFinancialMonth({...range,start:month+'-02'}),'');
+  }
+  for (const invalid of ['', '2026-00', '2026-13', '2026-9', '2026-09-01', 'bad']) assert.equal(financialMonthRange(invalid),null);
+  assert.equal(selectedFinancialMonth({start:'2026-09-01',end:'2026-10-31'}),'');
   const values=new Map();globalThis.sessionStorage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};
   const defaults=loadFinancialView('user:site','2026-10-08');assert.equal(defaults.filters.start,'2026-10-01');assert.equal(defaults.tab,'general');
   const view={filters:{start:'2026-09-01',end:'2026-09-30',clients:['c'],properties:['p'],workers:['w']},tab:'services',profitFilter:'low'};
