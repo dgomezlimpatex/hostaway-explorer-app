@@ -1,0 +1,24 @@
+{
+  "request": "Dani confirma paños con coste de 0,15 EUR y cobro de 0,25 EUR por limpieza, inicialmente solo Turquoise según configuración de propiedad; bolsas incluidas en el 3% y bayetas propias del trabajador.",
+  "reason": "Ajuste de cálculos locales y su configuración en la pantalla financiera existente. No hay operaciones sobre tareas, clientes, propiedades ni stock, cambios de esquema ni escrituras automáticas. Las tarifas y reglas editadas por el usuario conservan el guardado explícito y control de revisión existente.",
+  "verification": "Build correcto; TypeScript app 102 errores heredados y cero nuevos, Node cero; lint focalizado correcto; pruebas del motor real con suplementos, cantidades, herencia, filtros, check-in y servicios sin ingreso; navegador real con fixtures sin red, detalle de cobro, regla en borrador y guardado simulado. Septiembre auditado de solo lectura, +107,25 EUR en 429 servicios, gastos constantes. Los lavados ocasionales siguen pendientes de confirmación.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "80aadf4af504069c61911d6458c822d1cdb3a2258ae3bda4116d2c93389a7b74"
+}
