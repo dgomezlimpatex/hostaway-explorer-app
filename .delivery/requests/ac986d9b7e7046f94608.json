@@ -1,0 +1,22 @@
+{
+  "request": "Añadir un selector de mes al análisis financiero para elegir el periodo sin escribir dos fechas.",
+  "reason": "Control de filtro local que aplica el primer y último día del mes elegido y conserva cliente/propiedad/trabajador. Las fechas manuales y la memoria de vista existentes siguen disponibles. No cambia reglas financieras, autenticación, datos operativos ni backend.",
+  "verification": "Pruebas del rango real para meses de 28/29/30/31 días y cambio de año; entradas inválidas y periodo personalizado. Navegador con página real y datos simulados sin red: selector actualiza Desde/Hasta, reconoce edición manual, funciona en móvil y se conserva al recargar. Build y lint focalizado correctos; tipos app sin errores nuevos (102 heredados), Node cero.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialViewTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "61a254f72e8fe08eb4378d19fcef41e1f4753d689099f37b2e8c30e6a416877b"
+}
