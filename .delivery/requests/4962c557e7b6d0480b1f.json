@@ -1,0 +1,34 @@
+{
+  "request": "Dani solicita continuar con P2 de la lista de análisis financiero: indicadores por propiedad, comparativas, filtros visibles, reparto de gastos generales, alertas e informes descargables.",
+  "reason": "Implementa únicamente el análisis local y su interfaz en la pantalla existente. Añade lecturas de edificios y presupuestos ya existentes bajo la sesión y RLS actuales. El reparto redistribuye importes en memoria y conserva céntimos y balance global. No guarda repartos, cambia tarifas del negocio, crea comunicaciones, ejecuta sincronizaciones, altera backend ni genera gastos externos.",
+  "verification": "Verificados el motor y lectores reales con fixtures sin red: intersecciones de seis filtros y categorías parciales, check-in normalizado, KPIs y rankings, reparto mensual por ingresos/servicios y denominador de sede previo a filtros, conciliación por cliente/propiedad/mes/desglose, alertas y fechas límite, año anterior bisiesto y presupuesto vinculado/prorrateado con errores explícitos. Navegador real a 375/768/1024/1440 px: conservación de preferencias, comparaciones y retorno/foco, error/reintento de presupuesto y CSV/Excel/PDF descargados sin escrituras. Excel releído con importes numéricos y protección de texto fórmula; PDF ficticio paginado renderizado y revisado. Regresión financiera existente, lint focalizado y build correctos; TypeScript de app comparado con origin/main conserva 102 errores previos y no añade ninguno; Node sin errores. No se probó sesión productiva. Consultas SELECT de catálogo confirmaron columnas, relaciones y RLS existentes, sin valores personales ni escrituras. Envío programado requiere canal/destinatario/fecha aún no indicados. Se mantiene la regla previa siempre sin IVA, con pregunta pendiente sobre vista opcional. KPIs PMS/forecast quedan como futuro condicionado por cobertura e importes de reservas; no se inventan datos ni se activa sincronización. El cierre contable sigue pendiente de un registro de cierre.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialDetailTest.mjs",
+    "scripts/financialViewTest.mjs",
+    "scripts/financialInsightsTest.mjs",
+    "scripts/financialFormattingTest.mjs",
+    "scripts/financialAnalyticsTest.mjs",
+    "scripts/financialReportsTest.mjs",
+    "scripts/financialChartPresentationBrowserTest.mjs",
+    "scripts/financialDesignBrowserTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs",
+    "scripts/financialAnalyticsBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "3598260d8bfe6ee3f3d1f9920d21d1b2c8b72191f6ac8102213599f8424e70e2"
+}
