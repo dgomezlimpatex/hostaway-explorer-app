@@ -1,0 +1,27 @@
+{
+  "request": "Añadir una vista general del año con barras de ingresos y gastos desglosados y el botón Vista Anual junto al selector de mes.",
+  "reason": "Nueva vista solicitada de la aplicación: amplía el intervalo del lector existente de solo lectura, calcula doce meses en memoria con el motor actual y conserva preferencias de presentación en sessionStorage por cuenta y sede. No modifica tarifas, configuración compartida, datos reales, consultas de escritura, esquema, permisos ni infraestructura.",
+  "verification": "Revisión del diff completo: lector y persistencia compartida sin cambios; seleccionar año, categorías y detalles no guarda datos del negocio. Build y lint focalizado correctos; comprobación real de tipos app y Node comparada con c05754ae: 102 errores heredados de app, cero nuevos; Node cero. Pruebas con código real concilian los doce meses con el total anual en todas las categorías, incluidos fijos, excepciones, ingresos puntuales y dirección, con filtros de cliente/propiedad/trabajador y límites de año/bisiestos. Navegador con la página, lector y CSS reales y backend simulado sin red verifica botón, selector y flechas de año, doce filas, clic y teclado, detalle mensual/anual y retorno, foco, recarga, restauración mensual, año vacío, ausencia de escrituras por navegar y escritorio/móvil sin desbordamiento. Verificadas también regresiones de ingresos externos, consumos, desglose y motor mensual. La prueba de navegador usa datos locales y no acredita una sesión autenticada de producción.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialViewTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialDetailTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "db860d19ee551b1f0dfa6cac7a69951e608dcaab27b56313139545a88618d046"
+}
