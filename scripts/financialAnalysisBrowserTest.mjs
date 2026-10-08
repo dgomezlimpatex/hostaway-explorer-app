@@ -177,6 +177,12 @@ try {
   await expect(page.getByRole('region',{name:'Evolución mensual'}).locator('svg.recharts-surface').first()).toBeVisible();
   await openDetails('Datos de la evolución · 12 meses');
   await expect(page.getByRole('region',{name:'Evolución mensual'}).getByRole('row')).toHaveCount(13);
+  const monthFromLines=page.getByRole('region',{name:'Evolución mensual'}).locator('tbody tr').nth(10).getByRole('button');
+  await monthFromLines.press('Enter');
+  await expect(page.getByRole('heading',{name:'Ingresos · desglose',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
+  await expect(monthFromLines).toBeFocused();
+  await expect(page.getByRole('region',{name:'Evolución mensual'}).locator('.recharts-line')).toHaveCount(3);
   await page.getByRole('region',{name:'Evolución mensual'}).getByRole('button',{name:'Columnas',exact:true}).click();
   const trend=page.getByRole('region',{name:'Evolución mensual'});
   await expect(trend.locator('.recharts-bar')).toHaveCount(5);
