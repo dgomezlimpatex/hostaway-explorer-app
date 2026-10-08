@@ -73,9 +73,12 @@ try {
   const previousEnd = await page.getByLabel('Hasta', { exact: true }).inputValue();
   const [year, month] = previousEnd.split('-').map(Number);
   const monthEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-  await page.getByLabel('Hasta', { exact: true }).fill(monthEnd);
+  await page.getByLabel('Mes del análisis', { exact: true }).fill(previousEnd.slice(0,7));
+  await expect(page.getByLabel('Desde',{exact:true})).toHaveValue(previousEnd.slice(0,7)+'-01');
+  await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue(monthEnd);
   await expect(page.getByText('2317,00 €', { exact: true }).first()).toBeVisible();
   await page.getByLabel('Hasta', { exact: true }).fill(previousEnd);
+  if(previousEnd!==monthEnd)await expect(page.getByLabel('Mes del análisis',{exact:true})).toHaveValue('');
   await page.getByRole('button', { name: 'Tarifas', exact: true }).click();
   await expect(page.getByText('0,247 € / prenda')).toBeVisible();
   await expect(page.getByText('2317,00 € / mes · coste de empresa')).toBeVisible();
@@ -232,6 +235,13 @@ try {
   await page.getByRole('button',{name:'General',exact:true}).click();
   await page.screenshot({ path: join(tmpdir(), 'limpatex-financial-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel('Mes del análisis',{exact:true}).fill('2024-02');
+  await expect(page.getByLabel('Desde',{exact:true})).toHaveValue('2024-02-01');
+  await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue('2024-02-29');
+  await expect(page.getByRole('button',{name:'Actualizar datos',exact:true})).toBeEnabled();
+  await page.reload();
+  await expect(page.getByLabel('Mes del análisis',{exact:true})).toHaveValue('2024-02');
+  await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue('2024-02-29');
   await expect(page.getByRole('heading', { name: 'Análisis financiero', exact: true })).toBeVisible();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'No page-level horizontal overflow on mobile');
   await page.screenshot({ path: join(tmpdir(), 'limpatex-financial-mobile.png'), fullPage: true });

@@ -13,7 +13,7 @@ import { COST_ITEMS, QUANTITY_ITEMS, analyze, newSettings, parseAmount, priceAt,
 import type { DirectoryEntry } from './financialSource';
 import { loadFinance, saveFinance } from './financialPersistence';
 import { IncomePanel, ConsumptionPanel } from './FinancialConfiguration';
-import { loadFinancialView, saveFinancialView } from './financialView';
+import { loadFinancialView, saveFinancialView, financialMonthRange, selectedFinancialMonth } from './financialView';
 
 const money = (cents: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 const rateMoney = (mills: number) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 3 }).format(mills / 1000) + ' €';
@@ -144,14 +144,15 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
       {storageError && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-amber-900">{storageError}</p>}
       {message && <p role="status" className="text-sm text-[#310984]">{message}</p>}
       <section className={`${panel} space-y-3`} aria-label="Filtros del análisis">
-        <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <label className="text-sm font-medium">Mes<Input type="month" aria-label="Mes del análisis" value={selectedFinancialMonth(filters)} onChange={event => { const range = financialMonthRange(event.target.value); if (range) setFilters(current => ({ ...current, ...range })); }} /></label>
           <label className="text-sm font-medium">Desde<Input type="date" value={filters.start} onChange={event => setFilters({ ...filters, start: event.target.value })} /></label>
           <label className="text-sm font-medium">Hasta<Input type="date" value={filters.end} onChange={event => setFilters({ ...filters, end: event.target.value })} /></label>
           <MultiFilter label="Clientes" entries={data?.clients || []} selected={filters.clients} onChange={ids => updateFilter('clients', ids)} />
           <MultiFilter label="Propiedades" entries={data?.properties || []} selected={filters.properties} onChange={ids => updateFilter('properties', ids)} />
           <MultiFilter label="Trabajadores" entries={data?.workers || []} selected={filters.workers} onChange={ids => updateFilter('workers', ids)} />
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500"><button className="text-[#310984] underline" onClick={() => setFilters({ start: `${today.slice(0, 7)}-01`, end: today, clients: [], properties: [], workers: [] })}>Ver todo · mes actual</button>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>{selectedFinancialMonth(filters) ? 'Mes completo seleccionado' : 'Periodo personalizado · selecciona un mes o ajusta las fechas'}</span><button className="text-[#310984] underline" onClick={() => setFilters({ start: `${today.slice(0, 7)}-01`, end: today, clients: [], properties: [], workers: [] })}>Ver todo · mes actual</button>
           {!!filters.workers.length && <span>Servicios en los que participa el trabajador; ingreso único y coste de todo el equipo.</span>}
           {(!!filters.clients.length || !!filters.properties.length || !!filters.workers.length) && <span>Los gastos generales sin vínculo quedan fuera de estos filtros.</span>}
         </div>

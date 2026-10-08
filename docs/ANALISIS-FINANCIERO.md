@@ -2,6 +2,8 @@
 
 ## Conservación de la vista
 
+El selector «Mes» aplica desde el primer hasta el último día del mes y año elegidos, incluido febrero bisiesto. Conserva los filtros de cliente, propiedad y trabajador. Las fechas Desde/Hasta siguen disponibles para periodos personalizados; el selector refleja un mes solo cuando las fechas cubren ese mes completo. La selección se recupera desde las fechas recordadas.
+
 Recuperar el foco de la pestaña del navegador no vuelve a consultar automáticamente las fuentes financieras. «Actualizar datos» permite solicitar una consulta expresamente; la pantalla y los formularios permanecen montados mientras se actualizan los datos ya cargados. Los errores de fuente siguen ocultando los totales parciales.
 
 Fechas, filtros, sección y filtro de rentabilidad se conservan en sessionStorage por usuario y sede para volver al apartado o recargar en la misma pestaña. Esta memoria de presentación no guarda ajustes financieros ni sustituye «Guardar cambios».
