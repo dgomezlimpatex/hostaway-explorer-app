@@ -85,6 +85,7 @@ export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
     <Button
       variant="outline"
       size="sm"
+      aria-label="Buscar en la aplicación"
       className="relative w-full justify-start text-sm text-muted-foreground gap-2"
       onClick={() => setOpen(true)}
     >

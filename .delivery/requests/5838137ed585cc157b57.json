@@ -1,0 +1,30 @@
+{
+  "request": "Implementar P0 y P1 por fases de la lista adjunta de análisis financiero. Esta entrega cubre P0.",
+  "reason": "Correcciones solicitadas de presentación, navegación y controles de gráficos. Usa los mismos importes y lector de solo lectura; no altera el motor financiero, tarifas, configuración compartida, permisos ni operaciones reales. Los cambios del buscador se limitan a etiqueta accesible y layout.",
+  "verification": "Revisión del diff: nombres corregidos solo al mostrar, IDs y nombres guardados intactos. Geometría del cero con clientes positivos, negativos y mezclados; etiquetas bajo cada barra; tooltip activo/inactivo, formato es-ES con miles y coma; exactamente una activación por clic/Enter/Space; composición porcentual distinta a importes; sin ejes de gráficos plegados. Sidebar real probado en escritorio alto/corto y móvil con primeros/últimos enlaces clicables y búsqueda. Regresiones de página y lector reales con backend simulado, modo anual/mensual, filtros, detalle y retorno, foco, persistencia, conflictos y móvil sin desbordamiento. Build y lint focalizado correctos; tipos de app y Node sin errores nuevos sobre la base vigente. Las pruebas usan datos locales y no acreditan sesión autenticada productiva. No se reprodujo el solapamiento original en alturas probadas; se verifica el resultado final sin atribuir una causa no confirmada.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialFormattingTest.mjs",
+    "scripts/financialChartPresentationBrowserTest.mjs",
+    "scripts/financialSidebarBrowserTest.mjs",
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialViewTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialDetailTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "4218f38858152546dc1ecfa72b43ab240005caba95828309293b364f68d21fc1"
+}

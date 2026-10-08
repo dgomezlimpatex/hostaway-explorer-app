@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { FinancialColumns } from './FinancialColumns';
 import { annualTrend, groupedCosts, money, monthlyColumns, type ComparisonView } from './financialCharts';
 import type { Filters, FinanceSettings, FinancialService } from './financialModel';
+import { percent } from './financialFormat';
 
 export function FinancialAnnual({ services, settings, filters, comparison, onComparison, onDetails }: {
   services: FinancialService[]; settings: FinanceSettings; filters: Filters;
@@ -30,7 +31,7 @@ export function FinancialAnnual({ services, settings, filters, comparison, onCom
         <tbody>{rows.map(row => { const costs = groupedCosts(row.costs); return <tr key={row.start} className="border-b border-violet-50">
           <th scope="row" className="whitespace-nowrap p-3 text-left"><button className="text-[#310984] hover:underline focus-visible:outline-violet-600" aria-label={`Ver ingresos de ${row.name}`} onClick={() => onDetails('revenue', { start: row.start, end: row.end })}>{row.name}</button></th>
           {[row.revenue, costs.personal, costs.laundry, costs.supplies, costs.products, ...(hasOtherCosts ? [costs.other] : []), row.expense, row.result].map((value, index) => <td key={index} className="whitespace-nowrap p-3 tabular-nums">{money(value)}</td>)}
-          <td className="whitespace-nowrap p-3">{row.margin === null ? '—' : `${row.margin.toFixed(1)} %`}</td><td className="p-3">{row.pending} / {row.excludedPrices}</td><td className="whitespace-nowrap p-3">{row.manualCount || 'Ninguno registrado'}</td>
+          <td className="whitespace-nowrap p-3">{percent(row.margin)}</td><td className="p-3">{row.pending} / {row.excludedPrices}</td><td className="whitespace-nowrap p-3">{row.manualCount || 'Ninguno registrado'}</td>
         </tr>; })}</tbody>
       </table></div>
     </details>

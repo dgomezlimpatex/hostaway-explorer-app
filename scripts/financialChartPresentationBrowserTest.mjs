@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+import { chromium, expect } from '@playwright/test';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import postcss from 'postcss';
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
+const bundle = await build({ stdin: { contents: `import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {FinancialColumns} from './src/features/financial/FinancialColumns';import {FinancialClientChart} from './src/features/financial/FinancialClientChart';import {FinancialExpenseShare} from './src/features/financial/FinancialExpenseShare';const series=[{id:'revenue',name:'Ingresos',color:'#6d28d9'},{id:'personal',name:'Personal',color:'#2563eb'},{id:'laundry',name:'Lavandería',color:'#db2777'},{id:'supplies',name:'Amenities y consumibles',color:'#d97706'},{id:'products',name:'Productos',color:'#0f766e'}];const values={revenue:916098,personal:100000,laundry:35000,supplies:7500,products:3000};function App(){const[mode,setMode]=useState('positive');const clients=mode==='positive'?[100000,50000]:mode==='negative'?[-100000,-50000]:[-100000,50000];const select=(id,index)=>{window.selections.push([id,index]);};return <main style={{padding:24}}><section aria-label="Conceptos"><FinancialColumns groups={[{name:'Septiembre 2026',values}]} series={series} label="Importes por concepto" onSelect={select}/></section><button onClick={()=>setMode('positive')}>Positivos</button><button onClick={()=>setMode('negative')}>Negativos</button><button onClick={()=>setMode('mixed')}>Mixtos</button><section aria-label="Clientes"><FinancialClientChart clients={clients.map((result,index)=>({id:String(index),name:'Cliente '+index,result,margin:20,pending:0}))} metric="result" onClient={id=>select(id)}/></section><section aria-label="Composición"><FinancialExpenseShare rows={series.slice(1).map(row=>({...row,value:values[row.id]}))} total={145500} onDetails={select}/></section></main>;}window.selections=[];createRoot(document.getElementById('root')).render(<App/>);`, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, format: 'iife', jsx: 'automatic', metafile: true, define: { 'process.env.NODE_ENV': '"production"' }, outdir: join(tmpdir(), 'financial-charts-fixture') });
+assert.ok(!Object.keys(bundle.metafile.inputs).some(file => /integrations\/supabase|useFinancialData/.test(file)));
+const source = readFileSync('src/index.css', 'utf8').replace(/^\s*@import\s+"@fontsource\/[^"\n]+";\s*$/gm, '');
+const { css } = await postcss([tailwindcss('tailwind.config.ts'),autoprefixer]).process(source+'\n'+bundle.outputFiles.filter(file=>file.path.endsWith('.css')).map(file=>file.text).join('\n'), { from: 'src/index.css' });
+const html = `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body><div id="root"></div><script>${bundle.outputFiles.find(file=>file.path.endsWith('.js')).text.replaceAll('</script','<\\/script')}</script></body></html>`;
+const executablePath = process.platform === 'linux' && existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined;
+const browser = await chromium.launch({ headless: true, executablePath });
+try {
+  const page = await browser.newPage({ viewport: {width:1440,height:1050} });
+  const errors=[],requests=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.route('**/*',route=>route.request().url()==='https://charts.local.test/'?route.fulfill({contentType:'text/html',body:html}):(requests.push(route.request().url()),route.abort()));
+  await page.goto('https://charts.local.test/');
+  const chart=page.getByRole('region',{name:'Conceptos'}),clients=page.getByRole('region',{name:'Clientes'});
+  await expect(chart.locator('.financial-column')).toHaveCount(5);
+  const labels=await chart.locator('.recharts-xAxis .recharts-cartesian-axis-tick').evaluateAll(nodes=>nodes.map(node=>[...node.querySelectorAll('tspan')].map(span=>span.textContent).join(' ')));
+  assert.deepEqual(labels,['Ingresos','Personal','Lavandería','Amenities y consumibles','Productos']);
+  const coordinates=await chart.locator('.recharts-rectangle').evaluateAll(nodes=>nodes.map(node=>({x:node.getBBox().x,width:node.getBBox().width})));
+  const ticks=await chart.locator('.recharts-xAxis .recharts-cartesian-axis-tick text').evaluateAll(nodes=>nodes.map(node=>Number(node.getAttribute('x'))));
+  coordinates.forEach((bar,index)=>assert.ok(Math.abs(bar.x+bar.width/2-ticks[index])<1,'Every concept label must sit under its own bar'));
+  await chart.getByRole('button',{name:/^Ingresos ·/}).hover();
+  await expect(chart.getByRole('tooltip')).toContainText('Ingresos: 9.160,98 €');
+  await page.mouse.move(1,1);
+  await expect(chart.getByRole('tooltip')).toHaveCount(0);
+  await chart.getByRole('button',{name:/^Personal ·/}).press('Enter');
+  assert.deepEqual(await page.evaluate(()=>window.selections),[['personal',0]],'One keyboard activation calls the detail once');
+  await chart.getByRole('button',{name:/^Lavandería ·/}).click();
+  assert.deepEqual(await page.evaluate(()=>window.selections),[['personal',0],['laundry',0]],'One pointer activation calls the detail once');
+  assert.equal(await chart.getByRole('button').count(),10,'Exactly one control per nonzero bar and one per legend entry');
+  for(const mode of ['Positivos','Negativos','Mixtos']){
+    await page.getByRole('button',{name:mode,exact:true}).click();
+    await expect(clients.locator('.financial-client-column')).toHaveCount(2);
+    const zero=Number(await clients.locator('.recharts-reference-line-line').getAttribute('x1'));
+    const bars=await clients.locator('.financial-client-column').evaluateAll(nodes=>nodes.map(node=>({x:node.getBBox().x,width:node.getBBox().width})));
+    bars.forEach((bar,index)=>assert.ok(Math.abs((mode==='Negativos'||mode==='Mixtos'&&index===0?bar.x+bar.width:bar.x)-zero)<1,mode+' bars originate at the real zero axis'));
+  }
+  await clients.getByRole('button',{name:/^Ver detalle de Cliente 0/}).press('Space');
+  assert.equal((await page.evaluate(()=>window.selections)).at(-1)[0],'0');
+  await expect(page.getByRole('region',{name:'Composición'}).locator('.recharts-bar')).toHaveCount(0);
+  await expect(page.getByRole('region',{name:'Composición'}).locator('.recharts-pie')).toHaveCount(1);
+  await page.screenshot({path:join(tmpdir(),'limpatex-financial-p0-charts.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
+  console.log('financial-chart-presentation: concept labels and geometry, true zero with positive/negative/mixed clients, inactive tooltip cleanup, single pointer/keyboard activation, distinct expense composition and mobile passed');
+} finally { await browser.close(); }

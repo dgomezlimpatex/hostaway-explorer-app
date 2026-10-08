@@ -375,9 +375,9 @@ export const DashboardSidebar = () => {
 
   return (
     <Sidebar id="app-sidebar" className="border-r border-line-dark bg-surface-dark text-ink-light" collapsible="offcanvas">
-      <SidebarContent className="flex h-full flex-col">
+      <SidebarContent className="flex h-full flex-col overflow-hidden">
         {/* Header */}
-        <div className="border-b border-white/10 p-4">
+        <div className="shrink-0 border-b border-white/10 p-4">
             <div className="rounded-3xl border border-white/10 bg-white/8 p-3 shadow-2xl shadow-black/10 backdrop-blur">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-md bg-brand text-lg font-black text-white">
@@ -392,12 +392,12 @@ export const DashboardSidebar = () => {
           </div>
 
         {/* Global Search */}
-        <div className="px-3 pt-3">
+        <div className="shrink-0 px-3 pt-3">
           <GlobalSearch />
         </div>
 
         {/* Navigation Sections */}
-        <div className="flex-1 overflow-y-auto py-4 space-y-2">
+        <div className="min-h-0 flex-1 overflow-y-auto py-4 space-y-2" aria-label="Navegación principal">
           {renderNavigationSection('General', generalItems)}
           {renderNavigationSection('Gestión', managementItems)}
           {renderNavigationSection('Plantillas', checklistItems)}

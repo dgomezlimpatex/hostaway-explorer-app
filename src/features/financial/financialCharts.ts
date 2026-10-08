@@ -1,9 +1,10 @@
 import { analyze, validDate, type Category, type Filters, type FinancialService, type FinanceSettings } from './financialModel';
 import { financialMonthRange, financialYearRange } from './financialView';
+import { financialName } from './financialFormat';
+export { money } from './financialFormat';
 
 export type FinancialAnalysis = ReturnType<typeof analyze>;
 export const categoryNames: Record<Category, string> = { personal: 'Personal', laundry: 'Lavandería', supplies: 'Amenities y consumibles', products: 'Productos de limpieza', salary: 'Salario dirección turismo', other: 'Otros gastos' };
-export const money = (cents: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 export const shortMoney = (cents: number) => new Intl.NumberFormat('es-ES', { notation: 'compact', maximumFractionDigits: 1 }).format(cents / 100) + ' €';
 export const chartColors = ['#6d28d9', '#2563eb', '#db2777', '#d97706', '#0f766e', '#64748b'];
 export type ComparisonView = 'balance' | 'costs' | 'incomes';
@@ -56,7 +57,7 @@ export function dashboardSeries(analysis: FinancialAnalysis) {
     add('cloth', 'Cobro de paños de cocina', service.kitchenClothRevenue || 0, 'services');
   }
   for (const income of analysis.incomes) add(`external:${income.propertyName}`, income.propertyName, income.revenue ?? 0, 'incomes');
-  return { costs, incomes: [...incomes.values()].filter(row => row.value !== 0).map(row => ({ ...row, color: incomeColor(row.id) })) };
+  return { costs, incomes: [...incomes.values()].filter(row => row.value !== 0).map(row => ({ ...row, name: financialName(row.name), color: incomeColor(row.id) })) };
 }
 
 export function adjacentMonth(start: string, offset: number) {
