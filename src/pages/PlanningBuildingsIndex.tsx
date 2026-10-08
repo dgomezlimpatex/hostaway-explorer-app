@@ -1,43 +1,41 @@
-import { normalizeDirectorySearch } from '@/components/directory/directorySearch';
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Building2, ChevronRight, Loader2, Plus, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { Building2, Loader2, Plus, RefreshCw, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DirectoryEmpty, DirectoryPage, DirectorySearch, DirectorySegments } from '@/components/directory/DirectoryPage';
-import { BuildingDetailPanel } from '@/components/buildings/BuildingDetailPanel';
-import { buildingSetup, type BuildingDirectoryItem } from '@/components/buildings/buildingPresentation';
+import { DirectoryEmpty, DirectoryPage, DirectorySearch } from '@/components/directory/DirectoryPage';
+import { normalizeDirectorySearch } from '@/components/directory/directorySearch';
+import { BuildingSideEditor } from '@/components/buildings/BuildingSideEditor';
+import { buildingRoles } from '@/components/buildings/buildingDraft';
 import { useToast } from '@/hooks/use-toast';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
-import { useSupervisionBuildingCoverage } from '@/hooks/useSupervisionBuildingCoverage';
+import { useCleaners } from '@/hooks/useCleaners';
+import { useProperties } from '@/hooks/useProperties';
 import { propertyGroupStorage } from '@/services/storage/propertyGroupStorage';
 import { useSede } from '@/contexts/SedeContext';
 import { cn } from '@/lib/utils';
-import type { PropertyGroup } from '@/types/propertyGroups';
 
 const initialBuildingForm = { name: '', internalCode: '', checkOutTime: '11:00', checkInTime: '17:00' };
-
 export default function PlanningBuildingsIndex() {
   const { activeSede } = useSede();
   return <BuildingsWorkspace key={activeSede?.id || 'pending-sede'} />;
 }
-
 function BuildingsWorkspace() {
   const { data, isLoading, isError, refetch, isFetching } = useCleaningPlanningBuildingData();
-  const coverageQuery = useSupervisionBuildingCoverage();
+  const cleanersQuery = useCleaners();
+  const propertiesQuery = useProperties();
   const { isDesktop } = useDeviceType();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [setupFilter, setSetupFilter] = useState('all');
   const [zoneFilter, setZoneFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const onBusyChange = useCallback((nextDirty: boolean, nextSaving: boolean) => { setDirty(nextDirty); setSaving(nextSaving); }, []);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState('');
@@ -45,32 +43,41 @@ function BuildingsWorkspace() {
   const propertyGroups = useMemo(() => data?.propertyGroups || [], [data?.propertyGroups]);
   const propertyAssignments = useMemo(() => data?.propertyAssignments || [], [data?.propertyAssignments]);
   const cleanerAssignments = useMemo(() => data?.cleanerAssignments || [], [data?.cleanerAssignments]);
-  const excludedAssignments = useMemo(() => data?.excludedCleanerAssignments || cleanerAssignments.filter(item => item.roleType === 'excluded'), [data?.excludedCleanerAssignments, cleanerAssignments]);
-  const buildings = useMemo<BuildingDirectoryItem[]>(() => propertyGroups.map(group => {
-    const team = cleanerAssignments.filter(item => item.propertyGroupId === group.id && item.roleType !== 'excluded');
-    const propertyCount = propertyAssignments.filter(item => item.propertyGroupId === group.id).length;
-    return {
-      group, propertyCount, teamCount: team.length,
-      excludedCount: excludedAssignments.filter(item => item.propertyGroupId === group.id).length,
-      primaryCount: team.filter(item => !item.roleType || item.roleType === 'primary').length,
-      secondaryCount: team.filter(item => item.roleType === 'secondary').length,
-      backupCount: team.filter(item => item.roleType === 'backup').length,
-      setup: buildingSetup(group, propertyCount, team.length), coverage: coverageQuery.data?.[group.id],
-    };
-  }).sort((a, b) => (a.group.displayName || a.group.name).localeCompare(b.group.displayName || b.group.name, 'es', { numeric: true, sensitivity: 'base' })), [propertyGroups, propertyAssignments, cleanerAssignments, excludedAssignments, coverageQuery.data]);
-  const configured = buildings.filter(item => item.setup.rank === 3).length;
-  const zones = [...new Set(propertyGroups.map(group => group.zone).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  const cleanersById = useMemo(() => new Map(cleanersQuery.cleaners.map(item => [item.id, item])), [cleanersQuery.cleaners]);
+  const propertiesById = useMemo(() => new Map((propertiesQuery.data || []).map(item => [item.id, item])), [propertiesQuery.data]);
+  const buildings = useMemo(() => propertyGroups.map(group => ({
+    group,
+    team: cleanerAssignments.filter(item => item.propertyGroupId === group.id && item.roleType !== 'excluded'),
+    properties: propertyAssignments.filter(item => item.propertyGroupId === group.id),
+  })).sort((a, b) => (a.group.displayName || a.group.name).localeCompare(b.group.displayName || b.group.name, 'es', { numeric: true })), [propertyGroups, cleanerAssignments, propertyAssignments]);
+  const zones = [...new Set(propertyGroups.map(group => group.zone).filter(Boolean))].sort();
   const visible = buildings.filter(item => {
-    const group = item.group;
-    const matchesSearch = !searchTerm.trim() || [group.name, group.displayName, group.internalCode, group.zone, group.clientName, group.planningNotes].some(value => normalizeDirectorySearch(value).includes(normalizeDirectorySearch(searchTerm)));
-    return matchesSearch && (setupFilter === 'all' || (setupFilter === 'configured' ? item.setup.rank === 3 : item.setup.rank < 3))
-      && (zoneFilter === 'all' || (zoneFilter === 'unassigned' ? !group.zone : group.zone === zoneFilter));
+    const fields = [item.group.name, item.group.displayName, item.group.internalCode, item.group.zone, item.group.clientName, item.group.supervisorName,
+      ...item.team.map(member => cleanersById.get(member.cleanerId)?.name),
+      ...item.properties.flatMap(assignment => { const property = propertiesById.get(assignment.propertyId); return [property?.codigo, property?.nombre]; })];
+    return fields.some(value => normalizeDirectorySearch(value).includes(normalizeDirectorySearch(searchTerm)))
+      && (zoneFilter === 'all' || (zoneFilter === 'unassigned' ? !item.group.zone : item.group.zone === zoneFilter))
+      && (statusFilter === 'all' || (statusFilter === 'no-primary' ? !item.team.some(member => !member.roleType || member.roleType === 'primary') : item.properties.length === 0));
   });
-  const selected = visible.find(item => item.group.id === selectedId);
-  const desktopBuilding = selected || visible[0];
-  const hasFilters = !!searchTerm || setupFilter !== 'all' || zoneFilter !== 'all';
-  const reset = () => { setSearchTerm(''); setSetupFilter('all'); setZoneFilter('all'); setSelectedId(null); };
-  const count = (value: number) => isLoading || isError ? '—' : value;
+  const selected = buildings.find(item => item.group.id === selectedId);
+  const loading = isLoading || cleanersQuery.isLoading || propertiesQuery.isLoading;
+  const failed = isError || !!cleanersQuery.error || propertiesQuery.isError;
+  const selectBuilding = (id: string | null) => {
+    if (id === selectedId || saving) return;
+    if (dirty && !window.confirm('Hay cambios pendientes. ¿Descartarlos y continuar?')) return;
+    setDirty(false); setSelectedId(id);
+  };
+  useEffect(() => {
+    if (!dirty && !saving) return;
+    const guard = (event: MouseEvent) => {
+      const anchor = (event.target as Element).closest('a[href]');
+      if (!anchor || anchor.closest('[data-building-editor]')) return;
+      if (saving || !window.confirm('Hay cambios pendientes. ¿Salir y descartarlos?')) { event.preventDefault(); event.stopPropagation(); }
+    };
+    document.addEventListener('click', guard, true);
+    return () => document.removeEventListener('click', guard, true);
+  }, [dirty, saving]);
+  const refresh = async () => { const results = await Promise.all([refetch(), cleanersQuery.refetch(), propertiesQuery.refetch()]); if (results.some(result => result.error)) throw new Error('No se pudo actualizar el listado.'); };
   const handleCreateBuilding = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = buildingForm.name.trim();
@@ -101,7 +108,7 @@ function BuildingsWorkspace() {
       setBuildingForm(initialBuildingForm);
       setIsCreateOpen(false);
       toast({ title: 'Edificio creado', description: 'Ahora puedes vincular propiedades y configurar su equipo.' });
-      navigate(`/planning/buildings/${created.id}`);
+      setSelectedId(created.id);
     } catch (createBuildingError) {
       setCreateError(createBuildingError instanceof Error ? createBuildingError.message : 'No se pudo crear el edificio.');
     } finally {
@@ -109,97 +116,44 @@ function BuildingsWorkspace() {
     }
   };
 
-  const handleDeleteEmptyBuilding = async (group: PropertyGroup) => {
-    const propertyCount = propertyAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
-    const teamCount = cleanerAssignments.filter((assignment) => assignment.propertyGroupId === group.id && assignment.roleType !== 'excluded').length;
-    const excludedCount = excludedAssignments.filter((assignment) => assignment.propertyGroupId === group.id).length;
-
-    if (!(propertyCount === 0 && teamCount === 0 && excludedCount === 0)) {
-      toast({
-        title: 'No se puede eliminar el edificio',
-        description: 'Solo se pueden eliminar edificios completamente vacíos, sin propiedades, equipo ni personas marcadas como No aptas.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setDeletingGroupId(group.id);
-    try {
-      await propertyGroupStorage.deleteEmptyPropertyGroup(group.id);
-      await refetch();
-      toast({
-        title: 'Edificio eliminado',
-        description: `${group.displayName || group.name} se eliminó correctamente.`,
-      });
-    } catch (deleteError) {
-      toast({
-        title: 'No se pudo eliminar el edificio',
-        description: deleteError instanceof Error ? deleteError.message : 'Revisa permisos o relaciones pendientes e inténtalo de nuevo.',
-        variant: 'destructive',
-      });
-    } finally {
-      setDeletingGroupId(null);
-    }
-  };
-
-
-  const detail = (item: BuildingDirectoryItem) => (
-    <BuildingDetailPanel key={item.group.id} item={item} coverageLoading={coverageQuery.isLoading} coverageError={coverageQuery.isError} onRetryCoverage={() => void coverageQuery.refetch()} deleting={deletingGroupId === item.group.id} onDelete={() => handleDeleteEmptyBuilding(item.group)} />
-  );
-
-  return (
-    <DirectoryPage title="Edificios" eyebrow="Centros operativos" description="Propiedades, equipo y supervisión en una única ficha." icon={Building2} actions={<>
-      <Button className="rounded-xl" onClick={() => setIsCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Añadir edificio</Button>
-      <Button variant="outline" size="icon" className="rounded-xl" disabled={isFetching} aria-label="Actualizar edificios" onClick={() => { void refetch(); void coverageQuery.refetch(); }}><RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} /></Button>
-    </>} stats={[
-      { label: 'Edificios', value: count(buildings.length), helper: 'centros activos', tone: 'sky' },
-      { label: 'Configurados', value: count(configured), helper: 'con asignación automática', tone: 'green' },
-      { label: 'Por revisar', value: count(buildings.length - configured), helper: 'configuración pendiente', tone: 'muted' },
-      { label: 'Propiedades', value: count(new Set(propertyAssignments.filter(assignment => propertyGroups.some(group => group.id === assignment.propertyGroupId)).map(assignment => assignment.propertyId)).size), helper: 'vinculadas a edificios', tone: 'violet' },
-    ]}>
-      <div className="grid items-stretch gap-4 lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[440px_minmax(0,1fr)]">
-        <Card className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-270px)] lg:min-h-[640px]">
-          <div className="space-y-4 p-4 sm:p-5">
-            <div className="flex items-start justify-between gap-2"><div><h2 className="font-bold">Directorio de edificios</h2><p className="mt-1 text-sm text-slate-500">Selecciona un centro para ver su actividad.</p></div>{hasFilters && <Button variant="ghost" size="sm" onClick={reset}>Limpiar</Button>}</div>
-            <DirectorySearch value={searchTerm} onChange={setSearchTerm} placeholder="Buscar edificio, código, zona o cliente" />
-            <DirectorySegments value={setupFilter} onChange={setSetupFilter} options={[
-              { value: 'all', label: 'Todos', count: count(buildings.length) },
-              { value: 'configured', label: 'Configurados', count: count(configured) },
-              { value: 'pending', label: 'Por revisar', count: count(buildings.length - configured) },
-            ]} />
-            <Select value={zoneFilter} onValueChange={setZoneFilter}><SelectTrigger aria-label="Filtrar por zona" className="rounded-xl bg-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas las zonas</SelectItem><SelectItem value="unassigned">Sin zona asignada</SelectItem>{zones.map(zone => <SelectItem key={zone} value={zone}>{zone}</SelectItem>)}</SelectContent></Select>
-          </div>
-          <div className="min-h-0 flex-1 px-3 pb-3 lg:overflow-y-auto">
-            {isLoading ? <p role="status" className="py-10 text-center text-sm text-slate-500">Cargando edificios…</p> : isError ? (
-              <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">No se han podido cargar los edificios.<Button variant="outline" className="mt-3" onClick={() => void refetch()}>Reintentar</Button></div>
-            ) : !visible.length ? (
-              <DirectoryEmpty title={buildings.length ? 'No hay coincidencias' : 'Todavía no hay edificios'} description={buildings.length ? 'Prueba con otro nombre o ajusta los filtros.' : 'Añade un edificio para vincular sus propiedades y configurar el equipo.'} action={hasFilters && <Button variant="outline" onClick={reset}>Limpiar filtros</Button>} />
-            ) : <>
-              <p aria-live="polite" className="pb-3 text-xs text-slate-500">{visible.length} de {buildings.length} edificios</p>
-              <div className="space-y-2">
-                {visible.map(item => {
-                  const isSelected = item.group.id === (isDesktop ? desktopBuilding?.group.id : selected?.group.id);
-                  return <button key={item.group.id} type="button" aria-pressed={isSelected} onClick={() => setSelectedId(item.group.id)} className={cn(
-                    'flex w-full items-start gap-3 rounded-xl border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] focus-visible:ring-offset-2',
-                    isSelected ? 'border-[#310984]/30 bg-violet-50 ring-1 ring-[#310984]/20' : 'border-slate-200 bg-white hover:border-violet-300 hover:bg-slate-50',
-                  )}>
-                    <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', isSelected ? 'bg-white text-[#310984]' : 'bg-slate-100 text-slate-600')}><Building2 className="h-5 w-5" /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block break-words text-sm font-black leading-tight">{item.group.displayName || item.group.name}</span>
-                      <span className="mt-1 block truncate text-xs text-slate-500">{[item.group.internalCode, item.group.zone].filter(Boolean).join(' · ') || 'Sin zona asignada'}</span>
-                      <span className={cn('mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold', item.setup.className)}>{item.setup.label}</span>
-                      <span className="mt-1 block text-[11px] text-slate-500">{item.propertyCount} {item.propertyCount === 1 ? 'propiedad' : 'propiedades'} · {item.teamCount} {item.teamCount === 1 ? 'persona' : 'personas'}</span>
-                    </span>
-                    <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-slate-400" />
-                  </button>;
-                })}
-              </div>
-            </>}
-          </div>
-        </Card>
-        {isDesktop && !isLoading && !isError && (desktopBuilding ? detail(desktopBuilding) : <DirectoryEmpty title="La actividad de tu edificio" description="Selecciona un centro para consultar su configuración, equipo y supervisión." />)}
+  const editor = selected ? <BuildingSideEditor key={selected.group.id} groupId={selected.group.id} readOnly={failed || loading} cleaners={cleanersQuery.cleaners} properties={propertiesQuery.data || []} assignments={propertyAssignments} onClose={() => selectBuilding(null)} onDeleted={() => { setSelectedId(null); setDirty(false); setSaving(false); }} onBusyChange={onBusyChange} onRefresh={refresh} /> : null;
+  return <DirectoryPage title="Edificios" eyebrow="Centros operativos" description="Equipo y propiedades a la vista. Edita sin perder el conjunto." icon={Building2} showStats={false} actions={<>
+    <Button className="bg-[#310984] hover:bg-[#4c1bb0]" disabled={dirty || saving} onClick={() => setIsCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Añadir edificio</Button>
+    <Button variant="outline" size="icon" disabled={dirty || saving || isFetching} aria-label="Actualizar edificios" onClick={() => void refresh().catch(() => toast({ title: 'No se pudo actualizar', variant: 'destructive' }))}><RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} /></Button>
+  </>}>
+    <div className={cn('grid items-start gap-5', selected && isDesktop && 'lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] 2xl:grid-cols-[minmax(0,1fr)_460px]')}>
+      <div className="min-w-0 space-y-4">
+        <DirectorySearch value={searchTerm} onChange={setSearchTerm} placeholder="Buscar edificio, persona o propiedad…" />
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="text-xs text-slate-500">Zona<select aria-label="Filtrar por zona" value={zoneFilter} onChange={event => setZoneFilter(event.target.value)} className="ml-2 h-10 rounded-lg border border-violet-100 bg-white px-3 text-sm text-slate-800"><option value="all">Todas las zonas</option><option value="unassigned">Sin zona asignada</option>{zones.map(zone => <option key={zone} value={zone}>{zone}</option>)}</select></label>
+          <label className="text-xs text-slate-500">Estado<select aria-label="Filtrar por estado" value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className="ml-2 h-10 rounded-lg border border-violet-100 bg-white px-3 text-sm text-slate-800"><option value="all">Todos</option><option value="no-primary">Sin titular</option><option value="no-properties">Sin propiedades</option></select></label>
+          {(searchTerm || zoneFilter !== 'all' || statusFilter !== 'all') && <Button variant="link" className="text-[#310984]" onClick={() => { setSearchTerm(''); setZoneFilter('all'); setStatusFilter('all'); }}>Limpiar filtros</Button>}
+        </div>
+        {loading ? <p role="status" className="p-8">Cargando edificios, personal y propiedades…</p> : failed ? <div role="alert" className="rounded-xl bg-amber-50 p-5 text-amber-900">No se pudo cargar toda la información. No se pueden editar datos incompletos.<Button variant="outline" className="mt-3 block" onClick={() => void refresh().catch(() => undefined)}>Reintentar</Button></div> : <>
+          <p aria-live="polite" className="text-xs text-slate-500">{visible.length} de {buildings.length} edificios · Equipo habitual</p>
+          <div className="hidden grid-cols-[minmax(130px,1fr)_minmax(180px,1.6fr)_minmax(100px,1fr)_24px] gap-3 px-4 text-xs font-semibold text-slate-500 md:grid"><span>Edificio</span><span>Equipo habitual</span><span>Propiedades</span><span /></div>
+          <div className="space-y-2">{visible.map(item => <button type="button" key={item.group.id} aria-label={`Editar ${item.group.displayName || item.group.name}`} aria-pressed={selectedId === item.group.id} disabled={saving} onClick={() => selectBuilding(item.group.id)} className={cn('grid w-full gap-3 rounded-xl border bg-white p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#310984] md:grid-cols-[minmax(130px,1fr)_minmax(180px,1.6fr)_minmax(100px,1fr)_24px]', selectedId === item.group.id ? 'border-violet-400 bg-violet-50 ring-1 ring-violet-200' : 'border-slate-200 hover:border-violet-300 hover:bg-violet-50/50')}>
+            <span className="min-w-0"><span className="block break-words font-bold text-[#24123e]">{item.group.displayName || item.group.name}</span><span className="mt-1 block text-xs text-slate-500">{[item.group.internalCode, item.group.zone].filter(Boolean).join(' · ') || 'Sin zona asignada'}</span>{item.group.supervisorName && <span className="mt-2 block text-xs text-slate-500">Referencia: {item.group.supervisorName}</span>}</span>
+            <span className="flex flex-wrap content-start gap-2">{!item.team.some(member => !member.roleType || member.roleType === 'primary') && <span className="self-start rounded-lg bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">Sin titular</span>}{item.team.map(member => <span key={member.id} className="inline-flex items-center gap-2 rounded-lg bg-white/80 px-2 py-1"><span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-[#310984]">{(cleanersById.get(member.cleanerId)?.name || '?').slice(0, 1)}</span><span><span className="block text-xs font-medium">{cleanersById.get(member.cleanerId)?.name || 'Persona no disponible'}</span><span className="block text-[11px] text-slate-500">{buildingRoles[member.roleType || 'primary']}</span></span></span>)}</span>
+            <span><span className="block text-xs font-semibold">{item.properties.length} propiedades</span><span className="mt-2 flex flex-wrap gap-1">{item.properties.slice(0, 4).map(assignment => <span key={assignment.id} className="rounded bg-violet-100/60 px-2 py-1 text-[11px] text-[#310984]">{propertiesById.get(assignment.propertyId)?.codigo || 'Sin código'}</span>)}{item.properties.length > 4 && <span className="rounded bg-violet-100/60 px-2 py-1 text-[11px]">+{item.properties.length - 4}</span>}</span></span>
+            <Pencil aria-hidden="true" className="hidden h-4 w-4 self-center text-[#310984] md:block" />
+          </button>)}</div>
+          {!visible.length && <DirectoryEmpty title={buildings.length ? 'No hay coincidencias' : 'Todavía no hay edificios'} description="Añade un edificio o ajusta los filtros para continuar." />}
+        </>}
       </div>
-      {!isDesktop && <Dialog open={!!selected && !isLoading && !isError} onOpenChange={open => !open && setSelectedId(null)}><DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto rounded-2xl p-0 pt-10"><DialogTitle className="sr-only">Ficha de {selected?.group.displayName || selected?.group.name}</DialogTitle><DialogDescription className="sr-only">Propiedades, equipo y supervisión del edificio.</DialogDescription>{selected && detail(selected)}</DialogContent></Dialog>}
+      <Dialog open={!!editor} modal={false} onOpenChange={open => { if (!open) selectBuilding(null); }}>
+        {!isDesktop && editor && <div key="overlay" aria-hidden="true" className="fixed inset-0 z-50 bg-black/40" />}
+        {editor && <DialogPrimitive.Content key="editor" aria-modal={!isDesktop} data-building-editor onKeyDown={event => {
+          if (isDesktop || event.key !== 'Tab') return;
+          const elements = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]')).filter(element => element.getClientRects().length);
+          const first = elements[0], last = elements[elements.length - 1];
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+          if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+        }} onInteractOutside={event => { if (isDesktop || saving) event.preventDefault(); }} onEscapeKeyDown={event => { if (saving) event.preventDefault(); }} onOpenAutoFocus={event => { if (isDesktop) event.preventDefault(); }} className="fixed inset-x-2 top-[4dvh] z-50 h-[92dvh] overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm outline-none lg:sticky lg:inset-x-auto lg:top-4 lg:z-auto lg:h-[calc(100dvh-130px)] lg:min-h-[520px]">
+          <DialogTitle className="sr-only">Editar edificio</DialogTitle><DialogDescription className="sr-only">Personal y propiedades del edificio seleccionado</DialogDescription>{editor}
+        </DialogPrimitive.Content>}
+      </Dialog>
+    </div>
         <Dialog open={isCreateOpen} onOpenChange={(open) => {
           if (isCreating) return;
           setIsCreateOpen(open);
@@ -244,6 +198,5 @@ function BuildingsWorkspace() {
             </form>
           </DialogContent>
         </Dialog>
-    </DirectoryPage>
-  );
+  </DirectoryPage>;
 }
