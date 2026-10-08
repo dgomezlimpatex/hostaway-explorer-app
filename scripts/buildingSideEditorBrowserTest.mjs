@@ -26,10 +26,11 @@ const fixture = `
     removePropertyFromGroup:async id=>write('remove-property',()=>{assignments.splice(assignments.findIndex(x=>x.id===id),1);}),
     updatePropertyGroup:async(id,value)=>write('group',()=>Object.assign(groups.find(x=>x.id===id),value)),
     createPropertyGroup:async value=>write('create',()=>{const x={...value,id:'created'};groups.push(x);return x;}),
-    deleteEmptyPropertyGroup:async id=>write('delete',()=>{groups.splice(groups.findIndex(x=>x.id===id),1);})
+    retirePropertyGroup:async id=>{await write('retire',()=>{Object.assign(groups.find(x=>x.id===id),{isActive:false,retiredAt:'2026-10-08'});for(let i=team.length-1;i>=0;i--)if(team[i].propertyGroupId===id)team.splice(i,1);for(let i=assignments.length-1;i>=0;i--)if(assignments[i].propertyGroupId===id)assignments.splice(i,1);});if(window.ambiguousRetirement)throw new Error('Respuesta perdida');}
   };
   function useRefresh(){const [,setTick]=useState(0);return async()=>{setTick(x=>x+1);return {error:null};};}
-  export const useCleaningPlanningBuildingData=()=>({data:{propertyGroups:clone(groups),cleanerAssignments:clone(team.filter(x=>x.isActive)),propertyAssignments:clone(assignments)},isLoading:false,isError:false,isFetching:false,refetch:useRefresh()});
+  const listData=()=>({propertyGroups:clone(groups.filter(x=>x.isActive)),cleanerAssignments:clone(team.filter(x=>x.isActive)),propertyAssignments:clone(assignments)});
+  export const useCleaningPlanningBuildingData=()=>{const [data,setData]=useState(listData);return {data,isLoading:false,isError:false,isFetching:false,refetch:async()=>{setData(listData());return {error:null};}};};
   export const useCleaners=()=>({cleaners:clone(cleaners),isLoading:false,error:null,refetch:useRefresh()});
   export const useProperties=()=>({data:clone(properties),isLoading:false,isError:!!window.failCatalog,refetch:useRefresh()});
 `;
@@ -60,10 +61,12 @@ try {
   await page.getByRole('button',{name:'Editar Marina 30',exact:true}).click();
   const editor=page.getByRole('region',{name:'Editar Marina 30'});
   await expect(editor.getByLabel('Rol de Ana López')).toBeVisible();
-  await expect(editor.getByRole('button',{name:'Eliminar edificio',exact:true})).toBeDisabled();
+  await expect(editor.getByRole('button',{name:'Eliminar edificio',exact:true})).toBeEnabled();
+  page.once('dialog',dialog=>dialog.dismiss());await editor.getByRole('button',{name:'Eliminar edificio',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.writes.length),0);
   await editor.getByLabel('Rol de Ana López').selectOption('secondary');
   await expect(editor.getByText('1 cambio pendiente',{exact:true})).toBeVisible();
+  await expect(editor.getByRole('button',{name:'Eliminar edificio',exact:true})).toBeDisabled();
   assert.equal(await page.evaluate(()=>window.data.team[0].roleType),'primary');
   page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Editar Alameda 8',exact:true}).click();await expect(editor).toBeVisible();
   await editor.getByRole('button',{name:'Descartar',exact:true}).click();await expect(editor.getByLabel('Rol de Ana López')).toHaveValue('primary');
@@ -100,6 +103,26 @@ try {
   await page.screenshot({path:join(tmpdir(),'buildings-2c-mobile.png'),fullPage:true});
   await page.getByRole('button',{name:'Cerrar editor',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.setViewportSize({width:1440,height:1050});
+  // Populated retirement, failure without changes, then ambiguous committed response.
+  await page.getByRole('button',{name:'Editar Marina 30',exact:true}).click();
+  await page.evaluate(()=>window.failWrite='retire');
+  page.once('dialog',dialog=>{assert.match(dialog.message(),/conservará el historial/);dialog.accept();});
+  await editor.getByRole('button',{name:'Eliminar edificio',exact:true}).click();
+  await expect(editor.getByRole('alert')).toContainText('No se pudo confirmar la retirada');
+  assert.equal(await page.evaluate(()=>window.data.groups[0].isActive),true);
+  await page.evaluate(()=>window.failWrite=null);
+  await editor.getByRole('button',{name:'Recargar estado guardado'}).click();
+  await page.evaluate(()=>window.ambiguousRetirement=true);
+  page.once('dialog',dialog=>dialog.accept());
+  await editor.getByRole('button',{name:'Eliminar edificio',exact:true}).click();
+  await expect(editor.getByRole('alert')).toContainText('No se pudo confirmar la retirada');
+  await editor.getByRole('button',{name:'Recargar estado guardado'}).click();
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Editar Marina 30',exact:true})).toHaveCount(0);
+  assert.equal(await page.evaluate(()=>window.data.groups[0].isActive),false);
+  assert.equal(await page.evaluate(()=>window.data.team.filter(x=>x.propertyGroupId==='g').length),0);
+  assert.equal(await page.evaluate(()=>window.data.assignments.filter(x=>x.propertyGroupId==='g').length),0);
+  await page.evaluate(()=>window.ambiguousRetirement=false);
   await page.getByRole('button',{name:'Añadir edificio',exact:true}).click();
   await page.getByLabel('Nombre del edificio').fill('Nuevo edificio');
   await page.getByLabel('Código interno').fill('NEW');
