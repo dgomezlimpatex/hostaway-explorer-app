@@ -16,6 +16,7 @@ interface StockConsumptionSectionProps {
   control: Control<PropertyFormData>;
   setValue: UseFormSetValue<PropertyFormData>;
   property?: Property | null;
+  initialize?: boolean;
 }
 
 type ProductGroupKey = 'laundry' | 'amenities' | 'consumables' | 'other';
@@ -38,7 +39,7 @@ const getProductGroup = (product: StockProduct): ProductGroupKey => {
   return 'other';
 };
 
-export const StockConsumptionSection = ({ control, setValue, property }: StockConsumptionSectionProps) => {
+export const StockConsumptionSection = ({ control, setValue, property, initialize = true }: StockConsumptionSectionProps) => {
   const { data: products = [], isLoading: isLoadingProducts } = useStockProducts();
   const { data: rules = [], isLoading: isLoadingRules } = usePropertyStockConsumptionRules(property?.id);
   const initializedKeyRef = useRef<string | null>(null);
@@ -63,7 +64,7 @@ export const StockConsumptionSection = ({ control, setValue, property }: StockCo
   }, [consumableProducts]);
 
   useEffect(() => {
-    if (isLoadingProducts || isLoadingRules) return;
+    if (!initialize || isLoadingProducts || isLoadingRules) return;
 
     const key = `${property?.id || 'new'}:${consumableProducts.map((product) => product.id).join(',')}:${rules.length}`;
     if (initializedKeyRef.current === key) return;
@@ -73,7 +74,7 @@ export const StockConsumptionSection = ({ control, setValue, property }: StockCo
       shouldTouch: false,
     });
     initializedKeyRef.current = key;
-  }, [kitchens, consumableProducts, isLoadingProducts, isLoadingRules, property, rules, setValue]);
+  }, [initialize, kitchens, consumableProducts, isLoadingProducts, isLoadingRules, property, rules, setValue]);
 
   return (
     <div className="space-y-4">
