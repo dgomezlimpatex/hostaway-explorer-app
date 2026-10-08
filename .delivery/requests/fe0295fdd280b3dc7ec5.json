@@ -1,7 +1,7 @@
 {
-  "request": "Dani confirma paños con coste de 0,15 EUR y cobro de 0,25 EUR por limpieza, inicialmente solo Turquoise según configuración de propiedad; bolsas incluidas en el 3% y bayetas propias del trabajador.",
-  "reason": "Ajuste de cálculos locales y su configuración en la pantalla financiera existente. No hay operaciones sobre tareas, clientes, propiedades ni stock, cambios de esquema ni escrituras automáticas. Las tarifas y reglas editadas por el usuario conservan el guardado explícito y control de revisión existente.",
-  "verification": "Build correcto; TypeScript app 102 errores heredados y cero nuevos, Node cero; lint focalizado correcto; pruebas del motor real con suplementos, cantidades, herencia, filtros, check-in y servicios sin ingreso; navegador real con fixtures sin red, detalle de cobro, regla en borrador y guardado simulado. Septiembre auditado de solo lectura, +107,25 EUR en 429 servicios, gastos constantes. Los lavados ocasionales siguen pendientes de confirmación.",
+  "request": "Dani solicita conservar el análisis al cambiar de pestaña. También confirmó paños con coste 0,15 EUR y cobro 0,25 EUR por limpieza configurada, inicialmente Turquoise; bolsas dentro del 3% y bayetas propias.",
+  "reason": "Cambios locales de cálculo y presentación en la pantalla financiera existente. El foco no dispara consultas, el refresco explícito mantiene los formularios y la selección se conserva por cuenta/sede en la pestaña. No hay cambios de autenticación, permisos, SQL, tareas, stock ni escrituras automáticas; los ajustes financieros mantienen su guardado explícito existente.",
+  "verification": "Build correcto; tipos app sin errores nuevos (102 heredados), Node cero; lint focalizado. Pruebas del motor real y navegador con datos simulados sin conexión: cálculo de paños, exclusiones, cambio real de pestaña y evento de visibilidad, ausencia de nuevas consultas al volver, refresco explícito de las cinco fuentes sin perder el formulario, recuperación de sección/fecha al recargar. Memoria de vista probada ante datos corruptos, almacenamiento bloqueado y separación de usuario/sede. El arnés genera estilos desde fuentes y usa Chrome ya instalado en Linux sin descargas en las pruebas aisladas.",
   "effects": {
     "productionData": false,
     "database": false,
@@ -16,9 +16,10 @@
     "scripts/financialAnalysisTest.mjs",
     "scripts/financialExternalIncomeTest.mjs",
     "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialViewTest.mjs",
     "scripts/financialAnalysisBrowserTest.mjs"
   ],
   "version": 1,
   "scope": "application",
-  "digest": "e9a2a52811d8694c1663b240b5963eec5529f4cf8ceac2b2e0b7e30e80700a8a"
+  "digest": "09f7e0c68b3182cdc5ac8d05f85a9f0571c2e583775b135beb3ba1347298be71"
 }
