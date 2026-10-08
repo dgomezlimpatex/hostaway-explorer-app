@@ -16,7 +16,7 @@ export function useFinancialData(sedeId: string | undefined, start: string, end:
           .select('id,type,date,status,coste,cliente_id,propiedad_id,property,cleaner_id,cleaner,start_time,end_time,duracion,task_assignments(cleaner_id,cleaner_name)')
           .eq('sede_id', sedeId!).gte('date', start).lte('date', end).order('id').range(from, to)),
         readAllPages((from, to) => (supabase as unknown as SupabaseClient).from('properties')
-          .select('id,nombre,cliente_id,coste_servicio,duracion_servicio,numero_sabanas,numero_sabanas_pequenas,numero_sabanas_suite,numero_fundas_almohada,numero_toallas_grandes,numero_toallas_pequenas,numero_alfombrines,amenities_cocina,amenities_bano,kit_alimentario,cantidad_rollos_papel_higienico,amenities_control_enabled')
+          .select('id,nombre,cliente_id,coste_servicio,duracion_servicio,numero_sabanas,numero_sabanas_pequenas,numero_sabanas_suite,numero_fundas_almohada,numero_toallas_grandes,numero_toallas_pequenas,numero_alfombrines,amenities_cocina,amenities_bano,kit_alimentario,cantidad_rollos_papel_higienico,amenities_control_enabled,property_group_assignments(property_group_id,group:property_groups(id,name,display_name,is_active))')
           .eq('sede_id', sedeId!).order('id').range(from, to)),
         readAllPages((from, to) => (supabase as unknown as SupabaseClient).from('clients').select('id,nombre,amenities_control_enabled').eq('sede_id', sedeId!).order('id').range(from, to)),
         readAllPages((from, to) => supabase.from('cleaners').select('id,name').eq('sede_id', sedeId!).order('id').range(from, to)),
@@ -26,8 +26,16 @@ export function useFinancialData(sedeId: string | undefined, start: string, end:
       ]);
       const clientDirectory = clients.map(client => ({ id: client.id as string, name: client.nombre as string, amenitiesControlEnabled: client.amenities_control_enabled as boolean }));
       const propertyRows = properties as SourceProperty[];
+      const buildings = new Map<string, { id: string; name: string; propertyIds: string[] }>();
+      for (const property of propertyRows) for (const assignment of property.property_group_assignments || []) {
+        if (!assignment.group) continue;
+        const group = Array.isArray(assignment.group) ? assignment.group[0] : assignment.group;
+        if (!group) continue;
+        const entry = buildings.get(group.id) || { id: group.id, name: (group.display_name || group.name) + (group.is_active ? '' : ' · inactivo'), propertyIds: [] };
+        entry.propertyIds.push(property.id); buildings.set(group.id, entry);
+      }
       return { services: buildServices(tasks as unknown as SourceTask[], propertyRows, clientDirectory, workers, today, rules as unknown as ConsumptionRule[]), clients: clientDirectory,
-        properties: propertyRows.map(property => ({ id: property.id, name: property.nombre, clientId: property.cliente_id })), workers };
+        properties: propertyRows.map(property => ({ id: property.id, name: property.nombre, clientId: property.cliente_id })), workers, buildings: [...buildings.values()] };
     },
   });
 }

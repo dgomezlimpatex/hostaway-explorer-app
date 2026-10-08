@@ -29,6 +29,7 @@ export type Quantities = Partial<Record<ItemId, number>>;
 export interface Rate { item: ItemId; date: string; mills: number; workerId?: string }
 export interface WorkerHours { id: string; name: string; minutes: number | null; actual: boolean }
 export interface FinancialService {
+  buildingIds?: string[];
   additionalRevenue?: number;
   kitchenClothRevenue?: number;
   unpricedConsumptions?: string[];
@@ -50,7 +51,7 @@ export interface FinancialIncome {
   overrides: Record<string, { income: number; cost: number | null; weeklyHours: number }>;
 }
 export interface FinanceSettings { version: 1; rates: Rate[]; adjustments: Record<string, ServiceAdjustment>; expenses: Expense[]; incomes?: FinancialIncome[]; policies?: ConsumptionPolicy[] }
-export interface Filters { start: string; end: string; clients: string[]; properties: string[]; workers: string[] }
+export interface Filters { start: string; end: string; clients: string[]; properties: string[]; workers: string[]; buildings?: string[]; types?: string[]; categories?: Category[]; propertyScope?: string[] }
 export const newSettings = (): FinanceSettings => ({ version: 1, rates: [], adjustments: {}, expenses: [] });
 export const validDate = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) &&
   Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date;
@@ -152,18 +153,30 @@ export function analyze(services: FinancialService[], settings: FinanceSettings,
   const inPeriod = (date: string) => date >= filters.start && date <= filters.end;
   const match = (ids: string[], id: string) => !ids.length || ids.includes(id);
   const candidates = services.map(service => applyFinanceRules(service, settings)).filter(service => inPeriod(service.date) && match(filters.clients, service.clientId) &&
-    match(filters.properties, service.propertyId) && (!filters.workers.length || service.workers.some(worker => filters.workers.includes(worker.id))));
+    match(filters.properties, service.propertyId) && (filters.propertyScope === undefined || filters.propertyScope.includes(service.propertyId)) &&
+    (!filters.types?.length || filters.types.includes(service.type)) && (!filters.workers.length || service.workers.some(worker => filters.workers.includes(worker.id))));
   const excludedIncomeServices = candidates.filter(service => service.revenue === null || service.revenue <= 0);
   const selected = candidates.filter(service => service.revenue !== null && service.revenue > 0)
-    .map(service => calculateService(service, settings));
+    .map(service => filterServiceCosts(calculateService(service, settings), filters));
   const expenses = [...settings.expenses, ...monthlySalaryExpenses(settings.rates, filters.start, filters.end)].filter(expense => inPeriod(expense.date) && match(filters.clients, expense.clientId) &&
-    match(filters.properties, expense.propertyId) && match(filters.workers, expense.workerId));
-  const incomes = buildExternalIncomes(settings, filters);
+    match(filters.properties, expense.propertyId) && (filters.propertyScope === undefined || filters.propertyScope.includes(expense.propertyId)) &&
+    match(filters.workers, expense.workerId) && includesCost(filters, expense.category));
+  const incomes = buildExternalIncomes(settings, filters).map(service => filterServiceCosts(service, filters));
   const combined = [...selected, ...incomes];
   const ids = [...new Set([...selected.map(service => service.clientId), ...incomes.filter(service => service.clientId).map(service => service.clientId), ...expenses.filter(expense => expense.clientId).map(expense => expense.clientId)])];
   const clients = ids.map(id => ({ id, name: services.find(service => service.clientId === id)?.clientName || 'Cliente sin servicios en este periodo',
     ...summarize([...selected.filter(service => service.clientId === id), ...incomes.filter(service => !!id && service.clientId === id)], expenses.filter(expense => !!id && expense.clientId === id)) }));
   return { services: selected, incomes, excludedIncomeServices, expenses, clients, total: { ...summarize(combined, expenses), services: selected.length }, general: summarize(incomes.filter(service => !service.clientId), expenses.filter(expense => !expense.clientId)) };
+}
+export function includesCost(filters: Filters, category: Category) {
+  return !filters.categories?.length || filters.categories.includes(category) || category === 'salary' && filters.categories.includes('personal');
+}
+function filterServiceCosts(service: CalculatedService, filters: Filters): CalculatedService {
+  if (!filters.categories?.length) return service;
+  const costs = { ...service.costs };
+  for (const category of Object.keys(costs) as Category[]) if (!includesCost(filters, category)) costs[category] = 0;
+  const expense = Object.values(costs).reduce((sum, value) => sum + value, 0);
+  return { ...service, costs, expense, result: service.revenue === null ? null : service.revenue - expense };
 }
 // Validate imported/local JSON before it can participate in a financial calculation.
 export function readSettings(value: unknown): FinanceSettings {
@@ -218,7 +231,7 @@ export function buildExternalIncomes(settings: FinanceSettings, filters: Filters
   if (!validDate(filters.start) || !validDate(filters.end) || filters.start > filters.end) return [];
   const result: CalculatedService[] = [];
   for (const entry of settings.incomes || []) {
-    if (entry.mode === 'perCleaning' || filters.clients.length && !filters.clients.includes(entry.clientId) || filters.properties.length && !filters.properties.includes(entry.propertyId) || filters.workers.length && !filters.workers.includes(entry.workerId)) continue;
+    if (entry.mode === 'perCleaning' || filters.clients.length && !filters.clients.includes(entry.clientId) || filters.properties.length && !filters.properties.includes(entry.propertyId) || filters.propertyScope !== undefined && !filters.propertyScope.includes(entry.propertyId) || filters.types?.length && !filters.types.includes('external-income') || filters.workers.length && !filters.workers.includes(entry.workerId)) continue;
     const periods = new Map<string, { date: string; days: number; monthDays: number; labor: number }>();
     const cursor = new Date(filters.start + 'T00:00:00Z');
     while (cursor.toISOString().slice(0,10) <= filters.end) {

@@ -1,6 +1,7 @@
-import { analyze, validDate, type Filters, type Summary, type FinancialService, type FinanceSettings } from './financialModel';
+import { validDate, type Filters, type Summary, type FinancialService, type FinanceSettings } from './financialModel';
 import { adjacentMonth, annualTrend, monthlyTrend, trendPeriods } from './financialCharts';
 import { financialMonthRange, financialYearRange, selectedFinancialYear } from './financialView';
+import { analyzeWithAllocation, type Allocation } from './financialAnalytics';
 
 type Period = Pick<Filters, 'start' | 'end'>;
 const iso = (date: Date) => date.toISOString().slice(0, 10);
@@ -26,21 +27,30 @@ export function comparisonPeriod(filters: Period): (Period & { label: string }) 
   return { start: iso(start), end: iso(end), label: 'vs periodo anterior equivalente' };
 }
 
-export function financialHistoryRange(filters: Filters): Period {
+export function previousYearPeriod(filters: Period): (Period & { label: string }) | null {
+  if (!validDate(filters.start) || !validDate(filters.end) || filters.start > filters.end) return null;
+  const shift = (date: string) => {
+    const year = Number(date.slice(0, 4)) - 1, month = date.slice(5, 7), range = financialMonthRange(`${String(year).padStart(4, '0')}-${month}`);
+    return range ? range.start.slice(0, 8) + String(Math.min(Number(date.slice(8)), Number(range.end.slice(8)))).padStart(2, '0') : '';
+  };
+  const start = shift(filters.start), end = shift(filters.end);
+  return start && end ? { start, end, label: 'vs mismo periodo del año anterior' } : null;
+}
+export function financialHistoryRange(filters: Filters, comparison: 'previous' | 'year' | 'budget' = 'previous'): Period {
   const previous = comparisonPeriod(filters);
   if (!previous) return { start: filters.start, end: filters.end };
   const periods = trendPeriods(filters.end, false, 12);
-  return { start: [filters.start, previous.start, periods[0]?.start || filters.start].sort()[0],
+  return { start: [filters.start, previous.start, ...(comparison === 'year' ? [previousYearPeriod(filters)?.start || filters.start] : []), periods[0]?.start || filters.start].sort()[0],
     end: [filters.end, periods.at(-1)?.end || filters.end].sort().at(-1)! };
 }
-export function financialInsights(services: FinancialService[], settings: FinanceSettings, filters: Filters) {
-  const period = comparisonPeriod(filters);
+export function financialInsights(services: FinancialService[], settings: FinanceSettings, filters: Filters, allocation: Allocation = 'none', comparison: 'previous' | 'year' | 'budget' = 'previous') {
+  const period = comparison === 'year' ? previousYearPeriod(filters) : comparisonPeriod(filters);
   const full = financialMonthRange(filters.end.slice(0, 7));
-  const rows = selectedFinancialYear(filters) ? annualTrend(services, settings, filters) : monthlyTrend(services, settings, filters, filters.end !== full?.end, 12);
-  return { period, previous: period ? analyze(services, settings, { ...filters, ...period }).total : null, rows };
+  const rows = selectedFinancialYear(filters) ? annualTrend(services, settings, filters, allocation) : monthlyTrend(services, settings, filters, filters.end !== full?.end, 12, allocation);
+  return { period, previous: period ? analyzeWithAllocation(services, settings, { ...filters, ...period }, allocation).total : null, rows };
 }
 export type Kpi = 'revenue' | 'expense' | 'result' | 'margin';
-export function kpiChange(current: Summary, previous: Summary | null, key: Kpi) {
+export function kpiChange(current: Pick<Summary, Kpi>, previous: Pick<Summary, Kpi> | null, key: Kpi) {
   const now = current[key], before = previous?.[key];
   if (now === null || before === null || before === undefined) return null;
   const delta = now - before;

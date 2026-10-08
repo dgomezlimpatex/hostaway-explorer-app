@@ -6,14 +6,16 @@ import { annualTrend, groupedCosts, money, monthlyColumns, type ComparisonView }
 import type { Filters, FinanceSettings, FinancialService } from './financialModel';
 import { percent } from './financialFormat';
 import { FinancialHelp } from './FinancialHelp';
+import type { Allocation } from './financialAnalytics';
 import { FinancialLines } from './FinancialLines';
 
-export function FinancialAnnual({ services, settings, filters, comparison, onComparison, onDetails }: {
+export function FinancialAnnual({ services, settings, filters, comparison, onComparison, onDetails, allocation = 'none' }: {
   services: FinancialService[]; settings: FinanceSettings; filters: Filters;
   comparison: ComparisonView; onComparison: (view: ComparisonView) => void;
   onDetails: (concept: string, period?: Pick<Filters, 'start' | 'end'>) => void;
+  allocation?: Allocation;
 }) {
-  const rows = useMemo(() => annualTrend(services, settings, filters), [services, settings, filters]);
+  const rows = useMemo(() => annualTrend(services, settings, filters, allocation), [services, settings, filters, allocation]);
   const columns = useMemo(() => monthlyColumns(rows, comparison), [rows, comparison]);
   const hasOtherCosts = rows.some(row => row.costs.other !== 0);
   return <section tabIndex={-1} className="min-w-0 space-y-5 rounded-2xl border border-violet-100 bg-white p-5 shadow-sm sm:p-6" aria-label="Resumen anual por meses">

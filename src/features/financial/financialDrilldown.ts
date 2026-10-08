@@ -5,6 +5,7 @@ import type { FinancialDetailConcept } from './financialView';
 const incomeLabels = { revenue: 'Ingresos', cleaning: 'Limpiezas · tarifa base', services: 'Otros servicios · tarifa base', supplements: 'Suplementos por limpieza', cloth: 'Cobro de paños de cocina' };
 const hours = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 });
 export function detailLabel(concept: FinancialDetailConcept) {
+  if (concept === 'expense' || concept === 'result') return concept === 'expense' ? 'Total de gastos' : 'Resultado';
   if (concept.startsWith('external:')) return concept.slice(9);
   if (concept in incomeLabels) return incomeLabels[concept as keyof typeof incomeLabels];
   return concept === 'products' ? 'Productos' : categoryNames[concept as keyof typeof categoryNames];
@@ -15,6 +16,7 @@ export interface FinancialDetailRow {
   amount: number; description: string; pending: string[]; direction: boolean;
 }
 function serviceAmount(service: CalculatedService, concept: FinancialDetailConcept) {
+  if (concept === 'expense' || concept === 'result') return concept === 'expense' ? service.expense : service.result || 0;
   if (concept === 'revenue') return service.revenue ?? 0;
   if (concept === 'cleaning' || concept === 'services') return /^(limpieza|cleaning)/i.test(service.type.trim()) === (concept === 'cleaning') ? (service.revenue ?? 0) - (service.additionalRevenue || 0) : 0;
   if (concept === 'supplements') return (service.additionalRevenue || 0) - (service.kitchenClothRevenue || 0);
@@ -23,6 +25,7 @@ function serviceAmount(service: CalculatedService, concept: FinancialDetailConce
 }
 function serviceDescription(service: CalculatedService, concept: FinancialDetailConcept, settings: FinanceSettings) {
   const adjustment = settings.adjustments[service.id];
+  if (concept === 'expense' || concept === 'result') return `Ingreso: ${money(service.revenue || 0)} · Costes incluidos: ${money(service.expense)}`;
   if (concept === 'revenue') return `Tarifa base: ${money((service.revenue ?? 0) - (service.additionalRevenue || 0))} · Suplementos: ${money((service.additionalRevenue || 0) - (service.kitchenClothRevenue || 0))} · Paño: ${money(service.kitchenClothRevenue || 0)}`;
   if (concept === 'personal') return service.workers.map(worker => { const minutes = adjustment?.minutes?.[worker.id] ?? worker.minutes; return `${worker.name}: ${minutes === null ? 'horas pendientes' : `${hours.format(minutes / 60)} h`}`; }).join(' · ');
   if (concept === 'laundry' || concept === 'supplies') {
@@ -40,16 +43,16 @@ export function financialDetail(analysis: FinancialAnalysis, concept: FinancialD
       description: serviceDescription(service, concept, settings), pending: service.pending, direction: false });
   }
   for (const income of analysis.incomes) {
-    const amount = concept === 'revenue' || concept === `external:${income.propertyName}` ? income.revenue ?? 0 : isIncomeConcept(concept) ? 0 : groupedCosts(income.costs)[concept as keyof ReturnType<typeof groupedCosts>];
+    const amount = concept === 'expense' ? income.expense : concept === 'result' ? income.result || 0 : concept === 'revenue' || concept === `external:${income.propertyName}` ? income.revenue ?? 0 : isIncomeConcept(concept) ? 0 : groupedCosts(income.costs)[concept as keyof ReturnType<typeof groupedCosts>];
     if (amount) rows.push({ id: income.id, date: income.date, label: income.propertyName, clientId: income.clientId, source: 'incomes', amount,
       description: isIncomeConcept(concept) ? 'Ingreso externo incluido en el periodo' : 'Coste asociado a un ingreso externo', pending: income.pending, direction: false });
   }
   if (!isIncomeConcept(concept)) for (const expense of analysis.expenses) {
-    if (expense.category !== concept && !(concept === 'personal' && expense.category === 'salary')) continue;
-    if (expense.cents) rows.push({ id: `expense:${expense.id}`, date: expense.date, label: expense.label, clientId: expense.clientId, source: 'expenses', amount: expense.cents,
+    if (!['expense', 'result'].includes(concept) && expense.category !== concept && !(concept === 'personal' && expense.category === 'salary')) continue;
+    if (expense.cents) rows.push({ id: `expense:${expense.id}`, date: expense.date, label: expense.label, clientId: expense.clientId, source: 'expenses', amount: concept === 'result' ? -expense.cents : expense.cents,
       description: expense.category === 'salary' ? 'Dirección y estructura' : categoryNames[expense.category], pending: [], direction: expense.category === 'salary' });
   }
-  const total = concept === 'revenue' ? analysis.total.revenue : isIncomeConcept(concept) ? dashboardSeries(analysis).incomes.find(row => row.id === concept)?.value ?? 0 : groupedCosts(analysis.total.costs)[concept as keyof ReturnType<typeof groupedCosts>];
+  const total = concept === 'revenue' || concept === 'expense' || concept === 'result' ? analysis.total[concept] : isIncomeConcept(concept) ? dashboardSeries(analysis).incomes.find(row => row.id === concept)?.value ?? 0 : groupedCosts(analysis.total.costs)[concept as keyof ReturnType<typeof groupedCosts>];
   return { label: detailLabel(concept), total, rows: rows.sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label)),
     sources: (['services', 'incomes', 'expenses'] as const).map(id => ({ id, amount: rows.filter(row => row.source === id).reduce((sum, row) => sum + row.amount, 0) })) };
 }
