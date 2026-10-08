@@ -18,6 +18,7 @@ type PropertyGroupRow = {
   check_out_time: string;
   check_in_time: string;
   is_active: boolean;
+  retired_at?: string | null;
   auto_assign_enabled: boolean;
   created_at: string;
   updated_at: string;
@@ -123,6 +124,15 @@ class PropertyGroupStorageService {
     }
 
     return this.mapFromDB(data);
+  }
+
+  async retirePropertyGroup(id: string): Promise<void> {
+    // Local RPC shape until Supabase types are regenerated; no generated file edits.
+    const client = supabase as unknown as {
+      rpc(name: 'retire_property_group', args: { p_group_id: string }): PromiseLike<{ error: { message: string } | null }>;
+    };
+    const { error } = await client.rpc('retire_property_group', { p_group_id: id });
+    if (error) throw new Error(error.message);
   }
 
   async deleteEmptyPropertyGroup(id: string): Promise<void> {
@@ -388,6 +398,7 @@ class PropertyGroupStorageService {
       checkOutTime: row.check_out_time,
       checkInTime: row.check_in_time,
       isActive: row.is_active,
+      retiredAt: row.retired_at,
       autoAssignEnabled: row.auto_assign_enabled,
       createdAt: row.created_at,
       updatedAt: row.updated_at

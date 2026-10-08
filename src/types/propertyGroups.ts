@@ -15,6 +15,7 @@ export interface PropertyGroup {
   checkOutTime: string;
   checkInTime: string;
   isActive: boolean;
+  retiredAt?: string | null;
   autoAssignEnabled: boolean;
   createdAt: string;
   updatedAt: string;
