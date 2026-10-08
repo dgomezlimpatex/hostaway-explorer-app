@@ -4,7 +4,6 @@ import { Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { DirectoryEmpty, DirectoryPage, DirectorySearch, DirectorySegments } from '@/components/directory/DirectoryPage';
 import { useProperties } from '@/hooks/useProperties';
 import { useClients } from '@/hooks/useClients';
@@ -13,7 +12,7 @@ import { useSede } from '@/contexts/SedeContext';
 import type { Property } from '@/types/property';
 import { CreatePropertyModal } from './CreatePropertyModal';
 import { PropertyList } from './PropertyList';
-import { PropertyDetailPanel } from './PropertyDetailPanel';
+import { PropertyEditorSession, type PropertyEditorStatus } from './PropertyEditorSession';
 import { isPropertyActive } from './propertyPresentation';
 
 export const PropertiesPage = () => {
@@ -26,16 +25,31 @@ function PropertiesWorkspace() {
   const clientsQuery = useClients();
   const { activeSede, loading, isInitialized } = useSede();
   const { isDesktop } = useDeviceType();
-  const pending = useRef({ dirty: false, saving: false, discard: () => {} });
-  const onPendingChange = useCallback((dirty: boolean, saving: boolean, discard: () => void, id: string) => {
-    pending.current = { dirty, saving, discard };
-    if (dirty || saving) setSelectedId(id);
+  const pending = useRef<Record<string, PropertyEditorStatus>>({});
+  const visibleId = useRef<string | undefined>();
+  const [sessions, setSessions] = useState<Record<string, PropertyEditorStatus>>({});
+  const onStatus = useCallback((id: string, state: PropertyEditorStatus) => {
+    if (state.dirty || state.saving) pending.current[id] = state;
+    else delete pending.current[id];
+    setSessions(current => {
+      if (!state.dirty && !state.saving) {
+        if (!current[id]) return current;
+        const next = { ...current }; delete next[id]; return next;
+      }
+      const previous = current[id];
+      if (previous?.dirty === state.dirty && previous.saving === state.saving && previous.message === state.message) return current;
+      return { ...current, [id]: state };
+    });
+    // Only the visible editor can pin the selection; background completion cannot steal it.
+    if (visibleId.current === id && (state.dirty || state.saving)) setSelectedId(id);
   }, []);
-  const canLeave = useCallback(() => {
-    if (pending.current.saving) return false;
-    if (!pending.current.dirty) return true;
+  const canLeave = useCallback((withinProperties = false) => {
+    const states = withinProperties ? [pending.current[visibleId.current || '']].filter(Boolean) : Object.values(pending.current);
+    if (!withinProperties && states.some(state => state.saving)) return false;
+    const drafts = states.filter(state => state.dirty && !state.saving);
+    if (!drafts.length) return true;
     if (!window.confirm('Hay cambios sin guardar. ¿Quieres descartarlos y continuar?')) return false;
-    pending.current.discard();
+    drafts.forEach(state => state.discard());
     return true;
   }, []);
   useEffect(() => {
@@ -67,13 +81,21 @@ function PropertiesWorkspace() {
   }).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true, sensitivity: 'base' }));
   const selected = properties.find(property => property.id === selectedId);
   const desktopProperty = selected || visible[0];
+  const currentProperty = isDesktop ? desktopProperty : selected;
+  visibleId.current = currentProperty?.id;
+  const sessionIds = [...new Set([...Object.keys(sessions), ...(currentProperty ? [currentProperty.id] : [])])];
   const hasFilters = !!search || status !== 'active' || clientFilter !== 'all';
-  const reset = () => { if (!canLeave()) return; setSearch(''); setStatus('active'); setClientFilter('all'); setSelectedId(null); };
+  const reset = () => { if (!canLeave(true)) return; setSearch(''); setStatus('active'); setClientFilter('all'); setSelectedId(null); };
   const count = (value: number) => unavailable ? '—' : value;
-  const detail = (property: Property) => <PropertyDetailPanel key={property.id} property={property} clientName={getClientName(property)} active={active(property)} onPendingChange={onPendingChange} />;
 
   return (
     <DirectoryPage className="properties-page" showStats={false} title="Propiedades" eyebrow="Alojamientos" description="Características, limpiezas y checklists en una única ficha." icon={Home} actions={<CreatePropertyModal />}>
+      <div aria-live="polite" className="space-y-2">
+        {Object.entries(sessions).filter(([id]) => id !== currentProperty?.id).map(([id, state]) => <div key={id} role={state.saving ? 'status' : 'alert'} className="flex flex-wrap items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-950">
+          <span>{state.saving ? 'Guardando' : 'Cambios pendientes en'} {properties.find(property => property.id === id)?.nombre || 'propiedad'}{state.saving ? '…' : `. ${state.message}`}</span>
+          <Button variant="outline" size="sm" onClick={() => { if (canLeave(true)) setSelectedId(id); }}>Ver propiedad</Button>
+        </div>)}
+      </div>
       <div className="grid items-stretch gap-4 lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[440px_minmax(0,1fr)]">
         <Card aria-label="Directorio de propiedades" className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-180px)] lg:min-h-0">
           <div className="space-y-4 p-4 sm:p-5">
@@ -81,13 +103,13 @@ function PropertiesWorkspace() {
               <div><h2 className="font-semibold tracking-tight">Directorio de propiedades</h2><p className="mt-1 text-sm text-slate-500">Despliega un cliente y selecciona su propiedad.</p></div>
               {hasFilters && <Button variant="ghost" size="sm" onClick={reset}>Limpiar</Button>}
             </div>
-            <DirectorySearch value={search} onChange={value => { if (canLeave()) { setSelectedId(null); setSearch(value); } }} placeholder="Buscar nombre, código, dirección o cliente" />
-            <DirectorySegments value={status} onChange={value => { if (canLeave()) { setSelectedId(null); setStatus(value); } }} options={[
+            <DirectorySearch value={search} onChange={value => { if (canLeave(true)) { setSelectedId(null); setSearch(value); } }} placeholder="Buscar nombre, código, dirección o cliente" />
+            <DirectorySegments value={status} onChange={value => { if (canLeave(true)) { setSelectedId(null); setStatus(value); } }} options={[
               { value: 'all', label: 'Todas', count: count(properties.length) },
               { value: 'active', label: 'Activas', count: count(activeCount) },
               { value: 'inactive', label: 'Inactivas', count: count(properties.length - activeCount) },
             ]} />
-            <Select value={clientFilter} onValueChange={value => { if (canLeave()) { setSelectedId(null); setClientFilter(value); } }}>
+            <Select value={clientFilter} onValueChange={value => { if (canLeave(true)) { setSelectedId(null); setClientFilter(value); } }}>
               <SelectTrigger aria-label="Filtrar por cliente" className="rounded-xl bg-white"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="all">Todos los clientes</SelectItem><SelectItem value="unassigned">Sin cliente asignado</SelectItem>{clientOptions.map(client => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent>
             </Select>
@@ -97,17 +119,15 @@ function PropertiesWorkspace() {
               <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">No se han podido cargar las propiedades o sus clientes.<Button variant="outline" className="mt-3" onClick={() => { void propertiesQuery.refetch(); void clientsQuery.refetch(); }}>Reintentar</Button></div>
             ) : !activeSede ? <DirectoryEmpty title="Selecciona una sede" description="Elige una sede para consultar sus propiedades." /> : visible.length === 0 ? (
               <DirectoryEmpty title={properties.length ? 'No hay coincidencias' : 'Todavía no hay propiedades'} description={properties.length ? 'Prueba con otro nombre o ajusta los filtros.' : 'Añade tu primer alojamiento con «Nueva propiedad».'} action={hasFilters && <Button variant="outline" onClick={reset}>Limpiar filtros</Button>} />
-            ) : <><p aria-live="polite" className="pb-3 text-xs text-slate-500">{visible.length} de {properties.length} propiedades</p><PropertyList key={JSON.stringify([search, status, clientFilter])} expandMatches={hasFilters} properties={visible} selectedPropertyId={isDesktop ? desktopProperty?.id : selected?.id} onSelect={property => { if (property.id === desktopProperty?.id && isDesktop) return; if (canLeave()) setSelectedId(property.id); }} getClientName={getClientName} isActive={active} /></>}
+            ) : <><p aria-live="polite" className="pb-3 text-xs text-slate-500">{visible.length} de {properties.length} propiedades</p><PropertyList key={JSON.stringify([search, status, clientFilter])} expandMatches={hasFilters} properties={visible} selectedPropertyId={isDesktop ? desktopProperty?.id : selected?.id} onSelect={property => { if (property.id === desktopProperty?.id && isDesktop) return; if (canLeave(true)) setSelectedId(property.id); }} getClientName={getClientName} isActive={active} /></>}
           </div>
         </Card>
-        {isDesktop && !unavailable && (desktopProperty ? detail(desktopProperty) : <DirectoryEmpty title="La ficha de tu alojamiento" description="Selecciona una propiedad para consultar sus características y gestionar su servicio." />)}
+        {sessionIds.map(id => {
+          const property = properties.find(item => item.id === id);
+          return property && <PropertyEditorSession key={id} property={property} clientName={getClientName(property)} active={active(property)} visible={!unavailable && currentProperty?.id === id} desktop={isDesktop} onStatus={onStatus} onClose={() => { if (canLeave(true)) setSelectedId(null); }} />;
+        })}
+        {isDesktop && !unavailable && !desktopProperty && <DirectoryEmpty title="La ficha de tu alojamiento" description="Selecciona una propiedad para consultar sus características y gestionar su servicio." />}
       </div>
-      {!isDesktop && <Dialog open={!!selected && !unavailable} onOpenChange={open => { if (!open && canLeave()) setSelectedId(null); }}>
-        <DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto rounded-2xl p-0 pt-10">
-          <DialogTitle className="sr-only">Ficha de {selected?.nombre}</DialogTitle><DialogDescription className="sr-only">Características, servicio y limpiezas de la propiedad.</DialogDescription>
-          {selected && detail(selected)}
-        </DialogContent>
-      </Dialog>}
     </DirectoryPage>
   );
 }

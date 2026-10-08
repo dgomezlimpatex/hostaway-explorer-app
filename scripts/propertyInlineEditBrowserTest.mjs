@@ -10,7 +10,7 @@ const mocks = {
     export const usePropertyCleaningSchedule=()=>({data:{},isLoading:false});
     export const useCreateProperty=()=>({isPending:false,mutateAsync:async()=>{throw Error('Unexpected create')}});
     export const useDeleteProperty=()=>({isPending:false,mutate:()=>{throw Error('Unexpected delete')}});
-    export const useUpdateProperty=()=>({mutateAsync:async ({id,updates})=>{window.fixture.calls.push({kind:'property',id,updates}); if(window.fixture.failProperty)throw Error('Simulated failure'); await new Promise(r=>setTimeout(r,30));window.fixture.properties=window.fixture.properties.map(p=>p.id===id?{...p,...updates}:p);window.fixture.version++;refresh();}});`,
+    export const useUpdateProperty=()=>({mutateAsync:async ({id,updates})=>{window.fixture.calls.push({kind:'property',id,updates}); if(window.fixture.waitSaves) await new Promise((resolve,reject)=>{window.fixture.pendingSaves[id]={resolve,reject}}); if(window.fixture.failProperty)throw Error('Simulated failure'); await new Promise(r=>setTimeout(r,30));window.fixture.properties=window.fixture.properties.map(p=>p.id===id?{...p,...updates}:p);window.fixture.version++;refresh();}});`,
   useStock: `import {useSyncExternalStore} from 'react';
     const listeners=new Set();const refresh=()=>{for(const fn of listeners)fn()};
     const watch=()=>useSyncExternalStore(fn=>{listeners.add(fn);return()=>listeners.delete(fn)},()=>window.fixture.version);
@@ -81,7 +81,27 @@ for(const width of [1440,390]) {
  if(width>1000){page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:/Apartamento B/}).click();assert.equal(await name.inputValue(),'Pendiente');}
  if(width<1000){page.once('dialog',d=>d.dismiss());await page.keyboard.press('Escape');assert.equal(await name.inputValue(),'Pendiente');}
  await page.getByRole('button',{name:'Descartar',exact:true}).click();
+ // Independent in-flight saves survive selection changes, including mobile dialog closure.
+ await page.evaluate(()=>{window.fixture.waitSaves=true;window.fixture.pendingSaves={};window.fixture.calls=[]});
+ await name.fill('A segundo plano');await save.click();
+ await page.waitForFunction(()=>!!window.fixture.pendingSaves.a);
+ const selectProperty=async code=>{if(width<1000)await page.keyboard.press('Escape');await page.getByRole('button',{name:new RegExp(code)}).click();};
+ await selectProperty('B2');assert.equal(await name.inputValue(),'Apartamento B');
+ assert.equal(await page.evaluate(()=>window.fixture.properties[0].nombre),'Reintento');
+ await selectProperty('A1');assert.equal(await name.inputValue(),'A segundo plano');assert.equal(await name.isDisabled(),true);
+ await selectProperty('B2');await name.fill('B segundo plano');await save.click();await page.waitForFunction(()=>!!window.fixture.pendingSaves.b);
+ await page.evaluate(()=>window.fixture.pendingSaves.a.resolve());await page.waitForFunction(()=>window.fixture.properties[0].nombre==='A segundo plano');
+ assert.equal(await name.inputValue(),'B segundo plano');assert.equal(await name.isDisabled(),true);
+ await selectProperty('A1');assert.equal(await name.inputValue(),'A segundo plano');
+ await page.evaluate(()=>window.fixture.pendingSaves.b.reject(Error('Background failure')));
+ if(width<1000)await page.keyboard.press('Escape');
+ await page.getByRole('alert').filter({hasText:'Cambios pendientes en Apartamento B'}).waitFor();
+ await page.getByRole('button',{name:'Ver propiedad',exact:true}).click();assert.equal(await name.inputValue(),'B segundo plano');
+ await page.evaluate(()=>{window.fixture.waitSaves=false});await save.click();await page.waitForFunction(()=>window.fixture.properties[1].nombre==='B segundo plano');
+ assert.equal(await page.evaluate(()=>window.fixture.calls.filter(c=>c.id==='a').length),1);
+ assert.equal(await page.evaluate(()=>window.fixture.calls.filter(c=>c.id==='b').length),2);
+ assert.equal(await name.inputValue(),'B segundo plano');
  await page.screenshot({path:(process.env.TEMP||'/tmp')+'/property-inline-'+width+'.png',fullPage:true});
- assert.deepEqual(errors,[]);console.log('PASS inline property editing '+width+': tabs, discard, scoped save, validation, failure/retry, partial save, navigation');await page.close();
+ assert.deepEqual(errors,[]);console.log('PASS inline property editing '+width+': tabs, discard, scoped save, validation, failure/retry, partial save, navigation, background saves and recoverable failure');await page.close();
 }
 } finally {await browser.close()}

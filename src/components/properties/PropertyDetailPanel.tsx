@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { CalendarDays, CheckSquare, Copy, Save, Home, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CrmDetailFrame } from '@/components/directory/CrmDetailFrame';
@@ -18,7 +18,7 @@ import { ServiceSection } from './forms/ServiceSection';
 import { ClientSelectionSection } from './forms/ClientSelectionSection';
 import { NotesSection } from './forms/NotesSection';
 import { StockConsumptionSection } from './forms/StockConsumptionSection';
-import { usePropertyInlineEdit } from './usePropertyInlineEdit';
+import type { usePropertyInlineEdit } from './usePropertyInlineEdit';
 import { AssignChecklistModal } from './AssignChecklistModal';
 import { PropertyChecklistInfo } from './PropertyChecklistInfo';
 import { duplicatePropertyData } from './duplicatePropertyData';
@@ -30,14 +30,9 @@ function cleaningDate(item?: PropertyCleaningScheduleItem | null) {
   return `${day}/${month}/${year}${item.startTime ? ` · ${item.startTime.slice(0, 5)}` : ''}`;
 }
 
-export function PropertyDetailPanel({ property, clientName, active, onPendingChange }: { property: Property; clientName: string; active: boolean; onPendingChange?: (pending: boolean, saving: boolean, discard: () => void, id: string) => void }) {
-  const editor = usePropertyInlineEdit(property);
+export function PropertyDetailPanel({ property, clientName, active, editor }: { property: Property; clientName: string; active: boolean; editor: ReturnType<typeof usePropertyInlineEdit> }) {
   const products = useStockProducts();
   const [preferredOpen, setPreferredOpen] = useState(false);
-  useEffect(() => {
-    onPendingChange?.(editor.dirty, editor.saving, editor.discard, property.id);
-    return () => onPendingChange?.(false, false, () => {}, property.id);
-  }, [editor.dirty, editor.saving, editor.discard, property.id, onPendingChange]);
   const section = (content: React.ReactNode) => <fieldset disabled={!editor.ready || editor.saving || editor.loadError} className="min-w-0 space-y-6 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 [&_h3]:text-[#310984]">{content}</fieldset>;
   const [assigning, setAssigning] = useState(false);
   const [deleting, setDeleting] = useState(false);
