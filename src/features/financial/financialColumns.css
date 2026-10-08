@@ -1,0 +1,17 @@
+.financial-column {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+.financial-column:hover,
+.financial-column:focus-visible {
+  transform: translateY(-3px) scaleX(1.08);
+  filter: brightness(1.08) drop-shadow(0 3px 4px rgb(49 9 132 / 22%));
+}
+.financial-column[role='button'] { cursor: pointer; }
+.financial-column:focus-visible { outline: 2px solid #310984; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .financial-column { transition: none; }
+  .financial-column:hover,
+  .financial-column:focus-visible { transform: none; }
+}

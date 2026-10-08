@@ -28,19 +28,20 @@ const modules = {
 const built = await build({ stdin: { contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import Page from './src/features/financial/FinancialAnalysisPage';createRoot(document.getElementById('root')).render(<MemoryRouter><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><Page/></QueryClientProvider></MemoryRouter>);`, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic', metafile: true, define: { 'process.env.NODE_ENV': '"production"' }, plugins: [{ name: 'financial-fixture', setup(plugin) {
   plugin.onResolve({ filter: /.*/ }, args => Object.hasOwn(modules, args.path) ? { path: args.path, namespace: 'fixture' } : null);
   plugin.onLoad({ filter: /.*/, namespace: 'fixture' }, args => ({ contents: modules[args.path], loader: 'js', resolveDir: process.cwd() }));
-} }] });
+} }], outdir: join(tmpdir(), 'financial-browser-bundle') });
 assert.ok(!Object.keys(built.metafile.inputs).some(path => path.startsWith('src/integrations/supabase')), 'Real production client must not be bundled');
 // Functional checks run before the production build. Compile actual app styles
 // directly, omitting font downloads so this fixture remains fully offline.
 const cssSource = readFileSync('src/index.css', 'utf8').replace(/^\s*@import\s+"@fontsource\/[^"\n]+";\s*$/gm, '');
-const { css } = await postcss([tailwindcss('tailwind.config.ts'), autoprefixer]).process(cssSource, { from: 'src/index.css' });
-const html = `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body><div id="root"></div><script>${built.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></body></html>`;
+const componentCss = built.outputFiles.filter(file => file.path.endsWith('.css')).map(file => file.text).join('\n');
+const { css } = await postcss([tailwindcss('tailwind.config.ts'), autoprefixer]).process(cssSource + '\n' + componentCss, { from: 'src/index.css' });
+const html = `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body><div id="root"></div><script>${built.outputFiles.find(file => file.path.endsWith('.js')).text.replaceAll('</script','<\\/script')}</script></body></html>`;
 // Offline functional checks run before Playwright's download step in delivery.
 // Use the runner's installed Chrome when present; never download or skip checks.
 const executablePath = process.platform === 'linux' && existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined;
 const browser = await chromium.launch({ headless: true, executablePath });
 try {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1050 } });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1050 }, hasTouch: true });
   const page = await context.newPage();
   const errors = [], requests = [];
   const openDetails = async text => { const summary=page.locator('summary').filter({hasText:text}); if(!await summary.evaluate(element=>element.parentElement.open)) await summary.click(); };
@@ -101,6 +102,42 @@ try {
   await page.locator('summary').filter({hasText:'Clientes:'}).click();
   await expect(costChart.getByRole('listitem').filter({hasText:'Personal'}).last()).toContainText('2346,00 €');
   await graph.screenshot({path:join(tmpdir(),'limpatex-financial-segmented-personal-demo.png')});
+  const detailRegion=page.getByRole('region',{name:'Desglose del gráfico'});
+  const revenueBar=graph.getByRole('button',{name:/^Ingresos · Periodo seleccionado/});
+  await revenueBar.hover();
+  await expect.poll(()=>revenueBar.evaluate(node=>getComputedStyle(node).transform)).not.toBe('none');
+  await expect(graph.locator('.recharts-tooltip-wrapper')).toContainText('100,00 €');
+  await expect(graph.locator('.recharts-tooltip-wrapper .recharts-tooltip-item')).toHaveCount(1);
+  await graph.screenshot({path:join(tmpdir(),'limpatex-financial-hover.png')});
+  await revenueBar.click();
+  await expect(page.getByRole('heading',{name:'Ingresos · desglose',exact:true})).toBeFocused();
+  await expect(detailRegion.getByRole('row').filter({hasText:'Apartamento Centro'})).toContainText('100,00 €');
+  assert.equal(await detailRegion.getByRole('row').filter({hasText:'Jornada Hotel de prueba'}).count(),0);
+  await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
+  await expect(revenueBar).toBeFocused();
+  await graph.getByRole('button',{name:/^Personal · Periodo seleccionado/}).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading',{name:'Gastos · desglose · Personal',exact:true})).toBeVisible();
+  await expect(detailRegion).toContainText('2346,00 €');
+  await expect(detailRegion.getByRole('row').filter({hasText:'Salario dirección turismo'})).toContainText('2317,00 €');
+  await expect(detailRegion.getByRole('row').filter({hasText:'Apartamento Centro'})).toContainText('29,00 €');
+  await detailRegion.screenshot({path:join(tmpdir(),'limpatex-financial-personal-detail.png')});
+  await page.reload();
+  await expect(page.getByRole('heading',{name:'Gastos · desglose · Personal',exact:true})).toBeVisible();
+  await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue(monthEnd);
+  await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
+  for (const label of ['Lavandería','Amenities y consumibles','Productos']) {
+    await graph.getByRole('button',{name:`Ver concepto: ${label}`,exact:true}).click();
+    await expect(page.getByRole('heading',{name:`Gastos · desglose · ${label}`,exact:true})).toBeVisible();
+    await expect(detailRegion.getByRole('row').filter({hasText:'Apartamento Centro'})).toBeVisible();
+    await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
+  }
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await revenueBar.hover();
+  assert.equal(await revenueBar.evaluate(node=>getComputedStyle(node).transitionDuration),'0s');
+  assert.equal(await revenueBar.evaluate(node=>getComputedStyle(node).transform),'none');
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await openDetails('Fechas personalizadas y filtros');
   await page.getByLabel('Hasta', { exact: true }).fill(previousEnd);
   if(previousEnd!==monthEnd)await expect(page.getByLabel('Mes del análisis',{exact:true})).toHaveValue('');
   await expect(graph.locator('svg.recharts-surface')).toBeVisible();
@@ -134,6 +171,15 @@ try {
   const trend=page.getByRole('region',{name:'Evolución mensual'});
   await expect(trend.locator('.recharts-bar')).toHaveCount(5);
   await expect(trend.locator('.recharts-line')).toHaveCount(0);
+  const previousPeriod=await trend.getByRole('row').nth(5).locator('th').textContent();
+  await trend.locator('.recharts-bar').nth(1).getByRole('button').nth(4).click();
+  await expect(page.getByRole('heading',{name:'Gastos · desglose · Personal',exact:true})).toBeVisible();
+  await expect(detailRegion).toContainText(previousPeriod);
+  await expect(page.getByLabel('Hasta',{exact:true})).not.toHaveValue(previousEnd);
+  await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
+  await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue(previousEnd);
+  await expect(page.getByRole('button',{name:'Ocultar evolución',exact:true})).toBeVisible();
+  await expect(trend.locator('.recharts-bar').nth(1).getByRole('button').nth(4)).toBeFocused();
   await trend.getByRole('button',{name:'Tipos de gasto',exact:true}).click();
   await expect(trend.locator('.recharts-bar')).toHaveCount(4);
   await expect(trend.getByRole('button',{name:'Tipos de gasto',exact:true})).toHaveAttribute('aria-pressed','true');
@@ -230,8 +276,16 @@ try {
   const incomeChart=page.getByRole('region',{name:'Origen de los ingresos'});
   await expect(incomeChart.locator('.recharts-bar')).toHaveCount(4);
   await incomeChart.getByRole('button',{name:'Ver concepto: Recepción de prueba',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Otros ingresos · sin IVA'})).toBeVisible();
-  await page.getByRole('button',{name:'General',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Ingresos · desglose · Recepción de prueba',exact:true})).toBeVisible();
+  await expect(detailRegion.getByRole('row').filter({hasText:'Recepción de prueba'})).toContainText('1329,60 €');
+  await expect(detailRegion.locator('tbody tr')).toHaveCount(1);
+  await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
+  await graph.getByRole('button',{name:/^Ingresos · Periodo seleccionado/}).click();
+  await expect(detailRegion.locator('tbody tr')).toHaveCount(3);
+  await expect(detailRegion.getByRole('row').filter({hasText:'Apartamento Centro'})).toContainText('102,75 €');
+  await expect(detailRegion.getByRole('row').filter({hasText:'Lavandería externa de prueba'})).toContainText('300,00 €');
+  await expect(detailRegion).toContainText('1732,35 €');
+  await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
   await page.getByRole('button',{name:'Ver evolución mensual',exact:true}).click();
   await page.getByRole('region',{name:'Evolución mensual'}).getByRole('button',{name:'Origen de ingresos',exact:true}).click();
   await expect(page.getByRole('region',{name:'Evolución mensual'}).locator('.recharts-bar')).toHaveCount(4);
@@ -343,6 +397,10 @@ try {
   await page.locator('summary').filter({hasText:'Clientes:'}).click();
   await page.locator('summary').filter({hasText:'Fechas personalizadas y filtros'}).click();
   await page.screenshot({path:join(tmpdir(),'limpatex-financial-mobile-populated.png'),fullPage:true});
+  await graph.getByRole('button',{name:/^Ingresos · Periodo seleccionado/}).tap();
+  await expect(page.getByRole('heading',{name:'Ingresos · desglose',exact:true})).toBeVisible();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Detail table scrolls inside mobile viewport');
+  await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
   await page.getByLabel('Mes del análisis',{exact:true}).fill('2024-02');
   await expect(page.getByLabel('Desde',{exact:true})).toHaveValue('2024-02-01');
   await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue('2024-02-29');
