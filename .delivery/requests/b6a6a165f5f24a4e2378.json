@@ -1,0 +1,23 @@
+{
+  "request": "Corregir Failed to write blobs (InvalidBlob) al adjuntar fotos desde Android Chrome en los reportes de trabajadoras.",
+  "reason": "Copia bytes de archivos seleccionados a Blobs independientes antes del guardado local y diferencia errores de fotos de errores del checklist. Conserva formato de IndexedDB, contratos de sincronización y transacción atómica. No ejecuta operaciones con datos reales ni modifica backend, autenticación o sincronización.",
+  "verification": "Prueba roja con build previo y fallo InvalidBlob inyectado. Prueba de navegador completa pasa: fallo de escritura sin foto ni checklist parcial, aviso persiste al guardar otro punto, reelección de foto, guardado de Blob independiente rechazando Files originales, vista previa, recarga offline, finalización y regresiones de envío con backend interceptado. Node prueba el código real de copiado y guardado con archivos pequeños/grandes/no legibles, MIME, contenido exacto, chunks limitados, rollback y propiedad del borrador. Build, lint focalizado y tipos Node correctos; tipos app mantienen exactamente los mismos 102 errores de base. Sin Android físico ni escrituras productivas.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerPhotoFileTest.mjs",
+    "scripts/cleanerReportPreparationTest.mjs",
+    "scripts/cleanerFinishTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "1f18c92b34125a72eee83c7f54b180ee2aba368ddeb4511aaff470802c587f46"
+}
