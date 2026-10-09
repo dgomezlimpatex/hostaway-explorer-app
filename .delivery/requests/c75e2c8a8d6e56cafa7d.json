@@ -1,7 +1,7 @@
 {
   "request": "Investigar y corregir bloqueos al preparar tareas y recuperación de reportes tras errores al adjuntar fotos en Android Chrome.",
   "reason": "Acota esperas de lectura y recupera la interfaz de la tarea desde el borrador existente. No cambia escrituras, sincronización, autenticación ni reglas de negocio; no opera sobre datos reales.",
-  "verification": "Build, lint focalizado, tipos Node y raíz correctos. Tipos app: mismos 102 errores previos, diff de diagnósticos vacío. Prueba roja sobre build anterior: lectura local bloqueada deja spinner. Nueva prueba de navegador pasa: timeout/reintento, fallo de render tras foto, recuperación de la misma tarea/foto, finalización, offline, reintentos e idempotencia con backend interceptado. Pruebas de lectura y finalización pasan. No se dispone aún del detalle técnico de Carlos ni se ha probado en su Android físico; es una mejora de recuperación, no confirmación de su causa exacta.",
+  "verification": "Build, lint focalizado, tipos Node y raíz correctos. Tipos app: mismos 102 errores previos, diff de diagnósticos vacío. Prueba roja sobre build anterior: lectura local bloqueada deja spinner. Nueva prueba de navegador pasa: timeout/reintento, fallo de render tras foto, recuperación de la misma tarea/foto, finalización, offline, reintentos e idempotencia con backend interceptado. Pruebas de lectura y finalización pasan. No se dispone aún del detalle técnico de Carlos ni se ha probado en su Android físico; es una mejora de recuperación, no confirmación de su causa exacta. La cola no dispone de navegador en la fase Node: repite lectura, recuperación del límite de errores y estados de carga en Node; el flujo completo de navegador se ejecutó localmente. La entrada de navegador de la cola se verifica en su fase posterior habitual.",
   "effects": {
     "productionData": false,
     "database": false,
@@ -14,10 +14,9 @@
   },
   "tests": [
     "scripts/cleanerReportPreparationTest.mjs",
-    "scripts/cleanerFinishTest.mjs",
-    "scripts/cleanerOfflineBrowserTest.mjs"
+    "scripts/cleanerFinishTest.mjs"
   ],
   "version": 1,
   "scope": "application",
-  "digest": "42e77372088e39d1f88886d36ce7fe59aa5a1218bf6af4ce796cded1fb96afee"
+  "digest": "efac4ba5ddd07809ffac69c80b0159d5b3aa6ec8c3dbd8b7bd584fadec7ce317"
 }
