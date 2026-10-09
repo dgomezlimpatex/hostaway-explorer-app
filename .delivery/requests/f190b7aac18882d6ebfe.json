@@ -1,0 +1,21 @@
+{
+  "request": "Evitar que pulsaciones accidentales consecutivas marquen varias mudas como preparadas en el enlace de lavandería V2, con una espera de tres segundos.",
+  "reason": "Protección local de interacción: un único bloqueo síncrono compartido entre bolsas, fases y vista por edificios. No se cambia el contrato ni la persistencia de la acción existente, permisos, acceso o backend; no se ejecutan operaciones sobre datos reales.",
+  "verification": "Build correcto; TypeScript de aplicación conserva exactamente los 132 diagnósticos de la base, Node y raíz sin errores; lint focalizado correcto. Prueba del guard real: repetición inmediata, límite 2999/3000 ms, guardado lento y fallo/reintento. Navegador con componente React real, workflow en memoria y toda red bloqueada: 390 y 1100 px, doble/triple clic, siguiente bolsa/fase, vista por edificios, guardado lento, fallo anterior a animación y reintento. El test antiguo laundryFixedActionsTest usa data-bag-route, atributo ausente ya en la base, y se detiene ahí; se conserva sin cambios. Prueba nueva cubre el flujo actual. La cola repite la prueba Node sin navegador; la prueba completa de navegador se ha ejecutado localmente. Protección por vista abierta, no bloqueo entre dispositivos ni persistencia tras recarga.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/laundryPreparationClickGuardTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "62a8404af4b90bc031470862f5129cbe9e2018f571c00698093b22f8e40210ac"
+}
