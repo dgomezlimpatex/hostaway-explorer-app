@@ -1,0 +1,23 @@
+{
+  "request": "Prevenir interferencias de la traducción en los reportes de trabajadoras e investigar insertBefore al adjuntar fotos, incluso con traducción apagada.",
+  "reason": "Añade exclusión de traducción a los reportes, sus ventanas portadas, avisos y recuperación; amplía únicamente el diagnóstico local del error con posiciones de assets y nombres de componentes. No cambia guardados, sincronización, backend, permisos ni comunicaciones. La causa concreta de Carlos no está confirmada.",
+  "verification": "Build y tipos Node correctos; tipos app exactamente iguales a los 102 errores previos; lint focalizado sin errores (dos avisos previos en LazyLoadErrorBoundary). Pruebas Node ejecutan recuperación y formato real de diagnóstico, límites, DOMException, ausencia de stack y reinicio sin estado antiguo; regresiones de fotos y finalización pasan. Navegador Chromium móvil con backend interceptado: simulación de traducción reemplaza texto de control y respeta reportes, notas, estado, errores, avisos y resumen protegidos; prueba fotos, fallos, diagnóstico, reapertura, conservación, recarga offline y finalización. Sin dispositivo Android físico ni traductor nativo; no se afirma resolver la causa desconocida del fallo sin traducción.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerReportPreparationTest.mjs",
+    "scripts/cleanerPhotoFileTest.mjs",
+    "scripts/cleanerFinishTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "fd6b3b7193f05d222b6f642067d6f35adbd2655652eece7e99b71a9604ea10c4"
+}

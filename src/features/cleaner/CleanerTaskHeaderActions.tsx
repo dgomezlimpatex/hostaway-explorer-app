@@ -57,7 +57,7 @@ export function CleanerTaskHeaderActions({ property, taskNotes, propertyName, lo
           <FileText className="h-4 w-4" aria-hidden="true" />NOTAS
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex max-h-[85dvh] w-[calc(100%-1.5rem)] flex-col rounded-2xl p-4 sm:max-w-lg">
+      <DialogContent translate="no" lang="es" className="notranslate flex max-h-[85dvh] w-[calc(100%-1.5rem)] flex-col rounded-2xl p-4 sm:max-w-lg">
         <DialogHeader className="shrink-0 pr-6 text-left">
           <DialogTitle>Notas del piso</DialogTitle>
           <DialogDescription>{propertyName} · Indicaciones y datos del piso</DialogDescription>
@@ -77,7 +77,7 @@ export function CleanerTaskHeaderActions({ property, taskNotes, propertyName, lo
           <view.Icon className={`h-5 w-5 ${view.state === 'sending' ? 'animate-pulse motion-reduce:animate-none' : ''}`} aria-hidden="true" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 max-w-[calc(100vw-2rem)] space-y-2 text-sm" aria-label="Estado de sincronización">
+      <PopoverContent translate="no" lang="es" align="end" className="notranslate w-64 max-w-[calc(100vw-2rem)] space-y-2 text-sm" aria-label="Estado de sincronización">
         <p className="font-semibold">{view.label}</p>
         <p>{view.text}</p>
         {(status.pending > 0 || status.pendingPhotos > 0) && <p className="text-xs text-muted-foreground">{status.pending} {status.pending === 1 ? 'tarea pendiente' : 'tareas pendientes'}{status.pendingPhotos > 0 ? ` · ${status.pendingPhotos} fotos` : ''}.</p>}
