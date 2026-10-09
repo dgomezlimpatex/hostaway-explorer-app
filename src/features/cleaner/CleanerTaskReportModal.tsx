@@ -23,6 +23,7 @@ import { IncidentReportTrigger } from '@/components/incidents/IncidentReportTrig
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { readCleanerDraft } from './readCleanerDraft';
 import { CleanerReportErrorBoundary } from './CleanerReportErrorBoundary';
+import { localPhotoErrorMessage } from './prepareLocalPhoto';
 
 interface Props { task: Task | null; open: boolean; onOpenChange: (open: boolean) => void; recovery?: boolean }
 
@@ -50,6 +51,8 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   const [saving, setSaving] = useState(0);
   const [preparingPhotos, setPreparingPhotos] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [photoErrors, setPhotoErrors] = useState<Record<string, string>>({});
+  const photoError = Object.values(photoErrors)[0];
   const [checklist, setChecklist] = useState<CleanerChecklist>({});
   const [notes, setNotes] = useState('');
   const fieldsInitialized = useRef(false);
@@ -166,7 +169,6 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
       throw new Error('Elige una foto o un vídeo válido de menos de 200 MB.');
     }
     setPreparingPhotos(count => count + 1);
-    setError(null);
     try {
       await saveChain.current;
       const id = crypto.randomUUID();
@@ -176,7 +178,11 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
         checklistItemId, file, name: file.name, mimeType: getMimeType(file), capturedAt,
       });
       applyDraft(saved);
-      saveErrorRef.current = null;
+      setPhotoErrors(current => {
+        const next = { ...current };
+        delete next[checklistItemId || 'general'];
+        return next;
+      });
       void navigator.storage?.persist?.().catch(() => undefined);
       return {
         id, task_report_id: saved.report.id, file_url: `${LOCAL_PHOTO_PREFIX}${id}`,
@@ -184,9 +190,9 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
         timestamp: capturedAt, created_at: capturedAt, file_size: file.size,
       };
     } catch (reason) {
-      saveErrorRef.current = reason instanceof Error ? reason.message : 'La foto no se ha guardado. Vuelve a adjuntarla.';
-      setError(saveErrorRef.current);
-      throw reason;
+      const message = localPhotoErrorMessage(reason);
+      setPhotoErrors(current => ({ ...current, [checklistItemId || 'general']: message }));
+      throw new Error(message);
     } finally { setPreparingPhotos(count => count - 1); }
   }, [key, identity.ownerId, taskId, applyDraft]);
 
@@ -237,6 +243,10 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
             }}>Reintentar preparación</button>
           </div>}
           {recovery && <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">Este trabajo está guardado en el móvil y su envío sigue pendiente. Puedes revisar las fotos y notas para consultarlo con coordinación.</p>}
+          {photoError && <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">
+            <p>{photoError}</p>
+            <p className="mt-1">La foto no está guardada. Vuelve a adjuntarla en el apartado correspondiente; guardar el checklist no recupera esa foto.</p>
+          </div>}
           {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}
             {draft && <button className="mt-1 min-h-11 font-semibold underline" onClick={() => void updateReport({ checklist_completed: checklist, notes }).catch(() => undefined)}>Reintentar guardar</button>}
           </div>}
@@ -268,7 +278,7 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
             </> : draft ? <ReportSummary task={effectiveTask} template={template} checklist={checklist} notes={notes} completionPercentage={validation.percentage} currentReport={draft.report} timeOnly /> : <p className="py-4 text-sm">Esta tarea ya está finalizada.</p>}
         </div>
         <div className="shrink-0 space-y-2 border-t bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          {(!started || busy || error || completed) && <p role="status" className="text-center text-xs text-muted-foreground">{busy ? 'Guardando en el móvil…' : error ? 'Hay cambios que no se han podido guardar' : completed ? 'Limpieza finalizada · revisa arriba el estado del envío' : 'La tarea se inicia al pulsar el botón'}</p>}
+          {(!started || busy || error || photoError || completed) && <p role="status" className="text-center text-xs text-muted-foreground">{busy ? 'Guardando en el móvil…' : photoError ? 'Hay una foto que no se ha podido guardar' : error ? 'Hay cambios que no se han podido guardar' : completed ? 'Limpieza finalizada · revisa arriba el estado del envío' : 'La tarea se inicia al pulsar el botón'}</p>}
           {draft && !completed && validation.missing.length > 0 && <p className="text-xs text-amber-900">Faltan {validation.missing.length} puntos o fotos obligatorias.</p>}
           {completed || virtual || recovery ? <Button className="min-h-12 w-full" onClick={() => void close()} disabled={busy}>Volver a mis tareas</Button>
             : !started ? <Button className="min-h-12 w-full" onClick={() => void start()} disabled={loading || !loadedLocal || Boolean(preparationError) || busy || !bundle.data || !identity.data || !fromToday || missingTemplate}><Play className="mr-2 h-4 w-4" />Iniciar limpieza</Button>

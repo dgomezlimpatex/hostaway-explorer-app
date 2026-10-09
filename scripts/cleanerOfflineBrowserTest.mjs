@@ -207,6 +207,32 @@ try {
   await page.getByText('Piso de prueba',{exact:true}).first().click();
   await page.getByRole('button',{name:'Revisar y finalizar'}).waitFor();
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jD1sAAAAASUVORK5CYII=','base64');
+  await page.addScriptTag({content:await readFile(join(temporary,'helper.js'),'utf8')});
+  await page.evaluate(() => {
+    const original = IDBObjectStore.prototype.put;
+    window.failPhotoWrite = true;
+    window.restorePhotoWrites = () => { IDBObjectStore.prototype.put = original; };
+    IDBObjectStore.prototype.put = function (value, ...args) {
+      // Model Android rejecting picker-backed Files, plus a complete write failure.
+      if (this.name === 'photos' && (window.failPhotoWrite || value.file instanceof File)) {
+        throw new DOMException('Failed to write blobs (InvalidBlob)', 'DataError');
+      }
+      return original.call(this, value, ...args);
+    };
+  });
+  await page.locator('input[type=file]').first().setInputFiles({name:'prueba.png',mimeType:'image/png',buffer:png});
+  const photoFailure = page.getByText('La foto no está guardada. Vuelve a adjuntarla en el apartado correspondiente; guardar el checklist no recupera esa foto.',{exact:true});
+  await photoFailure.waitFor();
+  assert.equal(await page.getByRole('button',{name:'Reintentar guardar',exact:true}).count(),0,'A checklist retry cannot recover a failed photo');
+  assert.equal(await page.evaluate(owner => window.cleanerTest.listLocal('photos',owner).then(items=>items.length),userId),0,'Failed photo transaction leaves no photo');
+  const failedDraft = await page.evaluate(({userId,taskId}) => window.cleanerTest.readLocal('drafts',`${userId}:${taskId}`),{userId,taskId});
+  assert.equal(failedDraft.report.checklist_completed['general.foto']?.media_urls?.length || 0,0,'Failed photo must not mark its checklist item');
+  await page.getByRole('button',{name:/Extra de prueba/}).click();
+  await page.getByText('Guardando en el móvil…',{exact:true}).waitFor({state:'hidden'});
+  assert.equal(await photoFailure.isVisible(),true,'Saving another checklist item must not hide the missing photo');
+  await page.getByRole('button',{name:/Extra de prueba/}).click();
+  await page.getByText('Guardando en el móvil…',{exact:true}).waitFor({state:'hidden'});
+  await page.evaluate(() => { window.failPhotoWrite = false; });
   // Inject a render failure at the local-photo preview, after the photo is saved.
   // This models a React/DOM failure without inventing Carlos's unknown exception.
   await page.evaluate(() => {
@@ -224,6 +250,8 @@ try {
   await page.evaluate(() => window.restorePhotoRendering());
   await page.getByRole('button',{name:'Reabrir este reporte',exact:true}).click();
   await page.getByText('1 foto(s)',{exact:true}).waitFor();
+  await page.evaluate(() => window.restorePhotoWrites());
+  assert.equal(await photoFailure.count(),0,'Reselecting a readable photo clears its failure');
   await page.waitForFunction(() => Array.from(document.querySelectorAll('img')).some(img => img.src.startsWith('blob:') && img.complete && img.naturalWidth > 0));
   await page.getByRole('button',{name:/Extra de prueba/}).click();
   await page.getByText('Guardando en el móvil…',{exact:true}).waitFor({state:'hidden'});
