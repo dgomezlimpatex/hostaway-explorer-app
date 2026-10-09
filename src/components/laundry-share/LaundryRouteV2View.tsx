@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMadridDate } from '@/utils/date';
+import { createPreparationClickGuard } from './preparationClickGuard';
 
 type BagStatus = 'pending' | 'prepared' | 'issue';
 type DeliveryStatus = 'pending' | 'prepared' | 'delivered';
@@ -605,10 +606,11 @@ const PreparationPhaseHeader = ({ urgent, pending, deliveryDate }: {
   );
 };
 
-const PreparationBuildingList = ({ bags, currentIds, busy, onPrepare }: {
+const PreparationBuildingList = ({ bags, currentIds, busy, prepareLabel, onPrepare }: {
   bags: RouteBag[];
   currentIds: Set<string>;
   busy: boolean;
+  prepareLabel: string;
   onPrepare: (taskId: string) => void;
 }) => {
   const groups = new Map<string, RouteBag[]>();
@@ -633,7 +635,7 @@ const PreparationBuildingList = ({ bags, currentIds, busy, onPrepare }: {
                 <p className="text-xs">{bag.propertyName}</p>
                 <div className="space-y-1">{buildBagGuideLayers(bag).flatMap((layer) => layer.items.map((item, index) => <div key={layer.id + '-' + index} className="flex gap-2 rounded bg-[#faf7f1] p-2 text-sm"><strong>{item.quantity}</strong><span>{item.label}</span></div>))}</div>
                 {bag.bagStatus.issueReason && <p className="text-sm text-red-700">{bag.bagStatus.issueReason}</p>}
-                <Button className="min-h-12 w-full" disabled={busy || bag.bagStatus.status === 'prepared'} onClick={() => onPrepare(bag.taskId)}><PackageCheck className="mr-2 h-4 w-4" />{bag.bagStatus.status === 'prepared' ? 'Preparada' : 'Marcar bolsa preparada'}</Button>
+                <Button className="min-h-12 w-full" disabled={busy || bag.bagStatus.status === 'prepared'} onClick={() => onPrepare(bag.taskId)}><PackageCheck className="mr-2 h-4 w-4" />{bag.bagStatus.status === 'prepared' ? 'Preparada' : prepareLabel}</Button>
               </div>
             </article>
           ))}
@@ -662,6 +664,22 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const [completeFlashTaskId, setCompleteFlashTaskId] = useState<string | null>(null);
   const [pendingActionKeys, setPendingActionKeys] = useState<Set<string>>(() => new Set());
   const pendingActionKeysRef = useRef<Set<string>>(new Set());
+  const prepareGuard = useRef(createPreparationClickGuard());
+  const prepareFlashTimer = useRef<number>();
+  const [prepareWaitSeconds, setPrepareWaitSeconds] = useState(0);
+  const preparationSaving = Array.from(pendingActionKeys).some((key) => key.endsWith(':prepare'));
+  const preparationBlocked = prepareWaitSeconds > 0 || preparationSaving;
+  const prepareWaitLabel = prepareWaitSeconds > 0 ? `Espera ${prepareWaitSeconds} s…` : preparationSaving ? 'Guardando…' : null;
+
+  useEffect(() => {
+    if (prepareWaitSeconds === 0) return;
+    const timer = window.setInterval(() => {
+      setPrepareWaitSeconds(prepareGuard.current.remainingSeconds());
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [prepareWaitSeconds]);
+
+  useEffect(() => () => window.clearTimeout(prepareFlashTimer.current), []);
   const [pendingBuildingCodes, setPendingBuildingCodes] = useState<Set<string>>(() => new Set());
   const [collapsedBuildings, setCollapsedBuildings] = useState<Set<string>>(() => new Set());
   const queryKey = useMemo(() => ['laundry-route-v2', token], [token]);
@@ -749,7 +767,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
 
       if (action === 'prepare') {
         setCompleteFlashTaskId(taskId);
-        window.setTimeout(() => {
+        prepareFlashTimer.current = window.setTimeout(() => {
           queryClient.setQueryData<RouteWorkflow>(queryKey, (current) =>
             updateWorkflowBag(current, taskId, (bag) => ({
               ...bag,
@@ -844,6 +862,8 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       }
     },
     onError: (err, variables, context) => {
+      // A quick failure must not be overwritten by the delayed success flash.
+      if (variables.action === 'prepare') window.clearTimeout(prepareFlashTimer.current);
       if (context?.previousBag) {
         queryClient.setQueryData<RouteWorkflow>(queryKey, (current) =>
           updateWorkflowBag(current, context.taskId, (bag) => {
@@ -879,6 +899,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
       });
     },
     onSettled: (_data, _error, variables) => {
+      if (variables.action === 'prepare') prepareGuard.current.finish();
       const key = actionKey(variables.taskId, variables.action);
       pendingActionKeysRef.current.delete(key);
       setPendingActionKeys((current) => {
@@ -892,6 +913,11 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const runAction = (variables: { action: RouteAction; taskId: string; reason?: string }) => {
     const key = actionKey(variables.taskId, variables.action);
     if (pendingActionKeysRef.current.has(key)) return;
+    if (variables.action === 'prepare') {
+      // Lock synchronously, across bags and views, before React can render again.
+      if (!prepareGuard.current.tryStart()) return;
+      setPrepareWaitSeconds(3);
+    }
     pendingActionKeysRef.current.add(key);
     actionMutation.mutate(variables);
   };
@@ -1154,7 +1180,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </div>
         )}
         {preparationBags.length > 0 && <PreparationPhaseHeader urgent={Boolean(urgentBag)} pending={preparationBags.length} deliveryDate={urgentBag ? workflow.route.deliveryDate : workflow.route.nextDeliveryDate} />}
-        {buildingViewActive && <div key={urgentBag ? 'urgent' : 'prepare_next'} className="min-h-0 flex-1 overflow-y-auto pb-3"><PreparationBuildingList bags={preparationBags} currentIds={new Set(workflow.currentRouteBags.map((bag) => bag.taskId))} busy={pendingActionKeys.size > 0} onPrepare={(taskId) => runAction({ action: 'prepare', taskId })} /></div>}
+        {buildingViewActive && <div key={urgentBag ? 'urgent' : 'prepare_next'} className="min-h-0 flex-1 overflow-y-auto pb-3"><PreparationBuildingList bags={preparationBags} currentIds={new Set(workflow.currentRouteBags.map((bag) => bag.taskId))} busy={preparationBlocked || pendingActionKeys.size > 0} prepareLabel={prepareWaitLabel || 'Marcar bolsa preparada'} onPrepare={(taskId) => runAction({ action: 'prepare', taskId })} /></div>}
         {!buildingViewActive && urgentBag && (
           <section className="flex min-h-0 flex-1 flex-col gap-2">
             <BagCard
@@ -1223,10 +1249,11 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: urgentBag.taskId })}
+                    disabled={preparationBlocked}
                     className="h-12 touch-manipulation rounded-xl bg-[#c4512e] text-sm font-semibold hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-4 w-4" />
-                    Bolsa preparada
+                    {prepareWaitLabel || 'Bolsa preparada'}
                   </Button>
                   <Button
                     variant="outline"
@@ -1280,10 +1307,11 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                   <Button
                     size="lg"
                     onClick={() => runAction({ action: 'prepare', taskId: nextPendingBag.taskId })}
+                    disabled={preparationBlocked}
                     className="h-12 touch-manipulation rounded-xl bg-[#c4512e] text-sm font-semibold hover:bg-[#a94427]"
                   >
                     <PackageCheck className="mr-2 h-4 w-4" />
-                    Bolsa preparada
+                    {prepareWaitLabel || 'Bolsa preparada'}
                   </Button>
                   <Button
                     variant="outline"
