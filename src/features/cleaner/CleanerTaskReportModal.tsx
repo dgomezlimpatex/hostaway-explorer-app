@@ -15,18 +15,22 @@ import { useCleanerOfflineStatus } from './CleanerOfflineProvider';
 import { CleanerWorkContext } from './CleanerWorkContext';
 import { cleanerBundleKey, loadCleanerBundle, useCleanerCachedQuery, useCleanerIdentity } from './useCleanerData';
 import {
-  changeDraft, draftKey, getCleanerStoreVersion, LOCAL_PHOTO_PREFIX, readLocal, savePhotoWithDraft,
+  changeDraft, draftKey, getCleanerStoreVersion, LOCAL_PHOTO_PREFIX, savePhotoWithDraft,
   subscribeCleanerStore, type CleanerDraft,
 } from './offlineStore';
 import type { CleanerChecklist } from './reportMerge';
 import { IncidentReportTrigger } from '@/components/incidents/IncidentReportTrigger';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { readCleanerDraft } from './readCleanerDraft';
+import { CleanerReportErrorBoundary } from './CleanerReportErrorBoundary';
 
 interface Props { task: Task | null; open: boolean; onOpenChange: (open: boolean) => void; recovery?: boolean }
 
 export function CleanerTaskReportModal({ task, open, onOpenChange, recovery = false }: Props) {
   const { user } = useAuth();
-  return task && open && user ? <CleanerTaskWork key={`${user.id}:${task.originalTaskId || task.id}`} task={task} onClose={() => onOpenChange(false)} recovery={recovery} /> : null;
+  return task && open && user ? <CleanerReportErrorBoundary key={`${user.id}:${task.originalTaskId || task.id}`} onClose={() => onOpenChange(false)}>
+    <CleanerTaskWork task={task} onClose={() => onOpenChange(false)} recovery={recovery} />
+  </CleanerReportErrorBoundary> : null;
 }
 
 function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () => void; recovery: boolean }) {
@@ -41,6 +45,8 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
     () => loadCleanerBundle(identity.ownerId, identity.sedeId, task, identity.data!.id), Boolean(identity.data?.id && !taskId.startsWith('recurring_')));
   const [draft, setDraft] = useState<CleanerDraft | null>(null);
   const [loadedLocal, setLoadedLocal] = useState(false);
+  const [preparationError, setPreparationError] = useState<string | null>(null);
+  const [preparationAttempt, setPreparationAttempt] = useState(0);
   const [saving, setSaving] = useState(0);
   const [preparingPhotos, setPreparingPhotos] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -58,11 +64,13 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   useEffect(() => {
     if (!identity.ownerId) return;
     let cancelled = false;
-    void readLocal<CleanerDraft>('drafts', key).then(saved => {
-      if (!cancelled) { if (saved) applyDraft(saved); setLoadedLocal(true); }
-    }).catch(reason => { if (!cancelled) { setError(String(reason.message)); setLoadedLocal(true); } });
+    void readCleanerDraft(key).then(saved => {
+      if (!cancelled) { if (saved) applyDraft(saved); setPreparationError(null); setLoadedLocal(true); }
+    }).catch(reason => {
+      if (!cancelled) setPreparationError(reason instanceof Error ? reason.message : 'No se ha podido leer el avance guardado en este móvil. Reintenta la preparación.');
+    });
     return () => { cancelled = true; };
-  }, [key, identity.ownerId, version, applyDraft]);
+  }, [key, identity.ownerId, version, applyDraft, preparationAttempt]);
 
   useEffect(() => {
     if (!loadedLocal || draft || !bundle.data?.report || !identity.data) return;
@@ -138,7 +146,7 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   }), [save]);
 
   const start = async () => {
-    if (!identity.data || task.date !== formatMadridDate(new Date()) || !bundle.data || completed || virtual || missingTemplate || recovery) return;
+    if (!loadedLocal || preparationError || !identity.data || task.date !== formatMadridDate(new Date()) || !bundle.data || completed || virtual || missingTemplate || recovery) return;
     const now = new Date().toISOString();
     await save(current => current ? { ...current, revision: current.revision + 1, error: undefined,
       report: { ...current.report, overall_status: 'in_progress', start_time: current.report.start_time || now, updated_at: now } } : {
@@ -203,7 +211,7 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   };
 
   const busy = saving > 0 || preparingPhotos > 0;
-  const loading = !loadedLocal || identity.isLoading || (!virtual && bundle.isLoading && !bundle.data);
+  const loading = !preparationError && (!loadedLocal || identity.isLoading || (!virtual && bundle.isLoading && !bundle.data));
   return <CleanerWorkContext.Provider value={{ uploadPhoto, isPreparingPhoto: preparingPhotos > 0, changePhotoPreparation: delta => setPreparingPhotos(count => Math.max(0, count + delta)) }}>
     <Dialog open onOpenChange={open => { if (!open) void close(); }}>
       <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col gap-0 rounded-none p-0 sm:h-[90dvh] sm:max-w-2xl sm:rounded-2xl" onEscapeKeyDown={event => { if (busy) event.preventDefault(); }} aria-describedby="cleaner-work-description">
@@ -219,6 +227,15 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.address)}`} target="_blank" rel="noopener noreferrer" className="mt-1 flex min-h-8 items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3 shrink-0" />{task.address}</a>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+          {(preparationError || (!bundle.data && bundle.error) || (!identity.data && identity.error)) && <div role="alert" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+            <p>{preparationError || 'No se ha podido preparar la tarea. Comprueba la conexión y vuelve a intentarlo.'}</p>
+            <button className="mt-1 min-h-11 font-semibold underline" onClick={() => {
+              setPreparationError(null);
+              setPreparationAttempt(attempt => attempt + 1);
+              void identity.refetch();
+              if (identity.data) void bundle.refetch();
+            }}>Reintentar preparación</button>
+          </div>}
           {recovery && <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">Este trabajo está guardado en el móvil y su envío sigue pendiente. Puedes revisar las fotos y notas para consultarlo con coordinación.</p>}
           {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}
             {draft && <button className="mt-1 min-h-11 font-semibold underline" onClick={() => void updateReport({ checklist_completed: checklist, notes }).catch(() => undefined)}>Reintentar guardar</button>}
@@ -254,7 +271,7 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
           {(!started || busy || error || completed) && <p role="status" className="text-center text-xs text-muted-foreground">{busy ? 'Guardando en el móvil…' : error ? 'Hay cambios que no se han podido guardar' : completed ? 'Limpieza finalizada · revisa arriba el estado del envío' : 'La tarea se inicia al pulsar el botón'}</p>}
           {draft && !completed && validation.missing.length > 0 && <p className="text-xs text-amber-900">Faltan {validation.missing.length} puntos o fotos obligatorias.</p>}
           {completed || virtual || recovery ? <Button className="min-h-12 w-full" onClick={() => void close()} disabled={busy}>Volver a mis tareas</Button>
-            : !started ? <Button className="min-h-12 w-full" onClick={() => void start()} disabled={loading || busy || !bundle.data || !identity.data || !fromToday || missingTemplate}><Play className="mr-2 h-4 w-4" />Iniciar limpieza</Button>
+            : !started ? <Button className="min-h-12 w-full" onClick={() => void start()} disabled={loading || !loadedLocal || Boolean(preparationError) || busy || !bundle.data || !identity.data || !fromToday || missingTemplate}><Play className="mr-2 h-4 w-4" />Iniciar limpieza</Button>
             : <div className="flex gap-2">
               <Button className="min-h-12 flex-1" disabled={busy || !fromToday || !bundle.data || missingTemplate || Boolean(validation.missing.length)} onClick={() => void finish()}>
                 <CheckCircle2 className="mr-2 h-4 w-4" />Revisar y finalizar

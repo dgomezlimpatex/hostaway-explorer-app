@@ -159,7 +159,22 @@ try {
   assert.equal(writes,0,'Calendar property preview must not start a task');
   await context.setOffline(true);
   await page.reload();
+  // A suspended Android storage read must not leave the task spinning forever.
+  await page.evaluate(() => {
+    const original = IDBObjectStore.prototype.get;
+    window.restoreDraftReads = () => { IDBObjectStore.prototype.get = original; };
+    IDBObjectStore.prototype.get = function (...args) {
+      if (this.name === 'drafts') return {}; // request never emits success/error
+      return original.apply(this, args);
+    };
+  });
   await page.getByText('Piso de prueba',{exact:true}).first().click();
+  await page.getByRole('button',{name:'Reintentar preparación',exact:true}).waitFor();
+  assert.equal(await page.getByText('Preparando la tarea…',{exact:true}).count(),0,'A stuck local read ends in a recoverable error');
+  assert.equal(await page.getByRole('button',{name:'Iniciar limpieza',exact:true}).isDisabled(),true,'Do not start without reading the saved draft');
+  if (process.env.CLEANER_SCREENSHOT_DIR) await page.screenshot({path:join(process.env.CLEANER_SCREENSHOT_DIR,'mobile-preparation-retry.png'),fullPage:true,animations:'disabled'});
+  await page.evaluate(() => window.restoreDraftReads());
+  await page.getByRole('button',{name:'Reintentar preparación',exact:true}).click();
   const offlineIcon = page.getByRole('button',{name:'Sincronización: Sin sincronizar',exact:true});
   await offlineIcon.waitFor();
   assert.match(await offlineIcon.getAttribute('class'),/text-red-/);
@@ -192,7 +207,24 @@ try {
   await page.getByText('Piso de prueba',{exact:true}).first().click();
   await page.getByRole('button',{name:'Revisar y finalizar'}).waitFor();
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jD1sAAAAASUVORK5CYII=','base64');
+  // Inject a render failure at the local-photo preview, after the photo is saved.
+  // This models a React/DOM failure without inventing Carlos's unknown exception.
+  await page.evaluate(() => {
+    const original = String.prototype.startsWith;
+    window.restorePhotoRendering = () => { String.prototype.startsWith = original; };
+    String.prototype.startsWith = function (search, ...args) {
+      if (search === 'cleaner-photo:' && original.call(this, search)) throw new Error('Synthetic photo render failure');
+      return original.call(this, search, ...args);
+    };
+  });
   await page.locator('input[type=file]').first().setInputFiles({name:'prueba.png',mimeType:'image/png',buffer:png});
+  await page.getByRole('button',{name:'Reabrir este reporte',exact:true}).waitFor();
+  assert.equal(await page.getByText('Error al cargar la página',{exact:true}).count(),0,'Photo render errors must stay inside the selected task');
+  if (process.env.CLEANER_SCREENSHOT_DIR) await page.screenshot({path:join(process.env.CLEANER_SCREENSHOT_DIR,'mobile-report-recovery.png'),fullPage:true,animations:'disabled'});
+  await page.evaluate(() => window.restorePhotoRendering());
+  await page.getByRole('button',{name:'Reabrir este reporte',exact:true}).click();
+  await page.getByText('1 foto(s)',{exact:true}).waitFor();
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('img')).some(img => img.src.startsWith('blob:') && img.complete && img.naturalWidth > 0));
   await page.getByRole('button',{name:/Extra de prueba/}).click();
   await page.getByText('Guardando en el móvil…',{exact:true}).waitFor({state:'hidden'});
   assert.equal(await page.getByLabel('Notas de la limpieza').count(),0);
@@ -338,7 +370,7 @@ try {
   await page.reload();
   await page.getByText('Piso de prueba',{exact:true}).first().waitFor({timeout:20000});
   assert.match(await page.locator('body').innerText(),/Sin cobertura/,'An expired persisted session can still open its own cached work offline');
-  assert.deepEqual(unexpected,[]);assert.deepEqual(errors,[]);
+  assert.deepEqual(unexpected,[]);assert.deepEqual(errors.filter(message => !message.includes('Synthetic photo render failure')),[]);
   console.log('PASS: cleaner mobile flow, required photos, offline reload/photos, failed sync, uncertain upload retry, idempotency, concurrent edits, failed CAS, canonical reassignment, account isolation, lease, safe pruning, merge conflicts, real service worker. No production access.');
 } catch (error) {
   console.error('Browser text:',(await page.locator('body').innerText().catch(()=>'' )).slice(0,3500));
