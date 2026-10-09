@@ -1,5 +1,6 @@
 import type { AdditionalTask, Task } from '@/types/calendar';
 import type { TaskChecklistTemplate, TaskReport } from '@/types/taskReports';
+import { prepareLocalPhoto } from './prepareLocalPhoto';
 
 export interface CleanerDraft {
   key: string;
@@ -126,6 +127,9 @@ export async function changeDraft(key: string, change: (draft: CleanerDraft | un
 }
 
 export async function savePhotoWithDraft(key: string, photo: CleanerPhoto): Promise<CleanerDraft> {
+  // Read the actual bytes before opening a transaction. Awaiting file reads inside
+  // the transaction would make it inactive; storing the original File can fail on Android.
+  const savedPhoto = { ...photo, file: await prepareLocalPhoto(photo.file, photo.mimeType) };
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(['photos', 'drafts'], 'readwrite');
@@ -133,30 +137,35 @@ export async function savePhotoWithDraft(key: string, photo: CleanerPhoto): Prom
     const request = drafts.get(key);
     let result: CleanerDraft;
     request.onsuccess = () => {
-      const current = request.result as CleanerDraft | undefined;
-      if (!current || current.finishRequested || current.ownerId !== photo.ownerId ||
-          current.report.task_id !== photo.taskId || photo.key !== `${photo.ownerId}:${photo.id}`) {
-        tx.abort(); return;
-      }
-      const checklist = { ...current.report.checklist_completed };
-      if (photo.checklistItemId) {
-        const item = checklist[photo.checklistItemId] || {};
-        checklist[photo.checklistItemId] = {
-          ...item, completed: photo.checklistItemId.startsWith('additional.') ? Boolean(item.completed) : true,
-          media_urls: [...(item.media_urls || []), `${LOCAL_PHOTO_PREFIX}${photo.id}`],
+      try {
+        const current = request.result as CleanerDraft | undefined;
+        if (!current || current.finishRequested || current.ownerId !== photo.ownerId ||
+            current.report.task_id !== photo.taskId || photo.key !== `${photo.ownerId}:${photo.id}`) {
+          tx.abort(); return;
+        }
+        const checklist = { ...current.report.checklist_completed };
+        if (photo.checklistItemId) {
+          const item = checklist[photo.checklistItemId] || {};
+          checklist[photo.checklistItemId] = {
+            ...item, completed: photo.checklistItemId.startsWith('additional.') ? Boolean(item.completed) : true,
+            media_urls: [...(item.media_urls || []), `${LOCAL_PHOTO_PREFIX}${photo.id}`],
+          };
+        }
+        result = {
+          ...current, revision: current.revision + 1, error: undefined,
+          report: { ...current.report, checklist_completed: checklist, updated_at: new Date().toISOString() },
         };
+        if (photo.checklistItemId?.startsWith('additional.')) {
+          const extraId = photo.checklistItemId.slice('additional.'.length);
+          const extra = current.subtasks[extraId] || current.task.additionalTasks?.find(item => item.id === extraId);
+          if (extra) result.subtasks = { ...current.subtasks, [extraId]: { ...extra, mediaUrls: checklist[photo.checklistItemId].media_urls } };
+        }
+        tx.objectStore('photos').put(savedPhoto);
+        drafts.put(result);
+      } catch (error) {
+        tx.abort();
+        reject(error);
       }
-      result = {
-        ...current, revision: current.revision + 1, error: undefined,
-        report: { ...current.report, checklist_completed: checklist, updated_at: new Date().toISOString() },
-      };
-      if (photo.checklistItemId?.startsWith('additional.')) {
-        const extraId = photo.checklistItemId.slice('additional.'.length);
-        const extra = current.subtasks[extraId] || current.task.additionalTasks?.find(item => item.id === extraId);
-        if (extra) result.subtasks = { ...current.subtasks, [extraId]: { ...extra, mediaUrls: checklist[photo.checklistItemId].media_urls } };
-      }
-      tx.objectStore('photos').put(photo);
-      drafts.put(result);
     };
     tx.oncomplete = () => { notifyCleanerStore(); resolve(result); };
     tx.onabort = () => reject(tx.error || new Error('La foto no se ha guardado. Comprueba el espacio libre y vuelve a adjuntarla.'));
