@@ -32,6 +32,23 @@ const browser = await chromium.launch({ headless:true });
 const context = await browser.newContext({ viewport:{ width:390,height:844 }, timezoneId:'Europe/Madrid' });
 context.setDefaultTimeout(15000);
 const page = await context.newPage();
+// Model the text replacement performed by browser translators, respecting HTML opt-out.
+async function attemptTranslation(locator) {
+  return locator.evaluate(root => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const targets = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.textContent.trim() && !node.parentElement.closest('[translate="no"], .notranslate')) targets.push(node);
+    }
+    for (const node of targets) {
+      const font = document.createElement('font');
+      font.textContent = node.textContent;
+      node.replaceWith(font);
+    }
+    return targets.length;
+  });
+}
 const userId = '10000000-0000-4000-8000-000000000001';
 const cleanerId = '20000000-0000-4000-8000-000000000001';
 const taskId = '30000000-0000-4000-8000-000000000001';
@@ -127,18 +144,28 @@ await context.addInitScript(({userId}) => {
 }, {userId});
 try {
   await page.goto(origin);
+  await page.evaluate(() => {
+    const control = document.createElement('div');
+    control.id = 'translation-test-control';
+    control.textContent = 'Texto de control';
+    document.body.append(control);
+  });
+  assert.equal(await attemptTranslation(page.locator('#translation-test-control')),1,'Translator simulation must replace unprotected text');
+  await page.locator('#translation-test-control').evaluate(el => el.remove());
   await page.getByText('Tus tareas y checklists de esta semana están descargados en este móvil.',{exact:true}).waitFor({timeout:30000});
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller),null,{timeout:30000});
   assert.equal(writes,0,'Reading dashboard must not start a task');
   await page.goto(origin+'/tasks');
   await page.getByText('Piso de prueba',{exact:true}).first().click();
   await page.getByText('Indicaciones del piso de prueba',{exact:true}).waitFor();
+  assert.equal(await attemptTranslation(page.getByRole('dialog')),0,'Report opts out before any task edits');
   assert.equal(await page.getByRole('button',{name:'NOTAS',exact:true}).count(),0,'Notes button is only for started tasks');
   const confirmedIcon = page.getByRole('button',{name:'Sincronización: Sincronizado',exact:true});
   await confirmedIcon.waitFor();
   assert.match(await confirmedIcon.getAttribute('class'),/text-green-/);
   await confirmedIcon.click();
   await page.getByText('Todo tu trabajo está enviado. No hay cambios pendientes.',{exact:true}).waitFor();
+  assert.equal(await attemptTranslation(page.getByRole('dialog',{name:'Estado de sincronización',exact:true})),0,'Portalled status retains its own protection');
   await page.keyboard.press('Escape');
   await page.getByRole('dialog',{name:'Estado de sincronización',exact:true}).waitFor({state:'hidden'});
   assert.equal(await page.getByRole('button',{name:'Iniciar limpieza',exact:true}).isVisible(),true,'Closing status keeps the task open');
@@ -193,6 +220,7 @@ try {
   assert.equal(await page.getByText('Indicaciones del piso de prueba',{exact:true}).count(),0,'Started task moves property details out of checklist');
   await page.getByRole('button',{name:'NOTAS',exact:true}).click();
   await page.getByText('Indicaciones del piso de prueba',{exact:true}).waitFor();
+  assert.equal(await attemptTranslation(page.getByRole('dialog',{name:'Notas del piso',exact:true})),0,'Portalled notes retain their own protection');
   await page.getByRole('button',{name:'Volver a la tarea',exact:true}).click();
   assert.equal(await page.getByRole('button',{name:'Revisar y finalizar'}).isDisabled(),true,'Mandatory photo blocks completion');
   await context.setOffline(true);
@@ -223,6 +251,9 @@ try {
   await page.locator('input[type=file]').first().setInputFiles({name:'prueba.png',mimeType:'image/png',buffer:png});
   const photoFailure = page.getByText('La foto no está guardada. Vuelve a adjuntarla en el apartado correspondiente; guardar el checklist no recupera esa foto.',{exact:true});
   await photoFailure.waitFor();
+  assert.equal(await attemptTranslation(page.getByRole('dialog')),0,'Photo error and checklist are protected');
+  await page.getByText('Error al subir foto',{exact:true}).waitFor();
+  assert.equal(await page.getByText('Error al subir foto',{exact:true}).evaluate(el => Boolean(el.closest('[translate="no"]'))),true,'Toast outside the report has independent protection');
   assert.equal(await page.getByRole('button',{name:'Reintentar guardar',exact:true}).count(),0,'A checklist retry cannot recover a failed photo');
   assert.equal(await page.evaluate(owner => window.cleanerTest.listLocal('photos',owner).then(items=>items.length),userId),0,'Failed photo transaction leaves no photo');
   const failedDraft = await page.evaluate(({userId,taskId}) => window.cleanerTest.readLocal('drafts',`${userId}:${taskId}`),{userId,taskId});
@@ -245,6 +276,10 @@ try {
   });
   await page.locator('input[type=file]').first().setInputFiles({name:'prueba.png',mimeType:'image/png',buffer:png});
   await page.getByRole('button',{name:'Reabrir este reporte',exact:true}).waitFor();
+  assert.equal(await attemptTranslation(page.getByRole('dialog')),0,'Recovery is protected too');
+  await page.getByText('Detalles técnicos',{exact:true}).click();
+  await page.getByText(/Componentes:/).waitFor();
+  assert.match(await page.locator('details pre').innerText(),/Código:.*\.js:\d+:\d+/,'Diagnostic identifies the deployed asset and position');
   assert.equal(await page.getByText('Error al cargar la página',{exact:true}).count(),0,'Photo render errors must stay inside the selected task');
   if (process.env.CLEANER_SCREENSHOT_DIR) await page.screenshot({path:join(process.env.CLEANER_SCREENSHOT_DIR,'mobile-report-recovery.png'),fullPage:true,animations:'disabled'});
   await page.evaluate(() => window.restorePhotoRendering());
@@ -261,6 +296,7 @@ try {
   await page.getByRole('button',{name:'Revisar y finalizar'}).click();
   await page.getByText('Tiempo Real del Servicio',{exact:true}).waitFor();
   await page.getByText('Hora de Finalización',{exact:true}).waitFor();
+  assert.equal(await attemptTranslation(page.getByRole('dialog')),0,'Final summary is protected');
   assert.equal(await page.getByText('Resumen de la limpieza',{exact:true}).count(),0);
   assert.equal(await page.getByText('Revisa antes de finalizar',{exact:true}).count(),0);
   assert.equal(await page.getByText('Limpieza finalizada',{exact:true}).count(),0);

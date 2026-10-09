@@ -220,7 +220,7 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   const loading = !preparationError && (!loadedLocal || identity.isLoading || (!virtual && bundle.isLoading && !bundle.data));
   return <CleanerWorkContext.Provider value={{ uploadPhoto, isPreparingPhoto: preparingPhotos > 0, changePhotoPreparation: delta => setPreparingPhotos(count => Math.max(0, count + delta)) }}>
     <Dialog open onOpenChange={open => { if (!open) void close(); }}>
-      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col gap-0 rounded-none p-0 sm:h-[90dvh] sm:max-w-2xl sm:rounded-2xl" onEscapeKeyDown={event => { if (busy) event.preventDefault(); }} aria-describedby="cleaner-work-description">
+      <DialogContent translate="no" lang="es" className="notranslate flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col gap-0 rounded-none p-0 sm:h-[90dvh] sm:max-w-2xl sm:rounded-2xl" onEscapeKeyDown={event => { if (busy) event.preventDefault(); }} aria-describedby="cleaner-work-description">
         <DialogHeader className="shrink-0 border-b px-4 py-4 pr-12 text-left">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-1.5">

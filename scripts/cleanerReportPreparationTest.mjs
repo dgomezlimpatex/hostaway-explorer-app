@@ -52,11 +52,20 @@ const elements = function* (value) {
   if (Array.isArray(value)) { for (const item of value) yield* elements(item); }
   else if (value?.props) { yield value; yield* elements(value.props.children); }
 };
+renderError.stack = "Error: Photo could not render\n    at https://example.invalid/assets/report-abc.js:12:34\n    at https://example.invalid/private?token=secret:1:2";
+boundary.componentDidCatch(renderError, { componentStack: '\n    at ChecklistSection (https://example.invalid/assets/report.js:1:2)\n    at CleanerTaskWork (sensitive props should not appear)' });
+const recoveryElements = [...elements(boundary.render())];
+const diagnostic = recoveryElements.find(element => element.type === 'pre').props.children;
+assert.match(diagnostic, /report-abc.js:12:34/);
+assert.match(diagnostic, /ChecklistSection > CleanerTaskWork/);
+assert.doesNotMatch(diagnostic, /example.invalid|token|sensitive/);
+assert.ok(recoveryElements.some(element => element.props.translate === 'no' && element.props.lang === 'es'));
 const retry = [...elements(boundary.render())].find(element => element.props.children === 'Reabrir este reporte');
 assert.ok(retry, 'A report failure offers recovery inside the same task');
 retry.props.onClick();
 assert.equal(boundary.state.error, null);
 assert.equal(boundary.state.attempt, 1);
+assert.equal(boundary.state.componentStack, '', 'Retry clears stale diagnostic');
 assert.equal(boundary.render().props.children, child, 'Retry preserves the selected task');
 assert.equal(closed, false, 'Retry must not return to the task list');
 assert.ok(CleanerReportErrorBoundary.getDerivedStateFromError(null).error instanceof Error);
@@ -76,3 +85,13 @@ assert.equal(isLoading(null, false, { isLoading: false }, false, { data: {} }), 
 assert.equal(isLoading('Read stalled', false, { isLoading: true }, false, { isLoading: true }), false);
 assert.equal(isLoading(null, true, { isLoading: false }, false, { data: {}, isLoading: false }), false);
 console.log('PASS: actual report boundary recovery, unchanged task, non-Error exceptions and loading/error transitions.');
+
+// The same diagnostic formatting must remain safe for DOMExceptions and missing stacks.
+const detailBundle = await build({ entryPoints: ['src/utils/renderErrorDetails.ts'], bundle: true, write: false, platform: 'node', format: 'esm', logLevel: 'silent' });
+const { renderErrorDetails } = await import('data:text/javascript;base64,' + Buffer.from(detailBundle.outputFiles[0].text).toString('base64'));
+const domError = new DOMException("Failed to execute 'insertBefore' on 'Node'", 'NotFoundError');
+assert.match(renderErrorDetails(domError), /insertBefore/);
+assert.equal(renderErrorDetails({ message: 'No stack' }), 'No stack');
+const manyFrames = { message: 'DOM failure', stack: Array(100).fill('at https://local.invalid/assets/app.js:2:3').join('\n') };
+assert.equal(renderErrorDetails(manyFrames), 'DOM failure\n\nCódigo: app.js:2:3');
+console.log('PASS: local DOM diagnostics, bounded asset positions, no full URLs or props, and fresh retry state.');

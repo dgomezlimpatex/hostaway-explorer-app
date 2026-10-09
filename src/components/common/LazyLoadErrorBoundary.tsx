@@ -1,6 +1,7 @@
 import React, { Component, ReactNode, Suspense, startTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { renderErrorDetails } from '@/utils/renderErrorDetails';
 
 interface Props {
   children: ReactNode;
@@ -12,6 +13,7 @@ interface State {
   error: Error | null;
   isLazyLoadError: boolean;
   retryCount: number;
+  componentStack: string;
 }
 
 // Loading component for lazy components
@@ -22,8 +24,8 @@ const LazyLoader = () => (
 );
 
 // Error component for failed lazy loads
-const LazyLoadError = ({ onRetry, error }: { onRetry: () => void; error: Error | null }) => (
-  <div className="flex flex-col items-center justify-center min-h-screen p-6">
+const LazyLoadError = ({ onRetry, error, componentStack }: { onRetry: () => void; error: Error | null; componentStack: string }) => (
+  <div translate="no" lang="es" className="notranslate flex flex-col items-center justify-center min-h-screen p-6">
     <div className="bg-background/80 backdrop-blur-sm border rounded-lg p-8 max-w-md w-full shadow-lg">
       <div className="flex items-center gap-3 mb-4">
         <AlertTriangle className="h-6 w-6 text-destructive" />
@@ -40,7 +42,7 @@ const LazyLoadError = ({ onRetry, error }: { onRetry: () => void; error: Error |
             Detalles técnicos
           </summary>
           <pre className="text-xs mt-2 p-2 bg-muted rounded text-muted-foreground overflow-auto">
-            {error.message}
+            {renderErrorDetails(error, componentStack)}
           </pre>
         </details>
       )}
@@ -68,6 +70,7 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
       error: null,
       isLazyLoadError: false,
       retryCount: 0,
+      componentStack: '',
     };
   }
 
@@ -88,11 +91,13 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
       error,
       isLazyLoadError,
       retryCount: 0,
+      componentStack: '',
     };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('LazyLoadErrorBoundary caught an error:', error, errorInfo);
+    this.setState({ componentStack: errorInfo.componentStack || '' });
   }
 
   handleRetry = () => {
@@ -114,6 +119,7 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
           error: null,
           isLazyLoadError: false,
           retryCount: retryCount + 1,
+          componentStack: '',
         });
       }, 1000 * (retryCount + 1));
     });
@@ -132,7 +138,7 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      return <LazyLoadError onRetry={this.handleRetry} error={this.state.error} />;
+      return <LazyLoadError onRetry={this.handleRetry} error={this.state.error} componentStack={this.state.componentStack} />;
     }
 
     return <>{this.props.children}</>;
