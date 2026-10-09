@@ -10,7 +10,7 @@ import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import { formatMadridDate } from '@/utils/date';
 import type { Cleaner, Task } from '@/types/calendar';
 import type { TaskChecklistTemplate, TaskReport } from '@/types/taskReports';
-import { readCleanerCache, readWithCleanerCache } from './offlineStore';
+import { readCleanerCache, readWithCleanerCache, withTimeout } from './offlineStore';
 import { useCleanerOfflineStatus } from './CleanerOfflineProvider';
 import type { CleanerPropertyDetailsData } from './CleanerPropertyDetails';
 
@@ -29,7 +29,8 @@ export function useCleanerCachedQuery<T>(key: QueryKey, cacheKey: string, loader
     return () => { cancelled = true; };
   }, [cacheKey, enabled, client, stableKey]);
   return useQuery({
-    queryKey: key, queryFn: () => readWithCleanerCache(cacheKey, loader), enabled,
+    // Also bound the cache read, which happens before the network timeout.
+    queryKey: key, queryFn: () => withTimeout(readWithCleanerCache(cacheKey, loader), 12_000), enabled,
     networkMode: 'always', staleTime: 30_000, gcTime: 30 * 60_000,
     retry: false, refetchOnWindowFocus: true, refetchOnReconnect: true,
   });
