@@ -89,6 +89,9 @@ export const EnhancedTaskCard = React.memo(({
   const isCompleted = task.status === 'completed';
   const isInProgress = task.status === 'in-progress';
   const isCancelled = (task.status as string) === 'cancelled';
+  // Virtual recurring occurrences have no task row yet: quick edits would find
+  // nothing to change. They are edited from the details modal instead.
+  const isRecurringInstance = Boolean(task.isRecurringInstance);
 
   const formatTime = (time: string) => {
     if (time.includes(':')) {
@@ -233,7 +236,7 @@ export const EnhancedTaskCard = React.memo(({
       )}
 
       {/* Resize handle (right edge) */}
-      {!disableQuickActions && !disableResize && !isCancelled && (
+      {!disableQuickActions && !disableResize && !isCancelled && !isRecurringInstance && (
         <div
           onPointerDown={handleResizePointerDown}
           onClick={(e) => e.stopPropagation()}
@@ -318,54 +321,62 @@ export const EnhancedTaskCard = React.memo(({
         </ContextMenuItem>
         <ContextMenuSeparator />
 
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>
-            <CalendarDays className="mr-2 h-4 w-4" />
-            Mover a
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent>
-            <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'today')}>
-              Hoy
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'tomorrow')}>
-              Mañana
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'nextWeek')}>
-              +1 semana
-            </ContextMenuItem>
-          </ContextMenuSubContent>
-        </ContextMenuSub>
+        {isRecurringInstance ? (
+          <ContextMenuItem disabled className="text-xs">
+            Ocurrencia recurrente: otras acciones en el detalle
+          </ContextMenuItem>
+        ) : (
+          <>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <CalendarDays className="mr-2 h-4 w-4" />
+                Mover a
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'today')}>
+                  Hoy
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'tomorrow')}>
+                  Mañana
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'nextWeek')}>
+                  +1 semana
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
 
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>
-            <Timer className="mr-2 h-4 w-4" />
-            Duración
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent>
-            {[15, 30, 45, 60, 90, 120].map(min => (
-              <ContextMenuItem key={min} onClick={() => addTaskDuration(task.id, min)}>
-                +{formatDuration(min)}
-              </ContextMenuItem>
-            ))}
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <Timer className="mr-2 h-4 w-4" />
+                Duración
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {[15, 30, 45, 60, 90, 120].map(min => (
+                  <ContextMenuItem key={min} onClick={() => addTaskDuration(task.id, min)}>
+                    +{formatDuration(min)}
+                  </ContextMenuItem>
+                ))}
+                <ContextMenuSeparator />
+                {[-15, -30, -60].map(min => (
+                  <ContextMenuItem key={min} onClick={() => addTaskDuration(task.id, min)}>
+                    −{formatDuration(Math.abs(min))}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+
             <ContextMenuSeparator />
-            {[-15, -30, -60].map(min => (
-              <ContextMenuItem key={min} onClick={() => addTaskDuration(task.id, min)}>
-                −{formatDuration(Math.abs(min))}
-              </ContextMenuItem>
-            ))}
-          </ContextMenuSubContent>
-        </ContextMenuSub>
-
-        <ContextMenuSeparator />
-        <ContextMenuItem
-          onClick={() => {
-            const ev = new CustomEvent('task:duplicate', { detail: { taskId: task.id } });
-            window.dispatchEvent(ev);
-          }}
-        >
-          <Copy className="mr-2 h-4 w-4" />
-          Duplicar tarea
-        </ContextMenuItem>
+            <ContextMenuItem
+              onClick={() => {
+                const ev = new CustomEvent('task:duplicate', { detail: { taskId: task.id } });
+                window.dispatchEvent(ev);
+              }}
+            >
+              <Copy className="mr-2 h-4 w-4" />
+              Duplicar tarea
+            </ContextMenuItem>
+          </>
+        )}
         {task.cleanerId && (
           <ContextMenuItem
             onClick={() => {
@@ -377,17 +388,21 @@ export const EnhancedTaskCard = React.memo(({
             Desasignar
           </ContextMenuItem>
         )}
-        <ContextMenuSeparator />
-        <ContextMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={() => {
-            const ev = new CustomEvent('task:delete', { detail: { taskId: task.id } });
-            window.dispatchEvent(ev);
-          }}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Eliminar
-        </ContextMenuItem>
+        {!isRecurringInstance && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => {
+                const ev = new CustomEvent('task:delete', { detail: { taskId: task.id } });
+                window.dispatchEvent(ev);
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Eliminar
+            </ContextMenuItem>
+          </>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );

@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir que las acciones rápidas no hagan nada en las tareas recurrentes del calendario.",
+  "reason": "Presentación local del menú contextual y del tirador: en ocurrencias recurrentes virtuales se ocultan las acciones que no pueden encontrar la tarea y se mantiene el detalle (que ya gestiona recurrentes) y desasignar. No cambia acciones, consultas ni datos de las tareas normales.",
+  "verification": "Prueba Node con la tarjeta real y un mini runtime: tarea normal con todas las acciones; ocurrencia recurrente sin estirar, mover, duración, duplicar ni eliminar, y con detalle, desasignar e indicación. Falla con el código anterior. Prueba de tareas compartidas repetida. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarRecurringQuickActionsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "46d6b8a773eda60541d91d27bf9aa52e1e6e6b27e9a498735e559ab3b4d1db91"
+}
