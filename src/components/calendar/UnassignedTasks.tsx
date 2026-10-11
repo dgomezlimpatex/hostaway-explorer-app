@@ -2,6 +2,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { TaskCard } from "./TaskCard";
 import { Task } from "@/types/calendar";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { civilDateToLocalDate } from "./utils/multiDayCalendar";
 
 interface UnassignedTasksProps {
   tasks: Task[];
@@ -18,10 +21,12 @@ export const UnassignedTasks = ({
 }: UnassignedTasksProps) => {
   if (tasks.length === 0) return null;
 
-  // Sort tasks alphabetically by property name
-  const sortedTasks = [...tasks].sort((a, b) => 
+  // Sort by date (multi-day views) and then alphabetically by property name
+  const sortedTasks = [...tasks].sort((a, b) =>
+    a.date.localeCompare(b.date) ||
     a.property.localeCompare(b.property, 'es', { sensitivity: 'base' })
   );
+  const showDateHeaders = new Set(tasks.map(task => task.date)).size > 1;
 
   const handleTaskDragStart = (e: React.DragEvent, task: Task) => {
     console.log('UnassignedTasks - handleTaskDragStart:', task.id);
@@ -47,7 +52,13 @@ export const UnassignedTasks = ({
           </span>
         </h3>
         <div className="flex-1 overflow-y-auto space-y-3">
-          {sortedTasks.map(task => (
+          {sortedTasks.map((task, index) => (
+            <div key={task.id} className="space-y-2">
+            {showDateHeaders && task.date !== sortedTasks[index - 1]?.date && (
+              <div className="pt-1 text-xs font-semibold capitalize text-muted-foreground">
+                {format(civilDateToLocalDate(task.date), "EEEE d 'de' MMMM", { locale: es })}
+              </div>
+            )}
             <TaskCard 
               key={task.id} 
               task={task} 
@@ -56,6 +67,7 @@ export const UnassignedTasks = ({
               onDragEnd={handleTaskDragEnd} 
               draggable={true} 
             />
+            </div>
           ))}
         </div>
       </CardContent>
