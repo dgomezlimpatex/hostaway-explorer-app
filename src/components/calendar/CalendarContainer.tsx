@@ -21,7 +21,7 @@ import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { usePreferredCleaners } from "@/hooks/usePropertyPreferredCleaners";
 import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
-import { buildTaskAssignmentsMap, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
+import { buildTaskAssignmentsMap, isTaskAssigned, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
 import type { DragState } from "@/hooks/useDragAndDrop";
 import { MultiDayCalendarGrid } from "./MultiDayCalendarGrid";
@@ -125,10 +125,9 @@ export const CalendarContainer = ({
       }))
     });
     
-    // A task is considered assigned if it has either cleaner name OR cleaner_id
-    const assigned = tasks.filter(task => task.cleaner || task.cleanerId);
-    // A task is unassigned if it has neither cleaner name NOR cleaner_id
-    const unassigned = tasks.filter(task => !task.cleaner && !task.cleanerId);
+    // Assigned through task_assignments, legacy cleaner_id or legacy cleaner name
+    const assigned = tasks.filter(task => isTaskAssigned(task));
+    const unassigned = tasks.filter(task => !isTaskAssigned(task));
     
     console.log('📦 CalendarContainer - Task separation result:', {
       assignedCount: assigned.length,
