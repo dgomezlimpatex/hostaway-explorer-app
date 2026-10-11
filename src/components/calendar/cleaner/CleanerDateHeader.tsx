@@ -46,6 +46,7 @@ const CleanerDateHeaderComponent: React.FC<CleanerDateHeaderProps> = ({
         variant="ghost"
         size="sm"
         onClick={handleGoHome}
+        aria-label="Ir al inicio"
         className="h-10 w-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-background/80 transition-all duration-200"
       >
         <Home className="h-4 w-4 text-foreground" />
@@ -54,7 +55,9 @@ const CleanerDateHeaderComponent: React.FC<CleanerDateHeaderProps> = ({
       {/* Navegación de fecha */}
       <div className="flex items-center gap-2">
         <button
+          type="button"
           onClick={handlePrevDate}
+          aria-label="Día anterior"
           className="h-10 w-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 flex items-center justify-center hover:bg-background/80 transition-all duration-200 active:scale-95"
         >
           <ChevronLeft className="h-4 w-4 text-foreground" />
@@ -94,7 +97,9 @@ const CleanerDateHeaderComponent: React.FC<CleanerDateHeaderProps> = ({
         </Popover>
         
         <button
+          type="button"
           onClick={handleNextDate}
+          aria-label="Día siguiente"
           className="h-10 w-10 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 flex items-center justify-center hover:bg-background/80 transition-all duration-200 active:scale-95"
         >
           <ChevronRight className="h-4 w-4 text-foreground" />
@@ -103,7 +108,7 @@ const CleanerDateHeaderComponent: React.FC<CleanerDateHeaderProps> = ({
 
       {/* Icono de calendario decorativo */}
       <div className="h-10 w-10 flex items-center justify-center">
-        <CalendarIcon className="h-4 w-4 text-muted-foreground/50" />
+        <CalendarIcon className="h-4 w-4 text-muted-foreground/50" aria-hidden="true" />
       </div>
     </div>
   );

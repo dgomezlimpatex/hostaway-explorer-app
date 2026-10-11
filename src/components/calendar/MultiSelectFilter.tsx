@@ -55,31 +55,33 @@ export const MultiSelectFilter = ({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "h-9 justify-between font-normal text-sm rounded-lg",
-            selected.length > 0 && "border-primary/50",
-            className
-          )}
-        >
-          <span className="truncate">{label}</span>
-          <div className="flex items-center gap-1 shrink-0 ml-2">
-            {selected.length > 0 && (
-              <X
-                className="h-3.5 w-3.5 opacity-60 hover:opacity-100"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange([]);
-                }}
-              />
+      {/* The clear button is a sibling of the trigger: a button inside a button
+          cannot be reached with the keyboard. */}
+      <div className={cn("relative", className)}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              "h-9 w-full justify-between font-normal text-sm rounded-lg",
+              selected.length > 0 && "border-primary/50 pr-12"
             )}
-            <ChevronDown className="h-3.5 w-3.5 opacity-50" />
-          </div>
-        </Button>
-      </PopoverTrigger>
+          >
+            <span className="truncate">{label}</span>
+            <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-2" />
+          </Button>
+        </PopoverTrigger>
+        {selected.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            aria-label={`Quitar filtro de ${placeholder}`}
+            className="absolute right-7 top-1/2 -translate-y-1/2 rounded p-0.5 opacity-60 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
       <PopoverContent className="w-64 p-0" align="start">
         <div className="p-2 border-b">
           <Input

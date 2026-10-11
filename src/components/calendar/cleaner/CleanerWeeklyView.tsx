@@ -53,7 +53,7 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
           
           return (
             <button
-              key={index}
+              key={day.toISOString()}
               type="button"
               autoCapitalize="off"
               spellCheck={false}
