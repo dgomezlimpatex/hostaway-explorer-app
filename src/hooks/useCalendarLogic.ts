@@ -77,7 +77,6 @@ export const useCalendarLogic = () => {
 
   // Enhanced task assignment handler with availability and overlap check
   const handleTaskAssign = useCallback(async (taskId: string, cleanerId: string, currentCleaners: Cleaner[], timeSlot?: string) => {
-    console.log('useCalendarLogic - handleTaskAssign called with:', { taskId, cleanerId, cleaners: currentCleaners, timeSlot });
     
     const task = tasks.find(t => t.id === taskId);
     if (!task) {
@@ -330,8 +329,6 @@ export const useCalendarLogic = () => {
               },
             })
             .catch(err => console.error('Error sending batch reschedule email:', err));
-        } else {
-          console.log('Cleaner has no email, skipping batch reschedule email');
         }
       }
 
@@ -366,20 +363,16 @@ export const useCalendarLogic = () => {
 
   // Memoized handlers with useCallback
   const handleNewTask = useCallback(() => {
-    console.log('🔵 useCalendarLogic - handleNewTask called, opening modal');
     setIsCreateModalOpen(true);
   }, []);
 
   const handleNewBatchTask = useCallback(() => {
-    console.log('🔵 useCalendarLogic - handleNewBatchTask called, opening modal');
     setIsBatchCreateModalOpen(true);
   }, []);
 
   const handleCreateTask = useCallback(async (taskData: Omit<Task, 'id'>) => {
-    console.log('🔵 useCalendarLogic - handleCreateTask called with:', taskData);
     try {
       const result = await createTask(taskData);
-      console.log('✅ useCalendarLogic - createTask successful:', result);
       toast({
         title: "Tarea creada",
         description: "La nueva tarea se ha creado correctamente.",
@@ -396,7 +389,6 @@ export const useCalendarLogic = () => {
   }, [createTask, toast]);
 
   const handleBatchCreateTasks = useCallback(async (tasksData: Omit<Task, 'id'>[]) => {
-    console.log('🔵 useCalendarLogic - handleBatchCreateTasks called with:', tasksData.length, 'tasks');
     const result = await createTasksOneByOne(tasksData, createTask);
 
     if (result.failed.length === 0) {

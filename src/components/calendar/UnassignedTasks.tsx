@@ -29,7 +29,6 @@ export const UnassignedTasks = ({
   const showDateHeaders = new Set(tasks.map(task => task.date)).size > 1;
 
   const handleTaskDragStart = (e: React.DragEvent, task: Task) => {
-    console.log('UnassignedTasks - handleTaskDragStart:', task.id);
     // Store task data in multiple formats for compatibility
     e.dataTransfer.setData('text/plain', task.id);
     e.dataTransfer.setData('application/json', JSON.stringify(task));
@@ -38,7 +37,6 @@ export const UnassignedTasks = ({
   };
 
   const handleTaskDragEnd = (e: React.DragEvent) => {
-    console.log('UnassignedTasks - handleTaskDragEnd');
     onDragEnd(e);
   };
 
