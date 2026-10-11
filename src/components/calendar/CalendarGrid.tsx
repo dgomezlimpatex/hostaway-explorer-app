@@ -249,6 +249,7 @@ const CleanerRow = memo(({
             isDragging={isBeingDragged}
             onDragStart={(e, _t) => onDragStart(e, original)}
             onDragEnd={onDragEnd}
+            disableResize={isSplit}
             style={{
               height: '100%',
               backgroundColor: position.hasOverlap ? 'rgba(239, 68, 68, 0.1)' : undefined,

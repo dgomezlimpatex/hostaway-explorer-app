@@ -3,6 +3,7 @@ import { Task } from '@/types/calendar';
 import { CleanerDateHeader } from './cleaner/CleanerDateHeader';
 import { CleanerTaskSummary } from './cleaner/CleanerTaskSummary';
 import { CleanerTaskCard } from './cleaner/CleanerTaskCard';
+import { formatMadridDate } from '@/utils/date';
 
 interface CleanerDesktopCalendarProps {
   currentDate: Date;
@@ -21,7 +22,8 @@ export const CleanerDesktopCalendar: React.FC<CleanerDesktopCalendarProps> = ({
   todayTasks,
   tomorrowTasks
 }) => {
-  console.log('CleanerDesktopCalendar rendering - Today tasks:', todayTasks?.length || 0);
+  // Titles follow the selected date, not always "today" (Europe/Madrid).
+  const isToday = formatMadridDate(currentDate) === formatMadridDate(new Date());
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -39,6 +41,7 @@ export const CleanerDesktopCalendar: React.FC<CleanerDesktopCalendarProps> = ({
           <CleanerTaskSummary 
             todayTasks={todayTasks}
             tomorrowTasks={tomorrowTasks}
+            isToday={isToday}
           />
         </div>
 
@@ -47,10 +50,11 @@ export const CleanerDesktopCalendar: React.FC<CleanerDesktopCalendarProps> = ({
           {/* Today's Tasks Section */}
           <section>
             <div className="flex items-center gap-4 mb-6">
-              <h2 className="text-3xl font-bold text-foreground">Tareas de Hoy</h2>
+              <h2 className="text-3xl font-bold text-foreground">{isToday ? 'Tareas de Hoy' : 'Tareas del día'}</h2>
               <div className="flex-1 h-px bg-gradient-to-r from-border via-border/50 to-transparent"></div>
               <span className="text-lg font-semibold text-muted-foreground bg-primary/10 px-4 py-2 rounded-full">
                 {currentDate.toLocaleDateString('es-ES', { 
+                  timeZone: 'Europe/Madrid',
                   weekday: 'long', 
                   year: 'numeric', 
                   month: 'long', 
@@ -62,8 +66,8 @@ export const CleanerDesktopCalendar: React.FC<CleanerDesktopCalendarProps> = ({
             {todayTasks.length === 0 ? (
               <div className="text-center py-16 bg-gradient-to-br from-muted/20 to-muted/40 rounded-lg border border-border/50">
                 <div className="text-6xl mb-4">📅</div>
-                <p className="text-2xl font-medium mb-3 text-foreground">No tienes tareas para hoy</p>
-                <p className="text-lg text-muted-foreground">Disfruta de tu día libre</p>
+                <p className="text-2xl font-medium mb-3 text-foreground">{isToday ? 'No tienes tareas para hoy' : 'No tienes tareas para este día'}</p>
+                <p className="text-lg text-muted-foreground">{isToday ? 'Disfruta de tu día libre' : 'Sin tareas programadas'}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -82,13 +86,14 @@ export const CleanerDesktopCalendar: React.FC<CleanerDesktopCalendarProps> = ({
           {tomorrowTasks.length > 0 && (
             <section>
               <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-2xl font-bold text-foreground">Tareas de Mañana</h2>
+                <h2 className="text-2xl font-bold text-foreground">{isToday ? 'Tareas de Mañana' : 'Tareas del día siguiente'}</h2>
                 <div className="flex-1 h-px bg-gradient-to-r from-border via-border/50 to-transparent"></div>
                 <span className="text-base font-medium text-muted-foreground bg-secondary/10 px-3 py-1 rounded-full">
                   {(() => {
                     const tomorrow = new Date(currentDate);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
                     return tomorrow.toLocaleDateString('es-ES', { 
+                      timeZone: 'Europe/Madrid',
                       weekday: 'long', 
                       month: 'long', 
                       day: 'numeric' 

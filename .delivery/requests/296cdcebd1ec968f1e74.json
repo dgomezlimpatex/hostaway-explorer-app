@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir que ocultar el aviso de conflictos de horario lo oculte también en todos los días siguientes.",
+  "reason": "Estado visual local: la ocultación se asocia al periodo visible y el aviso se mueve a su propio componente sin cambiar su contenido. No toca datos, consultas ni acciones.",
+  "verification": "Prueba Node con el componente real y un mini runtime de estado: oculto en el mismo día, visible al cambiar de día o de vista, sin aviso cuando no hay conflictos. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node, lint focalizado y prueba de la vista multi-día correctos. Flujo autenticado real no ejecutado.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarOverlapBannerTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "bcb5bbe97f7d023ae1fc5448158a5ce7997fba5ae1ef211e86859c22a6e2d337"
+}
