@@ -23,6 +23,7 @@ import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
 import { buildTaskAssignmentsMap, isTaskAssigned, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
 import type { DragState } from "@/hooks/useDragAndDrop";
+import type { ConfirmFn } from "./useConfirmDialog";
 import { MultiDayCalendarGrid } from "./MultiDayCalendarGrid";
 import {
   buildCleanerDayCells,
@@ -72,6 +73,7 @@ export interface CalendarContainerProps {
   handleUnassignTask: (taskId: string) => Promise<void>;
   onNavigateDate: (direction: 'prev' | 'next') => void;
   onSelectDay: (day: string) => void;
+  onConfirm: ConfirmFn;
 }
 
 export const CalendarContainer = ({
@@ -104,7 +106,8 @@ export const CalendarContainer = ({
   handleDeleteTask,
   handleUnassignTask,
   onNavigateDate,
-  onSelectDay
+  onSelectDay,
+  onConfirm
 }: CalendarContainerProps) => {
   // Note: Mobile cleaner view logic moved to CleaningCalendar component
   // to avoid conditional hooks execution
@@ -286,7 +289,13 @@ export const CalendarContainer = ({
 
     const handleDelete = async (e: Event) => {
       const { taskId } = (e as CustomEvent).detail || {};
-      if (!window.confirm('¿Eliminar esta tarea? Esta acción no se puede deshacer.')) return;
+      const confirmed = await onConfirm({
+        title: 'Eliminar tarea',
+        description: '¿Eliminar esta tarea? Esta acción no se puede deshacer.',
+        confirmLabel: 'Eliminar',
+        destructive: true,
+      });
+      if (!confirmed) return;
       optimisticRemove(taskId);
       try {
         await handleDeleteTask(taskId);
@@ -305,7 +314,7 @@ export const CalendarContainer = ({
       window.removeEventListener('task:unassign', handleUnassign);
       window.removeEventListener('task:delete', handleDelete);
     };
-  }, [tasks, queryClient, toast, handleUnassignTask, handleDeleteTask]);
+  }, [tasks, queryClient, toast, handleUnassignTask, handleDeleteTask, onConfirm]);
 
   return (
     <>
