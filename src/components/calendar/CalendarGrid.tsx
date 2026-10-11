@@ -33,6 +33,14 @@ interface CalendarGridProps {
   preferredCleanerIds?: Set<string>;
 }
 
+// Shared style objects keep EnhancedTaskCard's memo effective between renders.
+const CARD_STYLE: React.CSSProperties = { height: '100%' };
+const OVERLAP_CARD_STYLE: React.CSSProperties = {
+  height: '100%',
+  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  border: '1px solid rgba(239, 68, 68, 0.3)',
+};
+
 // Helper to convert hex to rgba
 const hexToRgba = (hex: string, alpha: number) => {
   const cleanHex = hex.replace('#', '');
@@ -245,16 +253,13 @@ const CleanerRow = memo(({
         >
           <EnhancedTaskCard
             task={display}
-            onClick={() => onTaskClick(original)}
+            originalTask={original}
+            onClick={onTaskClick}
             isDragging={isBeingDragged}
-            onDragStart={(e, _t) => onDragStart(e, original)}
+            onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             disableResize={isSplit}
-            style={{
-              height: '100%',
-              backgroundColor: position.hasOverlap ? 'rgba(239, 68, 68, 0.1)' : undefined,
-              border: position.hasOverlap ? '1px solid rgba(239, 68, 68, 0.3)' : undefined
-            }}
+            style={position.hasOverlap ? OVERLAP_CARD_STYLE : CARD_STYLE}
           />
           {isSplit && (
             <div

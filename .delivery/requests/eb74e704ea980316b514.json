@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió aplicar la optimización detectada: las tarjetas del calendario no aprovechaban su memorización.",
+  "reason": "Optimización de presentación: callbacks y estilos estables entre renders; la tarjeta recibe la tarea original para que clic, arrastre y «Editar detalles» actúen sobre la misma tarea que antes. No cambia acciones, consultas ni datos.",
+  "verification": "Prueba Node con la cuadrícula real renderizada dos veces: las props de cada tarjeta (onClick, onDragStart, onDragEnd, style, originalTask) son idénticas; la tarjeta compartida actúa sobre la tarea completa mostrando su parte; se mantiene el estilo de solape. Falla con el código anterior. Pruebas de recurrentes, cancelar estirado, tareas compartidas y Chromium locales de estirado y arrastre repetidas. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado sin errores.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarStableCardPropsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "a7e7da120a531cd564a24b60fff88f5458d1d834ee29300aecebc01ee54338d2"
+}
