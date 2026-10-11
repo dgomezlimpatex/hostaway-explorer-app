@@ -114,41 +114,11 @@ export const CalendarContainer = ({
 
   // Memoized task filtering for desktop view
   const { assignedTasks, unassignedTasks } = useMemo(() => {
-    console.log('📦 CalendarContainer - Processing tasks:', {
-      totalTasks: tasks.length,
-      currentDateStr: currentDate.toISOString().split('T')[0],
-      firstFewTasks: tasks.slice(0, 5).map(t => ({ 
-        id: t.id, 
-        date: t.date, 
-        property: t.property, 
-        cleaner: t.cleaner, 
-        cleanerId: t.cleanerId 
-      }))
-    });
-    
     // Assigned through task_assignments, legacy cleaner_id or legacy cleaner name
     const assigned = tasks.filter(task => isTaskAssigned(task));
     const unassigned = tasks.filter(task => !isTaskAssigned(task));
-    
-    console.log('📦 CalendarContainer - Task separation result:', {
-      assignedCount: assigned.length,
-      unassignedCount: unassigned.length,
-      assignedSample: assigned.slice(0, 3).map(t => ({ 
-        id: t.id, 
-        property: t.property, 
-        cleaner: t.cleaner, 
-        cleanerId: t.cleanerId 
-      })),
-      unassignedSample: unassigned.slice(0, 3).map(t => ({ 
-        id: t.id, 
-        property: t.property, 
-        cleaner: t.cleaner, 
-        cleanerId: t.cleanerId 
-      }))
-    });
-    
     return { assignedTasks: assigned, unassignedTasks: unassigned };
-  }, [tasks, currentDate]);
+  }, [tasks]);
 
   // Assignments already come with the task query. Reuse them instead of
   // blocking calendar rendering on a second request for the same rows.

@@ -16,13 +16,11 @@ export const useCalendarNavigation = () => {
     } else {
       newDate.setDate(currentDate.getDate() + days);
     }
-    console.log('useCalendarNavigation - navigating to:', formatMadridDate(newDate));
     setCurrentDate(newDate);
   }, [currentDate, currentView]);
 
   const goToToday = useCallback(() => {
     const today = getTodayMadrid();
-    console.log('useCalendarNavigation - going to today:', formatMadridDate(today));
     setCurrentDate(today);
   }, []);
 

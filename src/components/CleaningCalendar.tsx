@@ -237,11 +237,6 @@ const CleaningCalendar = () => {
 
   // Wait for auth and sede initialization before showing calendar
   if (authGuardLoading || !sedeInitialized || sedeLoading || (hasSedeAccess && !activeSede?.id)) {
-    console.log('🔄 CleaningCalendar: Waiting for initialization', { 
-      authGuardLoading, 
-      sedeInitialized, 
-      sedeLoading 
-    });
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <LoadingSpinner size="lg" text="Preparando sede activa..." />
@@ -251,7 +246,6 @@ const CleaningCalendar = () => {
 
   // Check if user has full access
   if (!hasFullAccess) {
-    console.log('⚠️ CleaningCalendar: User does not have full access');
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <LoadingSpinner size="lg" text="Verificando permisos..." />
@@ -262,7 +256,6 @@ const CleaningCalendar = () => {
   // Only show full-screen loading on the very first load, not during refetches
   const isInitialLoad = !hasLoadedOnce.current && isLoading && (!tasks || tasks.length === 0);
   if (isInitialLoad) {
-    console.log('🔄 CleaningCalendar: Showing initial loading spinner', { isLoading, tasksLength: tasks?.length || 0 });
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <LoadingSpinner size="lg" text={`Cargando calendario${activeSede?.nombre ? ` de ${activeSede.nombre}` : ''}...`} />
@@ -273,19 +266,10 @@ const CleaningCalendar = () => {
   // Show subtle loading indicator during refetches (non-blocking)
   const isRefetching = hasLoadedOnce.current && isLoading;
 
-  console.log('🎯 CleaningCalendar: Determining view to render', {
-    isMobile,
-    userRole,
-    tasksLength: tasks?.length || 0,
-    cleanersLength: cleaners?.length || 0,
-    isLoading
-  });
 
   // Mobile views - render specific mobile interfaces
   if (isMobile) {
-    console.log('📱 CleaningCalendar: Rendering mobile view');
     // Mobile manager/admin view
-    console.log('Rendering mobile manager view');
     
     return (
       <>
@@ -335,12 +319,6 @@ const CleaningCalendar = () => {
   // CleanerCalendarScreen for them.
 
   // Desktop manager/admin view
-  console.log('🖥️ CleaningCalendar: Rendering desktop manager/admin view', {
-    userRole,
-    tasksLength: tasks.length,
-    cleanersLength: cleaners.length,
-    currentDateStr: formatMadridDate(currentDate)
-  });
   
   return (
     <div className="h-screen flex flex-col bg-background text-foreground transition-colors duration-300 relative overflow-hidden">
