@@ -32,7 +32,7 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
       className={cn(
         "absolute top-1 right-9 z-20 flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold shadow-sm",
         allCompleted
-          ? "bg-surface text-white"
+          ? "bg-ink-3 text-white"
           : "bg-danger text-white animate-pulse"
       )}
     >
@@ -138,11 +138,27 @@ export const EnhancedTaskCard = React.memo(({
       }
     };
 
+    // The browser can cancel the gesture (touch scroll, window change): leave
+    // resize mode without saving so the card stays clickable and draggable.
+    const handleCancel = () => {
+      setResizing(false);
+      setPreviewEndTime(null);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleCancel();
+    };
+
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointercancel', handleCancel);
+    window.addEventListener('blur', handleCancel);
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointercancel', handleCancel);
+      window.removeEventListener('blur', handleCancel);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [resizing, previewEndTime, task.id, task.startTime, task.endTime, resizeTask]);
 

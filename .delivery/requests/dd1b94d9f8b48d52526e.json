@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió aplicar la limpieza detectada en el calendario: eliminar los componentes que no usa nadie.",
+  "reason": "Borra cuatro archivos que ningún módulo de src ni de scripts importa (comprobado con búsqueda y con el grafo de compilación). No cambia comportamiento, datos ni consultas.",
+  "verification": "Prueba Node que comprueba que los archivos no existen y compila con esbuild la ruta real del calendario (página, calendario de gestor y pantalla de limpiadora) sin que aparezcan en el grafo. Build completo, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarDeadFilesTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "0a47173f335789f4e38a9fc6b9ac535962b0561176564a38f93b64f5d1e05d90"
+}

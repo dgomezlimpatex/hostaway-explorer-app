@@ -3,14 +3,12 @@ import React, { useCallback, useRef, useEffect, useState, useMemo } from "react"
 import { taskMatches, cleanerNameMatches } from "./calendar/utils/calendarSearch";
 import { useClients } from "@/hooks/useClients";
 import { formatMadridDate } from "@/utils/date";
-import { filterTasksByQueryRange, getTaskWindowRange } from "@/utils/taskQueryRange";
+import { filterTasksByQueryRange } from "@/utils/taskQueryRange";
 import { civilDateToLocalDate, getVisibleDays, isMultiDayView } from "./calendar/utils/multiDayCalendar";
 import { getTaskAssignedCleanerIds } from "@/utils/taskAssignments";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
 import { UnavailableWorkersPanel } from "./calendar/UnavailableWorkersPanel";
-import { CleanerMobileCalendar } from "./calendar/CleanerMobileCalendar";
-import { CleanerDesktopCalendar } from "./calendar/CleanerDesktopCalendar";
 import { ManagerMobileAgendaCalendar } from "./calendar/ManagerMobileAgendaCalendar";
 import { CalendarModalsWithSuspense } from "./calendar/LazyCalendarComponents";
 import { CalendarFooterSummary } from "./calendar/CalendarFooterSummary";
@@ -91,10 +89,6 @@ const CleaningCalendar = () => {
     deepLinkTaskOpened.current = true;
   }, [deepLinkTaskId, handleTaskClick, tasks]);
 
-  const cleanerDateRange = useMemo(
-    () => getTaskWindowRange(currentDate, 2),
-    [currentDate],
-  );
   
   // Track if we've loaded data at least once to avoid full-screen loading on refetches
   useEffect(() => {
@@ -102,10 +96,6 @@ const CleaningCalendar = () => {
       hasLoadedOnce.current = true;
     }
   }, [tasks.length, cleaners.length]);
-
-  // Separate tasks into assigned and unassigned
-  const assignedTasks = tasks.filter(task => getTaskAssignedCleanerIds(task).length > 0 || Boolean(task.cleaner));
-  const unassignedTasks = tasks.filter(task => getTaskAssignedCleanerIds(task).length === 0 && !task.cleaner);
 
   // Admin filters (filters tasks/cleaners shown in calendar)
   const [searchTerm, setSearchTerm] = useState('');
@@ -292,164 +282,53 @@ const CleaningCalendar = () => {
   // Mobile views - render specific mobile interfaces
   if (isMobile) {
     console.log('📱 CleaningCalendar: Rendering mobile view');
-    if (userRole === 'cleaner') {
-      console.log('Rendering mobile cleaner view');
-      
-      // Calculate current day and tomorrow's tasks for the cleaner
-      const currentDateStr = cleanerDateRange.dateFrom;
-      const tomorrowDateStr = cleanerDateRange.dateTo;
-      
-      // Filter tasks for current date and tomorrow - cleaner can navigate to see future tasks
-      const todayTasks = tasks.filter(task => task.date === currentDateStr);
-      const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
-      
-      console.log('Mobile cleaner - Tasks for', currentDateStr + ':', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
-      console.log('All available tasks:', tasks.length, 'Date range:', tasks.length > 0 ? `${tasks[0]?.date} to ${tasks[tasks.length-1]?.date}` : 'No tasks');
-      console.log('Tasks dates available:', [...new Set(tasks.map(task => task.date))].sort());
-      console.log('Current date tasks found:', todayTasks.map(task => ({ id: task.id, date: task.date, property: task.property })));
-      
-      return (
-        <>
-          <div className="h-screen flex flex-col bg-background text-foreground transition-colors duration-300 relative">
-            {/* Subtle loading indicator during refetches */}
-            {isRefetching && (
-              <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">Actualizando...</span>
-              </div>
-            )}
-            <CleanerMobileCalendar
-              currentDate={currentDate}
-              onNavigateDate={navigateDate}
-              onDateChange={(date) => {
-                console.log('Calendar - navigating to selected date:', formatMadridDate(date));
-                setCurrentDate(date);
-              }}
-              handleTaskClick={handleTaskClick}
-              todayTasks={todayTasks}
-              tomorrowTasks={tomorrowTasks}
-            />
-          </div>
-          
-          {/* Modals for mobile cleaner view */}
-          <CalendarModalsWithSuspense
-            isCreateModalOpen={false} // Cleaners can't create tasks
-            setIsCreateModalOpen={() => {}} // No-op for cleaners
-            isBatchCreateModalOpen={false} // Cleaners can't create batch tasks
-            setIsBatchCreateModalOpen={() => {}} // No-op for cleaners
-            selectedTask={selectedTask}
-            isTaskModalOpen={isTaskModalOpen}
-            setIsTaskModalOpen={setIsTaskModalOpen}
-            currentDate={currentDate}
-            onCreateTask={async () => {}} // No-op for cleaners
-            onBatchCreateTasks={async () => {}} // No-op for cleaners
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={async () => {}} // Cleaners can't delete tasks
-            onUnassignTask={async () => {}} // Cleaners can't unassign tasks
-          />
-        </>
-      );
-    } else {
-      // Mobile manager/admin view
-      console.log('Rendering mobile manager view');
-      
-      return (
-        <>
-          <div className="h-screen flex flex-col bg-background text-foreground transition-colors duration-300 relative overflow-hidden">
-            {/* Subtle loading indicator during refetches */}
-            {isRefetching && (
-              <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">Actualizando...</span>
-              </div>
-            )}
-            <ManagerMobileAgendaCalendar
-              currentDate={currentDate}
-              tasks={tasks}
-              cleaners={cleaners}
-              onNavigateDate={navigateDate}
-              onGoToToday={goToToday}
-              onTaskClick={handleTaskClick}
-              onNewTask={handleNewTask}
-              onNewBatchTask={handleNewBatchTask}
-            />
-          </div>
-          
-          {/* Modals for mobile manager view */}
-          <CalendarModalsWithSuspense
-            isCreateModalOpen={isCreateModalOpen}
-            setIsCreateModalOpen={setIsCreateModalOpen}
-            isBatchCreateModalOpen={isBatchCreateModalOpen}
-            setIsBatchCreateModalOpen={setIsBatchCreateModalOpen}
-            selectedTask={selectedTask}
-            isTaskModalOpen={isTaskModalOpen}
-            setIsTaskModalOpen={setIsTaskModalOpen}
-            currentDate={currentDate}
-            onCreateTask={handleCreateTask}
-            onBatchCreateTasks={handleBatchCreateTasks}
-            onUpdateTask={handleUpdateTask}
-            onDeleteTask={handleDeleteTask}
-            onUnassignTask={handleUnassignTask}
-          />
-        </>
-      );
-    }
-  }
-
-  // Desktop views
-  if (userRole === 'cleaner') {
-    console.log('🖥️ CleaningCalendar: Rendering desktop cleaner view');
-    
-    // Calculate today's and tomorrow's tasks for the cleaner
-    const currentDateStr = cleanerDateRange.dateFrom;
-    const tomorrowDateStr = cleanerDateRange.dateTo;
-    
-    const todayTasks = tasks.filter(task => task.date === currentDateStr);
-    const tomorrowTasks = tasks.filter(task => task.date === tomorrowDateStr);
-    
-    console.log('Desktop cleaner - Today tasks:', todayTasks.length, 'Tomorrow tasks:', tomorrowTasks.length);
-    console.log('All tasks:', tasks.length, 'Current date:', currentDateStr, 'Tomorrow date:', tomorrowDateStr);
+    // Mobile manager/admin view
+    console.log('Rendering mobile manager view');
     
     return (
       <>
-        {/* Subtle loading indicator during refetches */}
-        {isRefetching && (
-          <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            <span className="text-sm text-muted-foreground">Actualizando...</span>
-          </div>
-        )}
-        <CleanerDesktopCalendar
-          currentDate={currentDate}
-          onNavigateDate={navigateDate}
-          onDateChange={(date) => {
-            console.log('Calendar - navigating to selected date:', formatMadridDate(date));
-            setCurrentDate(date);
-          }}
-          handleTaskClick={handleTaskClick}
-          todayTasks={todayTasks}
-          tomorrowTasks={tomorrowTasks}
-        />
+        <div className="h-screen flex flex-col bg-background text-foreground transition-colors duration-300 relative overflow-hidden">
+          {/* Subtle loading indicator during refetches */}
+          {isRefetching && (
+            <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">Actualizando...</span>
+            </div>
+          )}
+          <ManagerMobileAgendaCalendar
+            currentDate={currentDate}
+            tasks={tasks}
+            cleaners={cleaners}
+            onNavigateDate={navigateDate}
+            onGoToToday={goToToday}
+            onTaskClick={handleTaskClick}
+            onNewTask={handleNewTask}
+            onNewBatchTask={handleNewBatchTask}
+          />
+        </div>
         
-        {/* Modals for desktop cleaner view */}
+        {/* Modals for mobile manager view */}
         <CalendarModalsWithSuspense
-          isCreateModalOpen={false} // Cleaners can't create tasks
-          setIsCreateModalOpen={() => {}} // No-op for cleaners
-          isBatchCreateModalOpen={false} // Cleaners can't create batch tasks
-          setIsBatchCreateModalOpen={() => {}} // No-op for cleaners
+          isCreateModalOpen={isCreateModalOpen}
+          setIsCreateModalOpen={setIsCreateModalOpen}
+          isBatchCreateModalOpen={isBatchCreateModalOpen}
+          setIsBatchCreateModalOpen={setIsBatchCreateModalOpen}
           selectedTask={selectedTask}
           isTaskModalOpen={isTaskModalOpen}
           setIsTaskModalOpen={setIsTaskModalOpen}
           currentDate={currentDate}
-          onCreateTask={async () => {}} // No-op for cleaners
-          onBatchCreateTasks={async () => {}} // No-op for cleaners
+          onCreateTask={handleCreateTask}
+          onBatchCreateTasks={handleBatchCreateTasks}
           onUpdateTask={handleUpdateTask}
-          onDeleteTask={async () => {}} // Cleaners can't delete tasks
-          onUnassignTask={async () => {}} // Cleaners can't unassign tasks
+          onDeleteTask={handleDeleteTask}
+          onUnassignTask={handleUnassignTask}
         />
       </>
     );
   }
+
+  // Cleaners never reach this component: src/pages/Calendar.tsx renders
+  // CleanerCalendarScreen for them.
 
   // Desktop manager/admin view
   console.log('🖥️ CleaningCalendar: Rendering desktop manager/admin view', {

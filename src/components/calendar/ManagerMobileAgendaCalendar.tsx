@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { cn } from '@/lib/utils';
 import { formatMadridDate } from '@/utils/date';
+import { civilDateToDisplayDate } from '@/utils/madridCalendar';
 import { countTasksByAssignedCleaner, isTaskAssigned, isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import type { Cleaner, Task } from '@/types/calendar';
 import { TaskStatusBadge } from './TaskStatusBadge';
@@ -112,6 +113,8 @@ export function ManagerMobileAgendaCalendar({
     return dayTasks;
   }, [dayTasks, selectedFilter]);
 
+  const selectedCleanerName = cleaners.find((cleaner) => cleaner.id === selectedFilter)?.name;
+
   const groupedTasks = useMemo(() => {
     const sorted = [...filteredTasks].sort((a, b) => {
       const timeDiff = a.startTime.localeCompare(b.startTime);
@@ -140,7 +143,7 @@ export function ManagerMobileAgendaCalendar({
           <div className="text-center">
             <p className="text-xs font-medium uppercase tracking-wide text-ink-2">Agenda diaria</p>
             <h1 className="text-lg font-bold capitalize">
-              {format(currentDate, 'EEEE d MMM', { locale: es })}
+              {format(civilDateToDisplayDate(currentDateStr), 'EEEE d MMM', { locale: es })}
             </h1>
           </div>
           <Button variant="outline" size="sm" onClick={onGoToToday}>
@@ -202,7 +205,9 @@ export function ManagerMobileAgendaCalendar({
             Sin asignar ({summary.unassigned})
           </Button>
           {cleaners
-            .filter((cleaner) => (cleanerCounts.get(cleaner.id) || 0) > 0)
+            // The selected cleaner stays visible on days without tasks, so the
+            // active filter is always shown.
+            .filter((cleaner) => (cleanerCounts.get(cleaner.id) || 0) > 0 || cleaner.id === selectedFilter)
             .map((cleaner) => (
               <Button
                 key={cleaner.id}
@@ -211,7 +216,7 @@ export function ManagerMobileAgendaCalendar({
                 className="shrink-0 rounded-full"
                 onClick={() => setSelectedFilter(cleaner.id)}
               >
-                {cleaner.name} ({cleanerCounts.get(cleaner.id)})
+                {cleaner.name} ({cleanerCounts.get(cleaner.id) || 0})
               </Button>
             ))}
         </div>
@@ -235,7 +240,9 @@ export function ManagerMobileAgendaCalendar({
           <Card className="border-dashed">
             <CardContent className="px-6 py-12 text-center">
               <CalendarDays className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-              <h2 className="font-semibold">No hay tareas para este filtro</h2>
+              <h2 className="font-semibold">
+                {selectedCleanerName ? `${selectedCleanerName} no tiene tareas este día` : 'No hay tareas para este filtro'}
+              </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Cambia el filtro o crea una tarea para este dia.
               </p>

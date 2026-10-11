@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir que la creación múltiple de tareas del calendario no informe de los fallos parciales.",
+  "reason": "El calendario pasa a esperar el resultado de la misma mutación de creación que ya usaba (mutateAsync en lugar de mutate) y muestra un resumen real. Cada tarea se sigue creando una vez con la misma lógica y los mismos efectos que antes; solo cambia cuándo y qué se informa.",
+  "verification": "Prueba Node con el helper real y con useCalendarData real (dependencias simuladas, sin cliente Supabase): el calendario recibe la variante awaitable; un lote con fallos sigue creando el resto en orden e informa «Se crearon 2 de 4 tareas. Faltan: …», «ninguna de N» y el recorte «y N más». Falla con el código anterior. Pruebas de cascada y reutilización de asignaciones repetidas. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarBatchCreationTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "8b7900ff26b2827255e51fa9beb650d5f6ff73010e2176169cb20acc4073b0ae"
+}

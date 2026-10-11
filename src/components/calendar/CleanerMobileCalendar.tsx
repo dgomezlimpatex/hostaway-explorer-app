@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { CalendarCheck } from 'lucide-react';
+import { isMadridToday } from '@/utils/madridCalendar';
 
 interface CleanerMobileCalendarProps {
   currentDate: Date;
@@ -52,10 +53,7 @@ const CleanerMobileCalendarComponent: React.FC<CleanerMobileCalendarProps> = ({
   const [viewMode, setViewMode] = useState<CalendarViewMode>('daily');
   
   // Check if current date is today
-  const isCurrentDateToday = useMemo(() => {
-    const today = new Date();
-    return currentDate.toDateString() === today.toDateString();
-  }, [currentDate]);
+  const isCurrentDateToday = useMemo(() => isMadridToday(currentDate), [currentDate]);
 
   // Memoize task click handler
   const handleTaskClickMemo = useCallback((task: Task) => {

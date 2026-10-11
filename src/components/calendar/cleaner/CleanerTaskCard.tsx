@@ -8,6 +8,7 @@ import {
   getEffectiveTaskEndTime,
   getTaskAssignedCount,
 } from '@/utils/taskPositioning';
+import { civilDateToDisplayDate, getMadridToday, shiftCivilDate } from '@/utils/madridCalendar';
 
 interface CleanerTaskCardProps {
   task: Task;
@@ -39,8 +40,8 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
       className={cn(
         'absolute -top-2 -right-2 z-20 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold shadow-lg',
         allCompleted
-          ? 'bg-surface text-white'
-          : 'bg-surface text-white animate-pulse'
+          ? 'bg-ink-3 text-white'
+          : 'bg-danger text-white animate-pulse'
       )}
     >
       <ListTodo className="h-3.5 w-3.5" />
@@ -61,22 +62,17 @@ const CleanerTaskCardComponent: React.FC<CleanerTaskCardProps> = ({
   );
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const taskDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const tomorrowDate = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
-
-    if (taskDate.getTime() === todayDate.getTime()) {
+    // Compare civil dates in Europe/Madrid: new Date('YYYY-MM-DD') is UTC.
+    const today = getMadridToday();
+    if (dateString === today) {
       return 'Hoy';
     }
 
-    if (taskDate.getTime() === tomorrowDate.getTime()) {
+    if (dateString === shiftCivilDate(today, 1)) {
       return 'Mañana';
     }
+
+    const date = civilDateToDisplayDate(dateString);
 
     return date.toLocaleDateString('es-ES', {
       weekday: 'short',

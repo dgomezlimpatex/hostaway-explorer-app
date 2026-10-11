@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió aplicar la limpieza detectada en el calendario: quitar el código de limpiadora que nunca se ejecuta en el calendario de gestor.",
+  "reason": "Elimina ramas inalcanzables: la página ya envía a toda usuaria con rol principal de limpiadora a su pantalla propia. Las vistas de gestor (móvil y escritorio) quedan intactas. No cambia permisos, datos ni consultas.",
+  "verification": "Prueba Node con la resolución de rol real: en todas las combinaciones de roles y modos, una usuaria con rol principal de limpiadora se resuelve como limpiadora (pantalla propia) y un gestor sigue como gestor; el grafo de CleaningCalendar mantiene la agenda móvil y el calendario de escritorio y ya no incluye los calendarios de limpiadora. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarCleanerRoutingTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "78fc922a5393cfb38000ddee074282801978ec7999a032bcb96847f87033c0af"
+}

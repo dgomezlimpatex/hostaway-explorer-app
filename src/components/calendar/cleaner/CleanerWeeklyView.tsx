@@ -2,6 +2,7 @@ import React, { memo, useMemo } from 'react';
 import { Task } from '@/types/calendar';
 import { cn } from '@/lib/utils';
 import { formatMadridDate } from '@/utils/date';
+import { getMadridToday, getMadridWeekDays } from '@/utils/madridCalendar';
 
 interface CleanerWeeklyViewProps {
   currentDate: Date;
@@ -14,22 +15,14 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
   tasks,
   onSelectDate
 }) => {
-  // Generate week days centered on current date
-  const weekDays = useMemo(() => {
-    const days: Date[] = [];
-    const startOfWeek = new Date(currentDate);
-    const dayOfWeek = startOfWeek.getDay();
-    // Start from Monday (1) - adjust for Sunday (0)
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    startOfWeek.setDate(startOfWeek.getDate() + diff);
-    
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      days.push(day);
-    }
-    return days;
-  }, [currentDate]);
+  // Monday-to-Sunday week of the selected date, in Europe/Madrid. Dates are
+  // noon UTC, like the rest of the cleaner calendar.
+  const weekDays = useMemo(
+    () => getMadridWeekDays(currentDate).map((day) => new Date(`${day}T12:00:00Z`)),
+    [currentDate]
+  );
+  const todayStr = getMadridToday();
+  const selectedStr = formatMadridDate(currentDate);
 
   // Get tasks for a specific date
   const getTasksForDate = (date: Date) => {
@@ -37,16 +30,8 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
     return tasks.filter(task => task.date === dateStr);
   };
 
-  // Check if date is today
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-  };
-
-  // Check if date is selected
-  const isSelected = (date: Date) => {
-    return date.toDateString() === currentDate.toDateString();
-  };
+  const isToday = (date: Date) => formatMadridDate(date) === todayStr;
+  const isSelected = (date: Date) => formatMadridDate(date) === selectedStr;
 
   // Get status colors for dots
   const getStatusDots = (dateTasks: Task[]) => {
@@ -93,7 +78,7 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
                 "text-lg font-bold mb-1",
                 selected ? "text-primary-foreground" : "text-foreground"
               )}>
-                {day.getDate()}
+                {day.getUTCDate()}
               </span>
               
               {/* Task indicators */}
@@ -101,13 +86,13 @@ const CleanerWeeklyViewComponent: React.FC<CleanerWeeklyViewProps> = ({
                 {pending > 0 && (
                   <div className={cn(
                     "w-2 h-2 rounded-full",
-                    selected ? "bg-line-soft" : "bg-surface"
+                    selected ? "bg-warning ring-1 ring-primary-foreground" : "bg-warning"
                   )} />
                 )}
                 {completed > 0 && (
                   <div className={cn(
                     "w-2 h-2 rounded-full",
-                    selected ? "bg-line-soft" : "bg-surface"
+                    selected ? "bg-success ring-1 ring-primary-foreground" : "bg-success"
                   )} />
                 )}
               </div>

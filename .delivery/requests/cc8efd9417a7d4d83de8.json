@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir los errores menores detectados en el calendario, entre ellos que el resumen inferior muestre identificadores internos de cliente.",
+  "reason": "Presentación local de la leyenda: el nombre se toma de la lista de clientes ya cargada y, si aún no está, se muestra «Cliente». No cambia consultas ni datos.",
+  "verification": "Prueba Node que renderiza el resumen real con lista de clientes local: sin clientes cargados no aparece el UUID y sí «Cliente»; con clientes aparece el nombre. Falla con el código anterior. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarFooterClientNamesTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "f0ba0385caf803bd124c852f9a442460a1ba21c08cdd4ebdd4fb548233510daf"
+}
