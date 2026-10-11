@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { cn } from '@/lib/utils';
 import { formatMadridDate } from '@/utils/date';
+import { civilDateToDisplayDate } from '@/utils/madridCalendar';
 import { countTasksByAssignedCleaner, isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import type { Cleaner, Task } from '@/types/calendar';
 import { TaskStatusBadge } from './TaskStatusBadge';
@@ -140,7 +141,7 @@ export function ManagerMobileAgendaCalendar({
           <div className="text-center">
             <p className="text-xs font-medium uppercase tracking-wide text-ink-2">Agenda diaria</p>
             <h1 className="text-lg font-bold capitalize">
-              {format(currentDate, 'EEEE d MMM', { locale: es })}
+              {format(civilDateToDisplayDate(currentDateStr), 'EEEE d MMM', { locale: es })}
             </h1>
           </div>
           <Button variant="outline" size="sm" onClick={onGoToToday}>

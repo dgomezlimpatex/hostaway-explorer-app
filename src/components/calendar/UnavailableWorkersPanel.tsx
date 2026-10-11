@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { ChevronDown, UserX, AlertTriangle } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Cleaner, Task } from '@/types/calendar';
+import { Cleaner, Task, ViewType } from '@/types/calendar';
+import { getVisibleDays } from './utils/multiDayCalendar';
 import { useUnavailableCleaners, UnavailableCleanerInfo } from '@/hooks/useUnavailableCleaners';
 import { cn } from '@/lib/utils';
 
@@ -39,14 +40,17 @@ export const UnavailableWorkersPanel = ({
     }
   }, [expanded]);
 
-  // Detect cleaners with assigned tasks today (so we can warn)
-  const currentDateStr = useMemo(() => currentDate.toISOString().split('T')[0], [currentDate]);
+  // Detect cleaners with assigned tasks in the visible period (so we can warn)
+  const visibleDays = useMemo(
+    () => new Set(getVisibleDays(currentDate, currentView as ViewType)),
+    [currentDate, currentView]
+  );
   const cleanersWithTasksToday = useMemo(() => {
     const ids = new Set<string>();
     const namesById: Record<string, string> = {};
     cleaners.forEach(c => (namesById[c.id] = c.name));
     tasks.forEach(t => {
-      if (t.date !== currentDateStr) return;
+      if (!visibleDays.has(t.date)) return;
       if (t.cleanerId) ids.add(t.cleanerId);
       if (t.cleaner) {
         // map by name when no id
@@ -55,7 +59,7 @@ export const UnavailableWorkersPanel = ({
       }
     });
     return ids;
-  }, [tasks, cleaners, currentDateStr]);
+  }, [tasks, cleaners, visibleDays]);
 
   // Group breakdown for header chips
   const breakdown = useMemo(() => {
