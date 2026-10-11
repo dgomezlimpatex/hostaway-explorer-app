@@ -32,7 +32,7 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
       className={cn(
         "absolute top-1 right-9 z-20 flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold shadow-sm",
         allCompleted
-          ? "bg-surface text-white"
+          ? "bg-ink-3 text-white"
           : "bg-danger text-white animate-pulse"
       )}
     >
@@ -51,6 +51,11 @@ interface EnhancedTaskCardProps {
   style?: React.CSSProperties;
   /** Disable resize handle and context menu (e.g. unassigned panel). Defaults to false. */
   disableQuickActions?: boolean;
+  /**
+   * Hide the resize handle. Shared tasks show only one person's share, so
+   * stretching that block would save a shorter total end time.
+   */
+  disableResize?: boolean;
 }
 
 const formatDuration = (mins: number) => {
@@ -68,7 +73,8 @@ export const EnhancedTaskCard = React.memo(({
   onDragStart,
   onDragEnd,
   style,
-  disableQuickActions
+  disableQuickActions,
+  disableResize
 }: EnhancedTaskCardProps) => {
   const { getClientName } = useClientData();
   const clientColor = getClientColor(task.clienteId);
@@ -211,7 +217,7 @@ export const EnhancedTaskCard = React.memo(({
       )}
 
       {/* Resize handle (right edge) */}
-      {!disableQuickActions && !isCancelled && (
+      {!disableQuickActions && !disableResize && !isCancelled && (
         <div
           onPointerDown={handleResizePointerDown}
           onClick={(e) => e.stopPropagation()}
