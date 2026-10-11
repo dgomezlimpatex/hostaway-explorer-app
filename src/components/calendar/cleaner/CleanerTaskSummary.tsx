@@ -6,11 +6,14 @@ import { getEffectiveTaskDurationMinutes } from '@/utils/taskPositioning';
 interface CleanerTaskSummaryProps {
   todayTasks: Task[];
   tomorrowTasks: Task[];
+  /** False when the cleaner is looking at a day other than today (Madrid). */
+  isToday?: boolean;
 }
 
 const CleanerTaskSummaryComponent: React.FC<CleanerTaskSummaryProps> = ({
   todayTasks,
-  tomorrowTasks
+  tomorrowTasks,
+  isToday = true
 }) => {
   // Calculate completed and pending tasks
   const { completedToday, pendingToday, totalHoursToday } = useMemo(() => {
@@ -67,7 +70,7 @@ const CleanerTaskSummaryComponent: React.FC<CleanerTaskSummaryProps> = ({
               </div>
               <div>
                 <div className="text-xl font-bold text-foreground">{totalHoursToday}</div>
-                <div className="text-xs text-muted-foreground">Total hoy</div>
+                <div className="text-xs text-muted-foreground">{isToday ? 'Total hoy' : 'Total del día'}</div>
               </div>
             </div>
           </div>
@@ -79,7 +82,7 @@ const CleanerTaskSummaryComponent: React.FC<CleanerTaskSummaryProps> = ({
         <div className="flex items-center justify-between bg-background/40 backdrop-blur-sm rounded-md px-3 py-2 border border-border/20">
           <div className="flex items-center gap-2">
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Mañana:</span>
+            <span className="text-sm text-muted-foreground">{isToday ? 'Mañana:' : 'Día siguiente:'}</span>
             <span className="text-sm font-semibold text-foreground">
               {tomorrowTasks.length} {tomorrowTasks.length === 1 ? 'tarea' : 'tareas'}
             </span>

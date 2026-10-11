@@ -18,7 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { cn } from '@/lib/utils';
 import { formatMadridDate } from '@/utils/date';
-import { countTasksByAssignedCleaner, isTaskAssignedToCleaner } from '@/utils/taskAssignments';
+import { countTasksByAssignedCleaner, isTaskAssigned, isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import type { Cleaner, Task } from '@/types/calendar';
 import { TaskStatusBadge } from './TaskStatusBadge';
 
@@ -60,7 +60,7 @@ function AgendaTaskCard({ task, onTaskClick }: { task: Task; onTaskClick: (task:
               </span>
               <span className="flex items-center gap-1.5">
                 <UserRound className="h-3.5 w-3.5" />
-                {task.cleaner || 'Sin asignar'}
+                {task.cleaner || task.assignments?.map((assignment) => assignment.cleaner_name).filter(Boolean).join(', ') || 'Sin asignar'}
               </span>
             </div>
           </div>
@@ -92,7 +92,7 @@ export function ManagerMobileAgendaCalendar({
   const summary = useMemo(() => {
     return {
       total: dayTasks.length,
-      unassigned: dayTasks.filter((task) => !task.cleanerId && !task.cleaner).length,
+      unassigned: dayTasks.filter((task) => !isTaskAssigned(task)).length,
       inProgress: dayTasks.filter((task) => task.status === 'in-progress').length,
       completed: dayTasks.filter((task) => task.status === 'completed').length,
     };
@@ -104,7 +104,7 @@ export function ManagerMobileAgendaCalendar({
 
   const filteredTasks = useMemo(() => {
     if (selectedFilter === 'unassigned') {
-      return dayTasks.filter((task) => !task.cleanerId && !task.cleaner);
+      return dayTasks.filter((task) => !isTaskAssigned(task));
     }
     if (selectedFilter !== 'all') {
       return dayTasks.filter((task) => isTaskAssignedToCleaner(task, selectedFilter));
