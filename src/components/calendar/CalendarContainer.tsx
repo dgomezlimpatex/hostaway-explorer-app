@@ -13,14 +13,14 @@ import { StatusLegend } from "./StatusLegend";
 import { OverlapAlertsBanner } from "./OverlapAlertsBanner";
 import { Task, Cleaner, ViewType } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
-import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
+import { buildTimeSlotOccupancy, getTaskPosition } from "@/utils/taskPositioning";
 import { formatMadridDate, getTodayMadrid } from "@/utils/date";
 
 import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { usePreferredCleaners } from "@/hooks/usePropertyPreferredCleaners";
 import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
-import { buildTaskAssignmentsMap, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
+import { buildTaskAssignmentsMap, isTaskAssigned, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
 import type { DragState } from "@/hooks/useDragAndDrop";
 import { MultiDayCalendarGrid } from "./MultiDayCalendarGrid";
@@ -123,10 +123,9 @@ export const CalendarContainer = ({
       }))
     });
     
-    // A task is considered assigned if it has either cleaner name OR cleaner_id
-    const assigned = tasks.filter(task => task.cleaner || task.cleanerId);
-    // A task is unassigned if it has neither cleaner name NOR cleaner_id
-    const unassigned = tasks.filter(task => !task.cleaner && !task.cleanerId);
+    // Assigned through task_assignments, legacy cleaner_id or legacy cleaner name
+    const assigned = tasks.filter(task => isTaskAssigned(task));
+    const unassigned = tasks.filter(task => !isTaskAssigned(task));
     
     console.log('📦 CalendarContainer - Task separation result:', {
       assignedCount: assigned.length,
@@ -209,18 +208,12 @@ export const CalendarContainer = ({
     [isMultiDay, assignedTasks, visibleCleaners, visibleDays, assignmentsMap]
   );
 
-  // Memoized time slot occupation check wrapper que excluye la tarea que se está arrastrando
-  const checkTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
-    return isTimeSlotOccupied(
-      cleanerId, 
-      hour, 
-      minute, 
-      assignedTasks, 
-      cleaners, 
-      dragState.draggedTask?.id, // Pasar el ID de la tarea que se está arrastrando
-      assignmentsMap
-    );
-  };
+  // Slot occupation check, excluding the task being dragged. Indexed per
+  // cleaner and stable between renders so the grid rows can stay memoized.
+  const checkTimeSlotOccupied = useMemo(
+    () => buildTimeSlotOccupancy(assignedTasks, cleaners, dragState.draggedTask?.id, assignmentsMap),
+    [assignedTasks, cleaners, dragState.draggedTask?.id, assignmentsMap]
+  );
 
   // Quick actions from EnhancedTaskCard context menu (decoupled via window events)
   const { toast } = useToast();

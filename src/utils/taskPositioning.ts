@@ -1,5 +1,6 @@
 
 import { getTaskWorkerPlannedDurationMinutes } from './cleaning-planning/capacity';
+import type { Task } from '@/types/calendar';
 
 // Helper function to convert time string to minutes
 const timeToMinutes = (time: string) => {
@@ -225,3 +226,39 @@ export const isTimeSlotOccupied = (
   });
 };
 
+/**
+ * Same answer as isTimeSlotOccupied, but computes each cleaner's busy
+ * intervals once. The grid asks for every slot of every cleaner (33 per row),
+ * so scanning all tasks per slot grew with cleaners × slots × tasks.
+ */
+export const buildTimeSlotOccupancy = (
+  assignedTasks: Task[],
+  cleaners: Array<{ id: string; name?: string }>,
+  excludeTaskId?: string,
+  assignmentsMap?: Record<string, string[]>
+) => {
+  const intervalsByCleaner = new Map<string, Array<[number, number]>>();
+  const tasks = assignedTasks
+    .filter(task => !(excludeTaskId && task.id === excludeTaskId))
+    .map(task => ({
+      task,
+      start: timeToMinutes(task.startTime),
+      end: timeToMinutes(getEffectiveTaskEndTime(task, assignmentsMap)),
+    }));
+
+  cleaners.forEach(cleaner => {
+    intervalsByCleaner.set(cleaner.id, tasks
+      .filter(({ task }) => isTaskAssignedToCleaner(task, cleaner.id, cleaner.name, assignmentsMap))
+      .map(({ start, end }) => [start, end] as [number, number]));
+  });
+
+  return (cleanerId: string, hour: number, minute: number) => {
+    const slotMinutes = hour * 60 + minute;
+    const intervals = intervalsByCleaner.get(cleanerId);
+    if (!intervals) {
+      // Unknown cleaner: keep the original behaviour (match by id only).
+      return isTimeSlotOccupied(cleanerId, hour, minute, assignedTasks, cleaners, excludeTaskId, assignmentsMap);
+    }
+    return intervals.some(([start, end]) => slotMinutes >= start && slotMinutes < end);
+  };
+};
