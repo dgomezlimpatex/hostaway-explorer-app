@@ -36,7 +36,7 @@ export const useCalendarData = () => {
     isLoading: isLoadingTasks,
     isInitialLoading: isInitialLoadingTasks,
     updateTask,
-    createTask,
+    createTaskAsync,
     deleteTask,
     deleteAllTasks,
     assignTask: assignTaskMutation,
@@ -134,7 +134,8 @@ export const useCalendarData = () => {
     assignTask,
     assignTaskWithSchedule,
     unassignTask: unassignTaskMutation,
-    createTask,
+    // The calendar waits for the real result before announcing a creation.
+    createTask: createTaskAsync,
     deleteTask,
     deleteAllTasks,
     
