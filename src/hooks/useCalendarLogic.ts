@@ -7,12 +7,12 @@ import { useAllCleanersAvailability } from "@/hooks/useAllCleanersAvailability";
 import { useToast } from "@/hooks/use-toast";
 import { Cleaner, Task } from "@/types/calendar";
 import { isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
-import { isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
+import { computeCascadeShifts, persistCascadeShifts } from "@/utils/calendarCascade";
 
 type CalendarTask = Task & { isRecurringInstance?: boolean };
 
@@ -20,11 +20,6 @@ type CalendarTask = Task & { isRecurringInstance?: boolean };
 const toMin = (time: string) => {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
-};
-const fromMin = (mins: number) => {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 const timeRangesOverlap = (start1: string, end1: string, start2: string, end2: string): boolean => {
   const s1 = toMin(start1), e1 = toMin(end1);
@@ -219,78 +214,23 @@ export const useCalendarLogic = () => {
     const cleanerObjForCascade = currentCleaners.find((cleaner) => cleaner.id === cleanerId);
     const cleanerNameForCascade = cleanerObjForCascade?.name || '';
 
-    const sameDayCleanerTasks = tasks
-      .filter(t =>
-        t.id !== taskId &&
-        t.date === task.date &&
-        isTaskAssignedToCleaner(t, cleanerId, cleanerNameForCascade)
-      )
-      .sort((a, b) => toMin(a.startTime) - toMin(b.startTime));
-
-    const displaced: Array<{
-      taskId: string;
-      property: string;
-      address?: string;
-      type?: string;
-      oldStartTime: string;
-      oldEndTime: string;
-      newStartTime: string;
-      newEndTime: string;
-    }> = [];
-
-    let cursorEnd = toMin(endTime);
-    const MAX_END = 23 * 60 + 59;
-
-    // Helper: count assigned workers (multi-worker tasks split duration evenly)
-    const getAssignedCount = (t: Task): number => {
-      if (Array.isArray(t.assignments) && t.assignments.length > 0) return t.assignments.length;
-      if (typeof t.cleaner === 'string' && t.cleaner.includes(',')) {
-        return t.cleaner.split(',').map((s: string) => s.trim()).filter(Boolean).length;
-      }
-      return 1;
-    };
-
-    for (const b of sameDayCleanerTasks) {
-      const bStart = toMin(b.startTime);
-      const bEnd = toMin(b.endTime);
-      // Effective per-worker end for cascade: if multi-worker, divide duration
-      const bAssigned = getAssignedCount(b);
-      const fullDur = Math.max(bEnd - bStart, 0);
-      const effectiveDur = bAssigned > 1 ? Math.max(15, Math.round(fullDur / bAssigned)) : fullDur;
-      const bEffectiveEnd = bStart + effectiveDur;
-
-      if (bStart >= cursorEnd) {
-        break; // no further overlap, stop cascade
-      }
-      // If the existing task's effective (per-worker) end is already before our cursor,
-      // it doesn't actually conflict with the dropped task — skip it.
-      if (bEffectiveEnd <= cursorEnd && bStart < cursorEnd) {
-        // overlap is only against the unused portion of a multi-worker block; skip
-        continue;
-      }
-      const dur = effectiveDur;
-      const newStart = cursorEnd;
-      const newEnd = newStart + dur;
-      if (newEnd > MAX_END) {
-        toast({
-          title: "No se puede reorganizar",
-          description: `Mover la tarea desplazaría "${b.property}" más allá de las 23:59.`,
-          variant: "destructive",
-        });
-        return;
-      }
-      displaced.push({
-        taskId: b.id,
-        property: b.property,
-        address: b.address,
-        type: b.type,
-        oldStartTime: b.startTime,
-        oldEndTime: b.endTime,
-        newStartTime: fromMin(newStart),
-        newEndTime: fromMin(newEnd),
+    const cascade = computeCascadeShifts(tasks, {
+      taskId,
+      date: task.date,
+      startTime,
+      endTime,
+      cleanerId,
+      cleanerName: cleanerNameForCascade,
+    });
+    if (!cascade.ok) {
+      toast({
+        title: "No se puede reorganizar",
+        description: `Mover la tarea desplazaría "${cascade.blockedBy}" más allá de las 23:59.`,
+        variant: "destructive",
       });
-      cursorEnd = newEnd;
+      return;
     }
+    const displaced = cascade.shifts;
 
     // Check availability for the dropped task itself
     const availabilityCheck = isCleanerAvailableAtTime(
@@ -341,15 +281,32 @@ export const useCalendarLogic = () => {
 
       // Apply cascading reschedules to the displaced tasks
       if (displaced.length > 0) {
-        await Promise.all(
-          displaced.map(async d => {
-            const { error } = await supabase
+        await persistCascadeShifts(displaced, tasks, {
+          updateTaskTimes: async (id, newStartTime, newEndTime) => {
+            const { data, error } = await supabase
               .from('tasks')
-              .update({ start_time: d.newStartTime, end_time: d.newEndTime })
-              .eq('id', d.taskId);
+              .update({ start_time: newStartTime, end_time: newEndTime })
+              .eq('id', id)
+              .select('id');
             if (error) throw error;
-          })
-        );
+            return data?.length ?? 0;
+          },
+          // Virtual recurring occurrences have no row yet: create it with the new times.
+          materializeRecurring: (recurringTask, newStartTime, newEndTime) =>
+            materializeRecurringTaskInstance(recurringTask, {
+              cleaner: recurringTask.cleaner || cleanerNameForCascade,
+              cleanerId: recurringTask.cleanerId || cleanerId,
+              startTime: newStartTime,
+              endTime: newEndTime,
+            }),
+        });
+        if (displaced.some(d => (tasks.find(t => t.id === d.taskId) as CalendarTask | undefined)?.isRecurringInstance)) {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] }),
+            queryClient.invalidateQueries({ queryKey: ['recurring-tasks-for-calendar'] }),
+            queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+          ]);
+        }
 
         // Send a single consolidated email to the cleaner
         const cleanerEmail = cleanerObj?.email;
