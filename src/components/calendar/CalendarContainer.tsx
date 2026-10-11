@@ -12,9 +12,10 @@ import { CalendarLayout } from "./CalendarLayout";
 import { DragPreview } from "./DragPreview";
 import { StatusLegend } from "./StatusLegend";
 import { OverlapAlert } from "./OverlapAlert";
-import { Task, Cleaner } from "@/types/calendar";
+import { Task, Cleaner, ViewType } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
-import { getTaskPosition, isTimeSlotOccupied, detectTaskOverlaps, getEffectiveTaskEndTime } from "@/utils/taskPositioning";
+import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
+import { formatMadridDate, getTodayMadrid } from "@/utils/date";
 
 import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { usePreferredCleaners } from "@/hooks/usePropertyPreferredCleaners";
@@ -23,14 +24,19 @@ import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
 import { buildTaskAssignmentsMap, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
 import type { DragState } from "@/hooks/useDragAndDrop";
+import { MultiDayCalendarGrid } from "./MultiDayCalendarGrid";
+import {
+  buildCleanerDayCells,
+  civilDateToLocalDate,
+  getOverlapsByCleaner,
+  getVisibleDays,
+  isMultiDayView,
+  type TaskOverlap,
+} from "./utils/multiDayCalendar";
 
 
 type RecurringCalendarTask = Task & {
   isRecurringInstance?: boolean;
-};
-
-type TaskOverlap = Task & {
-  endTime: string;
 };
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -41,6 +47,7 @@ export interface CalendarContainerProps {
   tasks: Task[];
   cleaners: Cleaner[];
   currentDate: Date;
+  currentView: ViewType;
   timeSlots: string[];
   availability: CleanerAvailability[];
   headerScrollRef: React.RefObject<HTMLDivElement>;
@@ -66,12 +73,14 @@ export interface CalendarContainerProps {
   handleDeleteTask: (taskId: string) => Promise<void>;
   handleUnassignTask: (taskId: string) => Promise<void>;
   onNavigateDate: (direction: 'prev' | 'next') => void;
+  onSelectDay: (day: string) => void;
 }
 
 export const CalendarContainer = ({
   tasks,
   cleaners,
   currentDate,
+  currentView,
   timeSlots,
   availability,
   headerScrollRef,
@@ -96,7 +105,8 @@ export const CalendarContainer = ({
   handleUpdateTask,
   handleDeleteTask,
   handleUnassignTask,
-  onNavigateDate
+  onNavigateDate,
+  onSelectDay
 }: CalendarContainerProps) => {
   // Note: Mobile cleaner view logic moved to CleaningCalendar component
   // to avoid conditional hooks execution
@@ -154,8 +164,13 @@ export const CalendarContainer = ({
   // Workload data for all cleaners (viewed week)
   const { workloadMap } = useCalendarWorkload(currentDate);
 
-  // Cleaners fully unavailable today (full-day absence or fixed day off)
-  const { unavailableIds } = useUnavailableCleaners(cleaners, currentDate, 'day');
+  const isMultiDay = isMultiDayView(currentView);
+  const visibleDays = useMemo(() => getVisibleDays(currentDate, currentView), [currentDate, currentView]);
+  // The week view starts on Monday, not on the anchor date.
+  const rangeStartDate = useMemo(() => civilDateToLocalDate(visibleDays[0]), [visibleDays]);
+
+  // Cleaners fully unavailable across the visible range (full-day absence or fixed day off)
+  const { unavailableIds } = useUnavailableCleaners(cleaners, rangeStartDate, currentView);
 
   // Cleaner IDs that have tasks assigned today — these stay visible even if "unavailable"
   const cleanersWithTasksTodayIds = useMemo(() => {
@@ -185,46 +200,16 @@ export const CalendarContainer = ({
     [draggedTaskPreferred, dragState.isDragging]
   );
 
-  // Detect overlapping tasks by cleaner
-  const overlapsByCleanerMap = useMemo(() => {
-    const map: Record<string, TaskOverlap[]> = {};
-    
-    cleaners.forEach(cleaner => {
-      const cleanerTasks = assignedTasks.filter(task => {
-        if (Array.isArray(assignmentsMap?.[task.id]) && assignmentsMap![task.id].includes(cleaner.id)) return true;
-        return isTaskAssignedToCleaner(task, cleaner.id, cleaner.name);
-      });
-      
-      const overlaps: TaskOverlap[] = [];
-      cleanerTasks.forEach(task => {
-        const taskOverlaps = detectTaskOverlaps(
-          cleaner.id,
-          task.startTime,
-          getEffectiveTaskEndTime(task, assignmentsMap),
-          cleanerTasks,
-          cleaners,
-          task.id,
-          assignmentsMap
-        );
-        
-        if (taskOverlaps.length > 0) {
-          overlaps.push(...taskOverlaps
-            .filter(overlap => !overlaps.some(existing => existing.id === overlap.id))
-            .map(overlap => ({
-              ...overlap,
-              endTime: getEffectiveTaskEndTime(overlap, assignmentsMap),
-            } as TaskOverlap))
-          );
-        }
-      });
-      
-      if (overlaps.length > 0) {
-        map[cleaner.id] = overlaps;
-      }
-    });
-    
-    return map;
-  }, [assignedTasks, cleaners, assignmentsMap]);
+  // Detect overlapping tasks by cleaner (only tasks on the same date can conflict)
+  const overlapsByCleanerMap = useMemo(
+    () => getOverlapsByCleaner(assignedTasks, cleaners, assignmentsMap),
+    [assignedTasks, cleaners, assignmentsMap]
+  );
+
+  const multiDayCells = useMemo(
+    () => isMultiDay ? buildCleanerDayCells(assignedTasks, visibleCleaners, visibleDays, assignmentsMap) : {},
+    [isMultiDay, assignedTasks, visibleCleaners, visibleDays, assignmentsMap]
+  );
 
   // Memoized time slot occupation check wrapper que excluye la tarea que se está arrastrando
   const checkTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
@@ -337,6 +322,7 @@ export const CalendarContainer = ({
       <OverlapAlertsBanner
         overlapsByCleanerMap={overlapsByCleanerMap}
         cleaners={cleaners}
+        showDate={isMultiDay}
       />
 
 
@@ -356,6 +342,24 @@ export const CalendarContainer = ({
 
         {/* Main Calendar */}
         <div className="flex-1 min-w-0 flex flex-col">
+          {isMultiDay ? (
+            <MultiDayCalendarGrid
+              cleaners={visibleCleaners}
+              days={visibleDays}
+              cells={multiDayCells}
+              todayStr={formatMadridDate(getTodayMadrid())}
+              dragState={dragState}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onTaskClick={handleTaskClick}
+              onSelectDay={onSelectDay}
+              assignmentsMap={assignmentsMap}
+              workloadMap={workloadMap}
+              preferredCleanerIds={preferredCleanerIdsForDrag}
+            />
+          ) : (
           <CalendarLayout
             cleaners={visibleCleaners}
             timeSlots={timeSlots}
@@ -380,6 +384,7 @@ export const CalendarContainer = ({
             preferredCleanerIds={preferredCleanerIdsForDrag}
             workloadMap={workloadMap}
           />
+          )}
         </div>
       </div>
 
@@ -418,11 +423,13 @@ export const CalendarContainer = ({
 interface OverlapAlertsBannerProps {
   overlapsByCleanerMap: Record<string, TaskOverlap[]>;
   cleaners: Cleaner[];
+  showDate?: boolean;
 }
 
 const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
   overlapsByCleanerMap,
   cleaners,
+  showDate = false,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [dismissed, setDismissed] = useState(false);
@@ -469,6 +476,7 @@ const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
                 key={cleanerId}
                 overlappingTasks={overlaps}
                 cleanerName={cleaner.name}
+                showDate={showDate}
               />
             ) : null;
           })}
