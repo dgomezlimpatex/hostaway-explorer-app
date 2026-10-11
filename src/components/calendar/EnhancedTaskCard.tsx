@@ -32,7 +32,7 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
       className={cn(
         "absolute top-1 right-9 z-20 flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold shadow-sm",
         allCompleted
-          ? "bg-surface text-white"
+          ? "bg-ink-3 text-white"
           : "bg-danger text-white animate-pulse"
       )}
     >
