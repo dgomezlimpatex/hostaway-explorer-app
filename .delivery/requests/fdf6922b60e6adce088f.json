@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió sustituir las confirmaciones window.confirm del calendario por diálogos de la app.",
+  "reason": "Cambio de interfaz: las mismas preguntas y la misma decisión (continuar o cancelar) se muestran en un diálogo propio en lugar del cuadro del navegador. No cambia qué se asigna, elimina o consulta.",
+  "verification": "Prueba Node con useCalendarLogic y useConfirmDialog reales, dependencias simuladas sin cliente Supabase y window.confirm que lanza error: al soltar sobre una trabajadora con día libre fijo se abre el diálogo propio; Cancelar no asigna y Asignar igualmente asigna. Falla con el código anterior. Pruebas de cascada y reutilización repetidas. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarConfirmDialogTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "ea9a0e399f602142918a690ab99c2c6a4befcc3237c250d6060f67c3d171c20d"
+}

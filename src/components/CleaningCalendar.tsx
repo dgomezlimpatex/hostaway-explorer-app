@@ -68,6 +68,8 @@ const CleaningCalendar = () => {
     setIsTaskModalOpen,
     setIsCreateModalOpen,
     setIsBatchCreateModalOpen,
+    confirm,
+    confirmDialog,
   } = useCalendarLogic();
 
   const deepLinkDate = searchParams.get('date');
@@ -307,6 +309,8 @@ const CleaningCalendar = () => {
           />
         </div>
         
+        {confirmDialog}
+
         {/* Modals for mobile manager view */}
         <CalendarModalsWithSuspense
           isCreateModalOpen={isCreateModalOpen}
@@ -410,8 +414,11 @@ const CleaningCalendar = () => {
             handleUnassignTask={handleUnassignTask}
             onNavigateDate={navigateDate}
             onSelectDay={handleSelectDay}
+            onConfirm={confirm}
           />
         </div>
+
+        {confirmDialog}
 
         {/* Footer-resumen con totales y leyenda de clientes */}
         <div className="flex-shrink-0">
