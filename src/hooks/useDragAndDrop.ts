@@ -20,7 +20,6 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
 
   const handleDragStart = useCallback((e: React.DragEvent, task: Task) => {
     activeTaskRef.current = task;
-    console.log('🚀 useDragAndDrop - handleDragStart called with task:', task.id, task.property);
     e.dataTransfer.effectAllowed = 'move';
     
     // Set multiple data formats for better compatibility
@@ -47,12 +46,10 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
       draggedFromPosition
     });
 
-    console.log('✅ Drag state set:', { taskId: task.id, isDragging: true, draggedFromPosition });
   }, []);
 
   const handleDragEnd = useCallback((e: React.DragEvent) => {
     activeTaskRef.current = null;
-    console.log('🏁 useDragAndDrop - handleDragEnd called');
     setDragState({
       draggedTask: null,
       isDragging: false,
@@ -70,7 +67,6 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🎯 useDragAndDrop - handleDrop called with:', { cleanerId, timeSlot, draggedTaskId: dragState.draggedTask?.id });
     
     // Try to get task ID from different data formats
     let taskId = e.dataTransfer.getData('text/plain');
@@ -87,7 +83,6 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
       }
     }
     
-    console.log('📋 useDragAndDrop - taskId from drag data:', taskId);
     
     const activeTask = activeTaskRef.current;
     // Some browsers return an empty payload on drop. Only fall back to an
@@ -97,7 +92,6 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     activeTaskRef.current = null;
 
     if (isActiveTask) {
-      console.log('🔄 useDragAndDrop - calling onTaskAssign with:', { taskId, cleanerId, cleanersCount: cleaners.length, timeSlot });
       // Always call onTaskAssign - let the backend handle if it's the same position
       onTaskAssign(taskId, cleanerId, cleaners, timeSlot);
     } else {

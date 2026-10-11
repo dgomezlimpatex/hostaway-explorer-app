@@ -59,15 +59,11 @@ export const TimeSlot = memo(({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('💧 TimeSlot - handleDrop called for:', { cleanerId, timeString, draggedTaskId, isAvailable });
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
     
     // Only allow drop if the slot is available and there's a dragged task
     if (draggedTaskId && isAvailable) {
-      console.log('✅ TimeSlot - Processing drop for task:', draggedTaskId);
       onDrop(e, cleanerId, timeString);
-    } else {
-      console.log('⚠️ TimeSlot - Drop not allowed:', { draggedTaskId, isAvailable });
     }
   }, [onDrop, cleanerId, timeString, draggedTaskId, isAvailable]);
 
