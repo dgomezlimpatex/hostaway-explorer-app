@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir que estirar una tarea compartida entre varias personas le quite duración.",
+  "reason": "Solo se oculta el tirador de estirado en tarjetas de tareas compartidas, cuyo bloque muestra la parte por persona. No cambia cálculos, consultas ni escrituras; el resto de acciones de duración siguen igual.",
+  "verification": "Prueba Node que renderiza la cuadrícula real con una tarea individual y otra compartida por dos personas: la individual conserva el tirador y la compartida, pintada en ambas filas con su parte (11:00–13:00, ÷2), no lo tiene. La prueba falla con el código anterior. Prueba Chromium local del estirado repetida. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos. Flujo autenticado real no ejecutado.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarSharedTaskResizeTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "9193c8b605bfb93c79886e9885e331fcd4617cbd077cf85fe9686c066fecfbb2"
+}

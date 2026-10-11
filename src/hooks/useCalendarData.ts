@@ -21,8 +21,9 @@ export const useCalendarData = () => {
   const { userRole, user } = useAuth();
   const { cleaners: allCleaners, isInitialLoading: isInitialLoadingCleaners } = useCleaners();
   
-  // Filter out inactive cleaners for calendar display
-  const cleaners = allCleaners.filter(c => c.isActive !== false);
+  // Filter out inactive cleaners for calendar display. Memoized: a new array on
+  // every render invalidated every memo downstream (rows, conflicts, filters).
+  const cleaners = useMemo(() => allCleaners.filter(c => c.isActive !== false), [allCleaners]);
 
   // Get current user's cleaner ID if they are a cleaner
   const currentCleanerId = useMemo(() => {
