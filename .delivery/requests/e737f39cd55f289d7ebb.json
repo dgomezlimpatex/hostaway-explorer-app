@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir que la tarjeta del calendario se quede bloqueada si el navegador interrumpe el gesto de estirar.",
+  "reason": "Manejo local de eventos del gesto: pointercancel, pérdida de foco y Escape cancelan la vista previa sin guardar. La acción de guardar existente solo se ejecuta al soltar normalmente, como antes. No añade consultas ni escrituras.",
+  "verification": "Prueba Node con la tarjeta real, un mini runtime de estado/efectos y eventos locales: cada cancelación devuelve la tarjeta a arrastrable y clicable sin guardar; un soltar normal guarda 10:30. La prueba falla con el código anterior. Prueba Chromium local del estirado repetida. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarResizeCancelTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "57ce5c99d849b3a3738a06bd260fdc6010da8c4fef94651427bbbe0a24237fcd"
+}
