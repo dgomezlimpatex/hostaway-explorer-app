@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Users, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { civilDateToLocalDate, getVisibleDays } from "./utils/multiDayCalendar";
 import { cn } from "@/lib/utils";
 import { ViewType } from "@/types/calendar";
 import { Link } from "react-router-dom";
@@ -54,16 +55,18 @@ export const ResponsiveCalendarHeader = ({
     switch (currentView) {
       case 'day':
         return format(currentDate, isMobile ? "EEE d MMM" : "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
-      case 'three-day': {
-        const endDate = new Date(currentDate);
-        endDate.setDate(endDate.getDate() + 2);
+      case 'three-day':
+      case 'week': {
+        // Same civil range the grid shows (the week always runs Monday to Sunday).
+        const days = getVisibleDays(currentDate, currentView);
+        const startDate = civilDateToLocalDate(days[0]);
+        const endDate = civilDateToLocalDate(days[days.length - 1]);
+        const prefix = currentView === 'week' ? (isMobile ? 'Sem. ' : 'Semana: ') : '';
         if (isMobile) {
-          return `${format(currentDate, "d MMM", { locale: es })} - ${format(endDate, "d MMM", { locale: es })}`;
+          return `${prefix}${format(startDate, "d MMM", { locale: es })} - ${format(endDate, "d MMM", { locale: es })}`;
         }
-        return `${format(currentDate, "d 'de' MMM", { locale: es })} - ${format(endDate, "d 'de' MMM 'de' yyyy", { locale: es })}`;
+        return `${prefix}${format(startDate, "d 'de' MMM", { locale: es })} - ${format(endDate, "d 'de' MMM 'de' yyyy", { locale: es })}`;
       }
-      case 'week':
-        return format(currentDate, isMobile ? "'Sem.' d MMM" : "'Semana del' d 'de' MMMM", { locale: es });
       default:
         return format(currentDate, isMobile ? "d MMM yyyy" : "d 'de' MMMM 'de' yyyy", { locale: es });
     }

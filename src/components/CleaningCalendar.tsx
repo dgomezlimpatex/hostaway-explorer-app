@@ -3,7 +3,8 @@ import React, { useCallback, useRef, useEffect, useState, useMemo } from "react"
 import { taskMatches, cleanerNameMatches } from "./calendar/utils/calendarSearch";
 import { useClients } from "@/hooks/useClients";
 import { formatMadridDate } from "@/utils/date";
-import { getTaskWindowRange } from "@/utils/taskQueryRange";
+import { filterTasksByQueryRange, getTaskWindowRange } from "@/utils/taskQueryRange";
+import { civilDateToLocalDate, getVisibleDays, isMultiDayView } from "./calendar/utils/multiDayCalendar";
 import { getTaskAssignedCleanerIds } from "@/utils/taskAssignments";
 import { ResponsiveCalendarHeader } from "./calendar/ResponsiveCalendarHeader";
 import { CalendarContainer } from "./calendar/CalendarContainer";
@@ -209,6 +210,25 @@ const CleaningCalendar = () => {
     if (!hasAnyFilter) return undefined;
     return `${filteredTasks.length} tareas · ${filteredCleaners.length} empleados`;
   }, [searchTerm, clientFilterSet, cleanerFilterSet, filteredTasks.length, filteredCleaners.length]);
+
+  const isMultiDay = isMultiDayView(currentView);
+  // Week view starts on Monday, so range-based panels use the first visible day.
+  const rangeStartDate = useMemo(
+    () => civilDateToLocalDate(getVisibleDays(currentDate, currentView)[0]),
+    [currentDate, currentView],
+  );
+
+  const summaryTasks = useMemo(
+    () => isMultiDay
+      ? filterTasksByQueryRange(filteredTasks, currentDate, currentView)
+      : filteredTasks.filter(t => t.date === formatMadridDate(currentDate)),
+    [isMultiDay, filteredTasks, currentDate, currentView],
+  );
+
+  const handleSelectDay = useCallback((day: string) => {
+    setCurrentDate(civilDateToLocalDate(day));
+    setCurrentView('day');
+  }, [setCurrentDate, setCurrentView]);
 
   // Sync horizontal scroll from timeline body to header only
   const handleHeaderScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -473,7 +493,7 @@ const CleaningCalendar = () => {
         {/* Panel desplegable de trabajadoras no disponibles */}
         <UnavailableWorkersPanel
           cleaners={cleaners}
-          currentDate={currentDate}
+          currentDate={rangeStartDate}
           currentView={currentView}
           tasks={tasks}
         />
@@ -484,6 +504,7 @@ const CleaningCalendar = () => {
             tasks={filteredTasks}
             cleaners={filteredCleaners}
             currentDate={currentDate}
+            currentView={currentView}
             timeSlots={timeSlots}
             availability={availability}
             headerScrollRef={headerScrollRef}
@@ -509,14 +530,16 @@ const CleaningCalendar = () => {
             handleDeleteTask={handleDeleteTask}
             handleUnassignTask={handleUnassignTask}
             onNavigateDate={navigateDate}
+            onSelectDay={handleSelectDay}
           />
         </div>
 
         {/* Footer-resumen con totales y leyenda de clientes */}
         <div className="flex-shrink-0">
           <CalendarFooterSummary
-            tasks={filteredTasks.filter(t => t.date === formatMadridDate(currentDate))}
+            tasks={summaryTasks}
             cleaners={filteredCleaners}
+            periodLabel={isMultiDay ? 'en el periodo' : 'hoy'}
           />
         </div>
       </div>
