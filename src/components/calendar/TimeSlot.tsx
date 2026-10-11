@@ -71,8 +71,9 @@ export const TimeSlot = memo(({
     }
   }, [onDrop, cleanerId, timeString, draggedTaskId, isAvailable]);
 
-  // Allow drop only if there's a dragged task AND the slot is available
-  const allowDrop = draggedTaskId !== null && isAvailable;
+  // Allow drop only if there's a dragged task AND the slot is available.
+  // draggedTaskId is undefined (not null) when nothing is being dragged.
+  const allowDrop = Boolean(draggedTaskId) && isAvailable;
   // Show as occupied if really occupied AND no task being dragged
   const showAsOccupied = isOccupied && !draggedTaskId;
 

@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió aplicar la optimización detectada: la carga semanal del calendario se recalculaba con cada cambio individual de la base de datos.",
+  "reason": "Solo agrupa en el navegador las invalidaciones de una consulta de lectura ya existente (espera de un segundo). La suscripción, sus tablas, la consulta y los datos no cambian; reduce lecturas repetidas.",
+  "verification": "Prueba Node con el hook real, canal de tiempo real y cliente de consultas simulados sin cliente Supabase: 30 eventos seguidos producen un único recálculo, cambios separados recalculan cada vez y al desmontar se cancela el pendiente y se cierra el canal. Falla con el código anterior. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarWorkloadRefreshTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "1a6597d613fb0bf6b037940d69a6c6a70996004c81e655313f327615d3b27212"
+}
