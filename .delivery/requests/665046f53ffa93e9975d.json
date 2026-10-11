@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir que, en la agenda móvil del gestor, el filtro de una trabajadora quede invisible al cambiar a un día sin tareas suyas.",
+  "reason": "Presentación local del filtro: el botón de la trabajadora seleccionada se mantiene visible con su contador a 0 y el mensaje vacío la nombra. No cambia datos, consultas ni acciones.",
+  "verification": "Prueba Node con el componente real y un mini runtime de estado: seleccionar trabajadora, cambiar a un día sin tareas suyas (botón visible y activo con (0), mensaje claro), volver a Todas (las demás sin tareas siguen ocultas). La prueba falla con el código anterior. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos. Flujo autenticado real no ejecutado.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarMobileAgendaFilterTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "6aec20ff7d9b888c3d6fbf7351b35dbc866513e1856abae800453ca05faf8e65"
+}
