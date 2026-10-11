@@ -44,7 +44,8 @@ const SubtaskBadge = ({ task }: { task: Task }) => {
 
 interface EnhancedTaskCardProps {
   task: Task;
-  onClick?: () => void;
+  /** Receives the task to act on (originalTask when given). */
+  onClick?: (task: Task) => void;
   isDragging?: boolean;
   onDragStart?: (e: React.DragEvent, task: Task) => void;
   onDragEnd?: (e: React.DragEvent) => void;
@@ -56,6 +57,11 @@ interface EnhancedTaskCardProps {
    * stretching that block would save a shorter total end time.
    */
   disableResize?: boolean;
+  /**
+   * Task passed to onClick/onDragStart when `task` is a display copy (e.g. the
+   * per-person block of a shared task). Lets the grid pass stable callbacks.
+   */
+  originalTask?: Task;
 }
 
 const formatDuration = (mins: number) => {
@@ -74,8 +80,10 @@ export const EnhancedTaskCard = React.memo(({
   onDragEnd,
   style,
   disableQuickActions,
-  disableResize
+  disableResize,
+  originalTask
 }: EnhancedTaskCardProps) => {
+  const actionTask = originalTask ?? task;
   const { getClientName } = useClientData();
   const clientColor = getClientColor(task.clienteId);
   const { resizeTask, moveTaskToDate, addTaskDuration } = useTaskQuickActions();
@@ -107,7 +115,7 @@ export const EnhancedTaskCard = React.memo(({
       return;
     }
     if (onDragStart) {
-      onDragStart(e, task);
+      onDragStart(e, actionTask);
     }
   };
 
@@ -184,7 +192,7 @@ export const EnhancedTaskCard = React.memo(({
   const cardElement = (
     <div
       draggable={!resizing}
-      onClick={resizing ? undefined : onClick}
+      onClick={resizing || !onClick ? undefined : () => onClick(actionTask)}
       onDragStart={handleDragStart}
       onDragEnd={onDragEnd}
       style={cardStyle}
@@ -315,7 +323,7 @@ export const EnhancedTaskCard = React.memo(({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-56">
-        <ContextMenuItem onClick={() => onClick?.()}>
+        <ContextMenuItem onClick={() => onClick?.(actionTask)}>
           <Pencil className="mr-2 h-4 w-4" />
           Editar detalles
         </ContextMenuItem>
