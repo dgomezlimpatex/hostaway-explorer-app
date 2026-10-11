@@ -1,7 +1,7 @@
 {
   "request": "Dani pidió corregir las vistas «3 Días» y «Semana» del calendario de escritorio y eligió construir una vista multi-día en lugar de quitar los botones.",
   "reason": "Cambio de presentación y cálculo local sobre las tareas ya cargadas: nueva cuadrícula trabajadoras × días, conflictos agrupados por fecha, etiqueta de semana lunes-domingo, resumen del periodo y tareas sin asignar agrupadas por fecha. No añade consultas ni escrituras: arrastrar entre trabajadoras del mismo día reutiliza la acción de asignación existente (igual que soltar sobre el nombre en la vista Día) y nunca cambia la fecha.",
-  "verification": "Prueba Node con el código real (rangos semana/3 días con cambio de hora y medianoche de Madrid, celdas por día, tareas compartidas, conflictos solo del mismo día, regla de soltar, render de la cuadrícula). Prueba Chromium con datos ficticios y red bloqueada: arrastre al mismo día asigna sin hora, arrastre a otro día se rechaza, clic, teclado y cabecera de día. Build, tipos de aplicación (102 diagnósticos previos, ninguno nuevo), tipos Node y lint focalizado correctos; pruebas previas de arrastre del calendario repetidas. Flujo autenticado real no ejecutado.",
+  "verification": "Prueba Node con el código real (rangos semana/3 días con cambio de hora y medianoche de Madrid, celdas por día, tareas compartidas, conflictos solo del mismo día, regla de soltar, render de la cuadrícula). Prueba Chromium local (scripts/calendarMultiDayBrowserTest.mjs, no incluida en la cola porque su runner no tiene navegador) con datos ficticios y red bloqueada: arrastre al mismo día asigna sin hora, arrastre a otro día se rechaza, clic, teclado y cabecera de día. Build, tipos de aplicación (102 diagnósticos previos, ninguno nuevo), tipos Node y lint focalizado correctos; pruebas previas de arrastre del calendario repetidas. Flujo autenticado real no ejecutado.",
   "effects": {
     "productionData": false,
     "database": false,
@@ -13,8 +13,7 @@
     "infrastructure": false
   },
   "tests": [
-    "scripts/calendarMultiDayViewTest.mjs",
-    "scripts/calendarMultiDayBrowserTest.mjs"
+    "scripts/calendarMultiDayViewTest.mjs"
   ],
   "version": 1,
   "scope": "application",
