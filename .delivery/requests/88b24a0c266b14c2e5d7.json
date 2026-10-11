@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir los problemas de accesibilidad detectados en el calendario.",
+  "reason": "Cambios de presentación y teclado: botón propio para quitar el filtro, enlace sin botón anidado, etiquetas en botones de icono, tarjetas enfocables que se abren con Enter o espacio (misma acción que el clic) y clave estable en la tira semanal. No cambia datos, consultas ni acciones.",
+  "verification": "Prueba Node que renderiza los componentes reales: botón «Quitar filtro» etiquetado y fuera del disparador, enlace de volver sin botón anidado, etiquetas de la cabecera de limpiadora y tarjetas con rol de botón, tabindex y etiqueta. Falla con el código anterior. Pruebas de tarjetas estables, recurrentes, fechas de Madrid y Chromium local de estirado repetidas. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarAccessibilityTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "f5fecda8cc5b4b1bbc90508e9742b631e06e76a28b086c74bd226e51bdaad5d9"
+}

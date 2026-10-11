@@ -192,7 +192,16 @@ export const EnhancedTaskCard = React.memo(({
   const cardElement = (
     <div
       draggable={!resizing}
+      role="button"
+      tabIndex={0}
+      aria-label={`${task.property}, ${formatTime(task.startTime)} a ${formatTime(task.endTime)}`}
       onClick={resizing || !onClick ? undefined : () => onClick(actionTask)}
+      onKeyDown={(e) => {
+        if (!resizing && onClick && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onClick(actionTask);
+        }
+      }}
       onDragStart={handleDragStart}
       onDragEnd={onDragEnd}
       style={cardStyle}

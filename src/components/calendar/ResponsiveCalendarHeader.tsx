@@ -86,16 +86,16 @@ export const ResponsiveCalendarHeader = ({
         <div className="relative flex items-center justify-between gap-2 md:gap-4 px-2 md:px-4 py-2.5 md:py-3">
           {/* Izquierda: volver + título */}
           <div className="flex items-center gap-1.5 md:gap-2.5 min-w-0 flex-1">
-            <Link to="/" className="shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white/85 hover:bg-white/15 hover:text-white h-9 w-9 rounded-lg"
-                aria-label="Volver al menú"
-              >
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="shrink-0 text-white/85 hover:bg-white/15 hover:text-white h-9 w-9 rounded-lg"
+            >
+              <Link to="/" aria-label="Volver al menú">
                 <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
 
             <h1 className="text-base md:text-lg font-semibold tracking-tight truncate leading-tight">
               {isMobile ? "Calendario" : "Calendario de Limpieza"}
