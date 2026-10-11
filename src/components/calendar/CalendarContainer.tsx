@@ -13,7 +13,7 @@ import { StatusLegend } from "./StatusLegend";
 import { OverlapAlertsBanner } from "./OverlapAlertsBanner";
 import { Task, Cleaner, ViewType } from "@/types/calendar";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
-import { getTaskPosition, isTimeSlotOccupied } from "@/utils/taskPositioning";
+import { buildTimeSlotOccupancy, getTaskPosition } from "@/utils/taskPositioning";
 import { formatMadridDate, getTodayMadrid } from "@/utils/date";
 
 import { useWorkersAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
@@ -208,18 +208,12 @@ export const CalendarContainer = ({
     [isMultiDay, assignedTasks, visibleCleaners, visibleDays, assignmentsMap]
   );
 
-  // Memoized time slot occupation check wrapper que excluye la tarea que se está arrastrando
-  const checkTimeSlotOccupied = (cleanerId: string, hour: number, minute: number) => {
-    return isTimeSlotOccupied(
-      cleanerId, 
-      hour, 
-      minute, 
-      assignedTasks, 
-      cleaners, 
-      dragState.draggedTask?.id, // Pasar el ID de la tarea que se está arrastrando
-      assignmentsMap
-    );
-  };
+  // Slot occupation check, excluding the task being dragged. Indexed per
+  // cleaner and stable between renders so the grid rows can stay memoized.
+  const checkTimeSlotOccupied = useMemo(
+    () => buildTimeSlotOccupancy(assignedTasks, cleaners, dragState.draggedTask?.id, assignmentsMap),
+    [assignedTasks, cleaners, dragState.draggedTask?.id, assignmentsMap]
+  );
 
   // Quick actions from EnhancedTaskCard context menu (decoupled via window events)
   const { toast } = useToast();
