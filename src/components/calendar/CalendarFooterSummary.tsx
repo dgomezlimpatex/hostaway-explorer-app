@@ -11,7 +11,12 @@ interface CalendarFooterSummaryProps {
 }
 
 export const CalendarFooterSummary = ({ tasks, cleaners, periodLabel = 'hoy' }: CalendarFooterSummaryProps) => {
-  const { clients, getClientName } = useClientData();
+  const { clients } = useClientData();
+  // getClientName falls back to the raw id; the legend never shows an id.
+  const clientNameById = useMemo(
+    () => new Map(clients.map(client => [client.id, client.nombre])),
+    [clients]
+  );
 
   const stats = useMemo(() => {
     const activeCleanerIds = new Set<string>();
@@ -75,7 +80,7 @@ export const CalendarFooterSummary = ({ tasks, cleaners, periodLabel = 'hoy' }: 
           <div className="flex items-center gap-2 flex-wrap">
             {visibleClientIds.map(clientId => {
               const color = getClientColor(clientId);
-              const name = getClientName(clientId) || 'Cliente';
+              const name = clientNameById.get(clientId) || 'Cliente';
               return (
                 <div
                   key={clientId}
