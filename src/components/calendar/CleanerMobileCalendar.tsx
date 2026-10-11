@@ -113,7 +113,8 @@ const CleanerMobileCalendarComponent: React.FC<CleanerMobileCalendarProps> = ({
       )}
 
       {/* Task Summary */}
-      <CleanerTaskSummary 
+      <CleanerTaskSummary
+        isToday={isCurrentDateToday}
         todayTasks={todayTasks}
         tomorrowTasks={tomorrowTasks}
       />
