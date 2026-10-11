@@ -6,9 +6,11 @@ import { useMemo } from "react";
 interface CalendarFooterSummaryProps {
   tasks: Task[];
   cleaners: Cleaner[];
+  /** Period shown next to the service count ("hoy", "en el periodo"). */
+  periodLabel?: string;
 }
 
-export const CalendarFooterSummary = ({ tasks, cleaners }: CalendarFooterSummaryProps) => {
+export const CalendarFooterSummary = ({ tasks, cleaners, periodLabel = 'hoy' }: CalendarFooterSummaryProps) => {
   const { clients, getClientName } = useClientData();
 
   const stats = useMemo(() => {
@@ -47,7 +49,7 @@ export const CalendarFooterSummary = ({ tasks, cleaners }: CalendarFooterSummary
               {stats.tasksCount}
             </span>
             <span className="text-xs md:text-sm text-muted-foreground">
-              {stats.tasksCount === 1 ? 'servicio hoy' : 'servicios hoy'}
+              {stats.tasksCount === 1 ? 'servicio' : 'servicios'} {periodLabel}
             </span>
           </div>
           <div className="flex items-center gap-1.5">

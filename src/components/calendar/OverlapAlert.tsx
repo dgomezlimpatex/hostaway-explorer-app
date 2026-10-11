@@ -2,15 +2,20 @@ import React from "react";
 import { AlertTriangle, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Task } from "@/types/calendar";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { civilDateToLocalDate } from "./utils/multiDayCalendar";
 
 interface OverlapAlertProps {
   overlappingTasks: Task[];
   cleanerName: string;
+  showDate?: boolean;
 }
 
 export const OverlapAlert: React.FC<OverlapAlertProps> = ({
   overlappingTasks,
   cleanerName,
+  showDate = false,
 }) => {
   if (overlappingTasks.length === 0) return null;
 
@@ -29,6 +34,7 @@ export const OverlapAlert: React.FC<OverlapAlertProps> = ({
               className="text-[10px] px-1.5 py-0 h-4 font-normal gap-1"
             >
               <Clock className="h-2.5 w-2.5" />
+              {showDate && task.date && `${format(civilDateToLocalDate(task.date), "EEE d", { locale: es })} · `}
               {task.property} {task.startTime}-{task.endTime}
             </Badge>
           ))}
