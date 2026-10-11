@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir el estirado de tarjetas del calendario: el tirador funcionaba en vertical sobre una cuadrícula horizontal.",
+  "reason": "Cambio de interacción local en la tarjeta: tirador en el borde derecho, cálculo con el desplazamiento horizontal y vista previa por ancho. Al soltar llama a la misma acción existente de cambio de duración que antes; no añade consultas, escrituras nuevas ni permisos.",
+  "verification": "Prueba Node con el cálculo real (50 px por 30 min, redondeo a cuartos, mínimo 15 min, límite 23:59, anchos). Prueba Chromium local con la tarjeta real y mocks (scripts/calendarTaskResizeBrowserTest.mjs, fuera de la cola por no tener navegador): tirador en el borde derecho, vista previa de 150 px al arrastrar 50 px, sin estirarse en vertical, y guarda 10:30. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node, lint focalizado y prueba previa de arrastre correctos. Flujo autenticado real no ejecutado.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarTaskResizeTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "5120ca22fd730009fd5de95cc5b2ee2da82088fe0f11c6f0dbdc96896d767498"
+}

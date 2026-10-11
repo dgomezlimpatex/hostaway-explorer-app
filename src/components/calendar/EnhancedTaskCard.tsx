@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Task } from "@/types/calendar";
-import { Clock, ListTodo, GripHorizontal, Pencil, Copy, Trash2, UserMinus, CalendarDays, Timer } from "lucide-react";
+import { Clock, ListTodo, GripVertical, Pencil, Copy, Trash2, UserMinus, CalendarDays, Timer } from "lucide-react";
 import { TaskStatusBadge } from './TaskStatusBadge';
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -17,6 +17,7 @@ import {
 import { useClientData } from "@/hooks/useClientData";
 import { getClientColor } from "@/utils/clientColors";
 import { useTaskQuickActions } from "@/hooks/useTaskQuickActions";
+import { getResizedEndTime, getTaskWidthPx, toMinutes } from "./utils/taskResize";
 
 // Subtask badge component
 const SubtaskBadge = ({ task }: { task: Task }) => {
@@ -52,23 +53,6 @@ interface EnhancedTaskCardProps {
   disableQuickActions?: boolean;
 }
 
-// 30-min slot column = 50px (matches TimeSlot.tsx). 15min = 25px.
-const PIXELS_PER_MINUTE = 50 / 30;
-
-const toMinutes = (time: string) => {
-  const [h, m] = time.split(':').map(Number);
-  return (h || 0) * 60 + (m || 0);
-};
-
-const fromMinutes = (mins: number) => {
-  const clamped = Math.max(0, Math.min(mins, 24 * 60 - 1));
-  const h = Math.floor(clamped / 60);
-  const m = clamped % 60;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-};
-
-const snapToQuarter = (mins: number) => Math.round(mins / 15) * 15;
-
 const formatDuration = (mins: number) => {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -93,9 +77,7 @@ export const EnhancedTaskCard = React.memo(({
   // Resize state
   const [resizing, setResizing] = useState(false);
   const [previewEndTime, setPreviewEndTime] = useState<string | null>(null);
-  const resizeStartY = useRef(0);
-  const initialEndMin = useRef(0);
-  const startMinRef = useRef(0);
+  const resizeStartX = useRef(0);
 
   // El estado se muestra aparte del color del cliente.
   const isCompleted = task.status === 'completed';
@@ -124,24 +106,18 @@ export const EnhancedTaskCard = React.memo(({
   const handleResizePointerDown = useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    resizeStartY.current = e.clientY;
-    startMinRef.current = toMinutes(task.startTime);
-    initialEndMin.current = toMinutes(task.endTime);
+    resizeStartX.current = e.clientX;
     setResizing(true);
     setPreviewEndTime(task.endTime);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }, [task.startTime, task.endTime]);
+  }, [task.endTime]);
 
   useEffect(() => {
     if (!resizing) return;
 
+    // The timeline is horizontal: the right edge sets the end time.
     const handleMove = (e: PointerEvent) => {
-      const deltaY = e.clientY - resizeStartY.current;
-      const deltaMin = deltaY / PIXELS_PER_MINUTE;
-      const rawEndMin = initialEndMin.current + deltaMin;
-      const snapped = snapToQuarter(rawEndMin);
-      const safeEnd = Math.max(startMinRef.current + 15, snapped);
-      setPreviewEndTime(fromMinutes(safeEnd));
+      setPreviewEndTime(getResizedEndTime(task.startTime, task.endTime, e.clientX - resizeStartX.current));
     };
 
     const handleUp = () => {
@@ -159,7 +135,7 @@ export const EnhancedTaskCard = React.memo(({
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
     };
-  }, [resizing, previewEndTime, task.id, task.endTime, resizeTask]);
+  }, [resizing, previewEndTime, task.id, task.startTime, task.endTime, resizeTask]);
 
   const clientName = getClientName(task.clienteId || '');
   const displayPropertyName = () => task.property;
@@ -175,10 +151,9 @@ export const EnhancedTaskCard = React.memo(({
     color: clientColor.text,
   };
 
-  // If resizing, we override the visual height to match the preview
+  // If resizing, we override the visual width to match the preview
   if (resizing && previewEndTime) {
-    const newHeightPx = (toMinutes(previewEndTime) - toMinutes(task.startTime)) * PIXELS_PER_MINUTE;
-    cardStyle.height = `${Math.max(newHeightPx, 16)}px`;
+    cardStyle.width = `${getTaskWidthPx(task.startTime, previewEndTime)}px`;
   }
 
   const cardElement = (
@@ -235,13 +210,13 @@ export const EnhancedTaskCard = React.memo(({
         </div>
       )}
 
-      {/* Resize handle (bottom edge) */}
+      {/* Resize handle (right edge) */}
       {!disableQuickActions && !isCancelled && (
         <div
           onPointerDown={handleResizePointerDown}
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            "absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-30",
+            "absolute top-0 bottom-0 right-0 w-2 cursor-ew-resize z-30",
             "flex items-center justify-center",
             "opacity-0 hover:opacity-100 transition-opacity",
             resizing && "opacity-100 bg-primary/20"
@@ -249,7 +224,7 @@ export const EnhancedTaskCard = React.memo(({
           title="Arrastra para cambiar la duración"
           aria-label="Redimensionar tarea"
         >
-          <GripHorizontal className="w-4 h-3 text-foreground/60" />
+          <GripVertical className="w-3 h-4 text-foreground/60" />
         </div>
       )}
     </div>
