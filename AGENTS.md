@@ -1,4 +1,21 @@
-# Project Notes for Codex
+# Project Notes for Codex and Claude
+
+## Coordinación con Claude y Orca — 2026-10-11
+
+Dani ha autorizado integrar Claude como agente principal en Orca, conservando Codex
+y la cola de entrega existente. Las autorizaciones de desarrollo y entrega de abajo
+se aplican a ambos agentes dentro del mismo alcance. El prefijo `codex/` es común y
+no identifica qué IA escribió el cambio. Leer `docs/TRABAJO-CON-IA.md`.
+
+Las ampliaciones de entrega del 05/10 y esta integración prevalecen sobre los
+traspasos históricos y la publicación manual que aparecen más abajo. Partir de
+`origin/main` actualizado en un worktree aislado. Conservar el checkout principal
+con sus cambios pendientes. Claude lee estas reglas mediante CLAUDE.md.
+
+En Orca, enlazar la PR al espacio de trabajo y devolver su URL; `attach_artifact`
+solo existe en la app Codex. Las comprobaciones, revisiones y reservas son comunes.
+La autorización de esta integración cubre su configuración de desarrollo y prueba,
+no operaciones sobre datos de negocio, Supabase o PMS.
 
 This app is already used in production. Keep changes small, reversible, and verified.
 
