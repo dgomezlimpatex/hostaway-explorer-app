@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
 import { computeCascadeShifts, persistCascadeShifts } from "@/utils/calendarCascade";
+import { useConfirmDialog } from "@/components/calendar/useConfirmDialog";
 
 type CalendarTask = Task & { isRecurringInstance?: boolean };
 
@@ -50,6 +51,8 @@ export const useCalendarLogic = () => {
   const { data: availability = [], isInitialLoading: isInitialLoadingAvailability } = useAllCleanersAvailability();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  // In-app confirmations (window.confirm blocks the page and cannot be styled).
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isBatchCreateModalOpen, setIsBatchCreateModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -160,22 +163,22 @@ export const useCalendarLogic = () => {
     const maintenanceCleanings = maintenanceRes.data;
 
     if (fixedDayOff) {
-      const confirmed = window.confirm(
-        `⚠️ DÍA LIBRE FIJO\n\n` +
-        `El trabajador tiene este día marcado como día libre fijo.\n\n` +
-        `¿Deseas asignar la tarea de todas formas?`
-      );
+      const confirmed = await confirm({
+        title: "Día libre fijo",
+        description: "El trabajador tiene este día marcado como día libre fijo.\n\n¿Deseas asignar la tarea de todas formas?",
+        confirmLabel: "Asignar igualmente",
+      });
       if (!confirmed) return;
     }
 
     const fullDayAbsence = absences?.find(a => !a.start_time || !a.end_time);
     if (fullDayAbsence) {
       const absenceLabel = ABSENCE_TYPE_LABELS[fullDayAbsence.absence_type as keyof typeof ABSENCE_TYPE_LABELS] || fullDayAbsence.absence_type;
-      const confirmed = window.confirm(
-        `⚠️ AUSENCIA DEL TRABAJADOR\n\n` +
-        `El trabajador tiene registrada una ausencia: ${absenceLabel}\n\n` +
-        `¿Deseas asignar la tarea de todas formas?`
-      );
+      const confirmed = await confirm({
+        title: "Ausencia del trabajador",
+        description: `El trabajador tiene registrada una ausencia: ${absenceLabel}\n\n¿Deseas asignar la tarea de todas formas?`,
+        confirmLabel: "Asignar igualmente",
+      });
       if (!confirmed) return;
     }
 
@@ -184,12 +187,11 @@ export const useCalendarLogic = () => {
     for (const absence of hourlyAbsences) {
       if (timeRangesOverlap(startTime, endTime, absence.start_time!, absence.end_time!)) {
         const absenceLabel = ABSENCE_TYPE_LABELS[absence.absence_type as keyof typeof ABSENCE_TYPE_LABELS] || absence.absence_type;
-        const confirmed = window.confirm(
-          `⚠️ CONFLICTO DE HORARIO\n\n` +
-          `El trabajador tiene: ${absenceLabel}\n` +
-          `Horario: ${absence.start_time?.slice(0,5)} - ${absence.end_time?.slice(0,5)}\n\n` +
-          `¿Deseas asignar la tarea de todas formas?`
-        );
+        const confirmed = await confirm({
+          title: "Conflicto de horario",
+          description: `El trabajador tiene: ${absenceLabel}\nHorario: ${absence.start_time?.slice(0,5)} - ${absence.end_time?.slice(0,5)}\n\n¿Deseas asignar la tarea de todas formas?`,
+          confirmLabel: "Asignar igualmente",
+        });
         if (!confirmed) return;
         break;
       }
@@ -198,12 +200,11 @@ export const useCalendarLogic = () => {
     // Check maintenance cleanings for time overlap
     for (const maintenance of maintenanceCleanings || []) {
       if (timeRangesOverlap(startTime, endTime, maintenance.start_time, maintenance.end_time)) {
-        const confirmed = window.confirm(
-          `⚠️ LIMPIEZA DE MANTENIMIENTO\n\n` +
-          `El trabajador tiene: ${maintenance.location_name}\n` +
-          `Horario: ${maintenance.start_time.slice(0,5)} - ${maintenance.end_time.slice(0,5)}\n\n` +
-          `¿Deseas asignar la tarea de todas formas?`
-        );
+        const confirmed = await confirm({
+          title: "Limpieza de mantenimiento",
+          description: `El trabajador tiene: ${maintenance.location_name}\nHorario: ${maintenance.start_time.slice(0,5)} - ${maintenance.end_time.slice(0,5)}\n\n¿Deseas asignar la tarea de todas formas?`,
+          confirmLabel: "Asignar igualmente",
+        });
         if (!confirmed) return;
         break;
       }
@@ -351,7 +352,7 @@ export const useCalendarLogic = () => {
         variant: "destructive",
       });
     }
-  }, [tasks, assignTaskWithSchedule, toast, availability, queryClient]);
+  }, [tasks, assignTaskWithSchedule, toast, availability, queryClient, confirm]);
 
   // Initialize drag and drop with enhanced handler
   const {
@@ -448,7 +449,12 @@ export const useCalendarLogic = () => {
   }, [deleteTask, toast]);
 
   const handleDeleteAllTasks = useCallback(async () => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar TODAS las tareas? Esta acción no se puede deshacer.')) {
+    if (await confirm({
+      title: "Eliminar todas las tareas",
+      description: "¿Estás seguro de que quieres eliminar TODAS las tareas? Esta acción no se puede deshacer.",
+      confirmLabel: "Eliminar todas",
+      destructive: true,
+    })) {
       try {
         await deleteAllTasks();
         toast({
@@ -463,7 +469,7 @@ export const useCalendarLogic = () => {
         });
       }
     }
-  }, [deleteAllTasks, toast]);
+  }, [deleteAllTasks, toast, confirm]);
 
   const handleUnassignTask = useCallback(async (taskId: string) => {
     try {
@@ -508,6 +514,10 @@ export const useCalendarLogic = () => {
     handleDragOver,
     handleDrop,
     
+    // Confirmation dialog (render once) and its trigger
+    confirm,
+    confirmDialog,
+
     // Memoized actions
     setCurrentDate,
     setCurrentView,
