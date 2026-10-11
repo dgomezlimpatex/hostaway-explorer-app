@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir las comparaciones de fechas que usan la hora del dispositivo en lugar de Europe/Madrid en el calendario.",
+  "reason": "Cálculo local de fechas civiles con Europe/Madrid (regla crítica del proyecto) en etiquetas Hoy/Mañana, tira semanal, botón de hoy, cabecera móvil, aviso del panel de no disponibles y destino de las acciones rápidas de mover fecha, que siguen usando la misma acción de guardado existente. En España el resultado es el mismo que antes salvo junto a medianoche; no añade consultas ni escrituras.",
+  "verification": "Prueba Node con el código real ejecutada bajo cuatro zonas horarias de dispositivo (Madrid, Los Ángeles, Kiritimati, Pago Pago): helpers civiles con medianoche y cambio de hora, tira semanal lunes-domingo y día seleccionado, etiquetas Hoy/Mañana de la tarjeta. Falla con el código anterior en Los Ángeles. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node, lint focalizado (useTaskQuickActions mantiene sus 5 avisos any previos) y prueba de títulos de limpiadora correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarMadridDatesTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "d95ba65d5dae7d34711f24185252ad07f906a7097c2d3845fdd22e7820c472f4"
+}
