@@ -8,6 +8,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSede } from '@/contexts/SedeContext';
 import { useCacheInvalidation } from './useCacheInvalidation';
 
+// Stable fallback while loading, so memoized consumers do not recompute.
+const EMPTY_CLEANERS: Cleaner[] = [];
+
 export const useCleaners = () => {
   const { userRole, user } = useAuth();
   const { activeSede, isInitialized, loading } = useSede();
@@ -18,7 +21,7 @@ export const useCleaners = () => {
     enabled: isInitialized && !loading && !!activeSede?.id,
   });
 
-  const { data: allCleaners = [], isLoading } = query;
+  const { data: allCleaners = EMPTY_CLEANERS, isLoading } = query;
 
   // Filter cleaners based on user role
   const cleaners = React.useMemo(() => {

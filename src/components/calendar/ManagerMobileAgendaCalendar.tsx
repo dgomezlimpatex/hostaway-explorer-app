@@ -19,7 +19,7 @@ import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { cn } from '@/lib/utils';
 import { formatMadridDate } from '@/utils/date';
 import { civilDateToDisplayDate } from '@/utils/madridCalendar';
-import { countTasksByAssignedCleaner, isTaskAssignedToCleaner } from '@/utils/taskAssignments';
+import { countTasksByAssignedCleaner, isTaskAssigned, isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import type { Cleaner, Task } from '@/types/calendar';
 import { TaskStatusBadge } from './TaskStatusBadge';
 
@@ -61,7 +61,7 @@ function AgendaTaskCard({ task, onTaskClick }: { task: Task; onTaskClick: (task:
               </span>
               <span className="flex items-center gap-1.5">
                 <UserRound className="h-3.5 w-3.5" />
-                {task.cleaner || 'Sin asignar'}
+                {task.cleaner || task.assignments?.map((assignment) => assignment.cleaner_name).filter(Boolean).join(', ') || 'Sin asignar'}
               </span>
             </div>
           </div>
@@ -93,7 +93,7 @@ export function ManagerMobileAgendaCalendar({
   const summary = useMemo(() => {
     return {
       total: dayTasks.length,
-      unassigned: dayTasks.filter((task) => !task.cleanerId && !task.cleaner).length,
+      unassigned: dayTasks.filter((task) => !isTaskAssigned(task)).length,
       inProgress: dayTasks.filter((task) => task.status === 'in-progress').length,
       completed: dayTasks.filter((task) => task.status === 'completed').length,
     };
@@ -105,13 +105,15 @@ export function ManagerMobileAgendaCalendar({
 
   const filteredTasks = useMemo(() => {
     if (selectedFilter === 'unassigned') {
-      return dayTasks.filter((task) => !task.cleanerId && !task.cleaner);
+      return dayTasks.filter((task) => !isTaskAssigned(task));
     }
     if (selectedFilter !== 'all') {
       return dayTasks.filter((task) => isTaskAssignedToCleaner(task, selectedFilter));
     }
     return dayTasks;
   }, [dayTasks, selectedFilter]);
+
+  const selectedCleanerName = cleaners.find((cleaner) => cleaner.id === selectedFilter)?.name;
 
   const groupedTasks = useMemo(() => {
     const sorted = [...filteredTasks].sort((a, b) => {
@@ -203,7 +205,9 @@ export function ManagerMobileAgendaCalendar({
             Sin asignar ({summary.unassigned})
           </Button>
           {cleaners
-            .filter((cleaner) => (cleanerCounts.get(cleaner.id) || 0) > 0)
+            // The selected cleaner stays visible on days without tasks, so the
+            // active filter is always shown.
+            .filter((cleaner) => (cleanerCounts.get(cleaner.id) || 0) > 0 || cleaner.id === selectedFilter)
             .map((cleaner) => (
               <Button
                 key={cleaner.id}
@@ -212,7 +216,7 @@ export function ManagerMobileAgendaCalendar({
                 className="shrink-0 rounded-full"
                 onClick={() => setSelectedFilter(cleaner.id)}
               >
-                {cleaner.name} ({cleanerCounts.get(cleaner.id)})
+                {cleaner.name} ({cleanerCounts.get(cleaner.id) || 0})
               </Button>
             ))}
         </div>
@@ -236,7 +240,9 @@ export function ManagerMobileAgendaCalendar({
           <Card className="border-dashed">
             <CardContent className="px-6 py-12 text-center">
               <CalendarDays className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-              <h2 className="font-semibold">No hay tareas para este filtro</h2>
+              <h2 className="font-semibold">
+                {selectedCleanerName ? `${selectedCleanerName} no tiene tareas este día` : 'No hay tareas para este filtro'}
+              </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Cambia el filtro o crea una tarea para este dia.
               </p>

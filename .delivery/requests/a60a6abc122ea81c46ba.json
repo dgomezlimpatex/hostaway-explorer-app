@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió aplicar la optimización de rendimiento detectada: la lista de trabajadoras se recreaba en cada repintado del calendario.",
+  "reason": "Memorización local: el filtro de trabajadoras activas se memoriza y la lista vacía durante la carga es una constante. El resultado es idéntico; solo evita recálculos. No cambia consultas, datos ni acciones.",
+  "verification": "Prueba Node con los hooks reales (useCalendarData y useCleaners) y un runtime con useMemo por dependencias; consultas y autenticación simuladas sin cliente Supabase: la lista es la misma entre renders durante la carga y con datos, oculta inactivas y cambia con datos nuevos. Falla con el código anterior. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarStableCleanersTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "49b93eba4f899d8e160d301e943a1cb815745f11aa720790ec0415d3549ad4ad"
+}
