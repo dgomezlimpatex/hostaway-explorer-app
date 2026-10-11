@@ -14,6 +14,7 @@ import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
 import { computeCascadeShifts, persistCascadeShifts } from "@/utils/calendarCascade";
 import { useConfirmDialog } from "@/components/calendar/useConfirmDialog";
+import { createTasksOneByOne, describeBatchFailure } from "@/utils/batchTaskCreation";
 
 type CalendarTask = Task & { isRecurringInstance?: boolean };
 
@@ -396,25 +397,23 @@ export const useCalendarLogic = () => {
 
   const handleBatchCreateTasks = useCallback(async (tasksData: Omit<Task, 'id'>[]) => {
     console.log('🔵 useCalendarLogic - handleBatchCreateTasks called with:', tasksData.length, 'tasks');
-    try {
-      // Create all tasks sequentially
-      for (const taskData of tasksData) {
-        await createTask(taskData);
-      }
-      
+    const result = await createTasksOneByOne(tasksData, createTask);
+
+    if (result.failed.length === 0) {
       toast({
         title: "Tareas creadas",
-        description: `Se han creado ${tasksData.length} tareas correctamente.`,
+        description: `Se han creado ${result.created} tareas correctamente.`,
       });
       setIsBatchCreateModalOpen(false);
-    } catch (error) {
-      console.error('❌ useCalendarLogic - handleBatchCreateTasks error:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron crear todas las tareas.",
-        variant: "destructive",
-      });
+      return;
     }
+
+    console.error('❌ useCalendarLogic - handleBatchCreateTasks failed for', result.failed.length, 'tasks');
+    toast({
+      title: result.created > 0 ? "Creación incompleta" : "Error",
+      description: describeBatchFailure(result),
+      variant: "destructive",
+    });
   }, [createTask, toast]);
 
   const handleTaskClick = useCallback((task: Task) => {

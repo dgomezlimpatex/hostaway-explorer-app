@@ -4,7 +4,7 @@ import { taskStorageService } from '@/services/taskStorage';
 import { Task } from '@/types/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/utils/logger';
-import { format, addDays } from 'date-fns';
+import { getMadridToday, shiftCivilDate } from '@/utils/madridCalendar';
 
 const SNAP_MIN = 15;
 
@@ -161,13 +161,14 @@ export const useTaskQuickActions = () => {
       if (!task) return;
 
       let newDate: string;
+      // Civil dates in Europe/Madrid, independent of the device timezone.
+      const today = getMadridToday();
       if (target === 'today') {
-        newDate = format(new Date(), 'yyyy-MM-dd');
+        newDate = today;
       } else if (target === 'tomorrow') {
-        newDate = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+        newDate = shiftCivilDate(today, 1);
       } else if (target === 'nextWeek') {
-        const base = task.date ? new Date(task.date) : new Date();
-        newDate = format(addDays(base, 7), 'yyyy-MM-dd');
+        newDate = shiftCivilDate(task.date || today, 7);
       } else {
         newDate = target;
       }
