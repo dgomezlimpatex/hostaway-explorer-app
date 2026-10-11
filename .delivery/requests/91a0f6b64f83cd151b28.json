@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió corregir que la vista de escritorio de la limpiadora diga siempre «Tareas de Hoy» aunque se vea otro día.",
+  "reason": "Solo textos y formato de fecha: los títulos, el estado vacío y el resumen dependen de si la fecha seleccionada es hoy en Europe/Madrid, y las fechas visibles se formatean en esa zona. No cambia datos, consultas, filtros ni acciones.",
+  "verification": "Prueba Node que renderiza el componente real de escritorio y su resumen con datos ficticios: textos de hoy y de otro día, estado vacío, total del día y fechas en Madrid alrededor del cambio de hora. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node, lint focalizado y prueba previa de cabecera de tarea correctos. Flujo autenticado real no ejecutado.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerCalendarDayTitlesTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "f595fd137562c8462e27d9f8d4a4f4d053f7a1e71d0f7a4f1b6ed6e75d3b029a"
+}

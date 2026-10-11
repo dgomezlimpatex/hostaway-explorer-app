@@ -68,6 +68,15 @@ export const getTaskAssignedCleanerIds = (
   return Array.from(new Set(ids));
 };
 
+/**
+ * A task is assigned when it has a canonical assignment, a legacy cleaner_id
+ * or a legacy cleaner name. Tasks assigned only through task_assignments
+ * (without cleaner_id on the row) are assigned too.
+ */
+export const isTaskAssigned = (
+  task: Pick<Task, "cleaner" | "cleanerId" | "assignments">
+): boolean => getTaskAssignedCleanerIds(task).length > 0 || Boolean(task.cleaner?.trim());
+
 export const buildTaskAssignmentsMap = (
   tasks: Array<Pick<Task, "id" | "cleanerId" | "assignments">>
 ): Record<string, string[]> => {
