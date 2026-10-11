@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió aplicar la optimización detectada en el calendario: cada hueco recorría todas las tareas para saber si estaba ocupado.",
+  "reason": "Optimización de un cálculo local: los intervalos ocupados se precalculan por trabajadora y la función resultante se memoriza. La respuesta es idéntica a la función anterior; no cambia datos, consultas ni acciones.",
+  "verification": "Prueba Node que compara la versión indexada con isTimeSlotOccupied real en 40 rondas aleatorias deterministas (asignación por id, nombre, varios nombres, lista y tareas compartidas, tarea arrastrada excluida, trabajadora desconocida) para todos los huecos: resultados idénticos. Prueba Chromium local de arrastre y prueba multi-día repetidas. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado sin errores nuevos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarSlotOccupancyTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "689a5d6865064646f81ec613d8ab4a55003865969acc111c6c090b83a12a9474"
+}
