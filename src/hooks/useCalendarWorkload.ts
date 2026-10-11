@@ -4,6 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWorkloadCalculation } from './useWorkloadCalculation';
 import { WorkloadSummary } from '@/types/workload';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
+import { debounce } from 'lodash';
+
+export const WORKLOAD_REFRESH_DELAY_MS = 1000;
 
 export const useCalendarWorkload = (viewDate?: Date) => {
   const queryClient = useQueryClient();
@@ -17,20 +20,21 @@ export const useCalendarWorkload = (viewDate?: Date) => {
   });
 
   useEffect(() => {
+    // Realtime sends one event per changed row: a batch of task updates would
+    // recalculate the whole week once per row. Refresh once after a short pause.
+    const refreshWorkload = debounce(() => {
+      void queryClient.invalidateQueries({ queryKey: ['workload', weekStart, weekEnd] });
+    }, WORKLOAD_REFRESH_DELAY_MS);
+
     const channel = supabase
       .channel(`calendar-workload-${weekStart}-${weekEnd}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        void queryClient.invalidateQueries({ queryKey: ['workload', weekStart, weekEnd] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignments' }, () => {
-        void queryClient.invalidateQueries({ queryKey: ['workload', weekStart, weekEnd] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'worker_hour_adjustments' }, () => {
-        void queryClient.invalidateQueries({ queryKey: ['workload', weekStart, weekEnd] });
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, refreshWorkload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignments' }, refreshWorkload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'worker_hour_adjustments' }, refreshWorkload)
       .subscribe();
 
     return () => {
+      refreshWorkload.cancel();
       void supabase.removeChannel(channel);
     };
   }, [queryClient, weekEnd, weekStart]);

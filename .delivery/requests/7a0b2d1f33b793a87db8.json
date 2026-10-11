@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió aplicar la corrección detectada en los huecos del calendario, que se comportaban como zona de soltar sin ningún arrastre.",
+  "reason": "Condición de presentación local en TimeSlot: el resalte, el cursor y el indicador de soltar solo aparecen con una tarea arrastrada. La lógica de soltar ya exigía una tarea arrastrada y no cambia; no hay consultas ni escrituras.",
+  "verification": "Prueba Node que renderiza el hueco real: sin arrastre (undefined, null, vacío) no hay indicador ni cursor; con arrastre sí; huecos no disponibles nunca; ocupados siguen sombreados. Falla con el código anterior. Prueba Chromium local de arrastre del calendario repetida. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado correctos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarTimeSlotIdleTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "680debfa26055d9fa7bb5aad5102a161bdcb71dbc639330866b193155c0e7ad9"
+}
