@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió quitar los mensajes de depuración (console.log) que el calendario imprime en producción.",
+  "reason": "Solo elimina sentencias console.log (y dos ramas else vacías que quedaban) en archivos del calendario; se mantienen los console.error/warn. No cambia lógica, consultas ni datos.",
+  "verification": "Prueba Node que compila el grafo real del calendario de gestor y comprueba que sus 31 archivos no contienen console.log, y que el arrastre sigue asignando sin imprimir. Pruebas de arrastre (Node y Chromium local), cascada, reutilización, diálogos, multi-día y huecos repetidas. Build, tipos de aplicación sin diagnósticos nuevos (102 previos), tipos Node y lint focalizado sin errores (2 avisos previos de CalendarGrid).",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarNoDebugLogsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "c581b5bd5ad16d52706aae95d5bf808cc37968d5804ae72342c26664fe5f2ad2"
+}
