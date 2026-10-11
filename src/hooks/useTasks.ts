@@ -530,6 +530,8 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     error,
     updateTask: updateTaskMutation.mutate,
     createTask: createTaskMutation.mutate,
+    // Awaitable variant: resolves with the created task, rejects on failure.
+    createTaskAsync: createTaskMutation.mutateAsync,
     batchCreateTasks: batchCreateTasksMutation.mutateAsync,
     deleteTask: deleteTaskMutation.mutate,
     deleteAllTasks: deleteAllTasksMutation.mutate,
