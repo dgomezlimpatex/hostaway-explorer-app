@@ -78,6 +78,24 @@ export interface StockMovement {
   to_warehouse?: StockWarehouse | null;
 }
 
+export interface StockAlert {
+  id: string;
+  stock_level_id: string;
+  product_id: string;
+  warehouse_id: string;
+  alert_type: StockAlertType;
+  triggered_at: string;
+  resolved_at: string | null;
+  is_active: boolean;
+  product?: StockProduct | null;
+  warehouse?: StockWarehouse | null;
+}
+
+export interface StockMovementsRange {
+  movements: StockMovement[];
+  truncated: boolean;
+}
+
 export interface StockPropertyConsumptionRule {
   id: string;
   property_id: string;

@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { StockLayout } from '@/components/stock/StockLayout';
-import { useStockLevels, useStockMovements, useStockProducts, useStockWarehouses } from '@/hooks/useStock';
+import { useStockLevels, useStockMovementsRange, useStockProducts, useStockWarehouses } from '@/hooks/useStock';
 import type { StockMovement, StockMovementType } from '@/types/stock';
 
 const formatCurrency = (value: number) =>
@@ -49,25 +49,20 @@ export default function InventoryReports() {
   const [productId, setProductId] = useState('all');
   const [warehouseId, setWarehouseId] = useState('all');
 
-  const { data: movements = [], isLoading: movementsLoading } = useStockMovements(1000);
+  const { data: movementsRange, isLoading: movementsLoading } = useStockMovementsRange(dateFrom, dateTo);
+  const movements = useMemo(() => movementsRange?.movements ?? [], [movementsRange]);
   const { data: levels = [] } = useStockLevels();
   const { data: products = [] } = useStockProducts();
   const { data: warehouses = [] } = useStockWarehouses();
 
   const filteredMovements = useMemo(() => {
-    const from = dateFrom;
-    const to = dateTo;
-
     return movements.filter((movement) => {
-      const createdAt = formatMadridDate(new Date(movement.created_at));
-      if (from && createdAt < from) return false;
-      if (to && createdAt > to) return false;
       if (movementType !== 'all' && movement.movement_type !== movementType) return false;
       if (productId !== 'all' && movement.product_id !== productId) return false;
       if (warehouseId !== 'all' && movement.warehouse_id !== warehouseId && movement.to_warehouse_id !== warehouseId) return false;
       return true;
     });
-  }, [dateFrom, dateTo, movementType, movements, productId, warehouseId]);
+  }, [movementType, movements, productId, warehouseId]);
 
   const report = useMemo(() => {
     const automaticConsumption = filteredMovements.filter((movement) => movement.movement_type === 'consumo_automatico');
@@ -169,7 +164,9 @@ export default function InventoryReports() {
       description="Consumo, movimientos, bajo mínimo y reposición estimada."
       showWarehouseSelect={false}
     >
-      <div className="space-y-4"><p className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">Movimientos: hasta los 1.000 últimos registros, filtrados por fechas en horario de Madrid. La reposición refleja las existencias actuales.</p>
+      <div className="space-y-4"><p className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">Movimientos del rango elegido, por días completos en horario de Madrid. El valor usa el coste actual de cada producto y la reposición refleja las existencias actuales.</p>
+        {movementsRange?.truncated && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">El rango tiene demasiados movimientos y el informe está incompleto: acorta las fechas para ver todos.</p>}
+        {dateFrom > dateTo && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">La fecha «Desde» es posterior a «Hasta».</p>}
         <Card className="rounded-2xl border-border/60 shadow-sm">
           <CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
             <Input aria-label="Desde" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />

@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, Building2, CheckCircle2, Droplets, Package, Shirt, ArchiveRestore } from 'lucide-react';
 import { StockLayout } from '@/components/stock/StockLayout';
-import { useStockDashboardStats } from '@/hooks/useStock';
+import { useStockAlerts, useStockDashboardStats } from '@/hooks/useStock';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 const number = (value: number) => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(value);
 export default function InventoryDashboard() {
   const { stats, levels, isLoading } = useStockDashboardStats();
+  const { data: alerts = [], isLoading: alertsLoading, isError: alertsError } = useStockAlerts();
   const attention = levels.filter(level => level.current_quantity <= level.minimum_quantity).sort((a, b) => a.current_quantity - b.current_quantity);
   return <StockLayout title="Resumen de inventario" description="Existencias, reposición y actividad de lavandería y consumibles.">
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{[
@@ -27,5 +28,8 @@ export default function InventoryDashboard() {
         <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4"><p className="text-xs font-medium text-muted-foreground">Valor del stock seleccionado</p><p className="mt-2 text-2xl font-bold">{isLoading ? '—' : new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(stats.totalValue)}</p><p className="mt-1 text-xs text-muted-foreground">{number(stats.totalUnits)} unidades · Según costes configurados</p></div>
       </section>
     </div>
+    <section className="rounded-2xl border border-border/60 bg-background p-5 shadow-sm"><div className="mb-4"><h2 className="font-semibold">Alertas activas</h2><p className="mt-1 text-xs text-muted-foreground">Avisos generados al quedar un producto en su mínimo o a cero</p></div>
+      {alertsLoading ? <p role="status" className="py-4 text-center text-sm text-muted-foreground">Consultando alertas…</p> : alertsError ? <p role="alert" className="py-4 text-center text-sm text-amber-800">No se pudieron cargar las alertas.</p> : !alerts.length ? <p className="py-4 text-center text-sm text-muted-foreground">No hay alertas activas.</p> : <div className="divide-y">{alerts.slice(0, 8).map(alert => <div key={alert.id} className="flex items-center gap-3 py-3"><span className={cn('h-2 w-2 shrink-0 rounded-full', alert.alert_type === 'stock_critico' ? 'bg-red-500' : 'bg-amber-500')} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{alert.product?.name || 'Producto'}</p><p className="text-xs text-muted-foreground">{alert.warehouse?.name} · {alert.alert_type === 'stock_critico' ? 'Sin existencias' : 'En el mínimo'}</p></div><p className="text-[11px] text-muted-foreground">{new Date(alert.triggered_at).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' })}</p></div>)}{alerts.length > 8 && <p className="pt-3 text-xs text-muted-foreground">y {alerts.length - 8} alertas más</p>}</div>}
+    </section>
   </StockLayout>;
 }
