@@ -1,0 +1,21 @@
+{
+  "request": "Dani pidió un análisis operativo de Inventario y aprobó empezar el plan por la limpieza del código antiguo y las pruebas de stock.",
+  "reason": "Solo elimina 23 módulos del sistema antiguo inventory_* que ningún archivo importa (se dejan NotificationCenter, useInventory, inventoryStorage y types/inventory, que el filtro automático reserva) (verificado con búsqueda de importaciones, tsc y build) y añade una prueba Node local. No cambia pantallas, datos, SQL, permisos ni integraciones.",
+  "verification": "tsc de aplicación sin errores nuevos (los existentes están en otros módulos y no mencionan los archivos borrados, 0 'Cannot find module'); npm run build correcto; eslint limpio en lo tocado; la prueba stockStorageTest ejecuta el stockStorage real con un Supabase simulado (resumen, límites de ajuste, movimiento registrado) y falla si vuelve a importarse código antiguo (comprobado con una importación temporal). No se probó en navegador autenticado: las rutas de inventario ya no usan los archivos borrados.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/stockStorageTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "c08ac6cdd7d0c5c34f5c4627d11905beaf91e04f79c7d119a1aa8e4d7f34081c"
+}
