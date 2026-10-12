@@ -21,8 +21,11 @@ const load = async entry => {
   return import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 };
 const memory = () => {
-  const data = new Map();
-  return { data, getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, String(value)), removeItem: key => data.delete(key) };
+  const data = {};
+  return {
+    data, size: () => Object.keys(data).length,
+    getItem: key => (key in data ? data[key] : null), setItem: (key, value) => { data[key] = String(value); }, removeItem: key => { delete data[key]; },
+  };
 };
 const never = () => new Promise(() => {});
 
@@ -158,10 +161,10 @@ const recovery = await load('src/features/cleaner/cleanerReloadRecovery.ts');
     assert.equal(Object.keys(listeners.window).length, 0, 'Listeners wait until after the click');
     timers.forEach(fn => fn());
     listeners.document.visibilitychange();
-    assert.equal(picking.data.size, 1, 'Still in the camera: keep the mark');
+    assert.equal(picking.size(), 1, 'Still in the camera: keep the mark');
     globalThis.document.visibilityState = 'visible';
     listeners.window.focus();
-    assert.equal(picking.data.size, 0, 'Back in the page: not a restart');
+    assert.equal(picking.size(), 0, 'Back in the page: not a restart');
     assert.deepEqual(listeners, { window: {}, document: {} }, 'Listeners are removed');
   } finally {
     globalThis.window = previous.window; globalThis.document = previous.document; globalThis.setTimeout = previous.setTimeout;
