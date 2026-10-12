@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StockAdjustmentDialog } from '@/components/stock/StockAdjustmentDialog';
 import { StockBulkSetupDialog } from '@/components/stock/StockBulkSetupDialog';
+import { StockCountDialog } from '@/components/stock/StockCountDialog';
 import { StockCategoryManager } from '@/components/stock/StockCategoryManager';
 import { StockLayout } from '@/components/stock/StockLayout';
 import { StockLevelTable } from '@/components/stock/StockLevelTable';
@@ -25,6 +26,7 @@ export default function InventoryStock({
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [bulkSetupOpen, setBulkSetupOpen] = useState(false);
+  const [countOpen, setCountOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<StockLevel | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<StockProduct | null>(null);
@@ -61,6 +63,7 @@ export default function InventoryStock({
         isLoading={isLoading}
         onCreateProduct={handleCreateProduct}
         onBulkSetup={() => setBulkSetupOpen(true)}
+        onCount={() => setCountOpen(true)}
         onEditProduct={handleEditProduct}
         onAdjustStock={handleAdjustStock}
         onTransferStock={handleTransferStock}
@@ -80,6 +83,12 @@ export default function InventoryStock({
         open={adjustmentDialogOpen}
         onOpenChange={setAdjustmentDialogOpen}
         level={selectedLevel}
+      />
+
+      <StockCountDialog
+        open={countOpen}
+        onOpenChange={setCountOpen}
+        levels={levels}
       />
 
       <StockBulkSetupDialog

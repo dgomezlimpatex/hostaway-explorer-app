@@ -1,0 +1,21 @@
+{
+  "request": "Dani autorizó encargarse de todo el plan de Inventario; este paso: recuento físico en pantalla.",
+  "reason": "Nuevo diálogo «Recuento físico» en Stock: el usuario escribe lo contado, ve la diferencia con el sistema y aplica solo las líneas con diferencia. Cada línea usa el ajuste atómico ya publicado (adjust_stock_level, solo admin/manager); no añade SQL, tablas, permisos ni cálculos de consumo, y no escribe nada al abrirse.",
+  "verification": "Prueba Node con la lógica real (lectura de cantidades con coma, no válidos, 0 como conteo, diferencias, resumen, decimales, motivo). Prueba en navegador (Edge, móvil) del diálogo real con Supabase simulado: aplicar bloqueado sin conteo o con valor no válido, resumen, ajustes enviados como valor absoluto en orden, motivo con fecha y nota, fallo parcial (una línea falla, el diálogo sigue abierto y se informa), sin errores ni desbordamiento. tsc sin errores nuevos en stock, eslint limpio, build correcto. No probado con sesión real ni contra Supabase.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/stockCountTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "f9c027752ce461b527cb838b078179b8e79645c75c8e5c216afaf7e0f4a83ee2"
+}
