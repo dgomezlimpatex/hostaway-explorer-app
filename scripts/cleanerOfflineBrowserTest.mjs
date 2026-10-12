@@ -177,6 +177,9 @@ try {
   assert.equal(await page.getByText('Pulsa iniciar cuando empieces la limpieza.',{exact:false}).count(),0);
   assert.equal(writes,0,'Opening property details must not start a task');
   if (process.env.CLEANER_SCREENSHOT_DIR) await page.screenshot({path:join(process.env.CLEANER_SCREENSHOT_DIR,'mobile-property-details.png'),fullPage:true,animations:'disabled'});
+  // Closing the report forgets it: the next page must not reopen it.
+  await page.keyboard.press('Escape');
+  await page.getByRole('dialog').waitFor({state:'hidden'});
   await page.goto(origin+'/calendar?date='+today);
   await page.getByText('Piso de prueba',{exact:true}).first().click();
   await page.getByRole('button',{name:'Iniciar limpieza',exact:true}).waitFor();
@@ -184,8 +187,11 @@ try {
   assert.equal(await page.getByRole('region',{name:'Características del piso'}).isVisible(),true,'Calendar entry shows property information before start');
   assert.equal(await page.getByRole('button',{name:'NOTAS',exact:true}).count(),0);
   assert.equal(writes,0,'Calendar property preview must not start a task');
+  await page.keyboard.press('Escape');
+  await page.getByRole('dialog').waitFor({state:'hidden'});
   await context.setOffline(true);
   await page.reload();
+  assert.equal(await page.getByRole('dialog').count(),0,'A closed report is not reopened after a reload');
   // A suspended Android storage read must not leave the task spinning forever.
   await page.evaluate(() => {
     const original = IDBObjectStore.prototype.get;
@@ -231,9 +237,18 @@ try {
   await page.evaluate(({userId,taskId}) => window.cleanerTest.changeDraft(`${userId}:${taskId}`,current=>({
     ...current,revision:current.revision+1,report:{...current.report,notes:'Nota conservada sin cobertura'},
   })),{userId,taskId});
+  // Old Android closes the tab while the camera is open. Model it: open the picker, then reload.
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button',{name:/Foto obligatoria de prueba/}).click();
+  await chooser;
   await page.reload();
-  await page.getByText('Piso de prueba',{exact:true}).first().click();
   await page.getByRole('button',{name:'Revisar y finalizar'}).waitFor();
+  assert.equal(await page.getByRole('dialog').count(),1,'The open report is restored after the phone reloads the tab');
+  const restartNotice = page.getByText('El móvil ha cerrado la app mientras hacías la foto, normalmente por falta de memoria. Tu avance está guardado, pero esa foto no: vuelve a hacerla.',{exact:true});
+  await restartNotice.waitFor();
+  if (process.env.CLEANER_SCREENSHOT_DIR) await page.screenshot({path:join(process.env.CLEANER_SCREENSHOT_DIR,'mobile-camera-restart.png'),fullPage:true,animations:'disabled'});
+  await page.getByRole('button',{name:'Entendido',exact:true}).click();
+  assert.equal(await restartNotice.count(),0);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jD1sAAAAASUVORK5CYII=','base64');
   await page.addScriptTag({content:await readFile(join(temporary,'helper.js'),'utf8')});
   await page.evaluate(() => {
@@ -304,6 +319,7 @@ try {
   await page.addScriptTag({content:await readFile(join(temporary,'helper.js'),'utf8')});
   const finished = await page.evaluate(owner => window.cleanerTest.listLocal('drafts',owner).then(items=>items[0]),userId);
   assert.equal(finished.report.overall_status,'completed','One click completes the report offline');
+  await page.locator('[data-send-state="offline"]').getByText('Guardada en el móvil, sin enviar',{exact:true}).waitFor();
   assert.equal(finished.finishRequested,true);
   assert.ok(finished.report.end_time,'One click records the end time');
   if (process.env.CLEANER_SCREENSHOT_DIR) await page.screenshot({path:join(process.env.CLEANER_SCREENSHOT_DIR,'mobile-final-time-only.png'),fullPage:true,animations:'disabled'});
@@ -353,6 +369,7 @@ try {
   assert.equal(await page.locator('[data-work-state="confirmed"]').isVisible(),true);
   await page.keyboard.press('Escape');
   await page.getByRole('dialog',{name:'Estado de sincronización',exact:true}).waitFor({state:'hidden'});
+  await page.locator('[data-send-state="sent"]').getByText('Limpieza enviada',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Volver a mis tareas',exact:true}).click();
   saved=await page.evaluate(owner => window.cleanerTest.listLocal('drafts',owner).then(items=>items[0]),userId);
   assert.equal(saved.revision,saved.syncedRevision,'Only confirmed work may be acknowledged');
@@ -363,6 +380,17 @@ try {
   const writesBefore=writes;
   await page.evaluate(owner => window.cleanerTest.syncCleanerWork(owner),userId);
   assert.equal(writes,writesBefore,'Confirmed work must not be sent again');
+  // A finished report pending without error is sent as soon as it is open, without pressing retry.
+  await page.evaluate(({userId,taskId}) => window.cleanerTest.changeDraft(`${userId}:${taskId}`,current=>({
+    ...current,revision:current.revision+1,error:undefined,
+  })),{userId,taskId});
+  await page.getByText('Piso de prueba',{exact:true}).first().click();
+  await page.locator('[data-send-state="sent"]').waitFor();
+  saved=await page.evaluate(owner => window.cleanerTest.listLocal('drafts',owner).then(items=>items[0]),userId);
+  assert.equal(saved.revision,saved.syncedRevision,'Opening a finished pending report sends it automatically');
+  assert.ok(writes > writesBefore);
+  await page.getByRole('button',{name:'Volver a mis tareas',exact:true}).click();
+  await page.getByRole('dialog').waitFor({state:'hidden'});
   await page.evaluate(({userId,taskId}) => window.cleanerTest.changeDraft(`${userId}:${taskId}`,current=>({
     ...current,revision:current.revision+1,report:{...current.report,notes:'Primera edición'},
   })),{userId,taskId});

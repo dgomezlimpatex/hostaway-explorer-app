@@ -9,10 +9,11 @@ const bundled = await build({
   platform: 'node', format: 'esm', logLevel: 'silent',
   plugins: [{ name: 'isolated-storage', setup(builder) {
     builder.onResolve({ filter: /^\.\/offlineStore$/ }, () => ({ path: 'storage', namespace: 'fixture' }));
-    builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ contents: 'export const readLocal = (...args) => globalThis.testDraftRead(...args);', loader: 'js' }));
+    builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ contents: 'export const readLocal = (...args) => globalThis.testDraftRead(...args); export const resetCleanerDatabase = () => { globalThis.testResets++; };', loader: 'js' }));
   } }],
 });
 const { readCleanerDraft } = await import('data:text/javascript;base64,' + Buffer.from(bundled.outputFiles[0].text).toString('base64'));
+globalThis.testResets = 0;
 try {
   const draft = { key: 'owner:task', revision: 4, report: { notes: 'Saved', checklist_completed: { photo: { media_urls: ['cleaner-photo:example'] } } } };
   globalThis.testDraftRead = async (store, key) => {
@@ -27,11 +28,12 @@ try {
   let finishLate;
   globalThis.testDraftRead = () => new Promise(resolve => { finishLate = resolve; });
   await assert.rejects(readCleanerDraft(draft.key, 10), /Reintentar preparación/);
+  assert.equal(globalThis.testResets, 1, 'A stalled read reopens the phone storage for the retry');
   finishLate(draft);
   globalThis.testDraftRead = async () => draft;
   assert.equal(await readCleanerDraft(draft.key), draft, 'Retry reads storage again without creating or changing a draft');
   console.log('PASS: saved/absent/error/stalled/late draft reads and safe retry; no writes or network.');
-} finally { delete globalThis.testDraftRead; }
+} finally { delete globalThis.testDraftRead; delete globalThis.testResets; }
 
 // Exercise the real recovery boundary and its click handlers without a DOM.
 const boundaryBundle = await build({

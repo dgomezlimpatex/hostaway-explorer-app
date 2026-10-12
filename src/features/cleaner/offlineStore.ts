@@ -76,6 +76,13 @@ const openDatabase = (): Promise<IDBDatabase> => {
   return dbPromise;
 };
 
+/** After a suspension (camera, screen off) a connection can stop answering. The next call reopens it. */
+export function resetCleanerDatabase(): void {
+  const stalled = dbPromise;
+  dbPromise = undefined;
+  void stalled?.then(db => db.close()).catch(() => undefined);
+}
+
 export async function readLocal<T>(store: string, key: string): Promise<T | undefined> {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {

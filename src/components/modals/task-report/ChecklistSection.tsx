@@ -12,6 +12,7 @@ import { useTaskReports } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage, shouldCompressImage } from '@/utils/imageCompression';
 import { useCleanerWorkActions } from '@/features/cleaner/CleanerWorkContext';
+import { clearPhotoPicking, markPhotoPicking } from '@/features/cleaner/cleanerSessionRecovery';
 
 interface ChecklistSectionProps {
   template: TaskChecklistTemplate | undefined;
@@ -490,6 +491,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                           type="file"
                           accept="image/*,video/*"
                           onChange={async (e) => {
+                            clearPhotoPicking();
                             const file = e.target.files?.[0];
                             if (!file) {
                               if (e.target) e.target.value = '';
@@ -555,6 +557,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({
                             // If photo required and no photo yet, only open file picker (don't mark complete yet)
                             if (item.photo_required && !hasMedia) {
                               setExpandedItem(key);
+                              if (cleanerWork) markPhotoPicking();
                               fileInputRefs.current[key]?.click();
                             } else {
                               // Mark as completed (no photo needed or already has photo)
