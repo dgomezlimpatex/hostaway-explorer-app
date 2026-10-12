@@ -144,7 +144,15 @@ await context.addInitScript(({userId}) => {
 }, {userId});
 try {
   await page.goto(origin);
+  // The whole page may opt out of translation; lift that only for this control of the simulation.
   await page.evaluate(() => {
+    const root = document.documentElement;
+    window.restorePageTranslation = ((translate, protectedClass) => () => {
+      if (translate !== null) root.setAttribute('translate', translate);
+      if (protectedClass) root.classList.add('notranslate');
+    })(root.getAttribute('translate'), root.classList.contains('notranslate'));
+    root.removeAttribute('translate');
+    root.classList.remove('notranslate');
     const control = document.createElement('div');
     control.id = 'translation-test-control';
     control.textContent = 'Texto de control';
@@ -152,6 +160,7 @@ try {
   });
   assert.equal(await attemptTranslation(page.locator('#translation-test-control')),1,'Translator simulation must replace unprotected text');
   await page.locator('#translation-test-control').evaluate(el => el.remove());
+  await page.evaluate(() => window.restorePageTranslation());
   await page.getByText('Tus tareas y checklists de esta semana están descargados en este móvil.',{exact:true}).waitFor({timeout:30000});
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller),null,{timeout:30000});
   assert.equal(writes,0,'Reading dashboard must not start a task');
