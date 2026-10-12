@@ -102,14 +102,13 @@ for (const [pattern, why] of [
 ]) assert.match(sql, pattern, why);
 assert.doesNotMatch(sql, /DROP |DELETE FROM|TRUNCATE|ALTER TABLE|CREATE TABLE/i, 'la migración solo añade una función');
 
-// Guarda: el sistema antiguo inventory_* no debe usarse desde fuera de su resto aislado (NotificationCenter, useInventory, inventoryStorage, types/inventory), pendiente de retirar por la vía revisada
+// Guarda: el sistema antiguo inventory_* ya no existe en el código y no debe volver
 const legacy = /services\/storage\/inventoryStorage|@\/types\/inventory['"]|components\/inventory\/(?!LaundryReceiptReview)|hooks\/(useInventory|useMovements|useConsumptionConfig|useAutomaticConsumption)\b/;
 const walk = dir => readdirSync(dir).flatMap(name => {
   const path = join(dir, name);
   return statSync(path).isDirectory() ? walk(path) : /\.(ts|tsx)$/.test(name) ? [path] : [];
 });
-const isolated = /[\\/](NotificationCenter\.tsx|useInventory\.ts|inventoryStorage\.ts|inventory\.ts)$/;
-const offenders = walk('src').filter(file => !file.includes('integrations') && !isolated.test(file) && legacy.test(readFileSync(file, 'utf8')));
+const offenders = walk('src').filter(file => !file.includes('integrations') && legacy.test(readFileSync(file, 'utf8')));
 assert.deepEqual(offenders, [], `Importan código antiguo de inventario: ${offenders.join(', ')}`);
 
 console.log('PASS stockStorage: resumen, ajuste delegado en SQL atómico, errores traducidos y sin código antiguo');
