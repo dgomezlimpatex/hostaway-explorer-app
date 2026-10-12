@@ -127,6 +127,26 @@ export const useStockMovements = (limit = 100) => {
   });
 };
 
+export const useStockMovementsRange = (from: string, to: string) => {
+  const { activeSede } = useSede();
+
+  return useQuery({
+    queryKey: ['stock-movements', activeSede?.id, 'range', from, to],
+    queryFn: () => stockStorage.getMovementsInRange(activeSede!.id, from, to),
+    enabled: !!activeSede?.id && !!from && !!to && from <= to,
+  });
+};
+
+export const useStockAlerts = () => {
+  const { activeSede } = useSede();
+
+  return useQuery({
+    queryKey: ['stock-alerts', activeSede?.id],
+    queryFn: () => stockStorage.getActiveAlerts(activeSede!.id),
+    enabled: !!activeSede?.id,
+  });
+};
+
 export const usePropertyStockConsumptionRules = (propertyId?: string) => {
   return useQuery({
     queryKey: ['stock-property-consumption-rules', propertyId],
@@ -195,6 +215,7 @@ export const useDeleteStockWarehouse = () => {
       queryClient.invalidateQueries({ queryKey: ['stock-warehouses', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['stock-levels', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements', activeSede?.id] });
+      queryClient.invalidateQueries({ queryKey: ['stock-alerts', activeSede?.id] });
       toast.success('Almacen eliminado');
     },
     onError: (error) => {
@@ -377,6 +398,7 @@ export const useAdjustStock = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-levels', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements', activeSede?.id] });
+      queryClient.invalidateQueries({ queryKey: ['stock-alerts', activeSede?.id] });
       toast.success('Stock actualizado');
     },
     onError: (error) => {
@@ -412,6 +434,7 @@ export const useTransferStock = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-levels', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements', activeSede?.id] });
+      queryClient.invalidateQueries({ queryKey: ['stock-alerts', activeSede?.id] });
       toast.success('Transferencia realizada');
     },
     onError: (error) => {

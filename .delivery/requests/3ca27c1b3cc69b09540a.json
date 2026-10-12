@@ -1,0 +1,21 @@
+{
+  "request": "Dani autorizó encargarse de todo el plan de Inventario; este paso: informes de inventario por rango de fechas completo y panel de alertas activas.",
+  "reason": "Solo lectura: los informes piden a Supabase los movimientos del rango con límites exactos de día en Madrid y paginados (antes cortaban en 1.000 filas sin avisar); el Resumen muestra las alertas activas ya existentes. No escribe datos, ni cambia SQL, permisos ni cálculos de stock.",
+  "verification": "Prueba Node con el stockStorage y las utilidades reales y un Supabase simulado: límites de día Madrid (invierno, verano, ambos cambios de hora, cambio de año), paginación de 2.500, 1.000 exactas, vacío, tope de 20 páginas con aviso de truncado, error, y consulta de alertas por sede. Mutación comprobada. Render en navegador (Edge, móvil) de Resumen y Informes con datos simulados: alertas, error de alertas, aviso de truncado y rango por defecto, sin errores ni desbordamiento. tsc sin errores nuevos en stock, eslint limpio y build correcto. No probado con sesión real ni contra Supabase.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/stockReportsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "c3f4903943380ac156d0e736bc24bd160ff7f653334919e43b2c2e3af933d5f8"
+}

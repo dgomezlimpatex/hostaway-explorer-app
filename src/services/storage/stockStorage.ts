@@ -1,15 +1,18 @@
 import { supabase } from '@/integrations/supabase/client';
 import { recordAiObservedEvent } from '@/services/aiObservedEvents';
+import { madridRangeBounds } from '@/utils/stockDateRange';
 import type {
   CreateStockCategoryData,
   CreateStockProductData,
   CreateStockWarehouseData,
   StockAdjustmentData,
+  StockAlert,
   StockCategory,
   StockDashboardStats,
   StockItemKind,
   StockLevel,
   StockMovement,
+  StockMovementsRange,
   StockProduct,
   StockPropertyConsumptionRule,
   StockTransferData,
@@ -48,6 +51,9 @@ const ADJUST_STOCK_ERRORS: Array<[RegExp, string]> = [
 
 const translateAdjustStockError = (message: string): string =>
   ADJUST_STOCK_ERRORS.find(([pattern]) => pattern.test(message))?.[1] ?? message;
+
+const MOVEMENTS_PAGE_SIZE = 1000;
+const MOVEMENTS_RANGE_MAX_PAGES = 20;
 
 const toNumber = (value: unknown): number => {
   if (typeof value === 'number') return value;
@@ -637,6 +643,65 @@ class StockStorageService {
       to_previous_quantity: movement.to_previous_quantity == null ? null : toNumber(movement.to_previous_quantity),
       to_new_quantity: movement.to_new_quantity == null ? null : toNumber(movement.to_new_quantity),
     } as StockMovement));
+  }
+
+  async getMovementsInRange(sedeId: string, from: string, to: string): Promise<StockMovementsRange> {
+    // Supabase devuelve como máximo 1.000 filas por consulta: se pagina por fecha exacta de Madrid.
+    const { start, endExclusive } = madridRangeBounds(from, to);
+    const movements: StockMovement[] = [];
+
+    for (let page = 0; page < MOVEMENTS_RANGE_MAX_PAGES; page += 1) {
+      const { data, error } = await db
+        .from('stock_movements')
+        .select(`
+        *,
+        product:stock_products!inner(
+          *,
+          category:stock_categories(*)
+        ),
+        warehouse:stock_warehouses!stock_movements_warehouse_id_fkey(*),
+        to_warehouse:stock_warehouses!stock_movements_to_warehouse_id_fkey(*)
+      `)
+        .eq('product.sede_id', sedeId)
+        .gte('created_at', start)
+        .lt('created_at', endExclusive)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(page * MOVEMENTS_PAGE_SIZE, (page + 1) * MOVEMENTS_PAGE_SIZE - 1);
+
+      if (error) throw error;
+      const rows = (data || []).map((movement: StockDbRow) => ({
+      ...movement,
+      quantity: toNumber(movement.quantity),
+      previous_quantity: toNumber(movement.previous_quantity),
+      new_quantity: toNumber(movement.new_quantity),
+      to_previous_quantity: movement.to_previous_quantity == null ? null : toNumber(movement.to_previous_quantity),
+      to_new_quantity: movement.to_new_quantity == null ? null : toNumber(movement.to_new_quantity),
+    } as StockMovement));
+      movements.push(...rows);
+      if (rows.length < MOVEMENTS_PAGE_SIZE) return { movements, truncated: false };
+    }
+
+    return { movements, truncated: true };
+  }
+
+  async getActiveAlerts(sedeId: string): Promise<StockAlert[]> {
+    const { data, error } = await db
+      .from('stock_alerts')
+      .select(`
+        *,
+        product:stock_products!inner(
+          *,
+          category:stock_categories(*)
+        ),
+        warehouse:stock_warehouses(*)
+      `)
+      .eq('is_active', true)
+      .eq('product.sede_id', sedeId)
+      .order('triggered_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []) as StockAlert[];
   }
 
   getDashboardStats(levels: StockLevel[], warehouses: StockWarehouse[]): StockDashboardStats {
