@@ -1,0 +1,21 @@
+{
+  "request": "Dani pide optimizar la vista de limpiadora para móviles antiguos y corregir los fallos al abrir la página en Android Chrome y con la traducción de Google activa.",
+  "reason": "Solo cambia el arranque en el navegador: sustituto local de crypto.randomUUID cuando falta (Chrome < 92), atributos lang=es/translate=no y meta notranslate, protección de removeChild/insertBefore frente a nodos movidos por el traductor, y una única recarga por minuto cuando un chunk de una publicación anterior ya no existe. No lee ni escribe datos de negocio, no toca Supabase, sesión, permisos, comunicaciones, integraciones ni configuración de Vercel.",
+  "verification": "scripts/browserCompatTest.mjs (Node, sin red) prueba el formato y unicidad de los UUID, que no sustituye la implementación nativa, la protección del documento, que el doble del DOM reproduce NotFoundError y deja de fallar con la protección sin romper inserciones/borrados normales, la detección de errores de chunk de Chrome/Firefox/Safari, la recarga única (no en bucle, no sin cobertura, no sin almacenamiento) y el límite de errores real. En local además: translationGuardBrowserTest.mjs en Chromium reproduce la caída de React al traducir sin protección y comprueba que con ella la pantalla sigue usable; la prueba completa de limpiadora con service worker (cleanerOfflineBrowserTest) pasa combinada con la PR de reportes. Build correcto; 102 errores de tipos previos sin cambios y 0 en Node; lint sin errores nuevos. Limitación: no se ha probado en un Android físico antiguo; la cola no tiene Chromium y repite solo la prueba Node.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/browserCompatTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "d1bf50ca01c981e05681bfdc11b4c33f34428c3a8c8dfc0950260c2f55d7ed11"
+}
