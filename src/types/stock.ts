@@ -73,6 +73,8 @@ export interface StockMovement {
   property_id: string | null;
   created_by: string | null;
   created_at: string;
+  /** Coste por unidad guardado al registrar el movimiento (solo existe en movimientos recientes). */
+  unit_cost_at_movement?: number | null;
   product?: StockProduct | null;
   warehouse?: StockWarehouse | null;
   to_warehouse?: StockWarehouse | null;

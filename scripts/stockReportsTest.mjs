@@ -56,7 +56,7 @@ assert.deepEqual(madridRangeBounds('2026-12-31', '2026-12-31'), { start: '2026-1
 assert.throws(() => madridDayStartIso('31/10/2026'), /Fecha no válida/);
 
 // Paginación: Supabase corta en 1.000 filas por consulta
-const rows = total => Array.from({ length: total }, (_, index) => ({ id: `m${index}`, quantity: '1', previous_quantity: '5', new_quantity: '4', to_previous_quantity: null, to_new_quantity: null, created_at: '2026-10-05T10:00:00Z' }));
+const rows = total => Array.from({ length: total }, (_, index) => ({ id: `m${index}`, quantity: '1', previous_quantity: '5', new_quantity: '4', to_previous_quantity: null, to_new_quantity: null, created_at: '2026-10-05T10:00:00Z', unit_cost_at_movement: index === 0 ? '2.5' : null }));
 const respondWith = total => call => {
   const [from, to] = call.range;
   return { data: rows(total).slice(from, to + 1), error: null };
@@ -74,6 +74,8 @@ assert.ok(first.filters.some(([op, column, value]) => op === 'lt' && column === 
 assert.ok(first.filters.some(([op, column, value]) => op === 'eq' && column === 'product.sede_id' && value === 'sede-1'), 'limita a la sede');
 assert.deepEqual(first.order, [['created_at', false], ['id', false]], 'orden estable para paginar');
 assert.equal(typeof result.movements[0].quantity, 'number', 'normaliza números');
+assert.equal(result.movements[0].unit_cost_at_movement, 2.5, 'normaliza el coste guardado en el movimiento');
+assert.equal(result.movements[1].unit_cost_at_movement, null, 'sin coste guardado queda en null');
 
 globalThis.__respond = respondWith(1000);
 calls.length = 0;
