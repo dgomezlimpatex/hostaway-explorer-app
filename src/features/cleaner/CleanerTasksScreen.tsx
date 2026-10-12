@@ -1,14 +1,13 @@
-import { useState } from 'react';
 import { CleanerTodayTasksPage } from '@/components/tasks/CleanerTodayTasksPage';
-import type { Task } from '@/types/calendar';
 import { useCleanerTasks } from './useCleanerData';
 import { CleanerTaskReportModal } from './CleanerTaskReportModal';
 import { useMadridToday } from './useMadridToday';
+import { useOpenCleanerTask } from './cleanerReloadRecovery';
 
 export default function CleanerTasksScreen() {
   const today = useMadridToday();
   const { tasks, isLoading, error, hasData, refetch } = useCleanerTasks(today);
-  const [selected, setSelected] = useState<Task | null>(null);
+  const [selected, setSelected] = useOpenCleanerTask(tasks, hasData);
   return <>
     {error && !hasData && <div role="alert" className="m-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">
       No se han podido cargar tus tareas. Abre la app con cobertura para descargarlas en este móvil.

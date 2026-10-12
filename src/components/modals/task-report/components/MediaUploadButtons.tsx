@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, Upload } from 'lucide-react';
 import { useCleanerWorkActions } from '@/features/cleaner/CleanerWorkContext';
+import { clearPhotoPicking, markPhotoPicking } from '@/features/cleaner/cleanerReloadRecovery';
 
 interface MediaUploadButtonsProps {
   onSingleFileSelect: (file: File) => void;
@@ -20,7 +21,13 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const local = useCleanerWorkActions();
 
+  const openPicker = (input: HTMLInputElement | null) => {
+    if (local) markPhotoPicking();
+    input?.click();
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    clearPhotoPicking();
     const file = event.target.files?.[0];
     if (file) {
       console.log('📁 Archivo seleccionado:', file.name, `(${Math.round(file.size / 1024)}KB)`, file.type || 'sin tipo');
@@ -33,6 +40,7 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
   };
 
   const handleMultipleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    clearPhotoPicking();
     const files = event.target.files;
     if (files && files.length > 0) {
       console.log('📁 Archivos seleccionados:', files.length);
@@ -49,7 +57,7 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => openPicker(fileInputRef.current)}
         disabled={isUploading || uploadingCount > 0}
         className="min-h-11 px-3 text-sm"
         aria-label="Tomar foto o seleccionar archivo"
@@ -62,7 +70,7 @@ export const MediaUploadButtons: React.FC<MediaUploadButtonsProps> = ({
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => galleryInputRef.current?.click()}
+        onClick={() => openPicker(galleryInputRef.current)}
         disabled={isUploading || uploadingCount > 0}
         className="min-h-11 px-3 text-sm"
         aria-label="Seleccionar múltiples archivos de la galería"
