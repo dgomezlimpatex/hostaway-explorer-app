@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRightLeft, ClipboardList, Edit, Package, Plus, Search, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, ClipboardCheck, ClipboardList, Edit, Package, Plus, Search, SlidersHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,7 @@ interface StockLevelTableProps {
   isLoading?: boolean;
   onCreateProduct: () => void;
   onBulkSetup: () => void;
+  onCount?: () => void;
   onEditProduct: (level: StockLevel) => void;
   onAdjustStock: (level: StockLevel) => void;
   onTransferStock: (level: StockLevel) => void;
@@ -36,6 +37,7 @@ export function StockLevelTable({
   isLoading,
   onCreateProduct,
   onBulkSetup,
+  onCount,
   onEditProduct,
   onAdjustStock,
   onTransferStock,
@@ -90,6 +92,12 @@ export function StockLevelTable({
               Stock
             </CardTitle>
             <div className="flex flex-col gap-2 sm:flex-row">
+              {onCount && (
+                <Button onClick={onCount} variant="outline" size="sm">
+                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                  Recuento físico
+                </Button>
+              )}
               <Button onClick={onBulkSetup} variant="outline" size="sm">
                 <ClipboardList className="mr-2 h-4 w-4" />
                 Carga operativa
