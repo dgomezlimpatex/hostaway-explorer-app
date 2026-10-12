@@ -642,6 +642,7 @@ class StockStorageService {
       new_quantity: toNumber(movement.new_quantity),
       to_previous_quantity: movement.to_previous_quantity == null ? null : toNumber(movement.to_previous_quantity),
       to_new_quantity: movement.to_new_quantity == null ? null : toNumber(movement.to_new_quantity),
+      unit_cost_at_movement: movement.unit_cost_at_movement == null ? null : toNumber(movement.unit_cost_at_movement),
     } as StockMovement));
   }
 
@@ -677,6 +678,7 @@ class StockStorageService {
       new_quantity: toNumber(movement.new_quantity),
       to_previous_quantity: movement.to_previous_quantity == null ? null : toNumber(movement.to_previous_quantity),
       to_new_quantity: movement.to_new_quantity == null ? null : toNumber(movement.to_new_quantity),
+      unit_cost_at_movement: movement.unit_cost_at_movement == null ? null : toNumber(movement.unit_cost_at_movement),
     } as StockMovement));
       movements.push(...rows);
       if (rows.length < MOVEMENTS_PAGE_SIZE) return { movements, truncated: false };

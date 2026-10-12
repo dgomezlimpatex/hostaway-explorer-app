@@ -21,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { StockLayout } from '@/components/stock/StockLayout';
+import { buildStockReport, reorderToCsv } from '@/utils/stockReport';
 import { useStockLevels, useStockMovementsRange, useStockProducts, useStockWarehouses } from '@/hooks/useStock';
 import type { StockMovement, StockMovementType } from '@/types/stock';
 
@@ -64,42 +65,7 @@ export default function InventoryReports() {
     });
   }, [movementType, movements, productId, warehouseId]);
 
-  const report = useMemo(() => {
-    const automaticConsumption = filteredMovements.filter((movement) => movement.movement_type === 'consumo_automatico');
-    const exits = filteredMovements.filter((movement) => movement.movement_type === 'salida' || movement.movement_type === 'consumo_automatico');
-    const entries = filteredMovements.filter((movement) => movement.movement_type === 'entrada');
-    const lowStock = levels.filter((level) => level.current_quantity <= level.minimum_quantity);
-    const reorder = levels
-      .map((level) => ({
-        level,
-        needed: Math.max(0, level.target_quantity - level.current_quantity),
-        estimatedCost: Math.max(0, level.target_quantity - level.current_quantity) * (level.cost_per_unit || 0),
-      }))
-      .filter((item) => item.needed > 0)
-      .sort((a, b) => b.needed - a.needed);
-
-    const consumptionByProduct = new Map<string, { product: string; quantity: number; value: number }>();
-    exits.forEach((movement) => {
-      const key = movement.product_id;
-      const current = consumptionByProduct.get(key) || {
-        product: movement.product?.name || 'Producto',
-        quantity: 0,
-        value: 0,
-      };
-      current.quantity += movement.quantity;
-      current.value += movement.quantity * (movement.product ? (levels.find((level) => level.product_id === movement.product_id)?.cost_per_unit || 0) : 0);
-      consumptionByProduct.set(key, current);
-    });
-
-    return {
-      automaticConsumption,
-      exits,
-      entries,
-      lowStock,
-      reorder,
-      consumptionByProduct: [...consumptionByProduct.values()].sort((a, b) => b.quantity - a.quantity),
-    };
-  }, [filteredMovements, levels]);
+  const report = useMemo(() => buildStockReport(filteredMovements, levels), [filteredMovements, levels]);
 
   const totalExitValue = report.consumptionByProduct.reduce((sum, item) => sum + item.value, 0);
   const totalReorderValue = report.reorder.reduce((sum, item) => sum + item.estimatedCost, 0);
@@ -142,6 +108,16 @@ export default function InventoryReports() {
     URL.revokeObjectURL(url);
   };
 
+  const exportReorderCsv = () => {
+    const blob = new Blob(['﻿' + reorderToCsv(report.reorder)], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `stock-reposicion-${today}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const exportXlsx = async () => {
     const XLSX = await import('xlsx');
     const workbook = XLSX.utils.book_new();
@@ -164,7 +140,7 @@ export default function InventoryReports() {
       description="Consumo, movimientos, bajo mínimo y reposición estimada."
       showWarehouseSelect={false}
     >
-      <div className="space-y-4"><p className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">Movimientos del rango elegido, por días completos en horario de Madrid. El valor usa el coste actual de cada producto y la reposición refleja las existencias actuales.</p>
+      <div className="space-y-4"><p className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">Movimientos del rango elegido, por días completos en horario de Madrid. El valor de los consumos usa el coste guardado en cada movimiento cuando existe y, si no, el coste actual del producto. La reposición refleja las existencias actuales.</p>
         {movementsRange?.truncated && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">El rango tiene demasiados movimientos y el informe está incompleto: acorta las fechas para ver todos.</p>}
         {dateFrom > dateTo && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">La fecha «Desde» es posterior a «Hasta».</p>}
         <Card className="rounded-2xl border-border/60 shadow-sm">
@@ -237,8 +213,17 @@ export default function InventoryReports() {
           </Card>
 
           <Card className="rounded-2xl border-border/60 shadow-sm">
-            <CardHeader>
-              <CardTitle>Reposición sugerida</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <div>
+                <CardTitle>Reposición sugerida</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {report.reorder.length === 0 ? 'Todo en objetivo' : `${report.reorder.length > 12 ? 'Mostrando 12 de ' : ''}${report.reorder.length} productos · ${formatCurrency(totalReorderValue)} estimados`}
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={exportReorderCsv} disabled={report.reorder.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                Lista CSV
+              </Button>
             </CardHeader>
             <CardContent className="p-0">
               <SimpleTable
