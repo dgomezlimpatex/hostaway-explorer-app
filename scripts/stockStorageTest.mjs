@@ -32,6 +32,10 @@ const bundle = await build({
                  then: (resolve) => resolve({ error: globalThis.__failTable === table ? new Error('fallo simulado') : null }),
                };
                return chain;
+             },
+             rpc: (fn, args) => {
+               calls.push({ table: 'rpc:' + fn, op: 'rpc', payload: args });
+               return Promise.resolve({ data: globalThis.__rpcData ?? null, error: globalThis.__rpcError ?? null });
              } };`
           : 'export const recordAiObservedEvent = async () => {};',
       }));
@@ -55,38 +59,48 @@ assert.equal(stats.totalUnits, 17);
 assert.equal(stats.totalValue, (0 + 2 + 5 + 3) * 2, 'sin coste no suma valor');
 assert.equal(stats.totalWarehouses, 2);
 
-// Ajustes: límites
-await assert.rejects(() => adjust('salida', 6), /No hay stock suficiente/, 'no permite stock negativo');
-await assert.rejects(() => adjust('ajuste', 5), /producir un cambio/, 'ajuste sin diferencia');
-await assert.rejects(() => adjust('entrada', 0), /producir un cambio/, 'entrada de 0');
-
-// Ajustes: efecto y movimiento registrado
-const lastWrites = () => calls.splice(0).map(({ table, op, payload }) => ({ table, op, payload }));
-lastWrites();
+// Ajuste manual: el cliente delega en la función SQL atómica y no escribe tablas directamente
+const lastCalls = () => calls.splice(0);
+lastCalls();
+globalThis.__rpcData = { previous_quantity: 5, new_quantity: 8, quantity: 3 };
 await adjust('entrada', 3);
-let [levelWrite, movementWrite] = lastWrites();
-assert.equal(levelWrite.table, 'stock_levels');
-assert.equal(levelWrite.payload.current_quantity, 8);
-assert.equal(movementWrite.table, 'stock_movements');
-assert.deepEqual(
-  [movementWrite.payload.quantity, movementWrite.payload.previous_quantity, movementWrite.payload.new_quantity, movementWrite.payload.reason],
-  [3, 5, 8, 'recuento'],
-);
+const [rpcCall, ...extra] = lastCalls();
+assert.equal(extra.length, 0, 'no escribe stock_levels ni stock_movements desde el navegador');
+assert.equal(rpcCall.table, 'rpc:adjust_stock_level');
+assert.deepEqual(rpcCall.payload, {
+  stock_level_id_param: 'l1',
+  movement_type_param: 'entrada',
+  quantity_param: 3,
+  reason_param: 'recuento',
+  cost_per_unit_param: null,
+});
+await stockStorage.adjustStock({ stock_level: level(5), movement_type: 'ajuste', quantity: 4, reason: 'x', user_id: 'u1', cost_per_unit: 1.5 });
+assert.equal(lastCalls()[0].payload.cost_per_unit_param, 1.5, 'envía el coste cuando se indica');
 
-await adjust('salida', 5);
-[levelWrite] = lastWrites();
-assert.equal(levelWrite.payload.current_quantity, 0, 'permite vaciar a 0 exacto');
+// Errores de la función SQL traducidos a mensajes claros; los desconocidos se conservan
+const failWith = async (message, expected) => {
+  globalThis.__rpcError = { message };
+  await assert.rejects(() => adjust('salida', 6), expected);
+  assert.deepEqual(lastCalls().map(call => call.table), ['rpc:adjust_stock_level'], 'un fallo no intenta escribir por otra vía');
+};
+await failWith('Insufficient stock for this exit', /No hay stock suficiente/);
+await failWith('Quantity must change the stock', /producir un cambio/);
+await failWith('User not allowed to adjust stock', /No tienes permiso/);
+await failWith('Adjustment reason is required', /motivo es obligatorio/);
+await failWith('Active stock level not found', /No se encontró/);
+await failWith('error inesperado de red', /error inesperado de red/);
+globalThis.__rpcError = undefined;
 
-await adjust('ajuste', 2);
-[levelWrite, movementWrite] = lastWrites();
-assert.equal(levelWrite.payload.current_quantity, 2);
-assert.equal(movementWrite.payload.quantity, 3, 'el ajuste registra la diferencia absoluta');
-
-// Riesgo conocido: si falla el movimiento, el stock ya se cambió. Lo corregirá el ajuste atómico en SQL.
-globalThis.__failTable = 'stock_movements';
-await assert.rejects(() => adjust('entrada', 1), /fallo simulado/);
-assert.equal(lastWrites()[0].table, 'stock_levels', 'documenta que el stock se escribe antes que el movimiento');
-globalThis.__failTable = undefined;
+// La migración conserva las garantías que el cliente da por hechas
+const sql = readFileSync('supabase/migrations/20261012190000_stock_adjust_atomic.sql', 'utf8');
+for (const [pattern, why] of [
+  [/FOR UPDATE OF l/, 'bloquea la fila antes de leer la cantidad'],
+  [/auth\.uid\(\)/, 'usa la sesión real, no un usuario enviado por el cliente'],
+  [/role IN \('admin', 'manager'\)/, 'solo admin y manager'],
+  [/INSERT INTO public.stock_movements/, 'registra el movimiento en la misma función'],
+  [/REVOKE ALL ON FUNCTION public\.adjust_stock_level\([^)]*\) FROM PUBLIC, anon/, 'sin acceso anónimo'],
+]) assert.match(sql, pattern, why);
+assert.doesNotMatch(sql, /DROP |DELETE FROM|TRUNCATE|ALTER TABLE|CREATE TABLE/i, 'la migración solo añade una función');
 
 // Guarda: el sistema antiguo inventory_* no debe usarse desde fuera de su resto aislado (NotificationCenter, useInventory, inventoryStorage, types/inventory), pendiente de retirar por la vía revisada
 const legacy = /services\/storage\/inventoryStorage|@\/types\/inventory['"]|components\/inventory\/(?!LaundryReceiptReview)|hooks\/(useInventory|useMovements|useConsumptionConfig|useAutomaticConsumption)\b/;
@@ -98,4 +112,4 @@ const isolated = /[\\/](NotificationCenter\.tsx|useInventory\.ts|inventoryStorag
 const offenders = walk('src').filter(file => !file.includes('integrations') && !isolated.test(file) && legacy.test(readFileSync(file, 'utf8')));
 assert.deepEqual(offenders, [], `Importan código antiguo de inventario: ${offenders.join(', ')}`);
 
-console.log('PASS stockStorage: resumen, límites del ajuste y sin código antiguo');
+console.log('PASS stockStorage: resumen, ajuste delegado en SQL atómico, errores traducidos y sin código antiguo');

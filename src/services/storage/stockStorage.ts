@@ -25,6 +25,30 @@ import type {
 const db = supabase;
 type StockDbRow = Record<string, unknown>;
 
+type AdjustStockRpcClient = {
+  rpc: (
+    fn: 'adjust_stock_level',
+    args: {
+      stock_level_id_param: string;
+      movement_type_param: string;
+      quantity_param: number;
+      reason_param: string;
+      cost_per_unit_param: number | null;
+    }
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
+const ADJUST_STOCK_ERRORS: Array<[RegExp, string]> = [
+  [/Insufficient stock/i, 'No hay stock suficiente para realizar la salida.'],
+  [/must change the stock/i, 'La cantidad debe producir un cambio de stock.'],
+  [/not allowed/i, 'No tienes permiso para ajustar el stock.'],
+  [/reason is required/i, 'El motivo es obligatorio.'],
+  [/not found/i, 'No se encontró esa existencia en un almacén activo.'],
+];
+
+const translateAdjustStockError = (message: string): string =>
+  ADJUST_STOCK_ERRORS.find(([pattern]) => pattern.test(message))?.[1] ?? message;
+
 const toNumber = (value: unknown): number => {
   if (typeof value === 'number') return value;
   if (typeof value === 'string') return Number(value);
@@ -509,65 +533,32 @@ class StockStorageService {
   }
 
   async adjustStock(input: StockAdjustmentData): Promise<void> {
-    const currentQuantity = input.stock_level.current_quantity;
-    let newQuantity = currentQuantity;
-
-    if (input.movement_type === 'entrada') {
-      newQuantity = currentQuantity + input.quantity;
-    } else if (input.movement_type === 'salida') {
-      newQuantity = currentQuantity - input.quantity;
-      if (newQuantity < 0) {
-        throw new Error('No hay stock suficiente para realizar la salida.');
-      }
-    } else {
-      newQuantity = input.quantity;
-    }
-
-    const movementQuantity = input.movement_type === 'ajuste'
-      ? Math.abs(newQuantity - currentQuantity)
-      : input.quantity;
-
-    if (movementQuantity <= 0) {
-      throw new Error('La cantidad debe producir un cambio de stock.');
-    }
-
-    const { error: updateError } = await db
-      .from('stock_levels')
-      .update({
-        current_quantity: newQuantity,
-        updated_by: input.user_id,
-        ...(input.cost_per_unit != null ? { cost_per_unit: input.cost_per_unit } : {}),
-      })
-      .eq('id', input.stock_level.id);
-
-    if (updateError) throw updateError;
-
-    const { error: movementError } = await db.from('stock_movements').insert({
-      product_id: input.stock_level.product_id,
-      warehouse_id: input.stock_level.warehouse_id,
-      movement_type: input.movement_type,
-      quantity: movementQuantity,
-      previous_quantity: currentQuantity,
-      new_quantity: newQuantity,
-      reason: input.reason.trim(),
-      created_by: input.user_id,
+    // La función SQL bloquea la fila y escribe stock y movimiento en una sola transacción.
+    const { data, error } = await (db as unknown as AdjustStockRpcClient).rpc('adjust_stock_level', {
+      stock_level_id_param: input.stock_level.id,
+      movement_type_param: input.movement_type,
+      quantity_param: input.quantity,
+      reason_param: input.reason.trim(),
+      cost_per_unit_param: input.cost_per_unit ?? null,
     });
 
-    if (movementError) throw movementError;
+    if (error) throw new Error(translateAdjustStockError(error.message));
+
+    const result = (data ?? {}) as { previous_quantity?: number; new_quantity?: number; quantity?: number };
     void recordAiObservedEvent({
       eventType: 'stock_adjusted',
       entityType: 'stock_level',
       entityId: input.stock_level.id,
-      summary: `Stock ${input.movement_type}: ${movementQuantity} unidades`,
+      summary: `Stock ${input.movement_type}: ${result.quantity ?? input.quantity} unidades`,
       beforeData: {
         product_id: input.stock_level.product_id,
         warehouse_id: input.stock_level.warehouse_id,
-        current_quantity: currentQuantity,
+        current_quantity: result.previous_quantity ?? input.stock_level.current_quantity,
       },
       afterData: {
         product_id: input.stock_level.product_id,
         warehouse_id: input.stock_level.warehouse_id,
-        current_quantity: newQuantity,
+        current_quantity: result.new_quantity,
         movement_type: input.movement_type,
         reason: input.reason,
       },
