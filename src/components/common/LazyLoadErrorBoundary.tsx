@@ -2,6 +2,7 @@ import React, { Component, ReactNode, Suspense, startTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { renderErrorDetails } from '@/utils/renderErrorDetails';
+import { isChunkLoadError, reloadOnceForNewVersion } from '@/utils/browserCompat';
 
 interface Props {
   children: ReactNode;
@@ -79,11 +80,8 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
 
     const message = error?.message || '';
     const isLazyLoadError =
-      message.includes('Failed to fetch dynamically imported module') ||
-      message.includes('Loading chunk') ||
-      message.includes('Loading CSS chunk') ||
+      isChunkLoadError(error) ||
       message.includes('suspended while responding to synchronous input') ||
-      error.name === 'ChunkLoadError' ||
       message.includes('Minified React error #426');
 
     return {
@@ -98,12 +96,15 @@ export class LazyLoadErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('LazyLoadErrorBoundary caught an error:', error, errorInfo);
     this.setState({ componentStack: errorInfo.componentStack || '' });
+    // A chunk from the previous deployment no longer exists: load the published version once.
+    if (isChunkLoadError(error)) reloadOnceForNewVersion();
   }
 
   handleRetry = () => {
     const { retryCount } = this.state;
 
-    if (retryCount >= 3) {
+    // React.lazy keeps a failed import rejected, so only a reload can recover it.
+    if (retryCount >= 3 || isChunkLoadError(this.state.error)) {
       window.location.reload();
       return;
     }
