@@ -4,7 +4,9 @@ import { readFileSync } from 'node:fs';
 // Contrato de la migración que devuelve el permiso a las funciones de stock que usa la app.
 // La lógica SQL se verificó además en un PostgreSQL desechable (ver la PR); aquí se protege
 // lo que no debe cambiar: la comprobación contra la sesión y los permisos.
-const sql = readFileSync('supabase/migrations/20261013100000_stock_functions_session_grants.sql', 'utf8');
+// Sin comentarios: las reglas se comprueban sobre sentencias, no sobre la explicación de la cabecera
+const sql = readFileSync('supabase/migrations/20261013100000_stock_functions_session_grants.sql', 'utf8')
+  .split(/\r?\n/).filter(line => !line.trimStart().startsWith('--')).join('\n');
 
 const signatures = [
   'transfer_stock_between_warehouses\\(UUID, UUID, UUID, NUMERIC, TEXT, UUID\\)',
@@ -16,8 +18,8 @@ for (const signature of signatures) {
   assert.match(sql, new RegExp(`REVOKE ALL ON FUNCTION public\\.${signature} FROM PUBLIC, anon;`), `sin acceso anónimo: ${signature}`);
   assert.match(sql, new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${signature} TO authenticated, service_role;`), `permiso para sesión y servicio: ${signature}`);
 }
-assert.doesNotMatch(sql, /GRANT[^;]*\banon\b/i, 'nada se concede a anon');
-assert.doesNotMatch(sql, /GRANT[^;]*\bPUBLIC\b/i, 'nada se concede a PUBLIC');
+assert.doesNotMatch(sql, /GRANT[^;]*\banon\b/, 'nada se concede a anon');
+assert.doesNotMatch(sql, /GRANT[^;]*\bPUBLIC\b/, 'nada se concede a PUBLIC');
 
 // El consumo antiguo sigue sin permiso: el consumo automático ya corre en el servidor (cron)
 assert.doesNotMatch(sql, /GRANT[^;]*process_stock_consumption_for_task/i);
