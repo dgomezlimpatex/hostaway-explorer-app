@@ -113,7 +113,7 @@ const harness = () => {
 }
 
 // 4. The open report survives the phone reloading the tab; the photo choice is detected.
-const recovery = await load('src/features/cleaner/cleanerSessionRecovery.ts');
+const recovery = await load('src/features/cleaner/cleanerReloadRecovery.ts');
 {
   const local = memory();
   recovery.rememberOpenTask('owner', 'task-1', 1_000, local);

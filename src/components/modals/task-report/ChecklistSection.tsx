@@ -12,7 +12,7 @@ import { useTaskReports } from '@/hooks/useTaskReports';
 import { useToast } from '@/hooks/use-toast';
 import { compressImage, shouldCompressImage } from '@/utils/imageCompression';
 import { useCleanerWorkActions } from '@/features/cleaner/CleanerWorkContext';
-import { clearPhotoPicking, markPhotoPicking } from '@/features/cleaner/cleanerSessionRecovery';
+import { clearPhotoPicking, markPhotoPicking } from '@/features/cleaner/cleanerReloadRecovery';
 
 interface ChecklistSectionProps {
   template: TaskChecklistTemplate | undefined;

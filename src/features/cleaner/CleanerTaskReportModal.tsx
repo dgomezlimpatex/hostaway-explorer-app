@@ -25,7 +25,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { readCleanerDraft } from './readCleanerDraft';
 import { CleanerReportErrorBoundary } from './CleanerReportErrorBoundary';
 import { localPhotoErrorMessage } from './prepareLocalPhoto';
-import { consumePhotoPickingRestart } from './cleanerSessionRecovery';
+import { consumePhotoPickingRestart } from './cleanerReloadRecovery';
 import { CleanerSendStatus, getCleanerSendState } from './CleanerSendStatus';
 
 const SAVE_TIMEOUT_MS = 15_000;

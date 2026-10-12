@@ -2,7 +2,7 @@ import { CleanerTodayTasksPage } from '@/components/tasks/CleanerTodayTasksPage'
 import { useCleanerTasks } from './useCleanerData';
 import { CleanerTaskReportModal } from './CleanerTaskReportModal';
 import { useMadridToday } from './useMadridToday';
-import { useOpenCleanerTask } from './cleanerSessionRecovery';
+import { useOpenCleanerTask } from './cleanerReloadRecovery';
 
 export default function CleanerTasksScreen() {
   const today = useMadridToday();

@@ -10,7 +10,7 @@ import { useCleanerTasks } from './useCleanerData';
 import { madridDayDate, useMadridToday } from './useMadridToday';
 import { mergeCleanerCalendarTasks, useCleanerRecurring } from './useCleanerRecurring';
 import { CleanerEntryLoading } from '@/components/dashboard/CleanerEntryLoading';
-import { useOpenCleanerTask } from './cleanerSessionRecovery';
+import { useOpenCleanerTask } from './cleanerReloadRecovery';
 
 export default function CleanerCalendarScreen() {
   const today = useMadridToday();

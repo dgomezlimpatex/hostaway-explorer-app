@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, Upload } from 'lucide-react';
 import { useCleanerWorkActions } from '@/features/cleaner/CleanerWorkContext';
-import { clearPhotoPicking, markPhotoPicking } from '@/features/cleaner/cleanerSessionRecovery';
+import { clearPhotoPicking, markPhotoPicking } from '@/features/cleaner/cleanerReloadRecovery';
 
 interface MediaUploadButtonsProps {
   onSingleFileSelect: (file: File) => void;
