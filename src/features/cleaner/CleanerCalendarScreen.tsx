@@ -4,13 +4,13 @@ import { CleanerMobileCalendar } from '@/components/calendar/CleanerMobileCalend
 import { CleanerDesktopCalendar } from '@/components/calendar/CleanerDesktopCalendar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatMadridDate } from '@/utils/date';
-import type { Task } from '@/types/calendar';
 import { CleanerTaskReportModal } from './CleanerTaskReportModal';
 import { CleanerSyncStatus } from './CleanerSyncStatus';
 import { useCleanerTasks } from './useCleanerData';
 import { madridDayDate, useMadridToday } from './useMadridToday';
 import { mergeCleanerCalendarTasks, useCleanerRecurring } from './useCleanerRecurring';
 import { CleanerEntryLoading } from '@/components/dashboard/CleanerEntryLoading';
+import { useOpenCleanerTask } from './cleanerReloadRecovery';
 
 export default function CleanerCalendarScreen() {
   const today = useMadridToday();
@@ -19,10 +19,10 @@ export default function CleanerCalendarScreen() {
     const date = params.get('date');
     return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? madridDayDate(date) : today;
   });
-  const [selected, setSelected] = useState<Task | null>(null);
   const data = useCleanerTasks(currentDate);
   const recurring = useCleanerRecurring(currentDate);
   const tasks = useMemo(() => mergeCleanerCalendarTasks(data.tasks, recurring.data || []), [data.tasks, recurring.data]);
+  const [selected, setSelected] = useOpenCleanerTask(tasks, data.hasData);
   const isMobile = useIsMobile();
   const day = formatMadridDate(currentDate);
   const tomorrow = new Date(currentDate);
@@ -35,7 +35,7 @@ export default function CleanerCalendarScreen() {
       const task = tasks.find(item => item.id === requestedTask || item.originalTaskId === requestedTask);
       if (task) { setSelected(task); openedLink.current = requestedTask; }
     }
-  }, [requestedTask, data.hasData, tasks]);
+  }, [requestedTask, data.hasData, tasks, setSelected]);
   const navigate = (direction: 'prev' | 'next') => setCurrentDate(current => {
     const date = new Date(current);
     date.setUTCDate(date.getUTCDate() + (direction === 'next' ? 1 : -1));

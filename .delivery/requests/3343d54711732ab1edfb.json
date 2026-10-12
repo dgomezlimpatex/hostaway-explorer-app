@@ -1,0 +1,25 @@
+{
+  "request": "Dani pide optimizar los reportes de la vista de limpiadora para móviles antiguos: fallos al subir fotos (error al cargar, no se suben, vuelve a la página principal) y servicios que no se finalizan aunque todo esté hecho.",
+  "reason": "Cambios locales de la pantalla de limpiadora: recordar en localStorage/sessionStorage la tarea abierta y si se estaba eligiendo una foto, para reabrir el reporte y avisar si Android recarga la pestaña al usar la cámara; límites de tiempo en el guardado local (IndexedDB) y en la compresión de fotos para que la pantalla no quede bloqueada en 'Guardando…'; y mostrar el estado de envío tras finalizar, pidiendo el envío existente (syncCleanerWork, sin modificarlo) en cuanto el reporte terminado queda pendiente. No añade tipos de escritura, consultas, permisos, sesión, comunicaciones ni integraciones: el envío es el mismo que ya se hacía periódicamente, solo se pide antes.",
+  "verification": "scripts/cleanerOldPhoneRecoveryTest.mjs (Node, sin red) ejecuta los manejadores reales save y uploadPhoto del modal: un guardado bloqueado termina con error recuperable, libera 'Guardando…', reabre el almacenamiento y no bloquea el siguiente guardado; prueba recordar/olvidar la tarea abierta por cuenta y caducidad, la detección única del reinicio durante la cámara y su limpieza al volver, los estados de envío y su botón de reintento, y que la compresión con un decodificador que no responde conserva la foto original y libera memoria. scripts/cleanerReportPreparationTest.mjs comprueba que una lectura bloqueada reabre el almacenamiento. Siguen pasando cleanerFinishTest, cleanerPhotoFileTest, cleanerTaskHeaderTest, cleanerPropertyDetailsTest, taskReportCompletionTest, subtaskPhotoGalleryTest y calendarCleanerRoutingTest. En local, cleanerOfflineBrowserTest (Chromium móvil, service worker real, backend simulado) comprueba además que el reporte se restaura tras recargar con el selector de fotos abierto, el aviso de rehacer la foto, 'Guardada en el móvil, sin enviar' sin cobertura, 'Limpieza enviada' tras enviar, el envío automático al abrir un reporte terminado pendiente y todo el flujo previo; pasa sola y combinada con la PR de arranque. Build correcto; 102 errores de tipos previos sin cambios y 0 en Node; lint sin errores nuevos. Limitación: no probado en un Android físico; la cola no tiene Chromium.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerOldPhoneRecoveryTest.mjs",
+    "scripts/cleanerReportPreparationTest.mjs",
+    "scripts/cleanerFinishTest.mjs",
+    "scripts/cleanerPhotoFileTest.mjs",
+    "scripts/cleanerTaskHeaderTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "ab1de266d8ae2a76af6a9bf31ba896cf5cd1fa70f4c7b0e37bf1e3c62f52fbfe"
+}

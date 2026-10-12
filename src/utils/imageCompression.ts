@@ -55,11 +55,22 @@ export interface CompressionOptions {
   maxSizeKB?: number;
 }
 
+// Old phones short on memory may never call onload/toBlob. Keep the original instead of blocking.
+const COMPRESSION_TIMEOUT_MS = 20_000;
+
 export const compressImage = async (
   file: File, 
   options: CompressionOptions = {}
 ): Promise<File> => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolveResult, reject) => {
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined = undefined;
+    const resolve = (result: File) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolveResult(result);
+    };
     const {
       maxWidth = 1920,
       maxHeight = 1080,
@@ -96,6 +107,10 @@ export const compressImage = async (
         URL.revokeObjectURL(objectUrl);
         objectUrl = null;
       }
+      // Release the decoded bitmap memory right away on low-memory phones.
+      canvas.width = 0;
+      canvas.height = 0;
+      img.removeAttribute('src');
     };
 
     img.onload = () => {
@@ -155,6 +170,11 @@ export const compressImage = async (
       resolve(file); // Fallback al original en vez de rechazar
     };
 
+    timer = setTimeout(() => {
+      console.warn('⚠️ La compresión no responde, usando archivo original');
+      cleanup();
+      resolve(file);
+    }, COMPRESSION_TIMEOUT_MS);
     objectUrl = URL.createObjectURL(file);
     img.src = objectUrl;
   });

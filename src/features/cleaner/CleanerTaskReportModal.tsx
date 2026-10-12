@@ -16,14 +16,23 @@ import { CleanerWorkContext } from './CleanerWorkContext';
 import { cleanerBundleKey, loadCleanerBundle, useCleanerCachedQuery, useCleanerIdentity } from './useCleanerData';
 import {
   changeDraft, draftKey, getCleanerStoreVersion, LOCAL_PHOTO_PREFIX, savePhotoWithDraft,
-  subscribeCleanerStore, type CleanerDraft,
+  resetCleanerDatabase, subscribeCleanerStore, type CleanerDraft,
 } from './offlineStore';
+import { withStorageTimeout } from './storageTimeout';
 import type { CleanerChecklist } from './reportMerge';
 import { IncidentReportTrigger } from '@/components/incidents/IncidentReportTrigger';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { readCleanerDraft } from './readCleanerDraft';
 import { CleanerReportErrorBoundary } from './CleanerReportErrorBoundary';
 import { localPhotoErrorMessage } from './prepareLocalPhoto';
+import { consumePhotoPickingRestart } from './cleanerReloadRecovery';
+import { CleanerSendStatus, getCleanerSendState } from './CleanerSendStatus';
+
+const SAVE_TIMEOUT_MS = 15_000;
+// Includes copying the photo out of the picker (up to 30 s) and the local write.
+const PHOTO_SAVE_TIMEOUT_MS = 60_000;
+const STORAGE_STALLED = 'El guardado del móvil no ha respondido. Pulsa Reintentar guardar. No borres los datos de la app.';
+const PHOTO_STALLED = 'El móvil ha tardado demasiado en guardar la foto. Comprueba si aparece en el apartado; si no, vuelve a adjuntarla.';
 
 interface Props { task: Task | null; open: boolean; onOpenChange: (open: boolean) => void; recovery?: boolean }
 
@@ -60,6 +69,10 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   const closingRef = useRef(false);
   const saveErrorRef = useRef<string | null>(null);
   const version = useSyncExternalStore(subscribeCleanerStore, getCleanerStoreVersion, () => 0);
+  const [restartedDuringPhoto, setRestartedDuringPhoto] = useState(() => consumePhotoPickingRestart());
+  const syncRef = useRef(offlineStatus?.sync);
+  syncRef.current = offlineStatus?.sync;
+  const autoSends = useRef(0);
 
   const applyDraft = useCallback((saved: CleanerDraft) => {
     setDraft(current => !current || saved.revision >= current.revision ? saved : current);
@@ -133,7 +146,8 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   const save = useCallback((change: (current: CleanerDraft | undefined) => CleanerDraft) => {
     setSaving(count => count + 1);
     setError(null);
-    const operation = saveChain.current.then(() => changeDraft(key, change));
+    // A stalled phone storage must not keep the screen on "Guardando…" and block finishing.
+    const operation = saveChain.current.then(() => withStorageTimeout(changeDraft(key, change), SAVE_TIMEOUT_MS, STORAGE_STALLED, resetCleanerDatabase));
     saveChain.current = operation.catch(() => undefined);
     return operation.then(saved => { saveErrorRef.current = null; setError(null); applyDraft(saved); return saved; })
       .catch(reason => { saveErrorRef.current = reason.message || 'No se ha podido guardar el avance. Mantén esta pantalla abierta y vuelve a intentarlo.'; setError(saveErrorRef.current); throw reason; })
@@ -173,10 +187,10 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
       await saveChain.current;
       const id = crypto.randomUUID();
       const capturedAt = new Date().toISOString();
-      const saved = await savePhotoWithDraft(key, {
+      const saved = await withStorageTimeout(savePhotoWithDraft(key, {
         key: `${identity.ownerId}:${id}`, id, ownerId: identity.ownerId, taskId,
         checklistItemId, file, name: file.name, mimeType: getMimeType(file), capturedAt,
-      });
+      }), PHOTO_SAVE_TIMEOUT_MS, PHOTO_STALLED, resetCleanerDatabase);
       applyDraft(saved);
       setPhotoErrors(current => {
         const next = { ...current };
@@ -217,6 +231,13 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   };
 
   const busy = saving > 0 || preparingPhotos > 0;
+  const sendState = getCleanerSendState(completed ? draft : null, offlineStatus);
+  // Send right after finishing instead of waiting for the next periodic attempt.
+  useEffect(() => {
+    if (!completed || sendState !== 'pending' || autoSends.current >= 3) return;
+    const timer = setTimeout(() => { autoSends.current++; void syncRef.current?.(); }, 800);
+    return () => clearTimeout(timer);
+  }, [completed, sendState]);
   const loading = !preparationError && (!loadedLocal || identity.isLoading || (!virtual && bundle.isLoading && !bundle.data));
   return <CleanerWorkContext.Provider value={{ uploadPhoto, isPreparingPhoto: preparingPhotos > 0, changePhotoPreparation: delta => setPreparingPhotos(count => Math.max(0, count + delta)) }}>
     <Dialog open onOpenChange={open => { if (!open) void close(); }}>
@@ -242,6 +263,13 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
               if (identity.data) void bundle.refetch();
             }}>Reintentar preparación</button>
           </div>}
+          {restartedDuringPhoto && !completed && <div role="alert" className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+            <p>El móvil ha cerrado la app mientras hacías la foto, normalmente por falta de memoria. Tu avance está guardado, pero esa foto no: vuelve a hacerla.</p>
+            <p className="mt-1">Si pasa a menudo, cierra las otras apps antes de usar la cámara.</p>
+            <button className="mt-1 min-h-11 font-semibold underline" onClick={() => setRestartedDuringPhoto(false)}>Entendido</button>
+          </div>}
+          {completed && draft && <CleanerSendStatus state={sendState} error={draft.error}
+            retrying={offlineStatus?.isSyncing} onRetry={offlineStatus?.isOnline ? () => void offlineStatus.sync() : undefined} />}
           {recovery && <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm">Este trabajo está guardado en el móvil y su envío sigue pendiente. Puedes revisar las fotos y notas para consultarlo con coordinación.</p>}
           {photoError && <div role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">
             <p>{photoError}</p>
