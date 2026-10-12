@@ -1,0 +1,22 @@
+{
+  "request": "Dani autorizó encargarse de todo el plan de Inventario; este paso: informes con el coste real de cada movimiento y lista de reposición completa y exportable.",
+  "reason": "Solo cálculo y presentación en el navegador a partir de datos que ya se leían: el informe valora consumos con el coste guardado en cada movimiento (columna existente unit_cost_at_movement) y, si falta, con el coste actual; la reposición se muestra con su total y se exporta a CSV. No escribe datos, ni toca SQL, permisos ni integraciones.",
+  "verification": "Prueba Node del cálculo real (prioridad del coste: movimiento, almacén, otro almacén, sin coste; coste 0 respetado; totales y orden; sin errores de coma flotante; 20.000 movimientos en menos de 1 s, antes era cuadrático) y del CSV (orden, comillas, punto y coma, neutralización de fórmulas), con mutaciones comprobadas. Prueba de almacenamiento ampliada (normaliza unit_cost_at_movement). Navegador (Edge, móvil) con datos simulados: valor 8,00 € por el coste guardado y no 1,50 € del actual, «Mostrando 12 de 15», descarga CSV con las 15 líneas y BOM, sin errores ni desbordamiento. tsc sin errores nuevos en stock, eslint limpio, build correcto. No probado con sesión real ni contra Supabase.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/stockReportBuildTest.mjs",
+    "scripts/stockReportsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "cea5603832a7bb355e57c9f7d948184f877a52107789f273a3d9b7bf0700301b"
+}
