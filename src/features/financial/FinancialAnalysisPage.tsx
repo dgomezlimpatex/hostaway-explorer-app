@@ -1,28 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Settings2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSede } from '@/contexts/SedeContext';
 import { formatMadridDate } from '@/utils/date';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useFinancialData } from './useFinancialData';
-import { COST_ITEMS, applyFinanceRules, newSettings, parseAmount, priceAt, readSettings, setRate, validDate,
-  type Category, type FinanceSettings, type FinancialService, type Filters, type ItemId } from './financialModel';
-import type { DirectoryEntry } from './financialSource';
+import { applyFinanceRules, newSettings, readSettings, validDate,
+  type Category, type FinanceSettings, type FinancialService, type Filters } from './financialModel';
 import { loadFinance, saveFinance } from './financialPersistence';
-import { IncomePanel, ConsumptionPanel } from './FinancialConfiguration';
+import { FinancialSettings, type SettingsTab } from './FinancialSettings';
 import { loadFinancialView, saveFinancialView, financialMonthRange, selectedFinancialMonth, financialYearRange, selectedFinancialYear, validDetailConcept, type FinancialDrilldown } from './financialView';
 import { FinancialTrend, type FinancialTrendView } from './FinancialEvolution';
 import { FinancialExternalIncomes, FinancialServices } from './FinancialServices';
 import { ServiceEditor } from './FinancialServiceEditor';
-import { formatRate } from './financialRateFormat';
 import { adjacentMonth, categoryNames, dashboardSeries, type ComparisonView } from './financialCharts';
 import { FinancialAnnual } from './FinancialAnnual';
 import { FinancialDetail } from './FinancialDetail';
 import { isIncomeConcept } from './financialDrilldown';
-import { money, decimal, financialName } from './financialFormat';
+import { financialName } from './financialFormat';
 import { FinancialMonthHero, FinancialSummarySkeleton } from './FinancialMonthHero';
 import { FinancialMonthBar } from './FinancialMonthBar';
 import { ActiveFilterChips, FinancialFilterPanel, type FilterKey } from './FinancialFilterPanel';
@@ -36,12 +33,6 @@ import { FinancialReports } from './FinancialReports';
 
 
 const panel = 'min-w-0 rounded-2xl border border-[var(--fin-line)] bg-[var(--fin-surface)] p-5';
-const selectClass = 'h-10 rounded-md border border-input bg-background px-3 text-sm w-full';
-function download(filename: string, content: string, type: string) {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 const tabClass = (active: boolean) => `fin-focus relative shrink-0 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${active ? 'text-[var(--fin-ink)] after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:rounded-full after:bg-[var(--fin-ink)]' : 'fin-muted hover:text-[var(--fin-ink)]'}`;
 const headerButton = 'fin-focus inline-flex h-10 items-center justify-center rounded-full border border-[var(--fin-line)] bg-[var(--fin-surface)] px-3 text-[13px] font-medium sm:px-4 sm:text-sm transition-colors hover:bg-[var(--fin-sunk)] disabled:opacity-50';
 export default function FinancialAnalysisPage() {
@@ -90,6 +81,9 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   const [trendView, setTrendView] = useState<FinancialTrendView>({ open: true, matchingDays: true, comparison: 'balance', chart: 'lines' });
   const [editing, setEditing] = useState<FinancialService | null>(null);
   const [profitFilter, setProfitFilter] = useState(view.profitFilter);
+  const lastSettings = useRef<SettingsTab>(view.tab === 'incomes' || view.tab === 'expenses' ? view.tab : 'rates');
+  const settingsOpen = tab === 'incomes' || tab === 'expenses' || tab === 'rates';
+  const chooseSettings = (next: SettingsTab) => { lastSettings.current = next; setTab(next); };
   const [filtersOpen, setFiltersOpen] = useState(false);
   useEffect(() => { saveFinancialView(storageKey, { filters, tab, profitFilter, ...(drilldown ? { drilldown } : {}), ...(monthlyPeriod ? { monthlyPeriod } : {}), annualComparison, allocation, comparison, budgetId, alerts: alertRules }); }, [storageKey, filters, tab, profitFilter, drilldown, monthlyPeriod, annualComparison, allocation, comparison, budgetId, alertRules]);
   const [imported, setImported] = useState<FinanceSettings | null>(null);
@@ -202,13 +196,11 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
       {!filters.start || !filters.end || filters.start > filters.end ? <p role="alert">Selecciona un intervalo de fechas válido.</p> : storageError ? <p role="alert" className={panel}>Configuración sin cargar. No se muestran balances; pulsa Descartar y recargar para reintentar.</p> : query.error ?
         <div role="alert" className={panel}><p>No se pudieron cargar los datos. No se muestran totales parciales.</p><Button variant="outline" onClick={() => query.refetch()}>Reintentar</Button></div> : query.isPending ?
           <FinancialSummarySkeleton /> : !sharedReady ? <FinancialSummarySkeleton /> : <>
-            <FinancialMonthHero focusConcept={chartFocus.current?.concept} breakdown={{ revenue: dashboardSeries(result).incomes.map(row => ({ key: row.id, name: row.name, value: row.value, concept: row.id, linked: true })), personal: [{ key: 'activity', name: 'Actividad y otros costes de personal', value: result.total.costs.personal, concept: 'personal' }, { key: 'structure', name: 'Dirección y estructura', value: result.total.costs.salary, concept: 'personal' }] }} key={`${filters.start}:${filters.end}:${allocation}`} total={result.total} previous={insights.previous} comparisonLabel={insights.period?.label ?? null} start={filters.start} singleMonth={singleMonth}
-              partial={singleMonth && !monthValue} onDetails={id => openDetails(id)} />
-            <nav aria-label="Vistas del análisis" className="flex flex-wrap items-end justify-between gap-x-6 border-b border-[var(--fin-line)]">
-              <div className="flex gap-1 overflow-x-auto">{([['general', 'Resumen'], ['services', 'Servicios']] as const).map(([id, title]) =>
-                <button key={id} type="button" aria-pressed={tab === id} className={tabClass(tab === id)} onClick={() => setTab(id)}>{title}</button>)}{tab === 'details' && drilldown && <button type="button" aria-pressed="true" className={tabClass(true)} onClick={() => setTab('details')}>{isIncomeConcept(drilldown.concept) ? 'Ingresos' : 'Desglose de gastos'}</button>}</div>
-              <div className="flex items-center gap-1 overflow-x-auto"><span className="fin-muted pr-1 text-xs uppercase tracking-wider">Ajustes</span>{([['incomes', 'Otros ingresos'], ['expenses', 'Otros gastos'], ['rates', 'Tarifas']] as const).map(([id, title]) =>
-                <button key={id} type="button" aria-pressed={tab === id} className={tabClass(tab === id)} onClick={() => setTab(id)}>{title}</button>)}</div>
+            {!settingsOpen && <FinancialMonthHero focusConcept={chartFocus.current?.concept} breakdown={{ revenue: dashboardSeries(result).incomes.map(row => ({ key: row.id, name: row.name, value: row.value, concept: row.id, linked: true })), personal: [{ key: 'activity', name: 'Actividad y otros costes de personal', value: result.total.costs.personal, concept: 'personal' }, { key: 'structure', name: 'Dirección y estructura', value: result.total.costs.salary, concept: 'personal' }] }} key={`${filters.start}:${filters.end}:${allocation}`} total={result.total} previous={insights.previous} comparisonLabel={insights.period?.label ?? null} start={filters.start} singleMonth={singleMonth}
+              partial={singleMonth && !monthValue} onDetails={id => openDetails(id)} />}
+            <nav aria-label="Vistas del análisis" className="flex gap-1 overflow-x-auto border-b border-[var(--fin-line)]">{([['general', 'Resumen'], ['services', 'Servicios']] as const).map(([id, title]) =>
+              <button key={id} type="button" aria-pressed={tab === id} className={tabClass(tab === id)} onClick={() => setTab(id)}>{title}</button>)}{tab === 'details' && drilldown && <button type="button" aria-pressed="true" className={tabClass(true)} onClick={() => setTab('details')}>{isIncomeConcept(drilldown.concept) ? 'Ingresos' : 'Desglose de gastos'}</button>}
+              <button type="button" aria-pressed={settingsOpen} className={tabClass(settingsOpen)} onClick={() => chooseSettings(lastSettings.current)}>Ajustes</button>
             </nav>
             {tab === 'general' && <>
               {annualYear && <FinancialAnnual services={data?.services || []} settings={settings} filters={effectiveFilters} allocation={allocation} comparison={annualComparison} onComparison={setAnnualComparison} onDetails={openDetails} />}
@@ -218,53 +210,14 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
               {!annualYear && <FinancialTrend services={data?.services || []} settings={settings} filters={effectiveFilters} allocation={allocation} view={trendView} onViewChange={patch => setTrendView(current => ({ ...current, ...patch }))} onDetails={openDetails} />}
             </>}
             {tab === 'details' && drilldown && <FinancialDetail result={result} settings={settings} concept={drilldown.concept} filters={filters} clients={data?.clients || []} onBack={returnToChart} />}
-            {tab === 'incomes' && <IncomePanel settings={settings} result={result} clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} date={filters.start} onChange={commit} />}
-            {tab === 'services' && <><FinancialExternalIncomes result={result} onManage={() => setTab('incomes')} /><FinancialServices result={result} filter={profitFilter} onFilter={setProfitFilter} onProperty={id => setFilters(current => ({ ...current, properties: [id] }))} onEdit={setEditing} /></>}
-            {tab === 'expenses' && <section className={panel}><h2 className="text-lg mb-2 font-semibold text-[#310984]">Gastos adicionales del análisis</h2><p className="mb-4 text-sm text-slate-500">Registra solo gastos no incluidos ya en los servicios. Sin cliente, se consideran generales. El salario de dirección de turismo se calcula automáticamente; no lo añadas de nuevo.</p>
-              <ExpenseForm clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} date={today} onAdd={expense => commit({ ...settings, expenses: [...settings.expenses, expense] })} />
-              <div className="mt-5 space-y-2">{result.expenses.map(expense => <div key={expense.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-violet-50 p-3 text-sm"><div><strong>{expense.label}</strong><p>{expense.date} · {expense.clientId ? clientName(expense.clientId) : 'General'} · {categoryNames[expense.category]}</p></div><div className="flex items-center gap-3"><strong>{money(expense.cents)}</strong><>{expense.automatic ? <span className="text-xs text-violet-700">Calculado desde Tarifas</span> : <Button size="sm" variant="outline" onClick={() => commit({ ...settings, expenses: settings.expenses.filter(item => item.id !== expense.id) })}>Quitar del análisis</Button>}</></div></div>)}{!result.expenses.length && <p className="text-sm text-slate-500">Sin gastos adicionales en este periodo.</p>}</div>
-            </section>}
-            {tab === 'rates' && <section className={`${panel} space-y-5`}><h2 className="text-lg flex items-center gap-2 font-semibold text-[#310984]"><Settings2 className="h-5 w-5" />Tarifas personalizables · sin IVA</h2><p className="text-sm text-slate-500">Conservamos tres decimales por unidad y redondeamos cada categoría por servicio a céntimos. Los precios iniciales se aplican hasta que exista una tarifa fechada.</p>
-              <RateForm workers={data?.workers || []} today={today} onSave={rate => commit({ ...settings, rates: setRate(settings.rates, rate) })} />
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{COST_ITEMS.map(item => <div key={item.id} className="rounded-xl bg-violet-50 p-3 text-sm"><p className="font-medium">{item.label}</p><p className="text-[#310984]">{formatRate(item.id, priceAt(settings.rates, item.id, filters.end))} / {item.unit}</p></div>)}</div>
-              <p className="text-xs text-slate-500">Tarifa general vigente al {filters.end}. Las excepciones por trabajador figuran en el historial.</p>
-              <div className="space-y-2">{[...settings.rates].sort((a, b) => b.date.localeCompare(a.date)).map(rate => <p className="text-sm" key={`${rate.item}:${rate.date}:${rate.workerId || ''}`}>{rate.date} · {COST_ITEMS.find(item => item.id === rate.item)?.label} · {rate.workerId ? data?.workers.find(worker => worker.id === rate.workerId)?.name || 'Trabajador' : 'General'} · <strong>{formatRate(rate.item, rate.mills)}</strong></p>)}</div>
-              <div className="flex flex-wrap items-center gap-3 border-t pt-4"><Button variant="outline" onClick={() => download('limpatex-costes-copia.json', JSON.stringify(settings, null, 2), 'application/json')}>Exportar copia de ajustes</Button>
-                {!loaded.error && loaded.hasLocal && <Button variant="outline" onClick={() => setImported(loaded.settings)}>Importar ajustes antiguos de este navegador</Button>}
-                <label className="cursor-pointer rounded-md border bg-white px-4 py-2 text-sm">Restaurar copia<input className="sr-only" type="file" accept=".json,application/json" onChange={async event => { const file = event.target.files?.[0]; event.target.value = ''; if (!file) return; try { if (file.size > 5000000) throw new Error('Archivo demasiado grande'); setImported(readSettings(JSON.parse(await file.text()))); } catch { setMessage('La copia no es válida. No se ha cambiado ningún dato.'); } }} /></label>
-              </div>
-              <ConsumptionPanel settings={settings} clients={data?.clients || []} properties={data?.properties || []} onChange={commit} />
-            </section>}
+            {tab === 'services' && <><FinancialExternalIncomes result={result} onManage={() => chooseSettings('incomes')} /><FinancialServices result={result} filter={profitFilter} onFilter={setProfitFilter} onProperty={id => setFilters(current => ({ ...current, properties: [id] }))} onEdit={setEditing} /></>}
+            {(tab === 'incomes' || tab === 'expenses' || tab === 'rates') && <FinancialSettings tab={tab} onTab={chooseSettings} settings={settings} result={result} today={today} start={filters.start} end={filters.end}
+              clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} onCommit={commit} legacy={loaded} onImport={setImported} onMessage={setMessage} />}
           </>}
       <ServiceEditor service={editing} settings={settings} onClose={() => setEditing(null)} onSave={adjustment => {
         if (editing && commit({ ...settings, adjustments: { ...settings.adjustments, [editing.id]: adjustment } })) setEditing(null);
       }} />
-      <Dialog open={!!imported} onOpenChange={open => !open && setImported(null)}><DialogContent><DialogHeader><DialogTitle>Restaurar copia de costes</DialogTitle></DialogHeader><p>Esta copia contiene {imported?.rates.length} tarifas y {imported?.expenses.length} gastos. Sustituirá el borrador completo de esta sede. Revisa los cambios antes de guardarlos y compartirlos. Los servicios de la app no se modifican.</p><Button variant="outline" onClick={() => setImported(null)}>Cancelar</Button><Button onClick={() => { if (imported && commit(imported)) setImported(null); }}>Restaurar esta copia</Button></DialogContent></Dialog>
+      <Dialog open={!!imported} onOpenChange={open => !open && setImported(null)}><DialogContent className="fin-dialog rounded-3xl border-[var(--fin-line)] bg-[var(--fin-surface)] text-[var(--fin-ink)]"><DialogHeader><DialogTitle className="fin-display text-2xl">Restaurar copia de costes</DialogTitle></DialogHeader><p className="fin-muted text-sm">Esta copia contiene {imported?.rates.length} tarifas y {imported?.expenses.length} gastos. Sustituirá el borrador completo de esta sede. Revisa los cambios antes de guardarlos y compartirlos. Los servicios de la app no se modifican.</p><div className="flex flex-wrap justify-end gap-2"><Button variant="outline" className="rounded-full" onClick={() => setImported(null)}>Cancelar</Button><Button className="rounded-full" onClick={() => { if (imported && commit(imported)) setImported(null); }}>Restaurar esta copia</Button></div></DialogContent></Dialog>
     </div>
   </main>;
-}
-
-function RateForm({ workers, today, onSave }: { workers: DirectoryEntry[]; today: string; onSave: (rate: FinanceSettings['rates'][number]) => boolean }) {
-  const [item, setItem] = useState<ItemId>('labor'); const [date, setDate] = useState(today); const [amount, setAmount] = useState('14,50'); const [workerId, setWorkerId] = useState(''); const [error, setError] = useState('');
-  return <form className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5" onSubmit={event => { event.preventDefault(); const mills = parseAmount(amount); if (mills === null || !validDate(date) || (item === 'products' && mills > 100000)) { setError('Introduce una fecha y un valor válido con hasta tres decimales; el porcentaje debe estar entre 0 y 100.'); return; } if (onSave({ item, date, mills, ...(item === 'labor' && workerId ? { workerId } : {}) })) setError(''); }}>
-    <label className="text-sm">Concepto<select aria-label="Concepto" className={selectClass} value={item} onChange={event => { const id = event.target.value as ItemId; setItem(id); setAmount(String(COST_ITEMS.find(cost => cost.id === id)!.mills / 1000)); }}>{COST_ITEMS.map(cost => <option key={cost.id} value={cost.id}>{cost.label}</option>)}</select></label>
-    <label className="text-sm">{item === 'products' ? 'Porcentaje sobre limpieza' : item === 'tourismSalary' ? 'Coste de empresa mensual' : 'Precio unitario sin IVA'}<Input inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} /></label>
-    <label className="text-sm">Aplicar desde<Input type="date" value={date} onChange={event => setDate(event.target.value)} /></label>
-    <label className="text-sm">Trabajador<select disabled={item !== 'labor'} className={selectClass} value={workerId} onChange={event => setWorkerId(event.target.value)}><option value="">Todos · tarifa general</option>{workers.map(worker => <option value={worker.id} key={worker.id}>{worker.name}</option>)}</select></label>
-    <Button className="bg-[#310984]" type="submit">Guardar tarifa</Button>{error && <p role="alert" className="col-span-full text-sm text-red-700">{error}</p>}
-  </form>;
-}
-
-function ExpenseForm({ clients, properties, workers, date, onAdd }: { clients: DirectoryEntry[]; properties: (DirectoryEntry & { clientId: string })[]; workers: DirectoryEntry[]; date: string; onAdd: (expense: FinanceSettings['expenses'][number]) => boolean }) {
-  const [label, setLabel] = useState(''); const [amount, setAmount] = useState(''); const [expenseDate, setDate] = useState(date); const [category, setCategory] = useState<Category>('other');
-  const [clientId, setClient] = useState(''); const [propertyId, setProperty] = useState(''); const [workerId, setWorker] = useState(''); const [error, setError] = useState('');
-  return <form className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={event => { event.preventDefault(); const cents = parseAmount(amount, 2); if (!label.trim() || cents === null || !validDate(expenseDate)) { setError('Completa el concepto, la fecha y el importe sin IVA.'); return; } if (onAdd({ id: crypto.randomUUID(), date: expenseDate, label: label.trim(), cents, category, clientId, propertyId, workerId })) { setLabel(''); setAmount(''); setError(''); } }}>
-    <label className="text-sm">Concepto del gasto<Input value={label} maxLength={200} onChange={event => setLabel(event.target.value)} /></label><label className="text-sm">Importe sin IVA<Input inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} /></label>
-    <label className="text-sm">Fecha del gasto<Input type="date" value={expenseDate} onChange={event => setDate(event.target.value)} /></label>
-    <label className="text-sm">Categoría<select className={selectClass} value={category} onChange={event => setCategory(event.target.value as Category)}>{Object.entries(categoryNames).map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select></label>
-    <label className="text-sm">Cliente del gasto<select className={selectClass} value={clientId} onChange={event => { setClient(event.target.value); setProperty(''); }}><option value="">General · sin cliente</option>{clients.map(client => <option value={client.id} key={client.id}>{financialName(client.name)}</option>)}</select></label>
-    <label className="text-sm">Propiedad del gasto<select className={selectClass} value={propertyId} onChange={event => { const id = event.target.value; setProperty(id); if (id) setClient(properties.find(property => property.id === id)!.clientId); }}><option value="">Sin propiedad</option>{properties.filter(property => !clientId || property.clientId === clientId).map(property => <option value={property.id} key={property.id}>{property.name}</option>)}</select></label>
-    <label className="text-sm">Trabajador del gasto<select className={selectClass} value={workerId} onChange={event => setWorker(event.target.value)}><option value="">Sin trabajador</option>{workers.map(worker => <option value={worker.id} key={worker.id}>{worker.name}</option>)}</select></label>
-    <Button className="bg-[#310984]" type="submit"><Plus className="mr-2 h-4 w-4" />Añadir al análisis</Button>{error && <p role="alert" className="col-span-full text-sm text-red-700">{error}</p>}
-  </form>;
 }

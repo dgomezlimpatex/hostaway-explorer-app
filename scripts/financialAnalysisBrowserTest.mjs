@@ -57,6 +57,7 @@ try {
   const page = await context.newPage();
   const errors = [], requests = [];
   const openFilters = async () => { const toggle = page.getByRole('button', { name: /^Filtros/ }); if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click(); };
+  const openSettings = async (name, target = page) => { await target.getByRole('button', { name: 'Ajustes', exact: true }).click(); await target.getByRole('button', { name, exact: true }).click(); };
   const openDetails = async text => { const summary=page.locator('summary').filter({hasText:text}); if(!await summary.evaluate(element=>element.parentElement.open)) await summary.click(); };
 
   page.on('pageerror', error => errors.push(error.message));
@@ -233,7 +234,7 @@ try {
   await page.getByRole('button',{name:'Ocultar evolución',exact:true}).click();
   await expect(trend.locator('svg.recharts-surface')).toHaveCount(0);
   await expect(trend.locator('.recharts-cartesian-axis-tick')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Tarifas', exact: true }).click();
+  await openSettings('Tarifas');
   await expect(page.getByText('0,247 € / prenda')).toBeVisible();
   await expect(page.getByText('2.317,00 € / mes · coste de empresa')).toBeVisible();
   await page.getByLabel('Concepto', { exact: true }).selectOption('tourismSalary');
@@ -249,7 +250,7 @@ try {
   await page.getByRole('button', { name: 'Guardar tarifa' }).click();
   await page.getByRole('button', { name: 'Resumen', exact: true }).click();
   await expect(page.getByRole('region',{name:'Comparativa del periodo'}).getByText(/(^|\D)4,20\s€/).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Otros gastos', exact: true }).click();
+  await openSettings('Otros gastos');
   await page.getByLabel('Concepto del gasto').fill('Alquiler de prueba');
   await page.getByLabel('Importe sin IVA', { exact: true }).fill('50');
   await page.getByRole('button', { name: 'Añadir al análisis' }).click();
@@ -284,7 +285,7 @@ try {
   await expect(page.getByRole('heading',{name:'Servicios · origen de cada importe',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Resumen',exact:true}).click();
   await expect(page.getByRole('region',{name:'Comparativa del periodo'}).getByRole('button',{name:/^Otros gastos · .*50,00/})).toBeVisible();
-  await page.getByRole('button',{name:'Otros ingresos',exact:true}).click();
+  await openSettings('Otros ingresos');
   await page.getByLabel('Concepto del ingreso').fill('Lavandería externa de prueba');
   await page.getByLabel('Ingreso sin IVA',{exact:true}).fill('300');
   await page.getByLabel('Coste externo sin IVA').fill('200');
@@ -339,8 +340,8 @@ try {
   await expect(page.getByRole('row').filter({hasText:'Cliente de prueba'}).first()).toContainText('48,02 €');
   await expect(page.getByRole('region',{name:'Comparativa del periodo'})).toContainText('4,20');
   await expect(page.getByRole('row').filter({hasText:'Cliente sin servicios'})).toContainText('1.329,60 €');
-  await page.getByRole('button',{name:'Otros ingresos',exact:true}).click();
-  await page.locator('div.rounded-lg').filter({hasText:'Recepción de prueba'}).getByRole('button',{name:'Editar ingreso'}).click();
+  await openSettings('Otros ingresos');
+  await page.locator('div.rounded-2xl').filter({hasText:'Recepción de prueba'}).getByRole('button',{name:'Editar ingreso'}).click();
   await page.getByLabel('Cambiar importes solo este mes · opcional').fill(previousEnd.slice(0,7));
   await page.getByLabel('Ingreso sin IVA',{exact:true}).fill('1500');
   await page.getByRole('button',{name:'Actualizar ingreso',exact:true}).click();
@@ -353,7 +354,7 @@ try {
   await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('guardados y compartidos');
   const second=await browser.newPage();await second.route('**/*',handle);await second.goto('https://financial.local.test/');
-  await second.getByRole('button',{name:'Otros ingresos',exact:true}).click();
+  await openSettings('Otros ingresos', second);
   await expect(second.getByText('Lavandería externa de prueba',{exact:true})).toBeVisible();
   assert.equal(await second.evaluate(()=>localStorage.length),0,'Shared settings work without browser-local configuration');
   await second.close();
@@ -366,16 +367,16 @@ try {
   await openDetails(/^(Configuración compartida de esta sede|Cambios sin guardar)$/);
   await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
   await expect(page.locator('summary').filter({hasText:/^Configuración compartida de esta sede$/})).toBeVisible();
-  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).toBeVisible();
+  await expect(page.getByRole('group',{name:'Qué ajustar'})).toBeVisible();
   await page.evaluate(()=>{window.failFinance=true});
   await openDetails(/^(Configuración compartida de esta sede|Cambios sin guardar)$/);
   await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
-  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).not.toBeVisible();
+  await expect(page.getByRole('group',{name:'Qué ajustar'})).not.toBeVisible();
   await expect(page.getByText(/Configuración sin cargar/)).toBeVisible();
   await page.evaluate(()=>{window.failFinance=false});
   await openDetails(/^(Configuración compartida de esta sede|Cambios sin guardar)$/);
   await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
-  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).toBeVisible();
+  await expect(page.getByRole('group',{name:'Qué ajustar'})).toBeVisible();
   await page.getByRole('button',{name:'Servicios',exact:true}).click();
   await page.getByRole('button',{name:'Margen inferior al 10%',exact:true}).click();
   await expect(page.getByText('No hay servicios contabilizables con estos filtros.')).toBeVisible();
@@ -383,7 +384,7 @@ try {
   await page.getByRole('button',{name:'Revisar costes',exact:true}).click();
   await page.getByRole('dialog').getByLabel(/^Paño de cocina/).fill('1');
   await page.getByRole('dialog').getByRole('button',{name:'Guardar ajustes del análisis',exact:true}).click();
-  await page.getByRole('button',{name:'Tarifas',exact:true}).click();
+  await openSettings('Tarifas');
   await page.getByLabel('Cliente de la regla').selectOption('c');
   await page.getByLabel('Propiedad de la regla').selectOption('p');
   await page.getByLabel(/^Cobro de paño de cocina/).selectOption('yes');
@@ -398,7 +399,7 @@ try {
   await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('guardados y compartidos');
   assert.equal(shared.document.policies.find(p=>p.propertyId==='p').kitchenClothIncome,true);
-  await page.getByRole('button',{name:'Otros ingresos',exact:true}).click();
+  await openSettings('Otros ingresos');
   const incomeCount=shared.document.incomes.length;
   await page.getByLabel('Concepto del ingreso').fill('Ingreso puntual con miles de prueba');
   await page.getByLabel('Ingreso sin IVA',{exact:true}).fill('4.05,45');

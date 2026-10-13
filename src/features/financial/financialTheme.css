@@ -78,3 +78,6 @@
   .fin-strip-bar, .fin-wf-row { transition: none; }
   .fin-skeleton { animation: none; }
 }
+
+/* Native controls inside the module (including legacy forms) share one look. */
+:is(.fin-root, .fin-dialog) :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea) { border-color: var(--fin-line); background-color: var(--fin-surface); border-radius: 0.5rem; }
