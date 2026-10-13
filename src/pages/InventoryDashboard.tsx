@@ -1,35 +1,36 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Building2, CheckCircle2, Droplets, Package, Shirt, ArchiveRestore } from 'lucide-react';
+import { ArrowRight, Building2, ClipboardList, PackageOpen } from 'lucide-react';
 import { StockLayout } from '@/components/stock/StockLayout';
-import { useStockAlerts, useStockDashboardStats } from '@/hooks/useStock';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-const number = (value: number) => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(value);
+import { useInventoryWorkspace } from '@/features/inventory/useInventoryWorkspace';
+import { InventoryBadge, InventoryEmpty, InventoryLink, InventoryPanel, InventoryPeriod, WorkspaceNotice } from '@/features/inventory/InventoryComponents';
+import { levelState, quantity } from '@/features/inventory/inventoryDomain';
 export default function InventoryDashboard() {
-  const { stats, levels, isLoading } = useStockDashboardStats();
-  const { data: alerts = [], isLoading: alertsLoading, isError: alertsError } = useStockAlerts();
-  const attention = levels.filter(level => level.current_quantity <= level.minimum_quantity).sort((a, b) => a.current_quantity - b.current_quantity);
-  return <StockLayout title="Resumen de inventario" description="Existencias, reposición y actividad de lavandería y consumibles.">
-    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{[
-      { title: 'Productos', value: stats.totalProducts, icon: Package, to: '/inventory/stock', tone: 'text-primary bg-primary/10' },
-      { title: 'Almacenes', value: stats.totalWarehouses, icon: Building2, to: '/inventory/warehouses', tone: 'text-primary bg-primary/10' },
-      { title: 'Stock bajo', value: stats.lowStock, icon: AlertTriangle, to: '/inventory/stock?status=low', tone: 'text-amber-700 bg-amber-50' },
-      { title: 'Sin stock', value: stats.criticalStock, icon: AlertTriangle, to: '/inventory/stock?status=empty', tone: 'text-red-700 bg-red-50' },
-    ].map(item => <Link key={item.title} to={item.to} className="rounded-2xl border border-border/60 bg-background p-4 shadow-sm transition-colors hover:border-primary/40"><div className="flex items-center justify-between"><span className={cn('rounded-xl p-2', item.tone)}><item.icon className="h-4 w-4" /></span><ArrowRight className="h-4 w-4 text-muted-foreground" /></div><p className="mt-4 text-3xl font-bold tracking-tight">{isLoading ? '—' : item.value}</p><p className="mt-1 text-xs text-muted-foreground">{item.title}</p></Link>)}</div>
-    <div className="grid gap-5 xl:grid-cols-[1.5fr_1fr]">
-      <section className="rounded-2xl border border-border/60 bg-background p-5 shadow-sm"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-semibold">Prioridad de reposición</h2><p className="mt-1 text-xs text-muted-foreground">Productos en mínimo o sin existencias</p></div><Button asChild size="sm" variant="outline"><Link to="/inventory/stock?status=attention">Ver todos</Link></Button></div>
-        {isLoading ? <p role="status" className="py-8 text-center text-sm text-muted-foreground">Consultando existencias…</p> : !levels.length ? <p className="py-8 text-center text-sm text-muted-foreground">Todavía no hay stock registrado para este almacén.</p> : !attention.length ? <div className="rounded-xl bg-emerald-50 p-6 text-sm text-emerald-800"><CheckCircle2 className="mb-2 h-6 w-6" />No hay productos por debajo del mínimo.</div> : <div className="divide-y">{attention.slice(0, 6).map(level => <Link key={level.id} to="/inventory/stock?status=attention" className="flex items-center gap-3 py-3"><span className={cn('h-2 w-2 shrink-0 rounded-full', level.current_quantity <= 0 ? 'bg-red-500' : 'bg-amber-500')} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{level.product?.name || 'Producto'}</p><p className="text-xs text-muted-foreground">{level.warehouse?.name} · Mínimo {number(level.minimum_quantity)}</p></div><div className="text-right"><p className="font-mono font-semibold">{number(level.current_quantity)}</p><p className="text-[10px] text-muted-foreground">{level.product?.unit_of_measure}</p></div></Link>)}</div>}
-      </section>
-      <section className="space-y-3"><h2 className="text-sm font-semibold">Operaciones de inventario</h2>{[
-        { title: 'Lavandería', subtitle: 'Lencería y textiles por almacén', to: '/inventory/laundry', icon: Shirt },
-        { title: 'Amenities', subtitle: 'Productos de acogida y consumibles', to: '/inventory/amenities', icon: Droplets },
-        { title: 'Movimientos', subtitle: 'Revisar entradas, salidas y ajustes', to: '/inventory/movements', icon: ArchiveRestore },
-      ].map(item => <Link key={item.to} to={item.to} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background p-4 hover:border-primary/40"><span className="rounded-xl bg-primary/10 p-2.5 text-primary"><item.icon className="h-5 w-5" /></span><div className="flex-1"><p className="text-sm font-semibold">{item.title}</p><p className="mt-1 text-xs text-muted-foreground">{item.subtitle}</p></div><ArrowRight className="h-4 w-4 text-muted-foreground" /></Link>)}
-        <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4"><p className="text-xs font-medium text-muted-foreground">Valor del stock seleccionado</p><p className="mt-2 text-2xl font-bold">{isLoading ? '—' : new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(stats.totalValue)}</p><p className="mt-1 text-xs text-muted-foreground">{number(stats.totalUnits)} unidades · Según costes configurados</p></div>
-      </section>
-    </div>
-    <section className="rounded-2xl border border-border/60 bg-background p-5 shadow-sm"><div className="mb-4"><h2 className="font-semibold">Alertas activas</h2><p className="mt-1 text-xs text-muted-foreground">Avisos generados al quedar un producto en su mínimo o a cero</p></div>
-      {alertsLoading ? <p role="status" className="py-4 text-center text-sm text-muted-foreground">Consultando alertas…</p> : alertsError ? <p role="alert" className="py-4 text-center text-sm text-amber-800">No se pudieron cargar las alertas.</p> : !alerts.length ? <p className="py-4 text-center text-sm text-muted-foreground">No hay alertas activas.</p> : <div className="divide-y">{alerts.slice(0, 8).map(alert => <div key={alert.id} className="flex items-center gap-3 py-3"><span className={cn('h-2 w-2 shrink-0 rounded-full', alert.alert_type === 'stock_critico' ? 'bg-red-500' : 'bg-amber-500')} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{alert.product?.name || 'Producto'}</p><p className="text-xs text-muted-foreground">{alert.warehouse?.name} · {alert.alert_type === 'stock_critico' ? 'Sin existencias' : 'En el mínimo'}</p></div><p className="text-[11px] text-muted-foreground">{new Date(alert.triggered_at).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' })}</p></div>)}{alerts.length > 8 && <p className="pt-3 text-xs text-muted-foreground">y {alerts.length - 8} alertas más</p>}</div>}
-    </section>
+  const [days, setDays] = useState(3);
+  const w = useInventoryWorkspace(days);
+  const attention = w.centralLevels.map(level => ({ level, ...levelState(level, w.demand.get(level.product_id)) })).filter(item => ['shortage', 'replenish'].includes(item.state));
+  const missingProducts = w.demandReady ? w.products.filter(p => w.demand.has(p.id) && !w.centralLevels.some(l => l.product_id === p.id)) : [];
+  const pending = w.bags.filter(b => !['prepared', 'delivered'].includes(b.state)).length;
+  const prepared = w.bags.filter(b => b.state === 'prepared').length;
+  const issues = w.bags.filter(b => ['issue', 'review'].includes(b.state)).length;
+  return <StockLayout title="Tu inventario, de un vistazo" description="Empieza por el almacén central y continúa con lo que necesita el próximo reparto.">
+    <WorkspaceNotice workspace={w} />
+    {!w.stockLoading && !w.stockError && <>
+      <InventoryPeriod days={days} onChange={setDays} from={w.from} to={w.to} />
+      <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+        <section className="rounded-2xl bg-primary p-6 text-primary-foreground sm:p-8"><p className="text-sm text-white/70">Centro de distribución</p><h2 className="mt-2 text-2xl font-bold">{w.central?.name ?? 'Almacén central por identificar'}</h2><p className="mt-3 max-w-lg text-sm leading-relaxed text-white/85">{!w.central ? 'Revisa las ubicaciones antes de calcular necesidades.' : attention.length ? `${attention.length} ${attention.length === 1 ? 'producto necesita' : 'productos necesitan'} revisión de existencias o reposición.` : 'Revisa las reservas y el material necesario antes de preparar las bolsas.'}</p><Link to="/inventory/stock" className="mt-6 inline-flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary">Abrir almacén central<ArrowRight className="h-4 w-4" /></Link></section>
+        <InventoryPanel title="Preparación de mudas" description="Para las limpiezas del período seleccionado" action={<InventoryLink to="/inventory/preparation">Ver mudas</InventoryLink>}>
+          <div className="grid grid-cols-3 gap-2 p-5">{[['Por preparar', pending], ['Preparadas', prepared], ['Por revisar', issues]].map(([label, value]) => <div key={label}><p className="text-3xl font-bold tabular-nums">{w.demandReady ? value : '—'}</p><p className="mt-2 text-xs text-muted-foreground">{label}</p></div>)}</div><p className="px-5 pb-5 text-xs text-muted-foreground">{w.demandReady ? 'Las preparadas tienen la entrega sin confirmar. Por revisar está incluido en Por preparar.' : 'Pendiente de consultar las mudas; no se interpreta como cero.'}</p>
+        </InventoryPanel>
+      </div>
+      <InventoryPanel title="Qué necesita atención" description="Necesidades del almacén central. Los ceros sin reserva se revisan aparte." action={<InventoryLink to="/inventory/stock?status=attention">Ver necesidades</InventoryLink>}>
+        {!w.central ? <InventoryEmpty>Identifica el almacén central para consultar sus necesidades.</InventoryEmpty> : !attention.length && !missingProducts.length ? <InventoryEmpty>{w.demandReady ? 'No se detectan faltantes en los saldos y reservas registrados. Comprueba las cantidades físicas antes de repartir.' : 'Aún no se pueden valorar todas las necesidades del reparto.'}</InventoryEmpty> : <div className="divide-y">{attention.map(item => <Link key={item.level.id} to={`/inventory/stock?product=${item.level.product_id}`} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 hover:bg-primary/[.025]"><div><p className="text-sm font-semibold">{item.level.product?.name}</p><p className="mt-1 text-xs text-muted-foreground">Registrado: {quantity(item.level.current_quantity)} · {item.state === 'shortage' ? `Por preparar: ${quantity(w.demand.get(item.level.product_id) ?? 0)}` : `Reserva deseada: ${quantity(Math.max(item.level.minimum_quantity, item.level.target_quantity))}`}</p></div><InventoryBadge state={item.state}>{item.label}</InventoryBadge></Link>)}{missingProducts.map(p => <div key={p.id} className="flex flex-wrap justify-between gap-2 p-5 text-sm"><strong>{p.name}</strong><InventoryBadge state="unknown">Sin saldo en el almacén central</InventoryBadge></div>)}</div>}
+      </InventoryPanel>
+      <div className="grid gap-3 sm:grid-cols-3">{[
+        { to: '/inventory/warehouses', icon: Building2, title: 'Edificios', detail: `${w.buildings.filter(b => b.needsAttention).length} con necesidades conocidas · mudas y repuestos` },
+        { to: '/inventory/stock?status=unknown', icon: PackageOpen, title: 'Comprobar reservas', detail: `${w.centralLevels.filter(l => levelState(l).state === 'unknown').length} productos sin reserva definida o con saldo por revisar` },
+        { to: '/inventory/movements', icon: ClipboardList, title: 'Consultar historial', detail: 'Entradas, salidas, recuentos y traslados' },
+      ].map(item => <Link key={item.to} to={item.to} className="flex gap-3 rounded-xl border bg-white p-5 hover:border-primary/40"><item.icon className="mt-1 h-5 w-5 shrink-0 text-primary" /><div><h2 className="text-sm font-semibold">{item.title}</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.detail}</p></div></Link>)}</div>
+    </>}
   </StockLayout>;
 }

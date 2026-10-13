@@ -24,6 +24,7 @@ import { StockLayout } from '@/components/stock/StockLayout';
 import { buildStockReport, reorderToCsv } from '@/utils/stockReport';
 import { useStockLevels, useStockMovementsRange, useStockProducts, useStockWarehouses } from '@/hooks/useStock';
 import type { StockMovement, StockMovementType } from '@/types/stock';
+import { centralWarehouse } from '@/features/inventory/inventoryDomain';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
@@ -48,13 +49,14 @@ export default function InventoryReports() {
   const [dateTo, setDateTo] = useState(today);
   const [movementType, setMovementType] = useState<MovementFilter>('all');
   const [productId, setProductId] = useState('all');
-  const [warehouseId, setWarehouseId] = useState('all');
+  const [warehouseSelection, setWarehouseId] = useState('central');
 
-  const { data: movementsRange, isLoading: movementsLoading } = useStockMovementsRange(dateFrom, dateTo);
+  const { data: movementsRange, isLoading: movementsLoading, isError: movementsError, refetch: retryMovements } = useStockMovementsRange(dateFrom, dateTo);
   const movements = useMemo(() => movementsRange?.movements ?? [], [movementsRange]);
-  const { data: levels = [] } = useStockLevels();
-  const { data: products = [] } = useStockProducts();
-  const { data: warehouses = [] } = useStockWarehouses();
+  const { data: levels = [], isLoading: levelsLoading, isError: levelsError, refetch: retryLevels } = useStockLevels();
+  const { data: products = [], isLoading: productsLoading, isError: productsError, refetch: retryProducts } = useStockProducts();
+  const { data: warehouses = [], isLoading: warehousesLoading, isError: warehousesError, refetch: retryWarehouses } = useStockWarehouses();
+  const warehouseId = warehouseSelection === 'central' ? centralWarehouse(warehouses)?.id ?? 'central' : warehouseSelection;
 
   const filteredMovements = useMemo(() => {
     return movements.filter((movement) => {
@@ -65,7 +67,9 @@ export default function InventoryReports() {
     });
   }, [movementType, movements, productId, warehouseId]);
 
-  const report = useMemo(() => buildStockReport(filteredMovements, levels), [filteredMovements, levels]);
+  const report = useMemo(() => buildStockReport(filteredMovements, levels.filter(level =>
+    (warehouseId === 'all' || level.warehouse_id === warehouseId) && (productId === 'all' || level.product_id === productId))),
+  [filteredMovements, levels, warehouseId, productId]);
 
   const totalExitValue = report.consumptionByProduct.reduce((sum, item) => sum + item.value, 0);
   const totalReorderValue = report.reorder.reduce((sum, item) => sum + item.estimatedCost, 0);
@@ -134,6 +138,10 @@ export default function InventoryReports() {
     XLSX.writeFile(workbook, `stock-reporte-${dateFrom}-${dateTo}.xlsx`);
   };
 
+  if (movementsError || levelsError || productsError || warehousesError) return <StockLayout title="Informes de inventario"><div role="alert" className="rounded-xl border bg-white p-5"><p>No se pudo consultar el informe. No se muestran cantidades ni importes incompletos.</p><Button className="mt-3" onClick={() => void Promise.all([retryMovements(), retryLevels(), retryProducts(), retryWarehouses()])}>Reintentar</Button></div></StockLayout>;
+  if (movementsLoading || levelsLoading || productsLoading || warehousesLoading) return <StockLayout title="Informes de inventario"><p role="status">Consultando existencias y movimientos…</p></StockLayout>;
+  if (warehouseSelection === 'central' && !centralWarehouse(warehouses)) return <StockLayout title="Informes de inventario"><p>No hay un almacén central identificado para esta sede.</p><Button variant="outline" onClick={() => setWarehouseId('all')}>Consultar todas las ubicaciones</Button></StockLayout>;
+
   return (
     <StockLayout
       title="Informes de inventario"
@@ -165,9 +173,10 @@ export default function InventoryReports() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={warehouseId} onValueChange={setWarehouseId}>
+            <Select value={warehouseSelection} onValueChange={setWarehouseId}>
               <SelectTrigger aria-label="Almacén"><SelectValue placeholder="Almacén" /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="central">Almacén central</SelectItem>
                 <SelectItem value="all">Todos los almacenes</SelectItem>
                 {warehouses.map((warehouse) => (
                   <SelectItem key={warehouse.id} value={warehouse.id}>{warehouse.name}</SelectItem>

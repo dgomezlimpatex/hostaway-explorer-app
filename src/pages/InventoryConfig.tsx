@@ -18,6 +18,7 @@ import { useSede } from '@/contexts/SedeContext';
 import { cn } from '@/lib/utils';
 import type { UpdateStockSedeSettingsData } from '@/types/stock';
 import { buildInitialStockConsumptions } from '@/components/properties/forms/propertyStockConsumption';
+import { materialFamily } from '@/features/inventory/inventoryDomain';
 
 export default function InventoryConfig() {
   const { user } = useAuth();
@@ -34,7 +35,7 @@ export default function InventoryConfig() {
   );
 
   const consumableProducts = useMemo(
-    () => products.filter((product) => product.is_active && product.is_consumable),
+    () => products.filter((product) => product.is_active && product.is_consumable && materialFamily(product) !== 'spares'),
     [products]
   );
 
@@ -208,11 +209,11 @@ export default function InventoryConfig() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
             <p>
-              Carga stock actual, mínimos y objetivos desde <strong>Stock global</strong>. Cuando el piloto este validado, desactiva modo preparacion y activa descuento automático para esta sede.
+              Comprueba las existencias y define las reservas en el <strong>Almacén central</strong>. Los repuestos de los edificios se revisan aparte: no necesitan un consumo por limpieza. Activa los descuentos solo después de validar el circuito físico.
             </p>
             <Button asChild>
               <Link to="/inventory/stock">
-                Carga operativa
+                Abrir almacén central
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
