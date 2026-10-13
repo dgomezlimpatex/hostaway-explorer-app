@@ -1,0 +1,25 @@
+{
+  "request": "Dani pidió que la tira de meses del análisis financiero tenga más altura, muestre la facturación de cada mes con barras que reflejen bien las diferencias, y que la cifra principal sea la facturación con el beneficio debajo, tanto en la vista mensual como en la de todos los meses.",
+  "reason": "Solo cambia qué cifra se destaca y cómo se dibuja la tira de 12 meses. Facturación y beneficio salen del mismo resumen del análisis que ya usaban las tablas; no se tocan cálculos, consultas, permisos ni guardado. El interruptor «Ajustar escala» es un estado local de la pantalla que no se guarda.",
+  "verification": "Pruebas Node de la lógica nueva (barras por facturación desde cero con el beneficio como parte oscura, escala ajustada que separa cifras cercanas sin reordenarlas, frase con facturación y beneficio y sus comparaciones, formato de euros enteros y miles compactos) y regresión de las pruebas financieras existentes. Pruebas de navegador locales con datos ficticios, adaptadas a los nuevos nombres (Facturación, Beneficio), en verde: página completa, filtros, vista anual y mensual, desglose con retorno de foco, informes y cuatro anchos. Revisión visual en Chromium en escritorio y móvil, vista mensual y anual, con y sin escala ajustada. Build, tipos del módulo y lint sin errores nuevos. Limitaciones: la cola no ejecuta las pruebas de navegador (sin Chromium) y no se ha visto la pantalla con datos reales autenticados.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialMonthViewTest.mjs",
+    "scripts/financialFormattingTest.mjs",
+    "scripts/financialInsightsTest.mjs",
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialViewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "1eecfd618076cbac4ff17a3d91e57c90b4e0860cc456459de2f350ba57d86dc9"
+}
