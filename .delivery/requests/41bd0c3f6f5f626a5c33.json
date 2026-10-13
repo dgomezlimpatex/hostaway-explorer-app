@@ -1,0 +1,25 @@
+{
+  "request": "Dani pidió continuar con el rediseño de la parte inferior del análisis financiero y buscar la forma más óptima de organizarlo. Esta segunda entrega reúne en una sola bandeja «Qué revisar» los apartados «Revisar», «Alertas financieras» y «Servicios fuera del balance».",
+  "reason": "Solo reorganiza y presenta avisos que ya se calculaban con las mismas reglas: margen bajo de servicios, costes pendientes con su antigüedad, servicios fuera del balance y clientes por debajo del umbral. No cambia el motor de cálculo, las consultas, los permisos ni el guardado. Los umbrales (margen del cliente, días y aviso de ingreso cero) siguen guardándose en la vista local del navegador como antes. Un servicio con ingreso cero solo se lista mientras su aviso esté activo, igual que en la antigua lista de alertas; un precio pendiente se lista siempre.",
+  "verification": "Prueba Node nueva de la lógica de la bandeja (listas de margen bajo con límite exacto, costes pendientes con antigüedad en días, servicios fuera del balance con la regla de ingreso cero, clientes bajo el umbral, cambios de reglas y lista por defecto) y regresión de las pruebas financieras existentes. Pruebas de navegador locales con datos ficticios, adaptadas a la bandeja, en verde: cambio de lista, apertura del editor de costes, ajuste y persistencia de umbrales tras recargar, conteos y aviso desactivado. Revisión visual en escritorio y móvil. Build, tipos del módulo y lint sin errores nuevos. Limitaciones: la cola no ejecuta las pruebas de navegador y no se ha visto la pantalla con datos reales autenticados.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialReviewTest.mjs",
+    "scripts/financialProfitabilityTest.mjs",
+    "scripts/financialAnalyticsTest.mjs",
+    "scripts/financialInsightsTest.mjs",
+    "scripts/financialViewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "d6b8e9fa4475c7cf306a4801016af85ffd5a5d9f4465f7107ce0069c12a60c53"
+}
