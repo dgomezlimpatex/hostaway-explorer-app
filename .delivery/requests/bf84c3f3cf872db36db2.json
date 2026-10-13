@@ -1,0 +1,25 @@
+{
+  "request": "Dani pidió terminar todo el rediseño del análisis financiero. Esta entrega final retira el código de los bloques antiguos que el rediseño sustituyó y que ya nadie usa: el panel de indicadores, la tabla y el gráfico de clientes, el análisis de propiedades, las alertas, la distribución de gastos y el panel que los agrupaba.",
+  "reason": "Solo elimina componentes que ninguna pantalla importa desde las entregas anteriores y reduce las pruebas de navegador a lo que sigue en uso: la evolución mensual (ahora con su propia prueba) y las columnas por concepto. No cambia ninguna pantalla, cálculo, consulta, permiso ni guardado. Las funciones de cálculo con sus pruebas se conservan.",
+  "verification": "Búsqueda de referencias a los componentes retirados en el código, las pruebas y la configuración de la cola, sin resultados. Regresión de todas las pruebas financieras en Node y de navegador: la prueba de evolución mensual (líneas, doce meses, tooltip, leyenda, colapso y cuatro anchos) y la de columnas por concepto se mantienen con el código vivo; las pruebas de página completa, ajustes, filtros, desglose e informes siguen en verde. Build, tipos del módulo y lint sin errores nuevos. Limitaciones: la cola no ejecuta las pruebas de navegador.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialInsightsTest.mjs",
+    "scripts/financialProfitabilityTest.mjs",
+    "scripts/financialReviewTest.mjs",
+    "scripts/financialViewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "2cdc8937f8de47125630e9ada0e161bad95ea607c53cacdd30c7bb6f47c99021"
+}
