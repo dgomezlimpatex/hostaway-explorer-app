@@ -485,21 +485,38 @@ async function upsertDeliveryTracking(
   if (error) throw error;
 }
 
-async function processRouteInventory(
+async function recordRouteAction(
   supabase: SupabaseClientLike,
+  shareLinkId: string,
+  sedeId: string,
   taskId: string,
   action: "collect" | "deliver",
   actor?: RouteWorkerIdentity | null,
-) {
-  const { data, error } = await supabase.rpc("process_laundry_route_inventory_event", {
-    task_id_param: taskId,
-    action_param: action,
-    event_key_param: `laundry-route:${taskId}:${action}`,
-    actor_id_param: null,
-    actor_name_param: actor?.workerName ?? "Repartidor",
+): Promise<boolean> {
+  const { data: settings, error: settingsError } = await supabase
+    .from("stock_sede_settings")
+    .select("laundry_route_inventory_enabled")
+    .eq("sede_id", sedeId)
+    .maybeSingle();
+  if (settingsError) throw settingsError;
+
+  if (settings?.laundry_route_inventory_enabled !== true) {
+    await upsertDeliveryTracking(supabase, shareLinkId, taskId, action, actor);
+    return false;
+  }
+
+  // The existing database wrapper checks the flag again under a lock and
+  // records stock, tracking and worker audit in the same transaction.
+  const { error } = await supabase.rpc("process_laundry_route_inventory_and_tracking", {
+    _task_id: taskId,
+    _action: action,
+    _share_link_id: shareLinkId,
+    _route_worker_id: actor?.routeWorkerId ?? null,
+    _cleaner_id: actor?.cleanerId ?? null,
+    _worker_name: actor?.workerName ?? "Repartidor",
   });
   if (error) throw error;
-  return data;
+  return true;
 }
 
 async function resolveRouteActor(
@@ -805,8 +822,9 @@ serve(async (req) => {
       ]);
       if (!allowedTaskIds.has(taskId)) return json({ error: "La tarea no pertenece a esta ruta" }, 400);
 
+      let workerActionRecorded = false;
       if (action === "prepare") {
-        const bag = [...workflow.currentRouteBags, ...workflow.nextRouteBags].find((item) => item.taskId === taskId);
+        const bag = [...(workflow.currentRouteBags ?? []), ...(workflow.nextRouteBags ?? [])].find((item) => item.taskId === taskId);
         if (Number(bag?.amenities?.trashSacks100L) > 0 && body.bagContentsVersion !== 2) {
           return json({ error: "Recarga la página para ver los sacos de 100 L antes de preparar esta bolsa" }, 409);
         }
@@ -817,11 +835,17 @@ serve(async (req) => {
       } else if (action === "collect" || action === "deliver") {
         const currentTaskIds = new Set((workflow.currentRouteBags ?? []).map((bag: JsonRecord) => String(bag.taskId)));
         if (!currentTaskIds.has(taskId)) return json({ error: "Solo se puede recoger o entregar la ruta actual" }, 400);
-        await processRouteInventory(supabase, taskId, action, access.actor);
-        await upsertDeliveryTracking(supabase, String(workflow.link.id), taskId, action, access.actor);
+        workerActionRecorded = await recordRouteAction(
+          supabase,
+          String(workflow.link.id),
+          String(workflow.link.sedeId),
+          taskId,
+          action,
+          access.actor,
+        );
       }
 
-      await logRouteWorkerAction(
+      if (!workerActionRecorded) await logRouteWorkerAction(
         supabase,
         String(workflow.link.id),
         taskId,

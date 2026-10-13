@@ -1,0 +1,83 @@
+{
+  "inspectedAt": "2026-10-13",
+  "sourceCommit": "07fea7bffe654e38adb0a5cd50c1379d83d291ce",
+  "deploymentId": "dpl_FKJUzo2WgYxjd1ikena5vBaKdXNQ",
+  "routeWorkflow": {
+    "version": 83,
+    "sha256": "b908cb68a7f56156d1480ebec631ccadb9050e15493e2734616682bf1f966ae8"
+  },
+  "settings": [
+    {
+      "sede": "A Coruña",
+      "autoConsumption": false,
+      "preparation": false,
+      "routeInventory": false
+    },
+    {
+      "sede": "BENIDORM",
+      "autoConsumption": false,
+      "preparation": true,
+      "routeInventory": false
+    },
+    {
+      "sede": "Ourense",
+      "autoConsumption": false,
+      "preparation": true,
+      "routeInventory": false
+    }
+  ],
+  "missingCycleTables": [
+    "laundry_direct_task_stock",
+    "laundry_property_dirty_stock",
+    "laundry_cleaning_change_issues",
+    "laundry_cleaning_changes",
+    "property_laundry_storage_locations"
+  ],
+  "taskTriggers": [
+    {
+      "name": "capture_laundry_route_task_cancellation_delete",
+      "function": "capture_laundry_route_task_cancellation"
+    },
+    {
+      "name": "capture_laundry_route_task_cancellation_status",
+      "function": "capture_laundry_route_task_cancellation"
+    },
+    {
+      "name": "reverse_estimated_amenities_on_cancel",
+      "function": "reverse_estimated_amenities_on_cancellation"
+    },
+    {
+      "name": "trg_tasks_bump_planning_version",
+      "function": "bump_task_planning_version"
+    },
+    {
+      "name": "trg_tasks_enqueue_deleted_task_cancellations",
+      "function": "enqueue_deleted_task_cancellations"
+    },
+    {
+      "name": "trg_tasks_enqueue_modified_notifications",
+      "function": "enqueue_task_modified_notifications"
+    },
+    {
+      "name": "update_tasks_updated_at",
+      "function": "update_updated_at_column"
+    }
+  ],
+  "rpcDefinitions": [
+    {
+      "proname": "process_laundry_route_inventory_event",
+      "args": "task_id_param uuid, action_param text, event_key_param text, actor_id_param uuid, actor_name_param text",
+      "definition": "CREATE OR REPLACE FUNCTION public.process_laundry_route_inventory_event(task_id_param uuid, action_param text, event_key_param text, actor_id_param uuid DEFAULT NULL::uuid, actor_name_param text DEFAULT NULL::text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  task_record RECORD;\n  line RECORD;\n  apartment_record public.laundry_apartment_stock;\n  dirty_record public.laundry_dirty_stock;\n  level_record public.stock_levels;\n  previous_quantity NUMERIC(12, 2);\n  new_quantity NUMERIC(12, 2);\n  processed_count INTEGER := 0;\n  skipped_count INTEGER := 0;\nBEGIN\n  IF action_param NOT IN ('deliver', 'collect') OR length(trim(COALESCE(event_key_param, ''))) < 8 THEN\n    RAISE EXCEPTION 'Invalid route inventory event';\n  END IF;\n\n  SELECT t.id, t.propiedad_id, t.sede_id, t.type INTO task_record\n  FROM public.tasks t WHERE t.id = task_id_param;\n  IF task_record.id IS NULL OR task_record.propiedad_id IS NULL OR task_record.type <> 'limpieza-turistica' THEN\n    RAISE EXCEPTION 'Laundry task not found';\n  END IF;\n\n  FOR line IN SELECT * FROM public.resolve_laundry_bag_lines(task_id_param) LOOP\n    IF line.warehouse_id IS NULL THEN\n      RAISE EXCEPTION 'No stock warehouse configured for product %', line.product_id;\n    END IF;\n    IF EXISTS (\n      SELECT 1 FROM public.laundry_inventory_events e\n      WHERE e.event_key = event_key_param AND e.product_id = line.product_id\n    ) THEN\n      skipped_count := skipped_count + 1;\n      CONTINUE;\n    END IF;\n\n    IF action_param = 'deliver' THEN\n      SELECT * INTO level_record FROM public.stock_levels\n      WHERE product_id = line.product_id AND warehouse_id = line.warehouse_id FOR UPDATE;\n      IF level_record.id IS NULL OR level_record.current_quantity < line.quantity THEN\n        RAISE EXCEPTION 'No hay suficiente stock limpio para entregar la bolsa (%).', line.product_id;\n      END IF;\n      previous_quantity := level_record.current_quantity;\n      new_quantity := previous_quantity - line.quantity;\n      UPDATE public.stock_levels SET current_quantity = new_quantity, updated_by = actor_id_param\n      WHERE id = level_record.id;\n      INSERT INTO public.stock_movements (\n        product_id, warehouse_id, movement_type, quantity, previous_quantity, new_quantity,\n        reason, task_id, property_id, created_by\n      ) VALUES (\n        line.product_id, line.warehouse_id, 'salida', line.quantity, previous_quantity, new_quantity,\n        'Bolsa de lavanderÃ­a entregada', task_id_param, task_record.propiedad_id, actor_id_param\n      );\n      INSERT INTO public.laundry_apartment_stock (property_id, product_id, current_quantity, updated_by)\n      VALUES (task_record.propiedad_id, line.product_id, line.quantity, actor_id_param)\n      ON CONFLICT (property_id, product_id) DO UPDATE\n      SET current_quantity = laundry_apartment_stock.current_quantity + EXCLUDED.current_quantity,\n          updated_by = EXCLUDED.updated_by, updated_at = now();\n      INSERT INTO public.laundry_inventory_events (\n        event_key, event_type, task_id, property_id, product_id, warehouse_id, quantity,\n        from_location, to_location, metadata, created_by\n      ) VALUES (event_key_param, 'deliver', task_id_param, task_record.propiedad_id, line.product_id,\n        line.warehouse_id, line.quantity, 'building_storage', 'apartment',\n        jsonb_build_object('actor_name', actor_name_param), actor_id_param);\n    ELSE\n      SELECT * INTO apartment_record FROM public.laundry_apartment_stock\n      WHERE property_id = task_record.propiedad_id AND product_id = line.product_id FOR UPDATE;\n      IF apartment_record.id IS NULL THEN\n        -- Safe opening default: the active apartment starts with one bag line.\n        INSERT INTO public.laundry_apartment_stock (property_id, product_id, current_quantity, updated_by)\n        VALUES (task_record.propiedad_id, line.product_id, line.quantity, actor_id_param)\n        RETURNING * INTO apartment_record;\n      END IF;\n      IF apartment_record.current_quantity < line.quantity THEN\n        RAISE EXCEPTION 'No hay suficiente ropa limpia registrada en el apartamento (%).', line.product_id;\n      END IF;\n      previous_quantity := apartment_record.current_quantity;\n      new_quantity := previous_quantity - line.quantity;\n      UPDATE public.laundry_apartment_stock SET current_quantity = new_quantity, updated_by = actor_id_param, updated_at = now()\n      WHERE id = apartment_record.id;\n      INSERT INTO public.laundry_dirty_stock (product_id, warehouse_id, current_quantity, updated_by)\n      VALUES (line.product_id, line.warehouse_id, line.quantity, actor_id_param)\n      ON CONFLICT (product_id, warehouse_id) DO UPDATE\n      SET current_quantity = laundry_dirty_stock.current_quantity + EXCLUDED.current_quantity,\n          updated_by = EXCLUDED.updated_by;\n      SELECT * INTO dirty_record FROM public.laundry_dirty_stock\n      WHERE product_id = line.product_id AND warehouse_id = line.warehouse_id;\n      INSERT INTO public.laundry_dirty_movements (\n        product_id, warehouse_id, movement_type, quantity, previous_quantity, new_quantity,\n        reason, task_id, property_id, created_by\n      ) VALUES (\n        line.product_id, line.warehouse_id, 'entrada', line.quantity,\n        dirty_record.current_quantity - line.quantity, dirty_record.current_quantity,\n        'Bolsa recogida de la limpieza', task_id_param, task_record.propiedad_id, actor_id_param\n      );\n      INSERT INTO public.laundry_inventory_events (\n        event_key, event_type, task_id, property_id, product_id, warehouse_id, quantity,\n        from_location, to_location, metadata, created_by\n      ) VALUES (event_key_param, 'collect', task_id_param, task_record.propiedad_id, line.product_id,\n        line.warehouse_id, line.quantity, 'apartment', 'dirty',\n        jsonb_build_object('actor_name', actor_name_param), actor_id_param);\n    END IF;\n    processed_count := processed_count + 1;\n  END LOOP;\n\n  RETURN jsonb_build_object('processed', processed_count, 'skipped', skipped_count, 'action', action_param);\nEND;\n$function$\n"
+    },
+    {
+      "proname": "receive_laundry_batch",
+      "args": "warehouse_id_param uuid, lines_param jsonb, reason_param text, user_id_param uuid, event_key_param text",
+      "definition": "CREATE OR REPLACE FUNCTION public.receive_laundry_batch(warehouse_id_param uuid, lines_param jsonb, reason_param text, user_id_param uuid, event_key_param text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  line RECORD;\n  dirty_record public.laundry_dirty_stock;\n  level_record public.stock_levels;\n  rejected_record public.laundry_rejected_stock;\n  accepted NUMERIC(12, 2);\n  rejected NUMERIC(12, 2);\n  total NUMERIC(12, 2);\n  dirty_previous NUMERIC(12, 2);\n  processed_count INTEGER := 0;\n  skipped_count INTEGER := 0;\nBEGIN\n  IF auth.uid() IS NULL OR user_id_param <> auth.uid() THEN\n    RAISE EXCEPTION 'The acting user must match the authenticated user';\n  END IF;\n  IF NOT (public.has_role(auth.uid(), 'admin'::public.app_role)\n    OR public.has_role(auth.uid(), 'manager'::public.app_role)\n    OR public.has_role(auth.uid(), 'logistics'::public.app_role)) THEN\n    RAISE EXCEPTION 'User not allowed to receive laundry';\n  END IF;\n  IF warehouse_id_param IS NULL OR jsonb_typeof(lines_param) <> 'array'\n    OR length(trim(COALESCE(reason_param, ''))) = 0\n    OR length(trim(COALESCE(event_key_param, ''))) < 8 THEN\n    RAISE EXCEPTION 'Invalid laundry receipt';\n  END IF;\n\n  FOR line IN SELECT * FROM jsonb_to_recordset(lines_param) AS x(\n    product_id UUID, accepted_quantity NUMERIC, rejected_quantity NUMERIC, rejection_reason TEXT\n  ) LOOP\n    accepted := COALESCE(line.accepted_quantity, 0);\n    rejected := COALESCE(line.rejected_quantity, 0);\n    total := accepted + rejected;\n    IF line.product_id IS NULL OR accepted < 0 OR rejected < 0 OR total <= 0 THEN\n      RAISE EXCEPTION 'Invalid quantity in laundry receipt';\n    END IF;\n    IF EXISTS (\n      SELECT 1 FROM public.laundry_inventory_events e\n      WHERE e.event_key = event_key_param AND e.product_id = line.product_id\n    ) THEN\n      skipped_count := skipped_count + 1;\n      CONTINUE;\n    END IF;\n\n    SELECT * INTO dirty_record FROM public.laundry_dirty_stock\n    WHERE product_id = line.product_id AND warehouse_id = warehouse_id_param FOR UPDATE;\n    IF dirty_record.id IS NULL OR dirty_record.current_quantity < total THEN\n      RAISE EXCEPTION 'La recepciÃ³n supera la ropa sucia pendiente para %', line.product_id;\n    END IF;\n    dirty_previous := dirty_record.current_quantity;\n    UPDATE public.laundry_dirty_stock\n    SET current_quantity = current_quantity - total, updated_by = user_id_param\n    WHERE id = dirty_record.id;\n    INSERT INTO public.laundry_dirty_movements (\n      product_id, warehouse_id, movement_type, quantity, previous_quantity, new_quantity,\n      reason, created_by\n    ) VALUES (\n      line.product_id, warehouse_id_param, 'salida', total, dirty_previous,\n      dirty_previous - total, trim(reason_param), user_id_param\n    );\n\n    IF accepted > 0 THEN\n      INSERT INTO public.stock_levels (product_id, warehouse_id, current_quantity, updated_by)\n      VALUES (line.product_id, warehouse_id_param, accepted, user_id_param)\n      ON CONFLICT (product_id, warehouse_id) DO UPDATE\n      SET current_quantity = stock_levels.current_quantity + EXCLUDED.current_quantity,\n          updated_by = EXCLUDED.updated_by;\n      SELECT * INTO level_record FROM public.stock_levels\n      WHERE product_id = line.product_id AND warehouse_id = warehouse_id_param;\n      INSERT INTO public.stock_movements (\n        product_id, warehouse_id, movement_type, quantity, previous_quantity, new_quantity,\n        reason, created_by\n      ) VALUES (\n        line.product_id, warehouse_id_param, 'entrada', accepted,\n        level_record.current_quantity - accepted, level_record.current_quantity,\n        trim(reason_param), user_id_param\n      );\n    END IF;\n\n    IF rejected > 0 THEN\n      SELECT * INTO rejected_record FROM public.laundry_rejected_stock\n      WHERE property_id IS NULL AND product_id = line.product_id AND warehouse_id = warehouse_id_param\n      FOR UPDATE;\n      IF rejected_record.id IS NULL THEN\n        INSERT INTO public.laundry_rejected_stock (\n          property_id, product_id, warehouse_id, current_quantity, reason, updated_by\n        ) VALUES (NULL, line.product_id, warehouse_id_param, rejected,\n          COALESCE(NULLIF(trim(line.rejection_reason), ''), trim(reason_param)), user_id_param);\n      ELSE\n        UPDATE public.laundry_rejected_stock\n        SET current_quantity = current_quantity + rejected,\n            reason = COALESCE(NULLIF(trim(line.rejection_reason), ''), reason),\n            updated_by = user_id_param, updated_at = now()\n        WHERE id = rejected_record.id;\n      END IF;\n    END IF;\n\n    INSERT INTO public.laundry_inventory_events (\n      event_key, event_type, property_id, product_id, warehouse_id, quantity,\n      from_location, to_location, metadata, created_by\n    ) VALUES (\n      event_key_param, 'receive', NULL, line.product_id, warehouse_id_param, total,\n      'dirty', CASE WHEN rejected > 0 AND accepted > 0 THEN 'storage_and_rejected'\n        WHEN rejected > 0 THEN 'rejected' ELSE 'building_storage' END,\n      jsonb_build_object('accepted', accepted, 'rejected', rejected), user_id_param\n    );\n    processed_count := processed_count + 1;\n  END LOOP;\n  RETURN jsonb_build_object('processed', processed_count, 'skipped', skipped_count);\nEND;\n$function$\n"
+    },
+    {
+      "proname": "resolve_laundry_bag_lines",
+      "args": "task_id_param uuid",
+      "definition": "CREATE OR REPLACE FUNCTION public.resolve_laundry_bag_lines(task_id_param uuid)\n RETURNS TABLE(product_id uuid, warehouse_id uuid, quantity numeric)\n LANGUAGE sql\n STABLE\n SET search_path TO 'public'\nAS $function$\n  WITH task_property AS (\n    SELECT t.id AS task_id, t.propiedad_id AS property_id, t.sede_id AS task_sede_id, p.*\n    FROM public.tasks t\n    JOIN public.properties p ON p.id = t.propiedad_id\n    WHERE t.id = task_id_param\n  ), sources AS (\n    SELECT r.product_id, r.warehouse_id, r.quantity_per_cleaning AS quantity\n    FROM public.stock_property_consumption_rules r\n    JOIN task_property tp ON tp.property_id = r.property_id\n    JOIN public.stock_products sp ON sp.id = r.product_id AND sp.is_active\n    JOIN public.stock_categories sc ON sc.id = sp.category_id AND sc.kind = 'laundry'::public.stock_item_kind\n    WHERE r.is_active AND r.quantity_per_cleaning > 0\n    UNION ALL\n    SELECT m.product_id, m.warehouse_id,\n      CASE m.property_field\n        WHEN 'numero_sabanas' THEN COALESCE(tp.numero_sabanas, 0)\n        WHEN 'numero_sabanas_pequenas' THEN COALESCE(tp.numero_sabanas_pequenas, 0)\n        WHEN 'numero_sabanas_suite' THEN COALESCE(tp.numero_sabanas_suite, 0)\n        WHEN 'numero_toallas_grandes' THEN COALESCE(tp.numero_toallas_grandes, 0)\n        WHEN 'numero_toallas_pequenas' THEN COALESCE(tp.numero_toallas_pequenas, 0)\n        WHEN 'numero_alfombrines' THEN COALESCE(tp.numero_alfombrines, 0)\n        WHEN 'numero_fundas_almohada' THEN COALESCE(tp.numero_fundas_almohada, 0)\n        ELSE 0\n      END * m.multiplier\n    FROM public.stock_property_field_mappings m\n    JOIN task_property tp ON tp.task_sede_id = m.sede_id\n    JOIN public.stock_products sp ON sp.id = m.product_id AND sp.is_active\n    JOIN public.stock_categories sc ON sc.id = sp.category_id AND sc.kind = 'laundry'::public.stock_item_kind\n    WHERE m.is_active\n      AND NOT EXISTS (\n        SELECT 1 FROM public.stock_property_consumption_rules r\n        WHERE r.property_id = tp.property_id AND r.product_id = m.product_id AND r.is_active\n      )\n  )\n  SELECT s.product_id,\n    COALESCE(s.warehouse_id, tp.default_stock_warehouse_id, (\n      SELECT w.id FROM public.stock_warehouses w\n      WHERE w.sede_id = tp.task_sede_id AND w.is_default AND w.is_active\n      LIMIT 1\n    )) AS warehouse_id,\n    SUM(s.quantity)::NUMERIC(12, 2) AS quantity\n  FROM sources s\n  CROSS JOIN task_property tp\n  WHERE s.quantity > 0\n  GROUP BY s.product_id, COALESCE(s.warehouse_id, tp.default_stock_warehouse_id, (\n    SELECT w.id FROM public.stock_warehouses w\n      WHERE w.sede_id = tp.task_sede_id AND w.is_default AND w.is_active\n    LIMIT 1\n  ));\n$function$\n"
+    }
+  ]
+}
