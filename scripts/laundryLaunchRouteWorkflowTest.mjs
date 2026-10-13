@@ -74,6 +74,8 @@ function database(options = {}) {
     }; return q;
   }, async rpc(name, args) {
     calls.push({ rpc: name, args });
+    if (name === 'laundry_cycle_eligible') return options.cycleReadFailure ? {data:null,error:{message:'Cannot read cycle',code:'XX000'}} : {data:options.cycle === true,error:options.cycleMissing?{code:'PGRST202'}:null};
+    if (name === 'laundry_cycle_preview') return {data:options.cycle ? [{taskId:task,generation:0,dirtyLines:[],lines:[{productId:'towel-fixture',propertyField:'numero_toallas_grandes',quantity:4,name:'Toalla',unit:'unidades'}]}] : [],error:options.cycleMissing?{code:'PGRST202'}:null};
     return options.rpcError ? { data: null, error: { message: options.rpcError } }
       : { data: { processed: options.replay ? 0 : 1, skipped: options.replay ? 1 : 0 }, error: null };
   } };
@@ -82,11 +84,11 @@ const invoke = async (handler, options = {}, payload = {}) => {
   const db = database(options); globalThis.fixtureDb = db;
   const response = await handler(new Request('https://fixture.invalid', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: 'synthetic-link', taskId: task, action: 'deliver', ...payload }),
+    body: JSON.stringify({ token: 'synthetic-link', taskId: task, action: 'deliver', ...(options.cycle?{expectedBag:{propertyId:property.id,date:'2026-10-13',cycleGeneration:0,dirtyLines:[],cycleLines:[{productId:'towel-fixture',quantity:4}]}}:{}), ...payload }),
   }));
   return { status: response.status, data: await response.json(), calls: db.calls };
 };
-const rpcs = r => r.calls.filter(c => c.rpc);
+const rpcs = r => r.calls.filter(c => c.rpc && !['laundry_cycle_eligible','laundry_cycle_preview'].includes(c.rpc));
 const trackingWrites = r => r.calls.filter(c => c.table === 'laundry_delivery_tracking' && c.mutation);
 const workerWrites = r => r.calls.filter(c => c.table === 'laundry_route_worker_events' && c.mutation);
 try {
@@ -145,6 +147,21 @@ try {
   assert.equal(prepared.calls.filter(c => c.table === 'laundry_bag_preparations' && c.mutation).length, 1); count++;
   const loaded = await invoke(fixed, {}, { action: 'load' });
   assert.equal(loaded.status, 200); assert.equal(rpcs(loaded).length, 0); count++;
+  for (const action of ['prepare','collect','deliver','issue']) {
+    const result=await invoke(fixed,{cycle:true,workers:true},{action,sessionToken,issueReason:'Incidencia comprobada',workerName:'Untrusted name',routeWorkerId:'untrusted'});
+    assert.equal(result.status,200,JSON.stringify(result.data));
+    assert.equal(rpcs(result).length,1); assert.equal(rpcs(result)[0].rpc,'laundry_cycle_route');
+    assert.equal(rpcs(result)[0].args._worker,worker.id); assert.equal(rpcs(result)[0].args._name,worker.cleaners.name);
+    assert.equal(trackingWrites(result).length,0);assert.equal(workerWrites(result).length,0); count++;
+  }
+  const cycleLoaded=await invoke(fixed,{cycle:true},{action:'load'}); assert.equal(cycleLoaded.status,200);
+  assert.equal(cycleLoaded.data.workflow.currentRouteBags[0].textiles.towelsLarge,4);count++;
+  const cycleFailed=await invoke(fixed,{cycle:true,workers:true,rpcError:'No hay ropa disponible'},{sessionToken});
+  assert.equal(cycleFailed.status,500);assert.equal(trackingWrites(cycleFailed).length,0);count++;
+  const missing=await invoke(fixed,{cycleMissing:true,workers:true},{sessionToken});assert.equal(missing.status,200);assert.equal(rpcs(missing).length,0);count++;
+  const readFailed=await invoke(fixed,{cycleReadFailure:true,workers:true},{sessionToken});assert.equal(readFailed.status,500);assert.equal(trackingWrites(readFailed).length,0);count++;
+  const stale=await invoke(fixed,{cycle:true,workers:true},{action:'prepare',sessionToken,expectedBag:{propertyId:property.id,date:'2026-10-13',cycleGeneration:0,dirtyLines:[],cycleLines:[{productId:'towel-fixture',quantity:2}]}});assert.equal(stale.status,409);assert.equal(rpcs(stale).length,0);count++;
+  const oldClient=await invoke(fixed,{cycle:true,workers:true},{sessionToken,expectedBag:null});assert.equal(oldClient.status,409);assert.equal(rpcs(oldClient).length,0);count++;
   // The deployed dependency pack is held unchanged by this correction.
   const source = await readFile('supabase/functions/laundry-route-workflow/index.ts', 'utf8');
   assert.ok(source.includes('preparationTrashSackQuantity'));

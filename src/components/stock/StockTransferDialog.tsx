@@ -71,7 +71,7 @@ export function StockTransferDialog({ open, onOpenChange, level }: StockTransfer
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="rounded-md bg-muted p-3 text-sm">
-            Stock disponible: <span className="font-mono font-semibold">{level?.current_quantity ?? 0}</span>
+            Stock disponible: <span className="font-mono font-semibold">{(level?.current_quantity ?? 0) - (level?.reserved_quantity ?? 0)}</span>
           </div>
 
           <div className="space-y-2">

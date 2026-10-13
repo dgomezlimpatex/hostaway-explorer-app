@@ -138,7 +138,7 @@ export const useLaundryTracking = (shareLinkId: string | undefined) => {
       console.error('Error updating tracking:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo actualizar el estado',
+        description: error && typeof error === 'object' && 'message' in error ? String(error.message) : 'No se pudo actualizar el estado',
         variant: 'destructive',
       });
     },

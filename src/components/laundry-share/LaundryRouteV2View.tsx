@@ -51,6 +51,10 @@ const ROUTE_DELIVERY_ENABLED = false;
 
 type RouteBag = {
   taskId: string;
+  propertyId?: string;
+  cycleLines?: Array<{productId:string;quantity:number}>;
+  cycleGeneration?: number;
+  dirtyLines?: Array<{productId:string;quantity:number}>;
   propertyCode: string;
   propertyName: string;
   address: string;
@@ -83,6 +87,7 @@ type RouteBag = {
 
 type RouteWorkflow = {
   workflowVersion: 'route_v2';
+  inventoryCycleEnabled?: boolean;
   route: {
     deliveryDate: string;
     routeName: string;
@@ -123,6 +128,7 @@ const invokeWorkflow = async (
   taskId?: string,
   issueReason?: string,
   taskIds?: string[],
+  expectedBag?: Pick<RouteBag,'propertyId'|'date'|'cycleLines'|'cycleGeneration'|'dirtyLines'>,
 ): Promise<RouteWorkflow> => {
   const { data, error } = await supabase.functions.invoke('laundry-route-workflow', {
     body: {
@@ -133,10 +139,16 @@ const invokeWorkflow = async (
       taskId,
       taskIds,
       issueReason,
+      expectedBag,
     },
   });
 
-  if (error) throw error;
+  if (error) {
+    let message=error.message;
+    const context=(error as {context?:Response}).context;
+    if(context && typeof context.clone==='function') { const payload=await context.clone().json().catch(()=>null);if(payload?.error)message=String(payload.error); }
+    throw new Error(message);
+  }
   if (!data?.success) throw new Error(data?.error || 'No se pudo cargar el reparto');
   return data.workflow as RouteWorkflow;
 };
@@ -432,7 +444,7 @@ const recalculateWorkflowStats = (workflow: RouteWorkflow): RouteWorkflow => {
   const allUrgentBags = workflow.currentRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
   const urgentBags = allUrgentBags;
   const nextPendingBags = workflow.nextRouteBags.filter((bag) => bag.bagStatus.status === 'pending');
-  const routePending = ROUTE_DELIVERY_ENABLED && workflow.currentRouteBags
+  const routePending = (ROUTE_DELIVERY_ENABLED || workflow.inventoryCycleEnabled) && workflow.currentRouteBags
     .filter((bag) => !bag.isCancelled)
     .some((bag) => !isRouteBagComplete(bag));
 
@@ -757,8 +769,10 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   });
 
   const actionMutation = useMutation({
-    mutationFn: ({ action, taskId, reason }: { action: RouteAction; taskId: string; reason?: string }) =>
-      invokeWorkflow(token, routeAccess?.sessionToken, action, taskId, reason),
+    mutationFn: ({ action, taskId, reason }: { action: RouteAction; taskId: string; reason?: string }) => {
+      const bag=findWorkflowBag(queryClient.getQueryData<RouteWorkflow>(queryKey),taskId);
+      return invokeWorkflow(token, routeAccess?.sessionToken, action, taskId, reason, undefined,bag?{propertyId:bag.propertyId,date:bag.date,cycleLines:bag.cycleLines,cycleGeneration:bag.cycleGeneration,dirtyLines:bag.dirtyLines}:undefined);
+    },
     onMutate: ({ action, taskId, reason }) => {
       void queryClient.cancelQueries({ queryKey });
       const previousWorkflow = queryClient.getQueryData<RouteWorkflow>(queryKey);
@@ -1328,7 +1342,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {!buildingViewActive && ROUTE_DELIVERY_ENABLED && !urgentBag && workflow.blockingStep === 'deliver' && (
+        {!buildingViewActive && (ROUTE_DELIVERY_ENABLED || workflow.inventoryCycleEnabled) && !urgentBag && workflow.blockingStep === 'deliver' && (
           <section className="space-y-2">
             <div className="rounded-lg border border-[#dfd2bf] bg-[#fbf6ec] p-2.5 text-[#17130f]">
               <div className="flex items-center gap-1.5">
@@ -1384,7 +1398,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
                       <ChevronDown className={cn('h-4 w-4 transition-transform', !collapsed && 'rotate-180')} />
                     </button>
 
-                    {!buildingComplete && (
+                    {!buildingComplete && !workflow.inventoryCycleEnabled && (
                       <div className="px-3 pb-3">
                         <Button
                           type="button"

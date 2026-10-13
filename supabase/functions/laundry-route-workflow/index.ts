@@ -18,6 +18,15 @@ type JsonRecord = Record<string, unknown>;
 type RouteAction = "load" | "prepare" | "issue" | "collect" | "deliver";
 type SupabaseClientLike = any;
 
+async function hasCompleteCycle(supabase: SupabaseClientLike, taskId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("laundry_cycle_eligible", { _task: taskId });
+  // The prepared frontend/Edge package may precede the reviewed SQL activation.
+  // A missing RPC means this new circuit is unavailable; other failures stop writes.
+  if (error && ["PGRST202", "42883"].includes(error.code)) return false;
+  if (error) throw error;
+  return data === true;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -392,7 +401,7 @@ function mapTask(
     && bagRequirementsChanged(previous as JsonRecord, bag)) {
     bag.bagStatus.status = 'pending';
   }
-  return bag;
+  return bag as typeof bag & {cycleLines?: JsonRecord[];cycleGeneration?:number;dirtyLines?:JsonRecord[]};
 }
 
 async function upsertPreparation(
@@ -617,6 +626,20 @@ async function loadWorkflow(
   const nextTaskIds = nextTasks.map((task) => String(task.id));
   const allTaskIds = Array.from(new Set([...currentTaskIds, ...nextTaskIds]));
 
+  const { data: cyclePreview, error: previewError } = await supabase.rpc("laundry_cycle_preview", { _tasks: allTaskIds });
+  if (previewError && !["PGRST202", "42883"].includes(previewError.code)) throw previewError;
+  const previewRows = Array.isArray(cyclePreview) ? cyclePreview as JsonRecord[] : [];
+  const propertyTextileFields = ["numero_sabanas", "numero_sabanas_pequenas", "numero_sabanas_suite", "numero_fundas_almohada", "numero_toallas_grandes", "numero_toallas_pequenas", "numero_alfombrines"];
+  for (const task of [...currentTasks, ...nextTasks]) {
+    const preview = previewRows.find(row => row.taskId === task.id);
+    const property = getProperty(task);
+    if (!preview || !property) continue;
+    for (const field of propertyTextileFields) property[field] = 0;
+    for (const line of Array.isArray(preview.lines) ? preview.lines as JsonRecord[] : []) {
+      if (propertyTextileFields.includes(String(line.propertyField))) property[String(line.propertyField)] = numberValue(property[String(line.propertyField)]) + numberValue(line.quantity);
+    }
+  }
+
   const existingSnapshotIds = stringArray(link.snapshot_task_ids);
   const existingOriginalIds = stringArray(link.original_task_ids);
   const snapshotSet = new Set([...currentTaskIds, ...nextTaskIds]);
@@ -642,6 +665,17 @@ async function loadWorkflow(
     fetchStockConsumablesByProperty(supabase, [...currentTasks, ...nextTasks]),
   ]);
 
+  for (const task of [...currentTasks, ...nextTasks]) {
+    const preview = previewRows.find(row => row.taskId === task.id);
+    const propertyId = String(task.propiedad_id ?? "");
+    if (!preview) continue;
+    const extraTextiles = (Array.isArray(preview.lines) ? preview.lines as JsonRecord[] : [])
+      .filter(line => !propertyTextileFields.includes(String(line.propertyField)))
+      .map(line => ({ productId: line.productId, name: line.name, quantity: line.quantity, unitOfMeasure: line.unit, categoryKind: "laundry", sortOrder: 0 }));
+    const normal = (stockConsumablesByProperty.get(propertyId) ?? []).filter(line => line.categoryKind !== "laundry");
+    stockConsumablesByProperty.set(propertyId, [...normal, ...extraTextiles]);
+  }
+
   const currentRouteBags = currentTasks.map((task) =>
     mapTask(task, preparations, tracking, stockConsumablesByProperty, originalSet)
   );
@@ -649,16 +683,45 @@ async function loadWorkflow(
     mapTask(task, preparations, new Map(), stockConsumablesByProperty, originalSet)
   );
 
+  for (const bag of [...currentRouteBags, ...nextRouteBags]) {
+    const preview = previewRows.find(row => row.taskId === bag.taskId);
+    if (preview) Object.assign(bag, { cycleLines: (Array.isArray(preview.lines) ? preview.lines as JsonRecord[] : []).map(line => ({ productId: line.productId, quantity: line.quantity })),cycleGeneration:preview.generation ?? 0,dirtyLines:preview.dirtyLines ?? [] });
+    if (!preview) continue;
+    if (preview.collected === true) bag.deliveryTracking.collectionStatus = "collected";
+    if (!preview.cycleState) continue;
+    if (preview.destinationChanged === true) bag.deliveryTracking.deliveryStatus="pending";
+    if (["released", "returned"].includes(String(preview.cycleState))) {
+      bag.bagStatus.status = "pending";
+      bag.deliveryTracking.deliveryStatus = "pending";
+      bag.deliveryTracking.deliveredAt = null;
+    } else {
+      if (preview.cycleState === "prepared") {
+        bag.deliveryTracking.deliveryStatus = "pending";
+        bag.deliveryTracking.deliveredAt = null;
+      }
+      if (preview.contentChanged === true) bag.bagStatus.status = "pending";
+      else if (bag.bagStatus.status !== "issue" && (bag.bagStatus.status !== "pending" || !preparations.get(bag.taskId)?.content_snapshot)) bag.bagStatus.status = "prepared";
+      if (["delivered", "used"].includes(String(preview.cycleState)) && preview.destinationChanged!==true) {
+        bag.deliveryTracking.deliveryStatus = "delivered";
+        bag.deliveryTracking.deliveredAt = preview.deliveredAt ?? null;
+      }
+    }
+  }
+
   const urgentBags = currentRouteBags.filter((bag) => bag.bagStatus.status === "pending");
   const nextPendingBags = nextRouteBags.filter((bag) => bag.bagStatus.status === "pending");
+  const inventoryCycleEnabled=previewRows.length>0;
+  const routePending=inventoryCycleEnabled && currentRouteBags.some(bag=>bag.deliveryTracking.collectionStatus!=="collected" || bag.bagStatus.status!=="issue" && bag.deliveryTracking.deliveryStatus!=="delivered");
   const blockingStep = urgentBags.length > 0
     ? "urgent"
+    : routePending ? "deliver"
     : nextPendingBags.length > 0
       ? "prepare_next"
       : "deliver";
 
   return {
     workflowVersion,
+    inventoryCycleEnabled,
     link: {
       id: link.id,
       token: link.token,
@@ -823,7 +886,32 @@ serve(async (req) => {
       if (!allowedTaskIds.has(taskId)) return json({ error: "La tarea no pertenece a esta ruta" }, 400);
 
       let workerActionRecorded = false;
-      if (action === "prepare") {
+      if (await hasCompleteCycle(supabase, taskId)) {
+        if (action === "collect" || action === "deliver") {
+          const currentTaskIds = new Set((workflow.currentRouteBags ?? []).map((bag: JsonRecord) => String(bag.taskId)));
+          if (!currentTaskIds.has(taskId)) return json({ error: "Solo se puede recoger o entregar la ruta actual" }, 400);
+        }
+        const bag = [...(workflow.currentRouteBags ?? []), ...(workflow.nextRouteBags ?? [])].find((item) => item.taskId === taskId);
+        const expected=body.expectedBag;
+        const normalizedLines=(x:unknown)=>Array.isArray(x)?x.map(line=>[String(line.productId),Number(line.quantity)]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))):null;
+        const sameLines=(a:unknown,b:unknown)=>JSON.stringify(normalizedLines(a))===JSON.stringify(normalizedLines(b));
+        if (!expected || expected.propertyId!==bag?.propertyId || expected.date!==bag?.date
+          || ((action==="prepare" || action==="deliver") && !sameLines(expected.cycleLines,bag?.cycleLines))
+          || (action!=="collect" && expected.cycleGeneration!==bag?.cycleGeneration && !(action==="prepare" && expected.cycleGeneration+1===bag?.cycleGeneration && bag?.bagStatus?.status==="prepared"))
+          || (action==="collect" && !sameLines(expected.dirtyLines,bag?.dirtyLines) && bag?.deliveryTracking?.collectionStatus!=="collected")) {
+          return json({error:"La propiedad o las cantidades cambiaron: recarga la ruta antes de confirmar"},409);
+        }
+        if (action === "prepare" && Number(bag?.amenities?.trashSacks100L) > 0 && body.bagContentsVersion !== 2) {
+          return json({ error: "Actualiza la página antes de preparar esta bolsa" }, 409);
+        }
+        const { error: cycleError } = await supabase.rpc("laundry_cycle_route", {
+          _task: taskId, _link: String(workflow.link.id), _action: action,
+          _worker: access.actor?.routeWorkerId ?? null, _cleaner: access.actor?.cleanerId ?? null,
+          _name: access.actor?.workerName ?? "Repartidor", _snapshot: bag ?? null, _issue: issueReason || null,
+        });
+        if (cycleError) throw cycleError;
+        workerActionRecorded = true;
+      } else if (action === "prepare") {
         const bag = [...(workflow.currentRouteBags ?? []), ...(workflow.nextRouteBags ?? [])].find((item) => item.taskId === taskId);
         if (Number(bag?.amenities?.trashSacks100L) > 0 && body.bagContentsVersion !== 2) {
           return json({ error: "Recarga la página para ver los sacos de 100 L antes de preparar esta bolsa" }, 409);
@@ -872,6 +960,7 @@ serve(async (req) => {
     return json({ success: true, workflow });
   } catch (err) {
     console.error("laundry-route-workflow error", err);
-    return json({ error: err instanceof Error ? err.message : "Error desconocido" }, 500);
+    const message = err instanceof Error ? err.message : err && typeof err === "object" && "message" in err && typeof err.message === "string" ? err.message : "No se pudo guardar la operación";
+    return json({ error: message }, 500);
   }
 });
