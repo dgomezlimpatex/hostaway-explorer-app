@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import {
   emptyReceiptCounts,
   madridReceiptDate,
   receiptQuantity,
+  isReceiptDate,
 } from "../../supabase/functions/_shared/laundryReceiptDomain";
 import {
   downloadReceiptExcel,
@@ -44,18 +45,30 @@ const emailLabels = {
   uncertain: "Envío pendiente de revisión por administración",
 };
 
-export default function PublicLaundryReceipt() {
+type Props = {
+  adminAccess?: { warehouseId: string; userId: string };
+  onSaved?: () => void;
+  onEditingChange?: (editing: boolean) => void;
+};
+export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingChange }: Props = {}) {
   const { token = "" } = useParams();
-  const accessKey = `laundry-receipt-access:${token}`;
-  const pendingKey = `laundry-receipt-pending:${token}`;
-  const [access, setAccess] = useState<Access | null>(() =>
+  const adminMode = Boolean(adminAccess);
+  const warehouseId = adminAccess?.warehouseId || "";
+  const adminUserId = adminAccess?.userId || "";
+  const scope = adminMode ? `admin:${warehouseId}:${adminUserId}` : token;
+  const accessKey = `laundry-receipt-access:${scope}`;
+  const pendingKey = `laundry-receipt-pending:${scope}`;
+  const [savedAccess, setAccess] = useState<Access | null>(() =>
     readStored<Access>(accessKey),
   );
+  const access = useMemo<Access | null>(() => adminMode ? {
+    sessionToken: "", workerId: adminUserId, workerName: "Administración", expiresAt: "",
+  } : savedAccess, [adminMode, adminUserId, savedAccess]);
   const [pending, setPending] = useState<Pending | null>(() =>
     readStored<Pending>(pendingKey),
   );
   const [state, setState] = useState<ReceiptState | null>(null);
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(() => readStored<Pending>(pendingKey)?.date || madridReceiptDate());
   const [reviewing, setReviewing] = useState(false);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -74,21 +87,22 @@ export default function PublicLaundryReceipt() {
     const sequence = ++readSequence.current;
     try {
       const next = await receiptRequest<ReceiptState>({
-        action: "read",
+        action: adminMode ? "admin_receipt_read" : "read",
+        warehouseId: adminMode ? warehouseId : undefined,
         token,
         sessionToken: access.sessionToken,
         date: date || null,
       });
       if (sequence === readSequence.current) setState(next);
     } catch (err) {
-      if (err instanceof ReceiptRequestError && err.status === 401) {
+      if (!adminMode && err instanceof ReceiptRequestError && err.status === 401) {
         localStorage.removeItem(accessKey);
         setAccess(null);
         setState(null);
       }
       throw err;
     }
-  }, [access, token, date, accessKey]);
+  }, [access, token, date, accessKey, adminMode, warehouseId]);
   useEffect(() => {
     if (!access) return;
     refresh().catch((err) => setError(err.message));
@@ -137,7 +151,8 @@ export default function PublicLaundryReceipt() {
     setError("");
     try {
       await receiptRequest({
-        action: "mutate",
+        action: adminMode ? "admin_receipt_mutate" : "mutate",
+        warehouseId: adminMode ? warehouseId : undefined,
         token,
         sessionToken: access.sessionToken,
         ...operation,
@@ -157,6 +172,7 @@ export default function PublicLaundryReceipt() {
         });
       }
       await refresh();
+      onSaved?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar");
       if (err instanceof ReceiptRequestError && err.status === 409)
@@ -231,15 +247,35 @@ export default function PublicLaundryReceipt() {
       ) && op.revision === state.receipt?.revision,
   );
   const unsubmitted = Object.values(inputs).some((value) => value !== "");
+  useEffect(() => { onEditingChange?.(locked || unsubmitted || reviewing); }, [onEditingChange, locked, unsubmitted, reviewing]);
+  const today = madridReceiptDate();
+  function selectDate(next: string) {
+    if (locked || reviewing) return;
+    if (!isReceiptDate(next, today)) {
+      setError("Selecciona una fecha válida de hoy o de un día anterior.");
+      return;
+    }
+    if (next === (date || state?.date || today)) return;
+    if (unsubmitted && !window.confirm("Hay cantidades escritas sin añadir. ¿Descartarlas y cambiar de fecha?")) return;
+    cancelReads();
+    setState(null);
+    setInputs({});
+    setInputRevisions({});
+    setReviewing(false);
+    setError("");
+    setDate(next);
+  }
+  const Container = adminMode ? "section" : "main";
+  const Heading = adminMode ? "h3" : "h1";
 
   return (
-    <main className="min-h-screen bg-slate-50 px-3 py-3 text-slate-900">
+    <Container className={`${adminMode ? "rounded-xl" : "min-h-screen"} bg-slate-50 px-3 py-3 text-slate-900`}>
       <div className="relative mx-auto max-w-xl space-y-2">
         <header>
           <p className="hidden">APP GESTIÓN LIMPATEX</p>
-          <h1 className="pr-24 text-lg font-bold leading-7 sm:text-xl">
+          <Heading className="pr-24 text-lg font-bold leading-7 sm:text-xl">
             Inventario de lencería
-          </h1>
+          </Heading>
           <p className="hidden">Cuenta por tandas y confirma al terminar.</p>
         </header>
         {error && (
@@ -281,7 +317,7 @@ export default function PublicLaundryReceipt() {
           <>
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs leading-4 text-slate-600 [&_button]:hidden">
               <span>{state?.workerName || access.workerName}</span>
-              <Button
+              {!adminMode && <Button
                 variant="ghost"
                 disabled={busy}
                 onClick={async () => {
@@ -298,7 +334,14 @@ export default function PublicLaundryReceipt() {
                 }}
               >
                 Cambiar empleado
-              </Button>
+              </Button>}
+            </div>
+            <div className="space-y-1 rounded-xl border bg-white p-3">
+              <label htmlFor={`receipt-date-${adminMode ? "admin" : "public"}`} className="block text-sm font-semibold">Fecha de la entrega</label>
+              <Input id={`receipt-date-${adminMode ? "admin" : "public"}`} type="date" min="0001-01-01" max={today}
+                value={date || state?.date || today} disabled={locked || reviewing} className="h-11 text-base"
+                onChange={(event) => selectDate(event.target.value)} />
+              {(date || state?.date || today) < today && <p className="text-xs text-amber-800">Estás registrando la entrega de un día pasado. Al confirmar, se actualizará el stock actual.</p>}
             </div>
             {!state && (
               <Button
@@ -371,14 +414,13 @@ export default function PublicLaundryReceipt() {
                     {" "}
                     {state.date}
                   </p>
-                  {date && (
+                  {state.date !== today && (
                     <Button
                       variant="outline"
                       className="mt-2"
-                      disabled={locked}
+                      disabled={locked || reviewing}
                       onClick={() => {
-                        setInputs({});
-                        setDate("");
+                        selectDate(today);
                       }}
                     >
                       Volver a hoy · {madridReceiptDate()}
@@ -395,10 +437,9 @@ export default function PublicLaundryReceipt() {
                         <Button
                           key={d}
                           variant="outline"
-                          disabled={locked || unsubmitted}
+                          disabled={locked || unsubmitted || reviewing}
                           onClick={() => {
-                            setInputs({});
-                            setDate(d);
+                            selectDate(d);
                           }}
                         >
                           Retomar {d}
@@ -413,7 +454,7 @@ export default function PublicLaundryReceipt() {
                     disabled={locked}
                     onClick={() => void mutate({ action: "start" })}
                   >
-                    Iniciar recuento de hoy
+                    {state.date === today ? "Iniciar recuento de hoy" : `Iniciar recuento del ${state.date}`}
                   </Button>
                 ) : (
                   <>
@@ -671,7 +712,8 @@ export default function PublicLaundryReceipt() {
                                   setBusy(true);
                                   try {
                                     await receiptRequest({
-                                      action: "retry",
+                                      action: adminMode ? "admin_receipt_retry" : "retry",
+                                      warehouseId: adminMode ? warehouseId : undefined,
                                       token,
                                       sessionToken: access.sessionToken,
                                       date: state.date,
@@ -737,6 +779,6 @@ export default function PublicLaundryReceipt() {
           </>
         )}
       </div>
-    </main>
+    </Container>
   );
 }

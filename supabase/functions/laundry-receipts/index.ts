@@ -32,6 +32,7 @@ export async function handleReceiptRequest(req: Request): Promise<Response> {
       const { data, error } = await db.rpc(name, args);
       if (error) {
         if (error.code === "28000") throw json({ error: error.message }, 401);
+        if (error.code === "42501") throw json({ error: error.message }, 403);
         if (error.code === "40001")
           throw json({ error: error.message, conflict: true }, 409);
         throw json(
@@ -80,6 +81,24 @@ export async function handleReceiptRequest(req: Request): Promise<Response> {
             { error: "No tienes acceso a la sede de este almacén" },
             403,
           );
+      }
+      if (["admin_receipt_read", "admin_receipt_mutate", "admin_receipt_retry"].includes(action)) {
+        // The actor always comes from the verified JWT, never from the request body.
+        if (actor.kind !== "user" || !actor.userId) return json({ error: "Accede con tu cuenta de administración" }, 403);
+        const args = { _warehouse: warehouseId, _actor: actor.userId, _date: body.date ?? null };
+        if (action === "admin_receipt_mutate") {
+          const result = await rpc("mutate_laundry_receipt_admin", { ...args, _op_id: body.operationId, _payload: body.payload });
+          if (result.versionId && !result.unchanged) await sendReceiptEmail(db, result.versionId).catch(() => undefined);
+          return json({ result });
+        }
+        const state = await rpc("read_laundry_receipt_admin", args);
+        if (action === "admin_receipt_retry") {
+          if (!state.versions.some((v: { id: string }) => v.id === body.versionId)) return json({ error: "Versión no disponible" }, 404);
+          await rpc("retry_laundry_receipt_email", { _version: body.versionId });
+          await sendReceiptEmail(db, body.versionId);
+          return json({ success: true });
+        }
+        return json(state);
       }
       if (action === "admin_configure") {
         return json({

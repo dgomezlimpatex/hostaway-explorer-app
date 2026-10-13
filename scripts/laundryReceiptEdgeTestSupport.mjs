@@ -85,20 +85,9 @@ export async function loadReceiptEdge(t) {
           queries.push({ table, mutation });
           let rows;
           if (table === "user_roles")
-            rows = [{ user_id: "fixture-admin", role: "admin" }];
+            rows = (await t.db.query("SELECT * FROM user_roles")).rows;
           else if (table === "user_sede_access")
-            rows = [
-              {
-                user_id: "fixture-admin",
-                sede_id: (
-                  await t.db.query(
-                    "SELECT sede_id FROM stock_warehouses WHERE id=$1",
-                    [t.warehouse],
-                  )
-                ).rows[0].sede_id,
-                can_access: true,
-              },
-            ];
+            rows = (await t.db.query("SELECT * FROM user_sede_access")).rows;
           else rows = (await t.db.query(`SELECT * FROM public.${table}`)).rows;
           if (table === "laundry_route_workers") {
             for (const row of rows)
@@ -155,7 +144,7 @@ export async function loadReceiptEdge(t) {
     auth: {
       async getUser(jwt) {
         return jwt === "fixture-admin-jwt"
-          ? { data: { user: { id: "fixture-admin" } }, error: null }
+          ? { data: { user: { id: t.admin } }, error: null }
           : { data: { user: null }, error: new Error("invalid") };
       },
     },
