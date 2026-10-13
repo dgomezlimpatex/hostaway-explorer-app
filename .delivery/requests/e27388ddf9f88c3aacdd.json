@@ -1,0 +1,26 @@
+{
+  "request": "Corregir el error 500 por statement timeout al cargar el analisis financiero comunicado por Dani.",
+  "reason": "Cambio limitado a lecturas de la aplicacion: reemplaza los joins de reglas, propiedades y productos por bloques de 20 IDs de propiedades ya filtradas por sede, con paginacion completa y union en memoria. Mantiene permisos, calculos y errores visibles. No modifica datos, esquema, autenticacion ni configuracion del backend.",
+  "verification": "Build correcto, lint focalizado correcto, TypeScript app 102 diagnosticos heredados antes y despues sin nuevos y Node 0. Pruebas HTTP sin red con el cliente real: 1575 reglas, paginacion, deduplicacion, ceros, producto no visible, otra sede excluida, errores en paginas/bloques/productos y reintento. Pantalla real con fixtures: escritorio y movil, carga, actualizacion, error sin totales parciales y recuperacion. Regresion de modelos, comparativas e informes. Lecturas SQL de produccion en transacciones read only con rol authenticated y contexto del usuario: nueve bloques completados bajo limite de 8 segundos, 2831 reglas igual al recuento original y 19 productos visibles. El timeout original consta en los logs pero no se reproduce en todas las lecturas; no se ha verificado aun el navegador autenticado en produccion.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialConsumptionTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialAnalysisBrowserTest.mjs",
+    "scripts/financialAnalyticsTest.mjs",
+    "scripts/financialAnalyticsBrowserTest.mjs",
+    "scripts/financialReportsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "e059d8029f80a04642005330e2667f8ce56b3287261c848701c3bd20776d1de4"
+}
