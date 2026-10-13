@@ -10,6 +10,8 @@ import { loadReceiptEdge } from "./laundryReceiptEdgeTestSupport.mjs";
 
 const t = await receiptTestDatabase();
 const { request } = await loadReceiptEdge(t);
+const pendingDate = (await t.db.query("SELECT ((now() AT TIME ZONE 'Europe/Madrid')::date-20)::text AS d")).rows[0].d;
+await t.mutate({ action: "start" }, { date: pendingDate });
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (url) => {
   assert.equal(url, "https://api.resend.com/emails");
@@ -104,6 +106,24 @@ try {
   await page.getByRole("alert").filter({ hasText: "PIN incorrecto" }).waitFor();
   await page.getByLabel("Tu PIN de empleado").fill("1234");
   await page.getByRole("button", { name: "Entrar al recuento" }).click();
+  await page.getByRole("button", { name: "Iniciar recuento de hoy" }).waitFor();
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `Landing desborda a ${width}px`);
+    await page.screenshot({ path: join(artifacts, `start-${width}.png`), fullPage: true });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('region', { name: 'Recuentos pendientes' }).getByRole('button', { name: /Retomar/ }).click();
+  await expect(page.getByLabel('Fecha de la entrega', { exact: true })).toHaveValue(pendingDate);
+  await page.getByLabel('Cantidad Toallas de baño', { exact: true }).waitFor();
+  await page.getByLabel('Fecha de la entrega', { exact: true }).fill(t.date);
+  await page.getByRole('button', { name: 'Iniciar recuento de hoy' }).waitFor();
+  const historicalEntryDate = (await t.db.query("SELECT ((now() AT TIME ZONE 'Europe/Madrid')::date-2)::text AS d")).rows[0].d;
+  await page.getByLabel('Fecha de la entrega', { exact: true }).fill(historicalEntryDate);
+  await page.getByRole('button', { name: /^Iniciar recuento del / }).waitFor();
+  await expect(page.getByRole('note')).toContainText('se actualizará el stock actual');
+  await page.screenshot({ path: join(artifacts, 'start-historical-pending.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Volver a hoy', exact: true }).click();
   await page.getByRole("button", { name: "Iniciar recuento de hoy" }).click();
   await page.getByLabel("Cantidad Toallas de baño", { exact: true }).waitFor();
   const expectedLabels = ["Sábanas de suite", "Sábanas de matrimonio", "Sábanas individuales", "Fundas de almohada", "Toallas de manos", "Toallas de baño", "Alfombrín de ducha", "Almohada", "Cubre colchón", "Edredón"];
@@ -405,7 +425,7 @@ try {
   const beforePast = await suiteBalance();
   if (await page.getByRole('button',{name:'Volver al recuento',exact:true}).count()) await page.getByRole('button',{name:'Volver al recuento',exact:true}).click();
   await page.getByLabel('Fecha de la entrega',{exact:true}).fill(pastDate);
-  await page.getByRole('button',{name:`Iniciar recuento del ${pastDate}`,exact:true}).click();
+  await page.getByRole('button',{name:/^Iniciar recuento del /,exact:true}).click();
   dropNextAdd = true;
   await page.getByLabel('Cantidad Sábanas de suite',{exact:true}).fill('17');
   await page.locator('section').filter({has:page.locator('label[for="count-suite_sheets"]')}).getByRole('button',{name:'Añadir',exact:true}).click();
@@ -432,7 +452,7 @@ try {
   await expect(page.getByLabel('Cantidad Sábanas de suite',{exact:true})).toHaveValue('6');
   page.once('dialog',dialog=>dialog.accept());
   await page.getByLabel('Fecha de la entrega',{exact:true}).fill(adminPastDate);
-  await page.getByRole('button',{name:`Iniciar recuento del ${adminPastDate}`,exact:true}).waitFor();
+  await page.getByRole('button',{name:/^Iniciar recuento del /,exact:true}).waitFor();
   assert.equal((await t.db.query('SELECT count(*)::int AS n FROM laundry_receipts WHERE receipt_date=$1',[adminPastDate])).rows[0].n,0,'Selecting a day alone cannot create a receipt');
   const adminContext = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
@@ -564,7 +584,7 @@ try {
   await admin.screenshot({path:join(artifacts,'historical-admin-correction.png'),fullPage:true});
   await admin.getByRole('button',{name:'Volver al recuento',exact:true}).click();
   await admin.getByLabel('Fecha de la entrega',{exact:true}).fill(adminPastDate);
-  await admin.getByRole('button',{name:`Iniciar recuento del ${adminPastDate}`,exact:true}).click();
+  await admin.getByRole('button',{name:/^Iniciar recuento del /,exact:true}).click();
   await admin.getByLabel('Cantidad Toallas de baño',{exact:true}).fill('4');
   await admin.locator('label[for="count-bath_towels"]').locator('xpath=ancestor::section[1]').getByRole('button',{name:'Añadir',exact:true}).click();
   await expect(admin.getByLabel('Total Toallas de baño',{exact:true})).toHaveText('4');

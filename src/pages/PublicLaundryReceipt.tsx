@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import LaundryReceiptStart from "@/components/inventory/LaundryReceiptStart";
 import LaundryReceiptReview from "@/components/inventory/LaundryReceiptReview";
 import {
   RECEIPT_MATERIALS,
@@ -265,13 +266,14 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
     setError("");
     setDate(next);
   }
+  const starting = Boolean(access && state && !state.receipt);
   const Container = adminMode ? "section" : "main";
   const Heading = adminMode ? "h3" : "h1";
 
   return (
     <Container className={`${adminMode ? "rounded-xl" : "min-h-screen"} bg-slate-50 px-3 py-3 text-slate-900`}>
       <div className="relative mx-auto max-w-xl space-y-2">
-        <header>
+        <header className={starting ? "hidden" : undefined}>
           <p className="hidden">APP GESTIÓN LIMPATEX</p>
           <Heading className="pr-24 text-lg font-bold leading-7 sm:text-xl">
             Inventario de lencería
@@ -315,7 +317,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
           </form>
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs leading-4 text-slate-600 [&_button]:hidden">
+            <div className={`${starting ? "hidden" : "flex"} flex-wrap items-center justify-between gap-2 text-xs leading-4 text-slate-600 [&_button]:hidden`}>
               <span>{state?.workerName || access.workerName}</span>
               {!adminMode && <Button
                 variant="ghost"
@@ -336,13 +338,13 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                 Cambiar empleado
               </Button>}
             </div>
-            <div className="space-y-1 rounded-xl border bg-white p-3">
+            {!starting && <div className="space-y-1 rounded-xl border bg-white p-3">
               <label htmlFor={`receipt-date-${adminMode ? "admin" : "public"}`} className="block text-sm font-semibold">Fecha de la entrega</label>
               <Input id={`receipt-date-${adminMode ? "admin" : "public"}`} type="date" min="0001-01-01" max={today}
                 value={date || state?.date || today} disabled={locked || reviewing} className="h-11 text-base"
                 onChange={(event) => selectDate(event.target.value)} />
               {(date || state?.date || today) < today && <p className="text-xs text-amber-800">Estás registrando la entrega de un día pasado. Al confirmar, se actualizará el stock actual.</p>}
-            </div>
+            </div>}
             {!state && (
               <Button
                 onClick={() => refresh().catch((err) => setError(err.message))}
@@ -408,7 +410,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
             )}
             {state && (
               <>
-                <section className="contents">
+                <section className={starting ? "hidden" : "contents"}>
                   <h2 className="hidden">{state.warehouseName}</h2>
                   <p className="absolute right-0 top-0 !mt-0 text-xs leading-7 text-slate-500">
                     {" "}
@@ -427,7 +429,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                     </Button>
                   )}
                 </section>
-                {state.pendingDates.length > 0 && (
+                {state.receipt && state.pendingDates.length > 0 && (
                   <div className="rounded-xl bg-amber-50 p-4 text-sm">
                     <p className="font-medium">
                       Hay recuentos anteriores sin confirmar
@@ -449,13 +451,18 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                   </div>
                 )}
                 {!state.receipt ? (
-                  <Button
-                    className="h-14 w-full text-base"
-                    disabled={locked}
-                    onClick={() => void mutate({ action: "start" })}
-                  >
-                    {state.date === today ? "Iniciar recuento de hoy" : `Iniciar recuento del ${state.date}`}
-                  </Button>
+                  <LaundryReceiptStart
+                    workerName={state.workerName || access.workerName}
+                    warehouseName={state.warehouseName}
+                    date={state.date}
+                    today={today}
+                    pendingDates={state.pendingDates}
+                    locked={locked}
+                    resumeDisabled={locked || unsubmitted || reviewing}
+                    adminMode={adminMode}
+                    onSelectDate={selectDate}
+                    onStart={() => void mutate({ action: "start" })}
+                  />
                 ) : (
                   <>
                     {reviewing ? (
