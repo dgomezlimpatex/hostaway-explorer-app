@@ -11,14 +11,27 @@ export interface SourceTask {
   task_assignments: { cleaner_id: string; cleaner_name: string }[];
 }
 export interface SourceBuilding { id: string; name: string; display_name?: string | null; is_active: boolean }
+export interface SourceBuildingAssignment { property_group_id: string; group: SourceBuilding | SourceBuilding[] | null }
 export interface SourceProperty {
-  property_group_assignments?: { property_group_id: string; group: SourceBuilding | SourceBuilding[] | null }[];
+  property_group_assignments?: SourceBuildingAssignment[];
   id: string; nombre: string; cliente_id: string; coste_servicio: number | null; duracion_servicio: number | null;
   numero_sabanas?: number; numero_sabanas_pequenas?: number; numero_sabanas_suite?: number;
   numero_fundas_almohada?: number; numero_toallas_grandes?: number; numero_toallas_pequenas?: number;
   numero_alfombrines?: number; amenities_cocina?: number; amenities_bano?: number; kit_alimentario?: number;
   cantidad_rollos_papel_higienico?: number;
   amenities_control_enabled?: boolean | null;
+}
+export type SourcePropertyRow = Omit<SourceProperty, 'property_group_assignments'> & {
+  property_group_assignments?: SourceBuildingAssignment | SourceBuildingAssignment[] | null;
+};
+
+export function normalizeFinancialProperties(rows: SourcePropertyRow[]): SourceProperty[] {
+  return rows.map(row => ({ ...row,
+    // The production FK is unique on property_id: PostgREST embeds an object
+    // (or null), while older fixtures/readers also supply an array.
+    property_group_assignments: Array.isArray(row.property_group_assignments)
+      ? row.property_group_assignments : row.property_group_assignments ? [row.property_group_assignments] : [],
+  }));
 }
 export interface ConsumptionRule { property_id: string; quantity_per_cleaning: number; product: { name: string } | null }
 export interface DirectoryEntry { id: string; name: string; amenitiesControlEnabled?: boolean }
