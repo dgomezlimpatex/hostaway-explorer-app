@@ -7,14 +7,14 @@ export { money } from './financialFormat';
 export type FinancialAnalysis = ReturnType<typeof analyze>;
 export const categoryNames: Record<Category, string> = { personal: 'Personal', laundry: 'Lavandería', supplies: 'Amenities y consumibles', products: 'Productos de limpieza', salary: 'Salario dirección turismo', other: 'Otros gastos' };
 export const shortMoney = (cents: number) => new Intl.NumberFormat('es-ES', { notation: 'compact', maximumFractionDigits: 1 }).format(cents / 100) + ' €';
-export const chartColors = ['#6d28d9', '#2563eb', '#db2777', '#d97706', '#0f766e', '#64748b'];
+export const chartColors = ['#0b8f86', '#c8582b', '#4a67c7', '#b58a0b', '#9a5aa5', '#5f7c8a'];
 export type ComparisonView = 'balance' | 'costs' | 'incomes';
 export interface ColumnSeries { id: string; name: string; color: string }
 export interface ColumnGroup { name: string; start?: string; values: Record<string, number> }
 export const balanceColumns: ColumnSeries[] = [
-  { id: 'revenue', name: 'Ingresos', color: '#6d28d9' },
-  { id: 'expense', name: 'Gastos', color: '#d97706' },
-  { id: 'result', name: 'Resultado', color: '#059669' },
+  { id: 'revenue', name: 'Ingresos', color: '#0b8f86' },
+  { id: 'expense', name: 'Gastos', color: '#c8582b' },
+  { id: 'result', name: 'Resultado', color: '#0f5c4d' },
 ];
 const revenueColumn = balanceColumns[0];
 const expenseColumns: ColumnSeries[] = [
@@ -36,7 +36,7 @@ export function periodColumns(total: FinancialAnalysis['total']) {
   return { series: [revenueColumn, ...visibleExpenseColumns([total.costs])], values: { revenue: total.revenue, ...groupedCosts(total.costs) } };
 }
 export function incomeColor(id: string) {
-  const fixed = { cleaning: '#6d28d9', services: '#4f46e5', supplements: '#0284c7', cloth: '#0f766e' };
+  const fixed = { cleaning: '#0b8f86', services: '#4a67c7', supplements: '#b58a0b', cloth: '#9a5aa5' };
   if (id in fixed) return fixed[id as keyof typeof fixed];
   const hash = [...id].reduce((value, character) => (value * 31 + character.charCodeAt(0)) >>> 0, 0);
   return `hsl(${hash % 360}, 65%, 40%)`;

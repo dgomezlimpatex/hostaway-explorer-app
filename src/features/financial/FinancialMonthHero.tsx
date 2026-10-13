@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowDownRight, ArrowUpRight, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, ChevronDown, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import './financialTheme.css';
 import { loadFinancialFont } from './financialFont';
 import { money, percent } from './financialFormat';
@@ -32,31 +32,46 @@ function useCountUp(target: number, duration = 720) {
 const barColor = (row: WaterfallRow) => row.kind === 'income' ? 'var(--fin-income)' : row.kind === 'expense' ? 'var(--fin-expense)' : row.amount < 0 ? 'var(--fin-loss)' : 'var(--fin-gain)';
 const signed = (row: WaterfallRow) => row.kind === 'expense' && row.amount !== 0 ? `−${money(Math.abs(row.amount))}` : money(row.amount);
 
-function Waterfall({ total, periodStart, onSelect }: { total: Summary; periodStart: string; onSelect: (concept: string) => void }) {
+// A part of a row (where the billing comes from, what personnel is made of).
+export interface BreakdownPart { key: string; name: string; value: number; concept: string; linked?: boolean }
+export type Breakdown = Partial<Record<'revenue' | 'personal', BreakdownPart[]>>;
+
+function Waterfall({ total, periodStart, breakdown, focusConcept, onSelect }: { total: Summary; periodStart: string; breakdown: Breakdown; focusConcept?: string; onSelect: (concept: string) => void }) {
   const { rows, zero } = waterfallRows(total);
   const [ready, setReady] = useState(false);
+  // Coming back from a detail opens the group that holds the concept to refocus.
+  const [open, setOpen] = useState<Record<string, boolean>>(() => ({ revenue: !!focusConcept && !!breakdown.revenue?.some(part => part.concept === focusConcept && part.linked) }));
   useEffect(() => { const frame = requestAnimationFrame(() => setReady(true)); return () => cancelAnimationFrame(frame); }, []);
   return <ol className="fin-wf divide-y divide-[var(--fin-line)]" data-ready={ready} aria-label="Del ingreso al resultado">
-    {rows.map((row, index) => <li key={row.id} style={{ ['--i' as string]: index }}>
-      <button type="button" onClick={() => onSelect(row.id)} data-financial-concept={row.id} data-period-start={periodStart} aria-label={`${row.label} · ${signed(row)} · Ver desglose`}
-        className="fin-wf-row fin-focus grid w-full grid-cols-[minmax(5.5rem,8rem)_minmax(0,1fr)_auto] items-center gap-x-3 px-1 py-2.5 text-left sm:gap-x-4">
-        <span className="min-w-0"><span className={`block text-[13px] leading-tight sm:text-sm ${row.kind === 'result' ? 'font-bold' : 'font-medium'}`}>{row.label}</span>
-          {row.share !== null && <span className="fin-muted block text-[11px] leading-tight">{row.kind === 'result' ? `margen ${percent(row.share)}` : `${percent(row.share)} de ingresos`}</span>}</span>
-        <span className="relative block h-6 rounded-sm bg-[var(--fin-sunk)]/55" aria-hidden="true">
-          {zero !== null && <span className="absolute inset-y-[-3px] w-px bg-[var(--fin-ink)]/50" style={{ left: `${zero}%` }} />}
-          <span className="fin-wf-bar absolute inset-y-0 rounded-[3px]" data-origin={row.origin} style={{ left: `${row.left}%`, width: `${row.width}%`, background: barColor(row) }} />
-        </span>
-        <span className={`fin-display text-right text-[15px] tabular-nums sm:text-base ${row.kind === 'result' ? 'font-bold' : 'font-semibold'}`} style={row.kind === 'result' ? { color: row.amount < 0 ? 'var(--fin-loss)' : 'var(--fin-gain)' } : undefined}>{signed(row)}</span>
-      </button>
-    </li>)}
+    {rows.map((row, index) => {
+      const parts = row.id === 'revenue' || row.id === 'personal' ? (breakdown[row.id] || []).filter(part => part.value !== 0) : [];
+      return <li key={row.id} className="relative" style={{ ['--i' as string]: index }}>
+        <button type="button" onClick={() => onSelect(row.id)} data-financial-concept={row.id} data-period-start={periodStart} aria-label={`${row.label} · ${signed(row)} · Ver desglose`}
+          className={`fin-wf-row fin-focus grid w-full grid-cols-[minmax(5.5rem,8rem)_minmax(0,1fr)_auto] items-center gap-x-3 py-2.5 pl-1 text-left sm:gap-x-4 ${parts.length ? 'pr-9' : 'pr-1'}`}>
+          <span className="min-w-0"><span className={`block text-[13px] leading-tight sm:text-sm ${row.kind === 'result' ? 'font-bold' : 'font-medium'}`}>{row.label}</span>
+            {row.share !== null && <span className="fin-muted block text-[11px] leading-tight">{row.kind === 'result' ? `margen ${percent(row.share)}` : `${percent(row.share)} de ingresos`}</span>}</span>
+          <span className="relative block h-6 rounded-sm bg-[var(--fin-sunk)]/55" aria-hidden="true">
+            {zero !== null && <span className="absolute inset-y-[-3px] w-px bg-[var(--fin-ink)]/50" style={{ left: `${zero}%` }} />}
+            <span className="fin-wf-bar absolute inset-y-0 rounded-[3px]" data-origin={row.origin} style={{ left: `${row.left}%`, width: `${row.width}%`, background: barColor(row) }} />
+          </span>
+          <span className={`fin-display text-right text-[15px] tabular-nums sm:text-base ${row.kind === 'result' ? 'font-bold' : 'font-semibold'}`} style={row.kind === 'result' ? { color: row.amount < 0 ? 'var(--fin-loss)' : 'var(--fin-gain)' } : undefined}>{signed(row)}</span>
+        </button>
+        {parts.length > 0 && <button type="button" aria-expanded={!!open[row.id]} aria-label={`${open[row.id] ? 'Ocultar' : 'Ver'} composición de ${row.label}`} onClick={() => setOpen(current => ({ ...current, [row.id]: !current[row.id] }))}
+          className="fin-focus absolute right-0 top-2.5 grid h-8 w-8 place-items-center rounded-full hover:bg-[var(--fin-sunk)]"><ChevronDown aria-hidden className={`h-4 w-4 transition-transform duration-300 ${open[row.id] ? 'rotate-180' : ''}`} /></button>}
+        {parts.length > 0 && open[row.id] && <ul className="fin-rise mb-3 ml-3 space-y-0.5 border-l-2 border-[var(--fin-line)] pl-3" aria-label={`Composición de ${row.label}`}>{parts.map(part => <li key={part.key}>
+          <button type="button" onClick={() => onSelect(part.concept)} {...(part.linked ? { 'data-financial-concept': part.concept, 'data-period-start': periodStart } : {})} aria-label={`${part.name} · ${money(part.value)} · Ver desglose`}
+            className="fin-focus flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-[var(--fin-sunk)]">
+            <span className="min-w-0 break-words">{part.name}</span><span className="shrink-0 tabular-nums"><strong className="font-semibold">{money(part.value)}</strong><span className="fin-muted"> · {percent(row.amount ? part.value / row.amount * 100 : 0)}</span></span></button></li>)}</ul>}
+      </li>;
+    })}
   </ol>;
 }
 
 export interface MonthHeroProps {
   total: Summary; previous: Summary | null; comparisonLabel: string | null; start: string; singleMonth: boolean; partial: boolean;
-  onDetails: (concept: string) => void; children?: ReactNode;
+  onDetails: (concept: string) => void; breakdown?: Breakdown; focusConcept?: string; children?: ReactNode;
 }
-export function FinancialMonthHero({ total, previous, comparisonLabel, start, singleMonth, partial, onDetails, children }: MonthHeroProps) {
+export function FinancialMonthHero({ total, previous, comparisonLabel, start, singleMonth, partial, onDetails, breakdown = {}, focusConcept, children }: MonthHeroProps) {
   const headline = monthHeadline({ total, previous, start, singleMonth, partial, comparisonLabel });
   const shownRevenue = useCountUp(total.revenue), shownProfit = useCountUp(total.result);
   const profitColor = headline.tone === 'loss' ? 'var(--fin-loss)' : 'var(--fin-gain)';
@@ -84,7 +99,7 @@ export function FinancialMonthHero({ total, previous, comparisonLabel, start, si
         </div>
         {children}
       </div>
-      <div className="fin-rise" style={{ ['--i' as string]: 1 }}><Waterfall total={total} periodStart={start} onSelect={onDetails} /></div>
+      <div className="fin-rise" style={{ ['--i' as string]: 1 }}><Waterfall total={total} periodStart={start} breakdown={breakdown} focusConcept={focusConcept} onSelect={onDetails} /></div>
     </div>
   </section>;
 }

@@ -14,8 +14,8 @@ import type { DirectoryEntry } from './financialSource';
 import { loadFinance, saveFinance } from './financialPersistence';
 import { IncomePanel, ConsumptionPanel } from './FinancialConfiguration';
 import { loadFinancialView, saveFinancialView, financialMonthRange, selectedFinancialMonth, financialYearRange, selectedFinancialYear, validDetailConcept, type FinancialDrilldown } from './financialView';
-import { FinancialDashboard, FinancialTrend, ExternalIncomeDetail, type FinancialTrendView } from './FinancialDashboard';
-import { adjacentMonth, categoryNames, type ComparisonView } from './financialCharts';
+import { FinancialTrend, ExternalIncomeDetail, type FinancialTrendView } from './FinancialDashboard';
+import { adjacentMonth, categoryNames, dashboardSeries, type ComparisonView } from './financialCharts';
 import { FinancialAnnual } from './FinancialAnnual';
 import { FinancialDetail } from './FinancialDetail';
 import { isIncomeConcept } from './financialDrilldown';
@@ -101,7 +101,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   useEffect(() => {
     if (tab !== 'general' || !sharedReady || query.isPending || query.error || !chartFocus.current) return;
     const target = chartFocus.current;
-    const region = target.origin === 'comparison' ? workspace.current?.querySelector('[aria-label="Comparativas financieras"]') : target.month ? workspace.current?.querySelector(annualYear ? '[aria-label="Resumen anual por meses"]' : '[aria-label="Evolución mensual"]') : workspace.current?.querySelector(['revenue', 'personal', 'laundry', 'supplies', 'products', 'other'].includes(target.concept) ? '[aria-label="Comparativa del periodo"]' : '[aria-label="Origen de los ingresos"]');
+    const region = target.origin === 'comparison' ? workspace.current?.querySelector('[aria-label="Comparativas financieras"]') : target.month ? workspace.current?.querySelector(annualYear ? '[aria-label="Resumen anual por meses"]' : '[aria-label="Evolución mensual"]') : workspace.current?.querySelector('[aria-label="Comparativa del periodo"]');
     if (!region) return;
     // ResponsiveContainer measures after mounting. Restore focus once its SVG
     // exists, rather than focusing a temporary legend before the bars appear.
@@ -202,10 +202,10 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
       {!filters.start || !filters.end || filters.start > filters.end ? <p role="alert">Selecciona un intervalo de fechas válido.</p> : storageError ? <p role="alert" className={panel}>Configuración sin cargar. No se muestran balances; pulsa Descartar y recargar para reintentar.</p> : query.error ?
         <div role="alert" className={panel}><p>No se pudieron cargar los datos. No se muestran totales parciales.</p><Button variant="outline" onClick={() => query.refetch()}>Reintentar</Button></div> : query.isPending ?
           <FinancialSummarySkeleton /> : !sharedReady ? <FinancialSummarySkeleton /> : <>
-            <FinancialMonthHero key={`${filters.start}:${filters.end}:${allocation}`} total={result.total} previous={insights.previous} comparisonLabel={insights.period?.label ?? null} start={filters.start} singleMonth={singleMonth}
+            <FinancialMonthHero focusConcept={chartFocus.current?.concept} breakdown={{ revenue: dashboardSeries(result).incomes.map(row => ({ key: row.id, name: row.name, value: row.value, concept: row.id, linked: true })), personal: [{ key: 'activity', name: 'Actividad y otros costes de personal', value: result.total.costs.personal, concept: 'personal' }, { key: 'structure', name: 'Dirección y estructura', value: result.total.costs.salary, concept: 'personal' }] }} key={`${filters.start}:${filters.end}:${allocation}`} total={result.total} previous={insights.previous} comparisonLabel={insights.period?.label ?? null} start={filters.start} singleMonth={singleMonth}
               partial={singleMonth && !monthValue} onDetails={id => openDetails(id)} />
             <nav aria-label="Vistas del análisis" className="flex flex-wrap items-end justify-between gap-x-6 border-b border-[var(--fin-line)]">
-              <div className="flex gap-1 overflow-x-auto">{([['general', 'General'], ['services', 'Servicios']] as const).map(([id, title]) =>
+              <div className="flex gap-1 overflow-x-auto">{([['general', 'Resumen'], ['services', 'Servicios']] as const).map(([id, title]) =>
                 <button key={id} type="button" aria-pressed={tab === id} className={tabClass(tab === id)} onClick={() => setTab(id)}>{title}</button>)}{tab === 'details' && drilldown && <button type="button" aria-pressed="true" className={tabClass(true)} onClick={() => setTab('details')}>{isIncomeConcept(drilldown.concept) ? 'Ingresos' : 'Desglose de gastos'}</button>}</div>
               <div className="flex items-center gap-1 overflow-x-auto"><span className="fin-muted pr-1 text-xs uppercase tracking-wider">Ajustes</span>{([['incomes', 'Otros ingresos'], ['expenses', 'Otros gastos'], ['rates', 'Tarifas']] as const).map(([id, title]) =>
                 <button key={id} type="button" aria-pressed={tab === id} className={tabClass(tab === id)} onClick={() => setTab(id)}>{title}</button>)}</div>
@@ -215,7 +215,6 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
               <FinancialProfitability result={result} clients={data?.clients || []} properties={data?.properties || []} onClient={selectClient} onProperty={selectProperty} />
               <FinancialReview result={result} rules={alertRules} today={today} clients={data?.clients || []} onRules={setAlertRules} onClient={selectClient} onEdit={setEditing} onIncomes={() => setTab('incomes')} onExcluded={service => { if (service.propertyId) selectProperty(service.propertyId); else { setProfitFilter('all'); setTab('services'); } }} />
               <FinancialComparisons sedeId={sedeId} services={data?.services || []} settings={settings} filters={effectiveFilters} allocation={allocation} summary={result.total} insights={insights} comparison={comparison} budgetId={budgetId} onComparison={setComparison} onBudget={setBudgetId} onDetails={(id, period) => openDetails(id, period, 'comparison')} />
-              <FinancialDashboard hideComparison hideProfitability hideReview result={result} allocation={allocation} assigned={result.allocation.assigned} names={data?.clients || []} onClient={selectClient} onServices={() => { setProfitFilter('all'); setTab('services'); }} onIncomes={() => setTab('incomes')} onEdit={setEditing} onDetails={openDetails} />
               {!annualYear && <FinancialTrend services={data?.services || []} settings={settings} filters={effectiveFilters} allocation={allocation} view={trendView} onViewChange={patch => setTrendView(current => ({ ...current, ...patch }))} onDetails={openDetails} />}
             </>}
             {tab === 'details' && drilldown && <FinancialDetail result={result} settings={settings} concept={drilldown.concept} filters={filters} clients={data?.clients || []} onBack={returnToChart} />}
