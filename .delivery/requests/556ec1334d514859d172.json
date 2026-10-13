@@ -1,0 +1,25 @@
+{
+  "request": "Dani pidió terminar el rediseño de todo el apartado de análisis financiero. Esta quinta entrega rediseña los ajustes: reúne Tarifas, Otros ingresos y Otros gastos en una vista «Ajustes» con selector propio, presenta las tarifas vigentes como tarjetas, separa el formulario de cambio de tarifa, el historial, la copia de seguridad y los consumos personalizados, y da el mismo estilo a los formularios.",
+  "reason": "Solo reorganiza y presenta las mismas pantallas de configuración: los formularios conservan sus campos, validaciones, textos de error y el mismo guardado en borrador (que sigue requiriendo «Guardar cambios» y la protección contra cambios simultáneos). Las tarifas, ingresos, gastos y consumos se modifican con las mismas funciones de antes. La copia de seguridad exporta y restaura el mismo documento. No cambia el motor de cálculo, las consultas, los permisos ni el guardado compartido. Una vista guardada con las pestañas anteriores de ingresos, gastos o tarifas se abre en la parte correspondiente de Ajustes.",
+  "verification": "Regresión de todas las pruebas financieras existentes, incluidas las de ingresos externos, consumos, vista guardada y reglas de análisis. Pruebas de navegador locales con datos ficticios, adaptadas a la nueva navegación, en verde: cambio de tarifas con vigencia y por trabajador, alta y borrado de gastos, alta y edición de ingresos fijos, puntuales y por limpieza, consumos personalizados, conflicto de guardado simultáneo con recarga, fallo de lectura de la configuración, copia de seguridad, informes y cuatro anchos. Revisión visual en Chromium de las tres vistas de ajustes. Build, tipos del módulo y lint sin errores nuevos. Limitaciones: la cola no ejecuta las pruebas de navegador y no se ha visto la pantalla con datos reales autenticados; no se han guardado cambios reales en la configuración compartida.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialExternalIncomeTest.mjs",
+    "scripts/financialConsumptionsTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialViewTest.mjs",
+    "scripts/financialMonthViewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "56e8f0a816782294c2c079ede2878e8c28813ddb7c99667ecb9c524589b1469d"
+}
