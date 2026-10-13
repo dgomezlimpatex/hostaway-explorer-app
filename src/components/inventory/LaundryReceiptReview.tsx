@@ -74,7 +74,7 @@ export default function LaundryReceiptReview({
             {
               <Button
                 variant="ghost"
-                className="h-11 w-11 shrink-0 p-0"
+                className="h-11 w-11 shrink-0 rounded-xl p-0"
                 aria-label={`${discarded ? "Editar descartes" : "Editar"} ${label}`}
                 disabled={
                   locked || Boolean(edit) || (discarded && !onCorrectDiscard)
@@ -89,12 +89,12 @@ export default function LaundryReceiptReview({
                   });
                 }}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil className="h-4 w-4" aria-hidden="true" />
               </Button>
             }
           </div>
           {edit?.material === material && edit.discarded === discarded && (
-            <div className="space-y-2 pb-1">
+            <div className="receipt-stage space-y-2 pb-2">
               <Input
                 aria-label={`${discarded ? "Total corregido descartes" : "Total corregido"} ${label}`}
                 inputMode="numeric"
@@ -121,7 +121,7 @@ export default function LaundryReceiptReview({
                   {error}
                 </p>
               )}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   className="h-11"
                   disabled={locked || stale}
@@ -162,7 +162,7 @@ export default function LaundryReceiptReview({
     </div>
   );
   return (
-    <section className="space-y-3" aria-label="Revisión final del recuento">
+    <section className="receipt-stage space-y-3" aria-label="Revisión final del recuento">
       <div>
         <h2 className="text-lg font-semibold">
           {confirmed ? "Recuento confirmado" : "Revisa las cantidades"}
@@ -189,6 +189,7 @@ export default function LaundryReceiptReview({
           {notes}
         </p>
       )}
+      <div className="receipt-action-dock space-y-3">
       {!confirmed && (
         <>
           {edit && (
@@ -202,7 +203,7 @@ export default function LaundryReceiptReview({
             geisha@limpatex.com.
           </p>
           <Button
-            className="h-auto min-h-14 w-full whitespace-normal px-3 py-3 text-base"
+            className="h-auto min-h-12 w-full whitespace-normal rounded-xl px-3 py-3 text-base"
             disabled={locked || Boolean(edit)}
             onClick={onConfirm}
           >
@@ -222,6 +223,7 @@ export default function LaundryReceiptReview({
       >
         Volver al recuento
       </Button>
+      </div>
     </section>
   );
 }

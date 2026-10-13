@@ -25,7 +25,7 @@ export default function LaundryReceiptStart({ workerName, warehouseName, date, t
   const dateId = `receipt-date-${adminMode ? "admin" : "public"}`;
   const Heading = adminMode ? "h3" : "h1";
   return (
-    <div className="space-y-5 pb-6">
+    <div className="receipt-stage space-y-5 pb-6">
       <header className="space-y-4 pt-2">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">

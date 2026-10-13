@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { CheckCircle2, Loader2 } from "lucide-react";
+import "@/components/inventory/laundryReceiptMobile.css";
+import { handleReceiptQuantityKey } from "@/components/inventory/receiptKeyboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import LaundryReceiptStart from "@/components/inventory/LaundryReceiptStart";
@@ -271,11 +274,11 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
   const Heading = adminMode ? "h3" : "h1";
 
   return (
-    <Container className={`${adminMode ? "rounded-xl" : "min-h-screen"} bg-slate-50 px-3 py-3 text-slate-900`}>
+    <Container data-embedded={adminMode} data-entry-active={unsubmitted || locked} className={`laundry-receipt ${adminMode ? "rounded-xl" : "min-h-[100dvh]"} bg-slate-50 px-3 py-4 text-slate-900`}>
       <div className="relative mx-auto max-w-xl space-y-2">
         <header className={starting ? "hidden" : undefined}>
           <p className="hidden">APP GESTIÓN LIMPATEX</p>
-          <Heading className="pr-24 text-lg font-bold leading-7 sm:text-xl">
+          <Heading className="text-xl font-bold leading-7 tracking-tight sm:text-2xl">
             Inventario de lencería
           </Heading>
           <p className="hidden">Cuenta por tandas y confirma al terminar.</p>
@@ -291,11 +294,12 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
         {!access ? (
           <form
             onSubmit={login}
-            className="space-y-4 rounded-2xl border bg-white p-5"
+            className="receipt-stage space-y-4 rounded-2xl border bg-white p-5 shadow-sm"
           >
             <label htmlFor="receipt-pin" className="block font-medium">
               Tu PIN de empleado
             </label>
+            <p className="text-sm text-slate-500">Accede para registrar la lencería recibida.</p>
             <Input
               id="receipt-pin"
               type="password"
@@ -346,13 +350,20 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
               {(date || state?.date || today) < today && <p className="text-xs text-amber-800">Estás registrando la entrega de un día pasado. Al confirmar, se actualizará el stock actual.</p>}
             </div>}
             {!state && (
+              <div className="receipt-stage space-y-3 rounded-2xl border bg-white p-4">
+                <p className="flex items-center gap-2 text-sm text-slate-600" role="status"><Loader2 className="receipt-spinner h-4 w-4" aria-hidden="true" />Cargando recuento…</p>
               <Button
+                variant="outline"
                 onClick={() => refresh().catch((err) => setError(err.message))}
               >
                 Cargar recuento
               </Button>
+              </div>
             )}
-            {pending && (
+            {access && state && (state.receipt || busy || pending) && <div role="status" aria-live="polite" className={`flex min-h-9 items-center gap-2 text-xs ${pending && !busy ? "text-amber-800" : "text-slate-600"}`}>
+              {busy ? <><Loader2 className="receipt-spinner h-4 w-4 shrink-0 text-primary" aria-hidden="true" /><span>Guardando operación…</span></> : pending ? <span>Hay una operación pendiente de recuperar.</span> : state.receipt ? <><CheckCircle2 className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /><span>{changed ? "Borrador guardado · el stock cambia al confirmar" : "Recuento confirmado"}</span></> : <span>Listo para registrar la entrega</span>}
+            </div>}
+            {pending && !busy && (
               <div
                 className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm"
                 role="status"
@@ -410,12 +421,8 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
             )}
             {state && (
               <>
-                <section className={starting ? "hidden" : "contents"}>
-                  <h2 className="hidden">{state.warehouseName}</h2>
-                  <p className="absolute right-0 top-0 !mt-0 text-xs leading-7 text-slate-500">
-                    {" "}
-                    {state.date}
-                  </p>
+                <section className={starting ? "hidden" : "space-y-2"}>
+                  <h2 className="text-xs text-slate-500">{state.warehouseName}</h2>
                   {state.date !== today && (
                     <Button
                       variant="outline"
@@ -501,7 +508,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                         }}
                       />
                     ) : (
-                      <>
+                      <div className="receipt-stage space-y-3">
                         <p className="hidden" role="status">
                           {changed
                             ? "Borrador · el stock cambia al confirmar"
@@ -514,10 +521,11 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                             timeZone: "Europe/Madrid",
                           })}
                         </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
                         {RECEIPT_MATERIALS.map(([key, label]) => (
                           <section
                             key={key}
-                            className="rounded-xl border bg-white p-3"
+                            className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10"
                           >
                             <div className="mb-2 flex items-center justify-between gap-3">
                               <label
@@ -530,7 +538,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                                 aria-label={`Total ${label}`}
                                 className="text-2xl font-bold leading-7 tabular-nums text-primary"
                               >
-                                {state.receipt!.counts[key] ?? 0}
+                                <span className="receipt-total" key={state.receipt!.counts[key] ?? 0}>{state.receipt!.counts[key] ?? 0}</span>
                               </output>
                             </div>
                             <div className="flex gap-2">
@@ -542,6 +550,8 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                                 placeholder="Cantidad de esta tanda"
                                 value={inputs[key] || ""}
                                 disabled={locked}
+                                enterKeyHint="done"
+                                onKeyDown={(event) => handleReceiptQuantityKey(event, locked, inputs[key], () => quantityAction(key, "add"))}
                                 onChange={(e) => {
                                   const value = e.target.value.replace(
                                     /\D/g,
@@ -562,7 +572,8 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                                 className="h-11 min-w-0 text-base"
                               />
                               <Button
-                                className="h-11 px-4"
+                                className="h-12 min-w-20 shrink-0 rounded-xl px-4"
+                                aria-busy={busy && pending?.payload.material === key && pending?.payload.action === "add"}
                                 disabled={locked || !inputs[key]}
                                 onClick={() => quantityAction(key, "add")}
                               >
@@ -583,6 +594,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                             </Button>
                           </section>
                         ))}
+                        </div>
                         <Button
                           variant="outline"
                           disabled={locked || !lastEditable}
@@ -621,7 +633,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                                     aria-label={`Total descartes ${label}`}
                                     className="text-2xl font-bold tabular-nums text-primary"
                                   >
-                                    {discardedCounts[key] ?? 0}
+                                    <span className="receipt-total" key={discardedCounts[key] ?? 0}>{discardedCounts[key] ?? 0}</span>
                                   </output>
                                 </div>
                                 <div className="flex gap-2">
@@ -633,6 +645,8 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                                     placeholder="Cantidad de esta tanda"
                                     value={inputs[`discard:${key}`] || ""}
                                     disabled={locked}
+                                    enterKeyHint="done"
+                                    onKeyDown={(event) => handleReceiptQuantityKey(event, locked, inputs[`discard:${key}`], () => quantityAction(key, "add_discard"))}
                                     className="h-11 min-w-0 text-base"
                                     onChange={(e) =>
                                       setInputs((prev) => ({
@@ -642,7 +656,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                                     }
                                   />
                                   <Button
-                                    className="h-11 px-4"
+                                    className="h-12 min-w-20 shrink-0 rounded-xl px-4"
                                     aria-label={`Añadir descartes ${label}`}
                                     disabled={
                                       locked || !inputs[`discard:${key}`]
@@ -658,6 +672,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                             ))}
                           </div>
                         </details>
+                        <div className="receipt-action-dock space-y-2">
                         {unsubmitted && (
                           <p className="text-sm text-amber-800">
                             Hay cantidades escritas sin añadir. Añádelas o vacía
@@ -665,11 +680,11 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                           </p>
                         )}
                         <Button
-                          className="h-auto min-h-14 w-full whitespace-normal py-4 text-base"
+                          className="h-auto min-h-12 w-full whitespace-normal rounded-xl py-3 text-base"
                           disabled={locked || unsubmitted}
                           onClick={() => {
                             setReviewing(true);
-                            window.scrollTo({ top: 0 });
+                            window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
                           }}
                         >
                           Revisar recuento
@@ -678,7 +693,8 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                           Destinatarios: dgomez@limpatex.com y
                           geisha@limpatex.com
                         </p>
-                      </>
+                        </div>
+                      </div>
                     )}
                     {state.versions.map((v) => {
                       const email = receiptEmail(v);
