@@ -16,20 +16,18 @@ const MIN_WIDTH = 0.8;
 export function waterfallRows(total: Pick<Summary, 'revenue' | 'costs' | 'result'>) {
   const costs = groupedCosts(total.costs);
   const visible = (Object.keys(costLabels) as (keyof typeof costLabels)[]).filter(id => costs[id] !== 0 || id === 'personal');
-  const levels: number[] = [0, total.revenue, total.result];
-  let running = total.revenue;
-  const spans = visible.map(id => { const before = running; running -= costs[id]; levels.push(running); return { id, before, after: running }; });
-  const min = Math.min(...levels), max = Math.max(...levels), range = max - min || 1;
+  // Every bar starts on the same zero line, so lengths read directly as a staircase
+  // from billing down to the profit that remains.
+  const amounts = [total.revenue, ...visible.map(id => costs[id]), total.result];
+  const min = Math.min(0, ...amounts), max = Math.max(0, ...amounts), range = max - min || 1;
   const pos = (value: number) => (value - min) / range * 100;
-  const geometry = (a: number, b: number) => {
-    const left = pos(Math.min(a, b)), width = Math.abs(pos(a) - pos(b));
-    return { left, width: a === b ? 0 : Math.max(width, MIN_WIDTH) };
-  };
+  const geometry = (amount: number) => ({ left: pos(Math.min(0, amount)), width: amount === 0 ? 0 : Math.max(Math.abs(pos(amount) - pos(0)), MIN_WIDTH) });
+  const origin = (amount: number) => amount < 0 ? 'right' as const : 'left' as const;
   const rows: WaterfallRow[] = [
-    { id: 'revenue', label: 'Facturación', kind: 'income', amount: total.revenue, ...geometry(0, total.revenue), origin: 'left', share: null },
-    ...spans.map(span => ({ id: span.id, label: costLabels[span.id], kind: 'expense' as const, amount: costs[span.id], ...geometry(span.before, span.after),
-      origin: 'right' as const, share: total.revenue > 0 ? costs[span.id] / total.revenue * 100 : null })),
-    { id: 'result', label: 'Beneficio', kind: 'result', amount: total.result, ...geometry(0, total.result), origin: total.result < 0 ? 'right' : 'left', share: total.revenue > 0 ? total.result / total.revenue * 100 : null },
+    { id: 'revenue', label: 'Facturación', kind: 'income', amount: total.revenue, ...geometry(total.revenue), origin: origin(total.revenue), share: null },
+    ...visible.map(id => ({ id, label: costLabels[id], kind: 'expense' as const, amount: costs[id], ...geometry(costs[id]), origin: origin(costs[id]),
+      share: total.revenue > 0 ? costs[id] / total.revenue * 100 : null })),
+    { id: 'result', label: 'Beneficio', kind: 'result', amount: total.result, ...geometry(total.result), origin: origin(total.result), share: total.revenue > 0 ? total.result / total.revenue * 100 : null },
   ];
   return { rows, zero: min < 0 ? pos(0) : null };
 }

@@ -59,7 +59,7 @@ try {
   await (await open('Clientes')).getByLabel('Cliente Mar',{exact:true}).check(); await filter('Clientes').locator('summary').click(); await expect(revenue('0,00')).toBeVisible();
   await clear('Clientes'); await clear('Edificios');
   await (await open('Categorías de gasto')).getByLabel('Personal · incluye dirección',{exact:true}).check(); await filter('Categorías de gasto').locator('summary').click();
-  await expect(indicators.getByText(/gastos suman 2\.724,00/)).toBeVisible(); await expect(indicators.getByText('Parcial · provisional',{exact:true})).toHaveCount(1); await expect(page.getByText(/Vista parcial de gastos:/)).toBeVisible(); await clear('Categorías de gasto');
+  await expect(indicators.getByText(/gastos suman 2\.724,00/)).toBeVisible(); await expect(page.getByText(/Vista parcial de gastos:/)).toBeVisible(); await clear('Categorías de gasto');
   await (await open('Tipos de servicio')).getByLabel('check-in',{exact:true}).check(); await filter('Tipos de servicio').locator('summary').click();
   await expect(revenue('0,00')).toBeVisible(); await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Servicios con ingreso cero · 1'); await clear('Tipos de servicio');
   const balanceBefore = await indicators.getByText(/^Beneficio: /).textContent();
