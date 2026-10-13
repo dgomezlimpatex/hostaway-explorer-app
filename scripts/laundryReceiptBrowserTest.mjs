@@ -45,6 +45,7 @@ let browser;
 const artifacts = await mkdtemp(join(tmpdir(), "laundry-receipt-browser-"));
 const errors = [];
 let dropNextAdd = false;
+let delayNextAdd = false;
 try {
   await new Promise((resolve, reject) => {
     const timeout = setTimeout(
@@ -73,6 +74,10 @@ try {
     if (url.origin === base) return route.continue();
     if (url.pathname === "/functions/v1/laundry-receipts") {
       const body = route.request().postDataJSON();
+      if (delayNextAdd && body.action === "mutate" && body.payload.action === "add") {
+        delayNextAdd = false;
+        await new Promise(resolve => setTimeout(resolve, 450));
+      }
       const result = await request(body);
       if (
         dropNextAdd &&
@@ -129,8 +134,27 @@ try {
   const expectedLabels = ["Sábanas de suite", "Sábanas de matrimonio", "Sábanas individuales", "Fundas de almohada", "Toallas de manos", "Toallas de baño", "Alfombrín de ducha", "Almohada", "Cubre colchón", "Edredón"];
   assert.deepEqual(await page.locator('input[aria-label^="Cantidad "]:not([aria-label^="Cantidad descartes "])').evaluateAll(inputs => inputs.map(input => input.getAttribute('aria-label').replace('Cantidad ', ''))), expectedLabels);
   await page.getByLabel("Cantidad Sábanas de suite", { exact: true }).fill("12");
-  await page.locator("section").filter({ has: page.locator('label[for="count-suite_sheets"]') }).getByRole("button", { name: "Añadir", exact: true }).click();
+  const suiteCard = page.locator('label[for="count-suite_sheets"]').locator('xpath=ancestor::section[1]');
+  const cardTop = await suiteCard.evaluate(node => node.getBoundingClientRect().top);
+  assert.equal(await page.locator('.receipt-action-dock').evaluate(node => getComputedStyle(node).position), 'static', 'Keyboard focus keeps footer out of the keyboard');
+  delayNextAdd = true;
+  await page.getByLabel("Cantidad Sábanas de suite", { exact: true }).press('Enter');
+  await page.getByText('Guardando operación…', {exact: true}).waitFor();
+  assert.equal(await page.getByText('Operación pendiente de guardar', {exact: true}).count(), 0, 'Saving must not insert the large recovery banner');
+  const savingTop = await suiteCard.evaluate(node => node.getBoundingClientRect().top);
+  assert.ok(Math.abs(savingTop - cardTop) < 2, 'Saving keeps the current card in place');
   await expect(page.getByLabel("Total Sábanas de suite", { exact: true })).toHaveText("12");
+  await page.emulateMedia({reducedMotion: 'reduce'});
+  assert.equal(await page.locator('.receipt-total').first().evaluate(node => getComputedStyle(node).animationName), 'none');
+  await page.emulateMedia({reducedMotion: 'no-preference'});
+  await page.getByLabel("Cantidad Sábanas de suite", {exact: true}).blur();
+  assert.equal(await page.locator('.receipt-action-dock').evaluate(node => getComputedStyle(node).position), 'sticky');
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({width, height: 844});
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `Counting overflow at ${width}`);
+  }
+  await page.setViewportSize({width: 390, height: 844});
+  await page.screenshot({animations: 'disabled', path: join(artifacts, 'count-fluid-mobile.png'), fullPage: true});
   assert.equal(
     await page.getByRole("button", { name: "Añadir", exact: true }).count(),
     10,
@@ -175,12 +199,7 @@ try {
     await page
       .getByLabel("Cantidad descartes Toallas de baño", { exact: true })
       .fill(String(quantity));
-    await page
-      .getByRole("button", {
-        name: "Añadir descartes Toallas de baño",
-        exact: true,
-      })
-      .click();
+    await page.getByLabel("Cantidad descartes Toallas de baño", {exact: true}).press('Enter');
     await page
       .getByLabel("Total descartes Toallas de baño", { exact: true })
       .filter({ hasText: String(total) })
@@ -230,6 +249,12 @@ try {
     .getByRole("button", { name: "Revisar recuento", exact: true })
     .click();
   await page.getByRole("heading", { name: "Revisa las cantidades" }).waitFor();
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({width, height: 844});
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `Review overflow at ${width}`);
+  }
+  await page.setViewportSize({width: 390, height: 844});
+  await page.screenshot({animations: 'disabled', path: join(artifacts, 'review-fluid-mobile.png'), fullPage: true});
   await expect(page.getByLabel("Revisado Sábanas de suite", { exact: true })).toHaveText("12");
   assert.equal(
     (

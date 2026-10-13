@@ -1,0 +1,91 @@
+.laundry-receipt {
+  overflow-wrap: anywhere;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  -webkit-tap-highlight-color: transparent;
+}
+
+.laundry-receipt button,
+.laundry-receipt summary {
+  touch-action: manipulation;
+  transition: background-color 140ms ease, border-color 140ms ease,
+    box-shadow 140ms ease, transform 140ms ease;
+}
+
+.laundry-receipt button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.laundry-receipt input {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 48px;
+  font-size: 16px;
+  scroll-margin-block: 6rem;
+}
+
+.laundry-receipt input[type="date"] {
+  display: block;
+  appearance: none;
+}
+
+.laundry-receipt summary {
+  min-height: 44px;
+}
+
+.laundry-receipt .receipt-stage,
+.laundry-receipt details[open] > :not(summary) {
+  animation: receipt-enter 180ms ease-out both;
+}
+
+.laundry-receipt .receipt-total {
+  display: inline-block;
+  animation: receipt-total 180ms ease-out;
+}
+
+.laundry-receipt .receipt-action-dock {
+  position: sticky;
+  z-index: 10;
+  bottom: 0;
+  margin-inline: -0.75rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.75rem 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+}
+
+/* Keep actions in normal flow throughout quantity entry and correction, including
+   pointer-down/blur, so the dock cannot move under a tap on an Add button. */
+.laundry-receipt[data-entry-active="true"] .receipt-action-dock,
+.laundry-receipt:has(input[aria-label^="Total corregido"]) .receipt-action-dock {
+  position: static;
+}
+
+.laundry-receipt[data-embedded="true"] .receipt-action-dock {
+  position: static;
+}
+
+.laundry-receipt .receipt-spinner {
+  animation: receipt-spin 700ms linear infinite;
+}
+
+@keyframes receipt-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes receipt-total {
+  from { opacity: 0.65; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes receipt-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .laundry-receipt *,
+  .laundry-receipt details[open] > :not(summary) {
+    animation: none !important;
+    transition: none !important;
+  }
+  .laundry-receipt button:not(:disabled):active { transform: none; }
+}
