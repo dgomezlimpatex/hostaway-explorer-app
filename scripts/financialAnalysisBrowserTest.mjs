@@ -56,6 +56,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1050 }, hasTouch: true });
   const page = await context.newPage();
   const errors = [], requests = [];
+  const openFilters = async () => { const toggle = page.getByRole('button', { name: /^Filtros/ }); if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click(); };
   const openDetails = async text => { const summary=page.locator('summary').filter({hasText:text}); if(!await summary.evaluate(element=>element.parentElement.open)) await summary.click(); };
 
   page.on('pageerror', error => errors.push(error.message));
@@ -95,7 +96,7 @@ try {
     } else assert.deepEqual(read.calls.find(call => call[0] === 'eq'), ['eq', 'sede_id', 's']);
     assert.deepEqual([read.from,read.to], [0,499]);
   }
-  await openDetails('Fechas personalizadas y filtros');
+  await openFilters();
   await page.getByRole('button',{name:/^Costes pendientes ·/}).click();
   await page.getByRole('region',{name:'Revisar',exact:true}).getByRole('button',{name:/Apartamento Centro/}).click();
   await expect(page.getByRole('dialog')).toBeVisible();
@@ -109,7 +110,7 @@ try {
   await page.getByLabel('Mes del análisis', { exact: true }).fill(previousEnd.slice(0,7));
   await expect(page.getByLabel('Desde',{exact:true})).toHaveValue(previousEnd.slice(0,7)+'-01');
   await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue(monthEnd);
-  await expect(page.getByText('2.317,00 €', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('region',{name:'Comparativa del periodo'}).getByText(/salen 2\.356,27\s€/)).toBeVisible();
   const graph=page.getByRole('region',{name:'Comparativa del periodo'});
   const costChart=page.getByRole('region',{name:'Distribución de gastos'});
   await expect(costChart.getByRole('listitem').filter({hasText:'Personal'}).last()).toContainText('2.346,00 €');
@@ -117,7 +118,7 @@ try {
   await expect(page.getByLabel('Desglose de Personal')).toContainText('29,00 €');
   await expect(page.getByLabel('Desglose de Personal')).toContainText('2.317,00 €');
   await page.getByRole('button',{name:/^Cerrar ayuda:/}).press('Enter');
-  assert.deepEqual(await graph.locator('ul[aria-label]').first().getByRole('listitem').allTextContents(), ['Ingresos', 'Personal', 'Lavandería', 'Amenities y consumibles', 'Productos']);
+  assert.deepEqual(await graph.locator('[data-financial-concept]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-financial-concept'))), ['revenue', 'personal', 'laundry', 'supplies', 'products', 'result']);
   await page.locator('summary').filter({hasText:'Clientes:'}).click();
   await page.getByLabel('Cliente de prueba',{exact:true}).check();
   await expect(costChart.getByRole('listitem').filter({hasText:'Personal'}).last()).toContainText('29,00 €');
@@ -129,11 +130,9 @@ try {
   await expect(costChart.getByRole('listitem').filter({hasText:'Personal'}).last()).toContainText('2.346,00 €');
   await graph.screenshot({path:join(tmpdir(),'limpatex-financial-segmented-personal-demo.png')});
   const detailRegion=page.getByRole('region',{name:'Desglose del gráfico'});
-  const revenueBar=graph.getByRole('button',{name:/^Ingresos · Periodo seleccionado/});
+  const revenueBar=graph.getByRole('button',{name:/^Ingresos · /});
   await revenueBar.hover();
-  await expect.poll(()=>revenueBar.evaluate(node=>getComputedStyle(node).transform)).not.toBe('none');
-  await expect(graph.locator('.recharts-tooltip-wrapper')).toContainText('100,00 €');
-  await expect(graph.locator('.recharts-tooltip-wrapper .recharts-tooltip-item')).toHaveCount(1);
+  await expect(revenueBar).toContainText('100,00 €');
   await graph.screenshot({path:join(tmpdir(),'limpatex-financial-hover.png')});
   await revenueBar.click();
   await expect(page.getByRole('heading',{name:'Ingresos · desglose',exact:true})).toBeFocused();
@@ -141,7 +140,7 @@ try {
   assert.equal(await detailRegion.getByRole('row').filter({hasText:'Jornada Hotel de prueba'}).count(),0);
   await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
   await expect(revenueBar).toBeFocused();
-  await graph.getByRole('button',{name:/^Personal · Periodo seleccionado/}).focus();
+  await graph.getByRole('button',{name:/^Personal · /}).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading',{name:'Gastos · desglose · Personal',exact:true})).toBeVisible();
   await expect(detailRegion).toContainText('2.346,00 €');
@@ -153,27 +152,24 @@ try {
   await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue(monthEnd);
   await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
   for (const label of ['Lavandería','Amenities y consumibles','Productos']) {
-    await graph.getByRole('button',{name:`Ver concepto: ${label}`,exact:true}).click();
+    await graph.getByRole('button',{name:new RegExp('^'+label+'.* · ')}).click();
     await expect(page.getByRole('heading',{name:`Gastos · desglose · ${label}`,exact:true})).toBeVisible();
     await expect(detailRegion.getByRole('row').filter({hasText:'Apartamento Centro'})).toBeVisible();
     await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
   }
   await page.emulateMedia({reducedMotion:'reduce'});
   await revenueBar.hover();
-  assert.equal(await revenueBar.evaluate(node=>getComputedStyle(node).transitionDuration),'0s');
-  assert.equal(await revenueBar.evaluate(node=>getComputedStyle(node).transform),'none');
+  const firstBar = graph.locator('.fin-wf-bar').first();
+  assert.equal(await firstBar.evaluate(node=>getComputedStyle(node).transitionDuration),'0s');
+  assert.equal(await firstBar.evaluate(node=>getComputedStyle(node).transform),'matrix(1, 0, 0, 1, 0, 0)');
   await page.emulateMedia({reducedMotion:'no-preference'});
-  await openDetails('Fechas personalizadas y filtros');
+  await openFilters();
   await page.getByLabel('Hasta', { exact: true }).fill(previousEnd);
   if(previousEnd!==monthEnd)await expect(page.getByLabel('Mes del análisis',{exact:true})).toHaveValue('');
-  await expect(graph.locator('svg.recharts-surface')).toBeVisible();
-  const balanceBars=await graph.locator('.recharts-bar-rectangle .recharts-rectangle').evaluateAll(nodes=>nodes.map(node=>({x:node.getBBox().x,y:node.getBBox().y,height:node.getBBox().height,color:node.getAttribute('fill')})));
-  assert.equal(balanceBars.length,5);
-  assert.equal(new Set(balanceBars.map(bar=>bar.color)).size,5,'Each income/expense concept has its own color');
-  for (const [index,bar] of balanceBars.entries()) {
-    if(index>0)assert.ok(balanceBars[index-1].x<bar.x,'Columns must be side by side');
-    assert.ok(Math.abs((bar.y+bar.height)-(balanceBars[0].y+balanceBars[0].height))<1,'All income and expense columns share a zero baseline');
-  }
+  await expect(graph.locator('.fin-wf')).toBeVisible();
+  const waterfall = await graph.locator('.fin-wf-bar').evaluateAll(nodes => nodes.map(node => ({ width: node.offsetWidth })));
+  assert.equal(waterfall.length, 6, 'Revenue, four expense concepts and the result');
+  assert.ok(waterfall.every(bar => bar.width > 0), 'Every step with an amount draws a bar');
   assert.equal(await costChart.getByRole('listitem').count(),4,'Direction is included in the personnel category, not repeated separately');
   assert.equal(await costChart.locator('.recharts-bar').count(),0,'Expense composition must not duplicate the period columns');
   assert.equal(await costChart.locator('.recharts-pie').count(),1);
@@ -262,13 +258,13 @@ try {
   await expect(page.getByText('Alquiler de prueba', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'General', exact: true }).click();
   await expect(page.getByText('Gastos generales incluidos:')).toContainText('50,00 €');
-  await expect(graph.locator('.financial-column[role=button]')).toHaveCount(6);
+  await expect(graph.locator('[data-financial-concept]')).toHaveCount(7);
   await expect(costChart.getByRole('listitem').filter({hasText:'Otros gastos'}).last()).toContainText('50,00 €');
   await page.locator('summary').filter({ hasText: 'Trabajadores:' }).click();
   await page.getByLabel('Ana', { exact: true }).check();
   await page.locator('summary').filter({ hasText: 'Trabajadores:' }).click();
   await expect(page.getByText('Gastos generales incluidos:')).toContainText('0,00 €');
-  await expect(graph.locator('.financial-column[role=button]')).toHaveCount(5);
+  await expect(graph.locator('[data-financial-concept]')).toHaveCount(6);
   await graph.getByRole('button',{name:'Cómo se calcula: Comparativa del periodo',exact:true}).click();
   await expect(page.getByLabel('Desglose de Personal')).toContainText('0,00 € de dirección y estructura');
   await page.getByRole('button',{name:/^Cerrar ayuda:/}).press('Enter');
@@ -304,7 +300,7 @@ try {
   await page.getByLabel('Horas de personal por semana').fill('16');
   await page.getByLabel('Cliente del ingreso').selectOption('c2');
   await page.getByRole('button',{name:'Añadir ingreso',exact:true}).click();
-  await openDetails('Fechas personalizadas y filtros');
+  await openFilters();
   await page.getByLabel('Hasta',{exact:true}).fill(monthEnd);
   await expect(page.getByRole('row').filter({hasText:'Recepción de prueba'})).toContainText('1.008,04 €');
   await page.getByLabel('Concepto del ingreso').fill('Virtual por limpieza de prueba');
@@ -323,7 +319,7 @@ try {
   await expect(detailRegion.getByRole('row').filter({hasText:'Recepción de prueba'})).toContainText('1.329,60 €');
   await expect(detailRegion.locator('tbody tr')).toHaveCount(1);
   await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
-  await graph.getByRole('button',{name:/^Ingresos · Periodo seleccionado/}).click();
+  await graph.getByRole('button',{name:/^Ingresos · /}).click();
   await expect(detailRegion.locator('tbody tr')).toHaveCount(3);
   await expect(detailRegion.getByRole('row').filter({hasText:'Apartamento Centro'})).toContainText('102,75 €');
   await expect(detailRegion.getByRole('row').filter({hasText:'Lavandería externa de prueba'})).toContainText('300,00 €');
@@ -371,16 +367,16 @@ try {
   await openDetails(/^(Configuración compartida de esta sede|Cambios sin guardar)$/);
   await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
   await expect(page.locator('summary').filter({hasText:/^Configuración compartida de esta sede$/})).toBeVisible();
-  await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
+  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).toBeVisible();
   await page.evaluate(()=>{window.failFinance=true});
   await openDetails(/^(Configuración compartida de esta sede|Cambios sin guardar)$/);
   await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
-  await expect(page.getByText('Ingresos totales',{exact:true})).not.toBeVisible();
+  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).not.toBeVisible();
   await expect(page.getByText(/Configuración sin cargar/)).toBeVisible();
   await page.evaluate(()=>{window.failFinance=false});
   await openDetails(/^(Configuración compartida de esta sede|Cambios sin guardar)$/);
   await page.getByRole('button',{name:'Descartar y recargar',exact:true}).click();
-  await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
+  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).toBeVisible();
   await page.getByRole('button',{name:'Servicios',exact:true}).click();
   await page.getByRole('button',{name:'Margen inferior al 10%',exact:true}).click();
   await expect(page.getByText('No hay servicios contabilizables con estos filtros.')).toBeVisible();
@@ -463,7 +459,7 @@ try {
   const monthlyStart=await page.getByLabel('Desde',{exact:true}).inputValue();
   const monthlyEnd=await page.getByLabel('Hasta',{exact:true}).inputValue();
   const annualYear=monthlyEnd.slice(0,4);
-  await openDetails('Fechas personalizadas y filtros');
+  await openFilters();
   for(const [filter,label] of [['Clientes:','Cliente de prueba'],['Propiedades:','Apartamento Centro'],['Trabajadores:','Ana']]){
     await page.locator('summary').filter({hasText:filter}).click();
     await page.getByLabel(label,{exact:true}).check();
@@ -521,7 +517,7 @@ try {
   await expect(page.getByLabel('Año del análisis',{exact:true})).toHaveValue(annualYear);
   await expect(annualRegion.getByRole('button',{name:'Origen de ingresos',exact:true})).toHaveAttribute('aria-pressed','true');
   for(const [filter,label,checked] of [['Clientes:','Cliente de prueba',true],['Propiedades:','Apartamento Centro',false],['Trabajadores:','Ana',true]]){
-    await openDetails('Fechas personalizadas y filtros');
+    await openFilters();
     await page.locator('summary').filter({hasText:filter}).click();
     await expect(page.getByLabel(label,{exact:true})).toBeChecked({checked});
     await page.locator('summary').filter({hasText:filter}).click();
@@ -562,14 +558,14 @@ try {
   await page.screenshot({ path: join(tmpdir(), 'limpatex-financial-desktop.png'), fullPage: true });
   await page.getByRole('region',{name:'Comparativa del periodo'}).screenshot({path:join(tmpdir(),'limpatex-financial-grouped-demo.png')});
   await page.setViewportSize({ width: 390, height: 844 });
-  await openDetails('Fechas personalizadas y filtros');
+  await openFilters();
   await page.locator('summary').filter({hasText:'Clientes:'}).click();
   await expect(page.getByLabel('Cliente de prueba',{exact:true})).toBeVisible();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Open mobile filters fit the viewport');
   await page.locator('summary').filter({hasText:'Clientes:'}).click();
-  await page.locator('summary').filter({hasText:'Fechas personalizadas y filtros'}).click();
+  await page.getByRole('button', { name: /^Filtros/ }).click();
   await page.screenshot({path:join(tmpdir(),'limpatex-financial-mobile-populated.png'),fullPage:true});
-  await graph.getByRole('button',{name:/^Ingresos · Periodo seleccionado/}).tap();
+  await graph.getByRole('button',{name:/^Ingresos · /}).tap();
   await expect(page.getByRole('heading',{name:'Ingresos · desglose',exact:true})).toBeVisible();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Detail table scrolls inside mobile viewport');
   await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
@@ -586,17 +582,17 @@ try {
   await page.evaluate(()=>{window.failSource=true});
   await page.getByRole('button',{name:'Actualizar datos',exact:true}).click();
   await expect(page.getByText('No se pudieron cargar los datos. No se muestran totales parciales.')).toBeVisible();
-  await expect(page.getByText('Ingresos totales',{exact:true})).not.toBeVisible();
+  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).not.toBeVisible();
   await page.evaluate(()=>{window.failSource=false});
   await page.getByRole('button',{name:'Reintentar',exact:true}).click();
-  await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
+  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).toBeVisible();
   await page.evaluate(()=>{window.failConsumption=true});
   await page.getByRole('button',{name:'Actualizar datos',exact:true}).click();
   await expect(page.getByText('No se pudieron cargar los datos. No se muestran totales parciales.')).toBeVisible();
-  await expect(page.getByText('Ingresos totales',{exact:true})).not.toBeVisible();
+  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).not.toBeVisible();
   await page.evaluate(()=>{window.failConsumption=false});
   await page.getByRole('button',{name:'Reintentar',exact:true}).click();
-  await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
+  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).toBeVisible();
   assert.deepEqual(errors, []); assert.deepEqual(requests.filter(url => !url.endsWith('.woff') && !url.endsWith('.woff2')), []);
   console.log('financial-browser: real page/reader, offline fixtures, filters, annual/monthly views, twelve months, click/keyboard detail and return, persistence, desktop/mobile and existing regressions passed');
 } finally { await browser.close(); }

@@ -1,0 +1,76 @@
+/* Visual system of the financial analysis. Scoped to .fin-root so it cannot
+   leak into the rest of the app. The display font is registered in financialFont.ts. */
+
+.fin-root {
+  --fin-bg: #edf1f0;
+  --fin-surface: #fcfcfb;
+  --fin-sunk: #e3e9e7;
+  --fin-ink: #0f2a30;
+  --fin-muted: #566c72;
+  --fin-line: #d3dddb;
+  --fin-income: #0b8f86;
+  --fin-income-ink: #07625c;
+  --fin-expense: #c8582b;
+  --fin-expense-ink: #94401d;
+  --fin-gain: #0f5c4d;
+  --fin-loss: #b3203f;
+  --fin-brand: #310984;
+  --fin-ease: cubic-bezier(.2, .8, .2, 1);
+  background: var(--fin-bg);
+  color: var(--fin-ink);
+}
+.fin-display {
+  font-family: 'Bricolage Grotesque', 'Manrope', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+}
+.fin-muted { color: var(--fin-muted); }
+.fin-focus:focus-visible { outline: 2px solid var(--fin-brand); outline-offset: 2px; }
+
+/* Legacy sections still use the old violet utilities. Until each one is
+   redesigned they inherit this palette so the page reads as one piece. */
+.fin-root .text-\[\#310984\] { color: var(--fin-ink); }
+.fin-root .text-violet-600, .fin-root .text-violet-700 { color: var(--fin-income-ink); }
+.fin-root .border-violet-100, .fin-root .border-violet-200 { border-color: var(--fin-line); }
+.fin-root .bg-violet-50 { background-color: var(--fin-sunk); }
+.fin-root .bg-\[\#f7f5fc\] { background-color: var(--fin-bg); }
+.fin-root .bg-\[\#310984\] { background-color: var(--fin-ink); }
+.fin-root .hover\:bg-\[\#45209a\]:hover { background-color: #1b4650; }
+.fin-root .shadow-sm { box-shadow: none; }
+
+/* Entrance: each block rises in a short, staggered sequence. */
+@keyframes fin-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.fin-rise { animation: fin-rise 520ms var(--fin-ease) both; animation-delay: calc(var(--i, 0) * 60ms); }
+
+/* Waterfall rows: the bar grows from the edge where the money comes from. */
+.fin-wf-bar {
+  transform: scaleX(0);
+  transition: transform 760ms var(--fin-ease);
+  transition-delay: calc(var(--i, 0) * 80ms + 120ms);
+}
+.fin-wf-bar[data-origin='left'] { transform-origin: left center; }
+.fin-wf-bar[data-origin='right'] { transform-origin: right center; }
+.fin-wf[data-ready='true'] .fin-wf-bar { transform: scaleX(1); }
+.fin-wf-row { transition: background-color 160ms ease; }
+.fin-wf-row:hover { background-color: color-mix(in srgb, var(--fin-sunk) 70%, transparent); }
+.fin-wf-row:hover .fin-wf-bar { filter: brightness(1.07); }
+
+/* Month strip bars. */
+.fin-strip-bar { transition: height 520ms var(--fin-ease), background-color 200ms ease, opacity 200ms ease; }
+
+/* Loading skeleton: a slow sweep, no spinner. */
+@keyframes fin-sweep { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.fin-skeleton {
+  background: linear-gradient(90deg, var(--fin-sunk) 25%, #f1f5f4 50%, var(--fin-sunk) 75%);
+  background-size: 200% 100%;
+  animation: fin-sweep 2.2s linear infinite;
+  border-radius: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fin-rise { animation: none; }
+  .fin-wf-bar { transform: scaleX(1); transition: none; }
+  .fin-strip-bar, .fin-wf-row { transition: none; }
+  .fin-skeleton { animation: none; }
+}

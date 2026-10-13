@@ -12,11 +12,11 @@ import { FinancialHelp } from './FinancialHelp';
 import type { Allocation } from './financialAnalytics';
 export { FinancialTrend, type FinancialTrendView } from './FinancialEvolution';
 
-const panel = 'min-w-0 rounded-2xl border border-violet-100 bg-white p-5 shadow-sm sm:p-6';
+const panel = 'min-w-0 rounded-2xl border border-[var(--fin-line)] bg-[var(--fin-surface)] p-5 sm:p-6';
 const note = 'text-sm leading-relaxed text-slate-500';
-type Props = { result: FinancialAnalysis; names: DirectoryEntry[]; onClient: (id: string) => void; onServices: () => void; onIncomes: () => void; onEdit: (service: CalculatedService) => void; onDetails: (id: string) => void; allocation?: Allocation; assigned?: number };
+type Props = { result: FinancialAnalysis; names: DirectoryEntry[]; onClient: (id: string) => void; onServices: () => void; onIncomes: () => void; onEdit: (service: CalculatedService) => void; onDetails: (id: string) => void; allocation?: Allocation; assigned?: number; hideComparison?: boolean };
 
-export function FinancialDashboard({ result, names, onClient, onServices, onIncomes, onEdit, onDetails, allocation = 'none', assigned = 0 }: Props) {
+export function FinancialDashboard({ result, names, onClient, onServices, onIncomes, onEdit, onDetails, allocation = 'none', assigned = 0, hideComparison = false }: Props) {
   const series = useMemo(() => dashboardSeries(result), [result]);
   const comparison = useMemo(() => periodColumns(result.total), [result.total]);
   const [metric, setMetric] = useState<'result' | 'margin'>('result');
@@ -26,12 +26,12 @@ export function FinancialDashboard({ result, names, onClient, onServices, onInco
   const [reviewMode, setReviewMode] = useState<'low' | 'pending' | 'excluded'>('low');
   const reviewRows = reviewMode === 'low' ? low : pending;
   return <>
-    <section className={panel} aria-label="Comparativa del periodo">
+    {!hideComparison && <section className={panel} aria-label="Comparativa del periodo">
       <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-[#310984]">Comparativa del periodo</h2></div><span className={`rounded-full px-3 py-1 text-sm font-medium ${result.total.result < 0 ? 'bg-rose-50 text-rose-800' : 'bg-emerald-50 text-emerald-800'}`}>{result.total.result < 0 ? 'Resultado negativo' : 'Resultado provisional'} · {money(result.total.result)}</span><FinancialHelp section="Comparativa del periodo"><p>Ingresos y gastos adyacentes en la misma escala y sin IVA. Pulsa una barra o la leyenda para abrir su desglose; en móvil puedes deslizar el gráfico.</p><p aria-label="Desglose de Personal">Personal incluye <strong>{money(result.total.costs.personal)}</strong> de actividad y otros costes de personal, más <strong>{money(result.total.costs.salary)}</strong> de dirección y estructura.</p><p>Gastos generales incluidos una vez, según la opción de reparto seleccionada.</p></FinancialHelp></div>
       <FinancialColumns label="Ingresos y gastos del periodo" series={comparison.series} groups={[{ name: 'Periodo seleccionado', values: comparison.values }]} onSelect={onDetails} />
       <ol className="mt-5 grid gap-3 text-sm sm:grid-cols-3">{balanceColumns.map(column => <li key={column.id} className="rounded-xl bg-slate-50 p-3"><span className="mb-1 flex items-center gap-2 text-xs text-slate-600"><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: column.color }} />{column.name}</span><strong className="tabular-nums">{money(result.total[column.id])}</strong></li>)}</ol>
       <p className="mt-4 text-xs text-slate-500">{allocation === 'none' ? <>Gastos generales incluidos: <strong>{money(result.general.expense)}</strong>. Se cuentan una vez y no se reparten entre clientes.</> : <>Gastos generales repartidos en esta selección: <strong>{money(assigned)}</strong> · Actividad general restante: <strong>{money(result.general.expense)}</strong>. El balance de toda la sede se conserva.</>}</p>
-    </section>
+    </section>}
     <div className="grid gap-5 xl:grid-cols-2">
       <section className={panel} aria-label="Distribución de gastos"><div className="flex flex-wrap items-start justify-between gap-2"><h2 className="text-lg font-semibold text-[#310984]">Distribución de gastos</h2><FinancialHelp section="Distribución de gastos"><p>Peso porcentual de cada categoría sobre el gasto total sin IVA. Personal incluye dirección y estructura.</p><p>Pulsa una categoría o un segmento para abrir su desglose. Los importes proceden del mismo análisis que la comparativa.</p></FinancialHelp></div>
         <FinancialExpenseShare rows={series.costs} total={result.total.expense} onDetails={onDetails} />

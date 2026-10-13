@@ -1,0 +1,25 @@
+{
+  "request": "Dani pidió rediseñar por completo el análisis financiero para que sea más cómodo de usar, más claro y más moderno, empezando por el análisis mensual. Esta entrega cambia la parte superior: cabecera con selector de mes y tira de 12 meses, filtros en un panel desplegable, resultado del mes con cascada de ingresos a resultado y esqueleto de carga.",
+  "reason": "Solo cambia la presentación y el orden de lo que ya se calcula. Los importes salen del mismo resumen del análisis que las tablas, sin tocar el motor de cálculo, las consultas, los permisos ni el guardado. Los filtros, la configuración compartida y el desglose por concepto conservan su comportamiento. La fuente se incrusta en el código y no genera peticiones nuevas.",
+  "verification": "Pruebas Node del modelo de vista (cascada con ganancia, pérdida, vacío e importes mínimos; frase de resultado y comparación; tira de 12 meses) y regresión de las pruebas financieras existentes (análisis, analítica, gráficos, insights, vista, formato, informes, detalle, ingresos externos, consumos, forma de propiedad). Pruebas de navegador locales con datos ficticios actualizadas a la nueva estructura: página completa, filtros, vista anual y mensual, desglose con retorno de foco, informes descargables y cuatro anchos de pantalla. Revisión visual en Chromium en escritorio y móvil con 13 meses de datos ficticios. Build y tipos de la aplicación sin errores nuevos en el módulo financiero, y lint sin avisos. Limitaciones: la cola no ejecuta las pruebas de navegador (sin Chromium) y no se ha capturado la pantalla con datos reales autenticados; el resto de secciones de la pestaña General conservan el diseño anterior hasta la siguiente entrega.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialMonthViewTest.mjs",
+    "scripts/financialInsightsTest.mjs",
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialViewTest.mjs",
+    "scripts/financialFormattingTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "c95716663151bf560a90c5c6f9846c3fcd71e25859e1eed9527d6a13351cb0f8"
+}
