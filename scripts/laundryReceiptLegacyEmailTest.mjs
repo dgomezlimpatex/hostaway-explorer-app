@@ -3,7 +3,7 @@ import XLSX from "xlsx";
 import { receiptTestDatabase } from "./laundryReceiptTestSupport.mjs";
 import { loadReceiptEdge } from "./laundryReceiptEdgeTestSupport.mjs";
 
-const t = await receiptTestDatabase();
+const t = await receiptTestDatabase({ suiteSheets: false });
 const { request } = await loadReceiptEdge(t);
 const originalFetch = globalThis.fetch,
   sent = [];

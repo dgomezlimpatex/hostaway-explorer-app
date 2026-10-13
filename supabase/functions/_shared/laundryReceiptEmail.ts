@@ -19,7 +19,7 @@ export async function sendReceiptEmail(db: SupabaseClient, versionId?: string) {
     if (!key) throw new Error("Falta la configuración del proveedor de correo");
     const snapshot = job.snapshot as ReceiptExport;
     const wb = XLSX.utils.book_new();
-    const sheet = XLSX.utils.aoa_to_sheet(receiptWorkbookRows(snapshot));
+    const sheet = XLSX.utils.aoa_to_sheet(receiptWorkbookRows(snapshot, snapshot.counts.suite_sheets === undefined));
     sheet["!cols"] = snapshot.discarded_counts
       ? [{ wch: 36 }, { wch: 55 }, { wch: 38 }]
       : [{ wch: 36 }, { wch: 55 }];

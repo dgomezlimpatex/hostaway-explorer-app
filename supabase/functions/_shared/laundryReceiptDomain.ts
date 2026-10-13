@@ -1,17 +1,21 @@
 export const RECEIPT_MATERIALS = [
+  ["suite_sheets", "Sábanas de suite"],
   ["double_sheets", "Sábanas de matrimonio"],
   ["single_sheets", "Sábanas individuales"],
   ["pillowcases", "Fundas de almohada"],
-  ["bath_towels", "Toallas de baño"],
   ["hand_towels", "Toallas de manos"],
-  ["bath_mats", "Alfombrines de ducha"],
-  ["duvets", "Edredones"],
-  ["mattress_protectors", "Protectores de colchón"],
-  ["pillows", "Almohadas"],
+  ["bath_towels", "Toallas de baño"],
+  ["bath_mats", "Alfombrín de ducha"],
+  ["pillows", "Almohada"],
+  ["mattress_protectors", "Cubre colchón"],
+  ["duvets", "Edredón"],
 ] as const;
 
 export type MaterialKey = (typeof RECEIPT_MATERIALS)[number][0];
-export type ReceiptCounts = Record<MaterialKey, number>;
+// Older receipts/snapshots predate suite sheets. Their absent suite count is zero.
+export type ReceiptCounts = Record<Exclude<MaterialKey, "suite_sheets">, number> & {
+  suite_sheets?: number;
+};
 export const emptyReceiptCounts = (): ReceiptCounts =>
   Object.fromEntries(
     RECEIPT_MATERIALS.map(([key]) => [key, 0]),
@@ -47,7 +51,20 @@ export type ReceiptExport = {
 };
 export function receiptWorkbookRows(
   snapshot: ReceiptExport,
+  legacyLayout = false,
 ): (string | number)[][] {
+  // Pending email retries must retain the original provider payload/idempotency key.
+  const materials = legacyLayout ? [
+    ["double_sheets", "Sábanas de matrimonio"],
+    ["single_sheets", "Sábanas individuales"],
+    ["pillowcases", "Fundas de almohada"],
+    ["bath_towels", "Toallas de baño"],
+    ["hand_towels", "Toallas de manos"],
+    ["bath_mats", "Alfombrines de ducha"],
+    ["duvets", "Edredones"],
+    ["mattress_protectors", "Protectores de colchón"],
+    ["pillows", "Almohadas"],
+  ] as const : RECEIPT_MATERIALS;
   // Untrusted names/notes stay string cells, never Excel formula cells.
   return [
     ["APP GESTIÓN LIMPATEX — Recepción de ropa limpia"],
@@ -65,10 +82,10 @@ export function receiptWorkbookRows(
     snapshot.discarded_counts
       ? ["Material", "Unidades recibidas", "Descartes (no suman al inventario)"]
       : ["Material", "Unidades recibidas"],
-    ...RECEIPT_MATERIALS.map(([key, label]) =>
+    ...materials.map(([key, label]) =>
       snapshot.discarded_counts
-        ? [label, snapshot.counts[key], snapshot.discarded_counts[key]]
-        : [label, snapshot.counts[key]],
+        ? [label, snapshot.counts[key] ?? 0, snapshot.discarded_counts[key] ?? 0]
+        : [label, snapshot.counts[key] ?? 0],
     ),
     [],
     ["Observaciones", snapshot.notes],

@@ -217,11 +217,11 @@ export default function PublicLaundryReceipt() {
   const changed =
     !latest ||
     RECEIPT_MATERIALS.some(
-      ([key]) => latest.snapshot.counts[key] !== state?.receipt?.counts[key],
+      ([key]) => (latest.snapshot.counts[key] ?? 0) !== (state?.receipt?.counts[key] ?? 0),
     ) ||
     RECEIPT_MATERIALS.some(
       ([key]) =>
-        (latest.snapshot.discarded_counts?.[key] ?? 0) !== discardedCounts[key],
+        (latest.snapshot.discarded_counts?.[key] ?? 0) !== (discardedCounts[key] ?? 0),
     ) ||
     latest.snapshot.notes !== state?.receipt?.notes;
   const lastEditable = state?.operations.find(
@@ -482,7 +482,7 @@ export default function PublicLaundryReceipt() {
                                 aria-label={`Total ${label}`}
                                 className="text-2xl font-bold leading-7 tabular-nums text-primary"
                               >
-                                {state.receipt!.counts[key]}
+                                {state.receipt!.counts[key] ?? 0}
                               </output>
                             </div>
                             <div className="flex gap-2">
@@ -573,7 +573,7 @@ export default function PublicLaundryReceipt() {
                                     aria-label={`Total descartes ${label}`}
                                     className="text-2xl font-bold tabular-nums text-primary"
                                   >
-                                    {discardedCounts[key]}
+                                    {discardedCounts[key] ?? 0}
                                   </output>
                                 </div>
                                 <div className="flex gap-2">

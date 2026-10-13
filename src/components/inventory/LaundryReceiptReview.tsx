@@ -69,7 +69,7 @@ export default function LaundryReceiptReview({
               aria-label={`${discarded ? "Revisado descartes" : "Revisado"} ${label}`}
               className="text-xl font-bold tabular-nums text-primary"
             >
-              {totals[material]}
+              {totals[material] ?? 0}
             </output>
             {
               <Button
@@ -84,7 +84,7 @@ export default function LaundryReceiptReview({
                   setEdit({
                     material,
                     discarded,
-                    value: String(totals[material]),
+                    value: String(totals[material] ?? 0),
                     revision,
                   });
                 }}

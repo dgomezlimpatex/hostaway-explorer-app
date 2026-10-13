@@ -129,7 +129,7 @@ export default function LaundryReceiptAdmin() {
                 <label htmlFor={`map-${key}`}>{label}</label>
                 <select
                   id={`map-${key}`}
-                  disabled={busy || Boolean(query.data.receipts.length)}
+                  disabled={busy || (Boolean(query.data.receipts.length) && Boolean(config?.product_map[key]))}
                   className="h-11 min-w-0 rounded-md border bg-background px-3"
                   value={productMap[key] || ""}
                   onChange={(e) =>
@@ -276,7 +276,7 @@ export default function LaundryReceiptAdmin() {
                       <tr key={key}>
                         <td className="py-1">{label}</td>
                         <td className="text-right tabular-nums">
-                          {r.counts[key]}
+                          {r.counts[key] ?? 0}
                         </td>
                       </tr>
                     ))}

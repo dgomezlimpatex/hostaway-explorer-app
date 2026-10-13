@@ -106,9 +106,14 @@ try {
   await page.getByRole("button", { name: "Entrar al recuento" }).click();
   await page.getByRole("button", { name: "Iniciar recuento de hoy" }).click();
   await page.getByLabel("Cantidad Toallas de baño", { exact: true }).waitFor();
+  const expectedLabels = ["Sábanas de suite", "Sábanas de matrimonio", "Sábanas individuales", "Fundas de almohada", "Toallas de manos", "Toallas de baño", "Alfombrín de ducha", "Almohada", "Cubre colchón", "Edredón"];
+  assert.deepEqual(await page.locator('input[aria-label^="Cantidad "]:not([aria-label^="Cantidad descartes "])').evaluateAll(inputs => inputs.map(input => input.getAttribute('aria-label').replace('Cantidad ', ''))), expectedLabels);
+  await page.getByLabel("Cantidad Sábanas de suite", { exact: true }).fill("12");
+  await page.locator("section").filter({ has: page.locator('label[for="count-suite_sheets"]') }).getByRole("button", { name: "Añadir", exact: true }).click();
+  await expect(page.getByLabel("Total Sábanas de suite", { exact: true })).toHaveText("12");
   assert.equal(
     await page.getByRole("button", { name: "Añadir", exact: true }).count(),
-    9,
+    10,
   );
   const towel = page
     .locator("section")
@@ -141,7 +146,7 @@ try {
   await page.locator("summary").filter({ hasText: "DESCARTES" }).click();
   assert.equal(
     await page.locator('input[aria-label^="Cantidad descartes "]').count(),
-    9,
+    10,
   );
   for (const [quantity, total] of [
     [5, 5],
@@ -205,6 +210,7 @@ try {
     .getByRole("button", { name: "Revisar recuento", exact: true })
     .click();
   await page.getByRole("heading", { name: "Revisa las cantidades" }).waitFor();
+  await expect(page.getByLabel("Revisado Sábanas de suite", { exact: true })).toHaveText("12");
   assert.equal(
     (
       await t.db.query(
@@ -506,7 +512,7 @@ try {
   });
   assert.deepEqual(errors, []);
   console.log(
-    `laundry-receipt-browser: móvil/escritorio, PIN, 9 materiales, tandas, Excel descargado, pérdida de respuesta, recarga/reintento, corrección, continuidad y configuración/historial administrativos correctos. Artefactos: ${artifacts}`,
+    `laundry-receipt-browser: móvil/escritorio, PIN, 10 materiales, tandas, Excel descargado, pérdida de respuesta, recarga/reintento, corrección, continuidad y configuración/historial administrativos correctos. Artefactos: ${artifacts}`,
   );
 } finally {
   await browser?.close();
