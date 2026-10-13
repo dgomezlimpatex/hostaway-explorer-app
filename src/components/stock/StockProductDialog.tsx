@@ -41,9 +41,10 @@ interface StockProductDialogProps {
   onOpenChange: (open: boolean) => void;
   kind?: StockItemKind;
   product?: StockProduct | null;
+  initialWarehouseId?: string;
 }
 
-export function StockProductDialog({ open, onOpenChange, kind, product }: StockProductDialogProps) {
+export function StockProductDialog({ open, onOpenChange, kind, product, initialWarehouseId }: StockProductDialogProps) {
   const createProduct = useCreateStockProduct();
   const updateProduct = useUpdateStockProduct();
   const deleteProduct = useDeleteStockProduct();
@@ -55,9 +56,10 @@ export function StockProductDialog({ open, onOpenChange, kind, product }: StockP
   const isEditing = !!product;
 
   const defaultWarehouseId = useMemo(() => {
+    if (initialWarehouseId && warehouses.some(warehouse => warehouse.id === initialWarehouseId)) return initialWarehouseId;
     if (selectedWarehouseId !== 'all') return selectedWarehouseId;
     return warehouses.find((warehouse) => warehouse.is_default)?.id || warehouses[0]?.id || '';
-  }, [selectedWarehouseId, warehouses]);
+  }, [initialWarehouseId, selectedWarehouseId, warehouses]);
 
   const reset = () => {
     setCategoryId('');

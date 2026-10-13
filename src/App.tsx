@@ -43,6 +43,7 @@ const InventoryConfig = React.lazy(() => import("./pages/InventoryConfig"));
 const InventoryReports = React.lazy(() => import("./pages/InventoryReports"));
 const InventoryWarehouses = React.lazy(() => import("./pages/InventoryWarehouses"));
 const InventoryLaundry = React.lazy(() => import("./pages/InventoryLaundry"));
+const InventoryPreparation = React.lazy(() => import("./pages/InventoryPreparation"));
 const LaundryReceiptAdmin = React.lazy(() => import("./pages/LaundryReceiptAdmin"));
 const PublicLaundryReceipt = React.lazy(() => import("./pages/PublicLaundryReceipt"));
 const InventoryAmenities = React.lazy(() => import("./pages/InventoryAmenities"));
@@ -185,6 +186,7 @@ function App() {
                       </RoleProtectedRoute>
                     </ProtectedRoute>
                   } />
+                  <Route path="/inventory/preparation" element={<RoleProtectedRoute requiredModule="inventory"><FullPageSuspense><InventoryPreparation /></FullPageSuspense></RoleProtectedRoute>} />
                   <Route path="/inventory/laundry/receipts" element={<RoleProtectedRoute requiredModule="inventory" excludedRoles={['supervisor', 'cleaner', 'client']}><FullPageSuspense><LaundryReceiptAdmin /></FullPageSuspense></RoleProtectedRoute>} />
                   <Route path="/inventory/amenities" element={
                     <ProtectedRoute>
