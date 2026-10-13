@@ -21,8 +21,20 @@ const modules = {
     data.tasks.push({...task,id:'excluded-nc',coste:999,task_assignments:[{cleaner_id:'nc',cleaner_name:'Nombre antiguo'}]},
       {...task,id:'excluded-past',date:'2000-01-01',coste:999,cleaner_id:null,task_assignments:[]},
       {...task,id:'excluded-cancelled',status:'cancelled',coste:999});
-    data.stock_property_consumption_rules=[];
+    data.stock_property_consumption_rules=[{property_id:'p',product_id:'sheets',quantity_per_cleaning:2}];
+    data.stock_products=[{id:'sheets',name:'Sabanas matrimonio'}];
     export const supabase={from(table){const calls=[];let payload=null;const q={select(...a){calls.push(['select',...a]);return q},insert(value){payload=value;return q},update(value){payload=value;return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},async maybeSingle(){if(table!=='financial_settings')throw new Error('Unexpected table');if(window.failFinance)return {data:null,error:{message:'Fallo simulado'}};return fetch('https://financial.local.test/config',{method:payload?'POST':'GET',headers:{'Content-Type':'application/json'},body:payload?JSON.stringify({payload,calls}):undefined}).then(r=>r.json())},range(from,to){if(window.failSource)return Promise.resolve({data:null,error:{message:'Source unavailable'}});window.reads=window.reads||[];window.reads.push({table,calls,from,to});return new Promise(resolve=>setTimeout(()=>resolve({data:data[table].slice(from,to+1),error:null}),window.sourceDelay || 0))}};return q}};
+    // Extend the existing source fixture for the batched reader; the HTTP contract
+    // and actual filtering are exercised by financialConsumptionTest.mjs.
+    const sourceFrom = supabase.from;
+    supabase.from = table => {
+      const query = sourceFrom(table);
+      query.in = () => query;
+      const range = query.range;
+      query.range = (...args) => window.failConsumption && table === 'stock_products'
+        ? Promise.resolve({data:null,error:{message:'statement timeout'}}) : range(...args);
+      return query;
+    };
   `,
 };
 const built = await build({ stdin: { contents: `import React from 'react';import {createRoot} from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {QueryClient,QueryClientProvider} from '@tanstack/react-query';import Page from './src/features/financial/FinancialAnalysisPage';createRoot(document.getElementById('root')).render(<MemoryRouter><QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><Page/></QueryClientProvider></MemoryRouter>);`, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic', metafile: true, define: { 'process.env.NODE_ENV': '"production"' }, plugins: [{ name: 'financial-fixture', setup(plugin) {
@@ -73,8 +85,16 @@ try {
   await expect(page.getByText('Productos', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('3,00 €', { exact: true }).first()).toBeVisible();
   const reads = await page.evaluate(() => window.reads);
-  assert.equal(reads.length, 5);
-  for (const read of reads) { assert.deepEqual(read.calls.find(call => call[0] === 'eq'), ['eq', read.table==='stock_property_consumption_rules'?'property.sede_id':'sede_id', 's']); assert.deepEqual([read.from,read.to], [0,499]); }
+  assert.equal(reads.length, 6);
+  for (const read of reads) {
+    if (read.table === 'stock_property_consumption_rules') {
+      assert.deepEqual(read.calls.find(call => call[0] === 'eq'), ['eq', 'is_active', true]);
+      assert.equal(read.calls.find(call => call[0] === 'select')[1], 'property_id,product_id,quantity_per_cleaning');
+    } else if (read.table === 'stock_products') {
+      assert.equal(read.calls.find(call => call[0] === 'select')[1], 'id,name');
+    } else assert.deepEqual(read.calls.find(call => call[0] === 'eq'), ['eq', 'sede_id', 's']);
+    assert.deepEqual([read.from,read.to], [0,499]);
+  }
   await openDetails('Fechas personalizadas y filtros');
   await page.getByRole('button',{name:/^Costes pendientes ·/}).click();
   await page.getByRole('region',{name:'Revisar',exact:true}).getByRole('button',{name:/Apartamento Centro/}).click();
@@ -433,7 +453,7 @@ try {
   await expect(page.getByRole('button',{name:'Actualizando datos…',exact:true})).toBeVisible();
   await expect(page.getByLabel('Concepto del ingreso')).toHaveValue('Formulario que debe mantenerse');
   await expect(page.getByRole('button',{name:'Actualizar datos',exact:true})).toBeEnabled();
-  assert.equal(await page.evaluate(()=>window.reads.length),beforeFocus+5,'Explicit update must read every source');
+  assert.equal(await page.evaluate(()=>window.reads.length),beforeFocus+6,'Explicit update must read every source');
   await expect(page.getByLabel('Concepto del ingreso')).toHaveValue('Formulario que debe mantenerse');
   const retainedEnd=await page.getByLabel('Hasta',{exact:true}).inputValue();
   await page.reload();
@@ -568,6 +588,13 @@ try {
   await expect(page.getByText('No se pudieron cargar los datos. No se muestran totales parciales.')).toBeVisible();
   await expect(page.getByText('Ingresos totales',{exact:true})).not.toBeVisible();
   await page.evaluate(()=>{window.failSource=false});
+  await page.getByRole('button',{name:'Reintentar',exact:true}).click();
+  await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
+  await page.evaluate(()=>{window.failConsumption=true});
+  await page.getByRole('button',{name:'Actualizar datos',exact:true}).click();
+  await expect(page.getByText('No se pudieron cargar los datos. No se muestran totales parciales.')).toBeVisible();
+  await expect(page.getByText('Ingresos totales',{exact:true})).not.toBeVisible();
+  await page.evaluate(()=>{window.failConsumption=false});
   await page.getByRole('button',{name:'Reintentar',exact:true}).click();
   await expect(page.getByText('Ingresos totales',{exact:true})).toBeVisible();
   assert.deepEqual(errors, []); assert.deepEqual(requests.filter(url => !url.endsWith('.woff') && !url.endsWith('.woff2')), []);
