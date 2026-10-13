@@ -1,0 +1,21 @@
+{
+  "request": "Profesionalizar y optimizar la pantalla principal del inventario de lenceria tras introducir el PIN del repartidor.",
+  "reason": "Reorganiza la presentacion de la entrada existente y reutiliza los mismos callbacks de fecha, retomar e iniciar. No cambia solicitudes, stock, PIN, permisos, backend ni correos.",
+  "verification": "Build, tipos reales de aplicacion, tipos Node y lint focalizado sin errores. Prueba local del componente para fechas, pendientes, callbacks y bloqueos. Navegador completo con PGlite y red externa interceptada: PIN, retomar, hoy, fecha pasada, 320/390/768 px sin desbordamiento, inicio, tandas, descartes, revision, confirmacion, recuperacion, Excel y administracion. Capturas revisadas; Chromium no demuestra Safari en dispositivo fisico.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/laundryReceiptStartTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "b6a443ed90caafb98e192b6d2e8033ab202dcc78a4c8784d15d4d296bd48e945"
+}
