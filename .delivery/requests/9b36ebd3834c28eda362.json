@@ -1,0 +1,25 @@
+{
+  "request": "Dani pidió continuar con el rediseño del análisis financiero hasta terminar todo el apartado. Esta cuarta entrega rediseña la vista Servicios (el libro detallado y los ingresos externos), la ventana de revisión de costes de un servicio y el desglose de un concepto.",
+  "reason": "Solo cambia la presentación y la forma de recorrer lo que ya se mostraba: cada servicio con su facturación, costes, beneficio y margen sale del mismo análisis; los filtros de resultado negativo y margen inferior al 10 % aplican la misma regla; la ventana de costes conserva la misma validación y el mismo guardado de ajustes en borrador, que sigue necesitando «Guardar cambios». Las filas se muestran de 50 en 50 en lugar de todas a la vez. No cambia el motor de cálculo, las consultas, los permisos ni el guardado.",
+  "verification": "Prueba Node nueva de la regla de filtrado de servicios (resultado negativo, margen bajo con el límite exacto del 10 %, facturación cero o desconocida y lista sin filtro) y regresión de todas las pruebas financieras existentes. Pruebas de navegador locales con datos ficticios, en verde: filtros de servicios, apertura y guardado de la ventana de costes con sus validaciones, suplementos y paño de cocina, ingresos externos, desglose de un concepto con retorno, filtros, vistas anual y mensual, informes y cuatro anchos. Revisión visual en Chromium en escritorio y móvil del libro de servicios y de la ventana de costes. Build, tipos del módulo y lint sin errores nuevos. Limitaciones: la cola no ejecuta las pruebas de navegador y no se ha visto la pantalla con datos reales autenticados.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialServiceFilterTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialDetailTest.mjs",
+    "scripts/financialMonthViewTest.mjs",
+    "scripts/financialViewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "600330064f8c19e71cefb1d64acbf62ce33be659e2d877e012c07deb21900c31"
+}
