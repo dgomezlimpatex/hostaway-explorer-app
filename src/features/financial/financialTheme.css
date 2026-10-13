@@ -1,7 +1,8 @@
 /* Visual system of the financial analysis. Scoped to .fin-root so it cannot
    leak into the rest of the app. The display font is registered in financialFont.ts. */
 
-.fin-root {
+.fin-root,
+.fin-dialog {
   --fin-bg: #edf1f0;
   --fin-surface: #fcfcfb;
   --fin-sunk: #e3e9e7;
@@ -19,9 +20,9 @@
   --primary: 192 60% 11%;
   --primary-foreground: 0 0% 100%;
   --ring: 192 60% 11%;
-  background: var(--fin-bg);
   color: var(--fin-ink);
 }
+.fin-root { background: var(--fin-bg); }
 .fin-display {
   font-family: 'Bricolage Grotesque', 'Manrope', system-ui, sans-serif;
   font-variant-numeric: tabular-nums lining-nums;
@@ -33,14 +34,14 @@
 
 /* Legacy sections still use the old violet utilities. Until each one is
    redesigned they inherit this palette so the page reads as one piece. */
-.fin-root .text-\[\#310984\] { color: var(--fin-ink); }
-.fin-root .text-violet-600, .fin-root .text-violet-700 { color: var(--fin-income-ink); }
-.fin-root .border-violet-100, .fin-root .border-violet-200 { border-color: var(--fin-line); }
-.fin-root .bg-violet-50 { background-color: var(--fin-sunk); }
-.fin-root .bg-\[\#f7f5fc\] { background-color: var(--fin-bg); }
-.fin-root .bg-\[\#310984\] { background-color: var(--fin-ink); }
-.fin-root .hover\:bg-\[\#45209a\]:hover { background-color: #1b4650; }
-.fin-root .shadow-sm { box-shadow: none; }
+:is(.fin-root, .fin-dialog) .text-\[\#310984\] { color: var(--fin-ink); }
+:is(.fin-root, .fin-dialog) .text-violet-600, :is(.fin-root, .fin-dialog) .text-violet-700 { color: var(--fin-income-ink); }
+:is(.fin-root, .fin-dialog) .border-violet-100, :is(.fin-root, .fin-dialog) .border-violet-200 { border-color: var(--fin-line); }
+:is(.fin-root, .fin-dialog) .bg-violet-50 { background-color: var(--fin-sunk); }
+:is(.fin-root, .fin-dialog) .bg-\[\#f7f5fc\] { background-color: var(--fin-bg); }
+:is(.fin-root, .fin-dialog) .bg-\[\#310984\] { background-color: var(--fin-ink); }
+:is(.fin-root, .fin-dialog) .hover\:bg-\[\#45209a\]:hover { background-color: #1b4650; }
+:is(.fin-root, .fin-dialog) .shadow-sm { box-shadow: none; }
 
 /* Entrance: each block rises in a short, staggered sequence. */
 @keyframes fin-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

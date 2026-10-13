@@ -8,18 +8,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useFinancialData } from './useFinancialData';
-import { COST_ITEMS, QUANTITY_ITEMS, applyFinanceRules, newSettings, parseAmount, priceAt, readSettings, setRate, validDate,
+import { COST_ITEMS, applyFinanceRules, newSettings, parseAmount, priceAt, readSettings, setRate, validDate,
   type Category, type FinanceSettings, type FinancialService, type Filters, type ItemId } from './financialModel';
 import type { DirectoryEntry } from './financialSource';
 import { loadFinance, saveFinance } from './financialPersistence';
 import { IncomePanel, ConsumptionPanel } from './FinancialConfiguration';
 import { loadFinancialView, saveFinancialView, financialMonthRange, selectedFinancialMonth, financialYearRange, selectedFinancialYear, validDetailConcept, type FinancialDrilldown } from './financialView';
-import { FinancialTrend, ExternalIncomeDetail, type FinancialTrendView } from './FinancialDashboard';
+import { FinancialTrend, type FinancialTrendView } from './FinancialEvolution';
+import { FinancialExternalIncomes, FinancialServices } from './FinancialServices';
+import { ServiceEditor } from './FinancialServiceEditor';
+import { formatRate } from './financialRateFormat';
 import { adjacentMonth, categoryNames, dashboardSeries, type ComparisonView } from './financialCharts';
 import { FinancialAnnual } from './FinancialAnnual';
 import { FinancialDetail } from './FinancialDetail';
 import { isIncomeConcept } from './financialDrilldown';
-import { money, percent, decimal, financialName } from './financialFormat';
+import { money, decimal, financialName } from './financialFormat';
 import { FinancialMonthHero, FinancialSummarySkeleton } from './FinancialMonthHero';
 import { FinancialMonthBar } from './FinancialMonthBar';
 import { ActiveFilterChips, FinancialFilterPanel, type FilterKey } from './FinancialFilterPanel';
@@ -32,8 +35,6 @@ import { FinancialReview } from './FinancialReview';
 import { FinancialReports } from './FinancialReports';
 
 
-const rateMoney = (mills: number) => decimal(mills / 1000, 2, 3) + ' €';
-const formatRate = (item: ItemId, mills: number) => item === 'products' ? decimal(mills / 1000, 0, 3) + '%' : rateMoney(mills);
 const panel = 'min-w-0 rounded-2xl border border-[var(--fin-line)] bg-[var(--fin-surface)] p-5';
 const selectClass = 'h-10 rounded-md border border-input bg-background px-3 text-sm w-full';
 function download(filename: string, content: string, type: string) {
@@ -122,7 +123,6 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
     restoreFocus();
     return () => observer.disconnect();
   }, [tab, sharedReady, query.isPending, query.error, annualYear]);
-  const visibleServices = result.services.filter(service => profitFilter === 'all' || profitFilter === 'negative' && (service.result ?? 0) < 0 || profitFilter === 'low' && service.revenue! > 0 && (service.result ?? 0) / service.revenue! < .1);
   const commit = (next: FinanceSettings) => {
     if (!sharedReady || saving) return false;
     try { setSettings(readSettings(next)); setDirty(true); setMessage('Borrador actualizado. Pulsa Guardar cambios para compartirlo.'); return true; }
@@ -219,14 +219,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
             </>}
             {tab === 'details' && drilldown && <FinancialDetail result={result} settings={settings} concept={drilldown.concept} filters={filters} clients={data?.clients || []} onBack={returnToChart} />}
             {tab === 'incomes' && <IncomePanel settings={settings} result={result} clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} date={filters.start} onChange={commit} />}
-            {tab === 'services' && <><ExternalIncomeDetail result={result} onManage={() => setTab('incomes')} /><section className={panel}><h2 className="text-lg mb-4 font-semibold text-[#310984]">Servicios · origen de cada importe</h2>
-              <div className="mb-3 flex flex-wrap gap-2">{([['all','Todos los servicios'],['negative','Resultado negativo'],['low','Margen inferior al 10%']] as const).map(([id,label])=><Button key={id} variant={profitFilter===id?'default':'outline'} onClick={()=>setProfitFilter(id)}>{label}</Button>)}</div>
-              {!visibleServices.length ? <p className="py-8 text-center text-slate-500">No hay servicios contabilizables con estos filtros.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-violet-50 text-[#310984]"><tr>{['Fecha / propiedad', 'Cliente / equipo', 'Ingresos', 'Personal', 'Lavandería', 'Consumibles', 'Productos', 'Resultado', 'Margen', 'Revisión'].map(title => <th className="p-3 text-left" key={title}>{title}</th>)}</tr></thead><tbody>
-                {visibleServices.map(service => <tr key={service.id} className="border-b"><td className="p-3 tabular-nums"><p>{service.date.split('-').reverse().join('/')}</p><button className="font-semibold text-[#310984] hover:underline" onClick={() => setFilters(current => ({ ...current, properties: [service.propertyId] }))} disabled={!service.propertyId}>{service.propertyName}</button></td><td className="p-3 tabular-nums">{service.clientName}<p className="text-xs text-slate-500">{service.workers.map(worker => worker.name).join(', ') || 'Sin asignar'}</p></td>
-                  <td className="p-3 tabular-nums">{service.revenue === null ? 'Pendiente' : money(service.revenue)}</td>{[service.costs.personal, service.costs.laundry, service.costs.supplies, service.costs.products].map((value, i) => <td key={i} className="p-3">{money(value)}</td>)}<td className="p-3 tabular-nums">{service.result === null ? '—' : money(service.result)}</td>
-                  <td className={`p-3 tabular-nums ${service.result === null ? "text-slate-500" : service.result < 0 ? "text-rose-700" : "text-emerald-700"}`}>{service.revenue ? percent((service.result || 0)/service.revenue*100):'—'}</td><td className="p-3 tabular-nums"><Button variant="outline" size="sm" onClick={() => setEditing(service)}>Revisar costes</Button><p className="mt-1 text-xs text-amber-700">{service.pending.length ? 'Datos pendientes' : service.estimated ? 'Estimado' : 'Revisado'}</p></td></tr>)}
-              </tbody></table></div>}
-            </section></>}
+            {tab === 'services' && <><FinancialExternalIncomes result={result} onManage={() => setTab('incomes')} /><FinancialServices result={result} filter={profitFilter} onFilter={setProfitFilter} onProperty={id => setFilters(current => ({ ...current, properties: [id] }))} onEdit={setEditing} /></>}
             {tab === 'expenses' && <section className={panel}><h2 className="text-lg mb-2 font-semibold text-[#310984]">Gastos adicionales del análisis</h2><p className="mb-4 text-sm text-slate-500">Registra solo gastos no incluidos ya en los servicios. Sin cliente, se consideran generales. El salario de dirección de turismo se calcula automáticamente; no lo añadas de nuevo.</p>
               <ExpenseForm clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} date={today} onAdd={expense => commit({ ...settings, expenses: [...settings.expenses, expense] })} />
               <div className="mt-5 space-y-2">{result.expenses.map(expense => <div key={expense.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-violet-50 p-3 text-sm"><div><strong>{expense.label}</strong><p>{expense.date} · {expense.clientId ? clientName(expense.clientId) : 'General'} · {categoryNames[expense.category]}</p></div><div className="flex items-center gap-3"><strong>{money(expense.cents)}</strong><>{expense.automatic ? <span className="text-xs text-violet-700">Calculado desde Tarifas</span> : <Button size="sm" variant="outline" onClick={() => commit({ ...settings, expenses: settings.expenses.filter(item => item.id !== expense.id) })}>Quitar del análisis</Button>}</></div></div>)}{!result.expenses.length && <p className="text-sm text-slate-500">Sin gastos adicionales en este periodo.</p>}</div>
@@ -273,31 +266,5 @@ function ExpenseForm({ clients, properties, workers, date, onAdd }: { clients: D
     <label className="text-sm">Propiedad del gasto<select className={selectClass} value={propertyId} onChange={event => { const id = event.target.value; setProperty(id); if (id) setClient(properties.find(property => property.id === id)!.clientId); }}><option value="">Sin propiedad</option>{properties.filter(property => !clientId || property.clientId === clientId).map(property => <option value={property.id} key={property.id}>{property.name}</option>)}</select></label>
     <label className="text-sm">Trabajador del gasto<select className={selectClass} value={workerId} onChange={event => setWorker(event.target.value)}><option value="">Sin trabajador</option>{workers.map(worker => <option value={worker.id} key={worker.id}>{worker.name}</option>)}</select></label>
     <Button className="bg-[#310984]" type="submit"><Plus className="mr-2 h-4 w-4" />Añadir al análisis</Button>{error && <p role="alert" className="col-span-full text-sm text-red-700">{error}</p>}
-  </form>;
-}
-
-function ServiceEditor({ service, settings, onClose, onSave }: { service: FinancialService | null; settings: FinanceSettings; onClose: () => void; onSave: (adjustment: FinanceSettings['adjustments'][string]) => void }) {
-  return <Dialog open={!!service} onOpenChange={open => !open && onClose()}><DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Revisar costes · {service?.propertyName}</DialogTitle></DialogHeader>{service && <ServiceEditorForm key={service.id} service={service} settings={settings} onSave={onSave} />}</DialogContent></Dialog>;
-}
-function ServiceEditorForm({ service, settings, onSave }: { service: FinancialService; settings: FinanceSettings; onSave: (adjustment: FinanceSettings['adjustments'][string]) => void }) {
-  const adjustment = settings.adjustments[service.id];
-  const [quantities, setQuantities] = useState<Record<string, string>>(() => Object.fromEntries(QUANTITY_ITEMS.map(item => [item.id, String(adjustment?.quantities?.[item.id] ?? service.quantities[item.id] ?? '')])));
-  const [hours, setHours] = useState<Record<string, string>>(() => Object.fromEntries(service.workers.map(worker => [worker.id, adjustment?.minutes?.[worker.id] === undefined ? '' : String(adjustment.minutes[worker.id] / 60)])));
-  const [reviewed, setReviewed] = useState(adjustment?.reviewed || false); const [error, setError] = useState('');
-  return <form className="space-y-4" onSubmit={event => { event.preventDefault(); const output: FinanceSettings['adjustments'][string] = { quantities: {}, minutes: {}, reviewed };
-    for (const [key, value] of Object.entries(quantities)) { if (!value.trim()) { if (reviewed) { setError('Completa todas las cantidades; indica 0 cuando no se haya utilizado el artículo.'); return; } continue; } const amount = parseAmount(value, 1); if (amount === null || amount % 10 || amount > 1000000) { setError('Las cantidades deben ser unidades enteras entre 0 y 100.000.'); return; } output.quantities![key] = amount / 10; }
-    for (const [id, value] of Object.entries(hours)) { if (!value.trim()) continue; const amount = parseAmount(value, 2); if (amount === null || amount > 2400 || amount % 25) { setError('Las horas deben ir en tramos de 0,25, entre 0 y 24 por trabajador.'); return; } output.minutes![id] = amount / 100 * 60; }
-    onSave(output);
-  }}>
-    <p className="text-sm text-slate-500">{service.date} · {service.clientName}. Estos ajustes solo afectan al análisis. No cambian tareas, fichajes ni stock.</p>
-    <p className="rounded-lg bg-violet-50 p-3 text-sm">Tarifa de propiedad: {service.revenue===null?'pendiente':money(service.revenue-(service.additionalRevenue || 0))}{!!((service.additionalRevenue || 0)-(service.kitchenClothRevenue || 0)) && ` · otros suplementos: ${money((service.additionalRevenue || 0)-(service.kitchenClothRevenue || 0))}`}{!!service.kitchenClothRevenue && ` · paño de cocina: ${money(service.kitchenClothRevenue)}`}</p>
-    {!!service.unpricedConsumptions?.length && <p role="alert" className="text-sm text-amber-800">Productos configurados sin tarifa: {service.unpricedConsumptions.join(', ')}. Su coste queda pendiente; no se interpreta como gratuito.</p>}
-    <h3 className="text-sm font-semibold text-[#310984]">Personal · horas por trabajador</h3>
-    {service.workers.map(worker => <label className="block text-sm" key={worker.id}>{worker.name}<span className="ml-2 text-xs text-slate-500">{worker.minutes === null ? 'Sin horas' : `${decimal(worker.minutes / 60, 2)} h ${worker.actual ? 'de reporte' : 'previstas'}`} · {rateMoney(priceAt(settings.rates, 'labor', service.date, worker.id))}/h</span><Input inputMode="decimal" placeholder="Mantener horas de la app" value={hours[worker.id]} onChange={event => setHours({ ...hours, [worker.id]: event.target.value })} /></label>)}
-    {!service.workers.length && <p className="text-sm text-amber-700">No hay trabajadores identificados. El coste de personal queda pendiente.</p>}
-    <p className="rounded-lg bg-violet-50 p-3 text-sm text-[#310984]">Productos de limpieza: {formatRate('products', priceAt(settings.rates, 'products', service.date))} del importe de cada limpieza sin IVA. Se calcula automáticamente; no se añade a las cantidades.</p>
-    <h3 className="text-sm font-semibold text-[#310984]">Lavandería y consumibles · unidades utilizadas</h3><div className="grid gap-3 sm:grid-cols-2">{QUANTITY_ITEMS.map(item => <label className="text-sm" key={item.id}>{item.label}<span className="ml-1 text-xs text-slate-500">{rateMoney(priceAt(settings.rates, item.id, service.date))}</span><Input inputMode="numeric" placeholder="Cantidad pendiente" value={quantities[item.id]} onChange={event => setQuantities({ ...quantities, [item.id]: event.target.value })} /></label>)}</div>
-    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} />He revisado todas las cantidades de este servicio</label>
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}<Button type="submit" className="bg-[#310984]">Guardar ajustes del análisis</Button>
   </form>;
 }
