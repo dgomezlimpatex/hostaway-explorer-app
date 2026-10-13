@@ -16,27 +16,25 @@ try {
     return { revenue, costs: c, expense, result: revenue - expense, margin: revenue ? (revenue - expense) / revenue * 100 : null, pending: 0, estimated: 0, services: 1, ...extra };
   };
 
-  // Profitable month: expense steps hang from the revenue bar and the result closes the sum.
+  // Profitable month: every bar starts on the left edge and lengths are proportional to the amounts.
   const gain = waterfallRows(summary(100000, { personal: 30000, salary: 10000, laundry: 5000, supplies: 2500 }));
   assert.deepEqual(gain.rows.map(row => row.id), ['revenue', 'personal', 'laundry', 'supplies', 'result'], 'Zero categories other than personnel are omitted');
   assert.equal(gain.zero, null, 'No zero line when nothing is negative');
   const [revenue, personal, laundry, supplies, result] = gain.rows;
   assert.deepEqual([revenue.left, revenue.width, revenue.origin], [0, 100, 'left']);
   assert.equal(personal.amount, 40000, 'Direction/structure is part of personnel, as in the tables');
-  assert.ok(Math.abs(personal.left + personal.width - 100) < 1e-9, 'First step starts at the revenue edge');
-  assert.ok(Math.abs(laundry.left + laundry.width - personal.left) < 1e-9 && Math.abs(supplies.left + supplies.width - laundry.left) < 1e-9, 'Each step continues where the previous one ended');
-  assert.ok(Math.abs(supplies.left - result.width) < 1e-9, 'The last step ends exactly where the result bar ends');
-  assert.equal(result.width, 52.5); assert.equal(result.share, 52.5); assert.equal(personal.share, 40);
-  assert.ok(gain.rows.slice(1, -1).every(row => row.origin === 'right'));
+  assert.ok(gain.rows.every(row => row.left === 0 && row.origin === 'left'), 'All bars start at the same left edge');
+  assert.deepEqual([personal.width, laundry.width, supplies.width, result.width], [40, 5, 2.5, 52.5], 'Widths are the share of billing');
+  assert.equal(result.share, 52.5); assert.equal(personal.share, 40);
 
-  // Loss: the zero line becomes the shared baseline and the result points left of it.
+  // Loss: bars still start at the shared zero line; only the negative profit points left of it.
   const loss = waterfallRows(summary(10000, { personal: 25000 }));
   assert.ok(loss.zero > 0 && loss.zero < 100);
   const [lossRevenue, lossPersonal, lossResult] = loss.rows;
-  assert.ok(Math.abs(lossRevenue.left - loss.zero) < 1e-9, 'Revenue starts on the zero line');
-  assert.ok(Math.abs(lossResult.left + lossResult.width - loss.zero) < 1e-9 && lossResult.origin === 'right', 'A negative result ends on the zero line');
-  assert.ok(Math.abs(lossPersonal.left + lossPersonal.width - (lossRevenue.left + lossRevenue.width)) < 1e-9);
-  assert.ok(lossPersonal.left < 1e-9 && loss.rows.every(row => row.left >= -1e-9 && row.left + row.width <= 100 + 1e-9), 'Everything stays inside the track');
+  assert.ok(Math.abs(lossRevenue.left - loss.zero) < 1e-9 && Math.abs(lossPersonal.left - loss.zero) < 1e-9, 'Billing and expenses start on the zero line');
+  assert.ok(lossPersonal.width > lossRevenue.width, 'Expenses larger than billing are visibly longer');
+  assert.ok(Math.abs(lossResult.left + lossResult.width - loss.zero) < 1e-9 && lossResult.origin === 'right', 'A negative profit ends on the zero line');
+  assert.ok(loss.rows.every(row => row.left >= -1e-9 && row.left + row.width <= 100 + 1e-9), 'Everything stays inside the track');
 
   // Edge cases: no activity, tiny amounts stay visible, optional categories appear only with an amount.
   const empty = waterfallRows(summary(0, {}));

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowDownRight, ArrowUpRight, Info, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import './financialTheme.css';
 import { loadFinancialFont } from './financialFont';
 import { money, percent } from './financialFormat';
@@ -54,9 +54,9 @@ function Waterfall({ total, periodStart, onSelect }: { total: Summary; periodSta
 
 export interface MonthHeroProps {
   total: Summary; previous: Summary | null; comparisonLabel: string | null; start: string; singleMonth: boolean; partial: boolean;
-  partialCategories: boolean; onDetails: (concept: string) => void; children?: ReactNode;
+  onDetails: (concept: string) => void; children?: ReactNode;
 }
-export function FinancialMonthHero({ total, previous, comparisonLabel, start, singleMonth, partial, partialCategories, onDetails, children }: MonthHeroProps) {
+export function FinancialMonthHero({ total, previous, comparisonLabel, start, singleMonth, partial, onDetails, children }: MonthHeroProps) {
   const headline = monthHeadline({ total, previous, start, singleMonth, partial, comparisonLabel });
   const shownRevenue = useCountUp(total.revenue), shownProfit = useCountUp(total.result);
   const profitColor = headline.tone === 'loss' ? 'var(--fin-loss)' : 'var(--fin-gain)';
@@ -82,7 +82,6 @@ export function FinancialMonthHero({ total, previous, comparisonLabel, start, si
           <p className="mt-3 max-w-md text-[15px] leading-relaxed">{headline.sentence}</p>
           {headline.profitCompare && <p className="mt-2"><span className={chip} style={{ background: 'var(--fin-sunk)', color: deltaColor(headline.profitDirection) }}><ProfitIcon aria-hidden className="h-4 w-4" />Beneficio {headline.profitCompare}</span></p>}
         </div>
-        <p className="mt-4"><span className="fin-muted inline-flex items-center gap-1.5 rounded-full border border-[var(--fin-line)] px-3 py-1 text-[13px]"><Info aria-hidden className="h-3.5 w-3.5" />{partialCategories ? 'Parcial · provisional' : 'Provisional'}</span></p>
         {children}
       </div>
       <div className="fin-rise" style={{ ['--i' as string]: 1 }}><Waterfall total={total} periodStart={start} onSelect={onDetails} /></div>
