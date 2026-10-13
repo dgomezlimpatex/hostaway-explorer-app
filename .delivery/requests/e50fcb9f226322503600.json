@@ -1,0 +1,23 @@
+{
+  "request": "Optimizar la fluidez, animaciones y adaptacion a movil del enlace de inventario de lavanderia.",
+  "reason": "Mejora local de presentacion e interaccion: estado compacto de guardado, animaciones CSS, areas tactiles, dock estable y Enter delegado a la misma accion de anadir. Conserva bloqueo, cantidades, revisiones, idempotencia, PIN, solicitudes, stock y correos existentes.",
+  "verification": "Build y lint focalizado correctos. Tipos de aplicacion: mismos 102 errores heredados antes/despues; Node sin errores. Tests reales de teclado, entrada y revision. Navegador completo con PGlite local y red externa interceptada: PIN, fechas, Enter y boton, guardado lento sin salto de tarjeta, cortes y recuperacion, descartes, correcciones, confirmacion, Excel y administrador. Sin desbordamiento a 320/390/768 px, CSS reducido sin animacion y dock static durante cantidades/edicion, sticky fuera de ellas. Capturas revisadas. No se midio latencia de backend ni se probo Safari en iPhone fisico.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/laundryReceiptKeyboardTest.mjs",
+    "scripts/laundryReceiptReviewTest.mjs",
+    "scripts/laundryReceiptStartTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "3e18d16f0f5ba24deb8cf31ebeba160a086403e8a240f01c4976869a417fb3d8"
+}
