@@ -78,7 +78,7 @@ try {
   await expect(page.getByText('29,00 €', { exact: true }).first()).toBeVisible();
   await page.getByRole('button',{name:/^Cerrar ayuda:/}).press('Enter');
   await expect(page.getByRole('region',{name:'Comparativa del periodo'})).toBeVisible();
-  const review = page.getByRole('region',{name:'Revisar'});
+  const review = page.getByRole('region',{name:'Qué revisar'});
   await review.getByRole('button',{name:/^Fuera del balance · 2/}).click();
   await expect(review.getByText(/Jornada Hotel de prueba/)).toBeVisible();
   await expect(review.getByText('Sin ingreso',{exact:true})).toBeVisible();
@@ -99,12 +99,12 @@ try {
   }
   await openFilters();
   await page.getByRole('button',{name:/^Costes pendientes ·/}).click();
-  await page.getByRole('region',{name:'Revisar',exact:true}).getByRole('button',{name:/Apartamento Centro/}).click();
+  await page.getByRole('region',{name:'Qué revisar',exact:true}).getByRole('button',{name:/Apartamento Centro/}).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
   await page.getByRole('button',{name:/^Fuera del balance ·/}).click();
-  await expect(page.getByRole('region',{name:'Revisar',exact:true})).toContainText('Precio pendiente');
+  await expect(page.getByRole('region',{name:'Qué revisar',exact:true})).toContainText('Precio pendiente');
   const previousEnd = await page.getByLabel('Hasta', { exact: true }).inputValue();
   const [year, month] = previousEnd.split('-').map(Number);
   const monthEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
