@@ -58,26 +58,31 @@ export interface MonthHeroProps {
 }
 export function FinancialMonthHero({ total, previous, comparisonLabel, start, singleMonth, partial, partialCategories, onDetails, children }: MonthHeroProps) {
   const headline = monthHeadline({ total, previous, start, singleMonth, partial, comparisonLabel });
-  const shown = useCountUp(total.result);
-  const color = headline.tone === 'loss' ? 'var(--fin-loss)' : 'var(--fin-gain)';
+  const shownRevenue = useCountUp(total.revenue), shownProfit = useCountUp(total.result);
+  const profitColor = headline.tone === 'loss' ? 'var(--fin-loss)' : 'var(--fin-gain)';
   const TrendIcon = headline.tone === 'loss' ? TrendingDown : TrendingUp;
-  const CompareIcon = headline.direction === 'same' || !headline.direction ? Minus : (total.result - (previous?.result ?? 0)) > 0 ? ArrowUpRight : ArrowDownRight;
+  const deltaColor = (direction: string | null) => direction === 'worse' ? 'var(--fin-loss)' : direction === 'better' ? 'var(--fin-gain)' : 'var(--fin-muted)';
+  const deltaIcon = (direction: string | null, now: number, before: number | undefined) => direction === 'same' || !direction ? Minus : now - (before ?? 0) > 0 ? ArrowUpRight : ArrowDownRight;
+  const RevenueIcon = deltaIcon(headline.revenueDirection, total.revenue, previous?.revenue), ProfitIcon = deltaIcon(headline.profitDirection, total.result, previous?.result);
+  const chip = 'inline-flex items-center gap-1 rounded-full px-3 py-1 text-[13px] font-medium tabular-nums';
   return <section aria-label="Comparativa del periodo" className="rounded-3xl border border-[var(--fin-line)] bg-[var(--fin-surface)] p-5 sm:p-8">
     <div className="grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-14">
       <div className="fin-rise" style={{ ['--i' as string]: 0 }}>
         <div className="flex items-start justify-between gap-3"><p className="fin-muted text-sm font-medium">{headline.kicker} · sin IVA</p>
-          <FinancialHelp section="Comparativa del periodo"><p>Ingresos y gastos en la misma escala y sin IVA. Pulsa una fila para abrir su desglose.</p>
+          <FinancialHelp section="Comparativa del periodo"><p>Facturación, gastos y beneficio en la misma escala y sin IVA. Pulsa una fila para abrir su desglose.</p>
             <p aria-label="Desglose de Personal">Personal incluye <strong>{money(total.costs.personal)}</strong> de actividad y otros costes de personal, más <strong>{money(total.costs.salary)}</strong> de dirección y estructura.</p>
             <p>Gastos generales incluidos una vez, según la opción de reparto seleccionada.</p></FinancialHelp></div>
-        <p className="fin-display mt-2 text-[clamp(2.6rem,7.2vw,4.75rem)] font-bold leading-[0.95]" style={{ color }} aria-hidden="true">{money(shown)}</p>
-        <p className="sr-only">Resultado: {money(total.result)}</p>
-        <p className="mt-4 max-w-md text-[15px] leading-relaxed">{headline.sentence}</p>
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-[13px]">
-          <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold" style={{ background: 'var(--fin-sunk)', color }}><TrendIcon aria-hidden className="h-4 w-4" />{headline.tone === 'loss' ? 'Resultado negativo' : headline.tone === 'flat' ? 'Resultado a cero' : 'Resultado positivo'}</span>
-          {headline.compare && <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 font-medium tabular-nums" style={{ background: 'var(--fin-sunk)', color: headline.direction === 'worse' ? 'var(--fin-loss)' : headline.direction === 'better' ? 'var(--fin-gain)' : 'var(--fin-muted)' }}>
-            <CompareIcon aria-hidden className="h-4 w-4" />{headline.compare}</span>}
-          <span className="fin-muted inline-flex items-center gap-1.5 rounded-full border border-[var(--fin-line)] px-3 py-1"><Info aria-hidden className="h-3.5 w-3.5" />{partialCategories ? 'Parcial · provisional' : 'Provisional'}</span>
+        <p className="fin-display mt-2 text-[clamp(2.6rem,7.2vw,4.75rem)] font-bold leading-[0.95]" aria-hidden="true">{money(shownRevenue)}</p>
+        <p className="sr-only">Facturación: {headline.revenue}</p>
+        {headline.revenueCompare && <p className="mt-3"><span className={chip} style={{ background: 'var(--fin-sunk)', color: deltaColor(headline.revenueDirection) }}><RevenueIcon aria-hidden className="h-4 w-4" />{headline.revenueCompare}</span></p>}
+        <div className="mt-6 border-t border-[var(--fin-line)] pt-5">
+          <p className="fin-muted text-sm font-medium">Beneficio</p>
+          <p className="fin-display mt-1 flex items-center gap-2 text-[clamp(1.9rem,4.6vw,2.9rem)] font-bold leading-none" style={{ color: profitColor }} aria-hidden="true"><TrendIcon aria-hidden className="h-7 w-7 shrink-0" />{money(shownProfit)}</p>
+          <p className="sr-only">Beneficio: {headline.profit}{headline.tone === 'loss' ? ' (resultado negativo)' : ''}</p>
+          <p className="mt-3 max-w-md text-[15px] leading-relaxed">{headline.sentence}</p>
+          {headline.profitCompare && <p className="mt-2"><span className={chip} style={{ background: 'var(--fin-sunk)', color: deltaColor(headline.profitDirection) }}><ProfitIcon aria-hidden className="h-4 w-4" />Beneficio {headline.profitCompare}</span></p>}
         </div>
+        <p className="mt-4"><span className="fin-muted inline-flex items-center gap-1.5 rounded-full border border-[var(--fin-line)] px-3 py-1 text-[13px]"><Info aria-hidden className="h-3.5 w-3.5" />{partialCategories ? 'Parcial · provisional' : 'Provisional'}</span></p>
         {children}
       </div>
       <div className="fin-rise" style={{ ['--i' as string]: 1 }}><Waterfall total={total} periodStart={start} onSelect={onDetails} /></div>

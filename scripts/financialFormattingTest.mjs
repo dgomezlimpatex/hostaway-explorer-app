@@ -7,9 +7,11 @@ import { pathToFileURL } from 'node:url';
 const temp = mkdtempSync(join(tmpdir(), 'financial-format-'));
 try {
   await build({ entryPoints: ['src/features/financial/financialFormat.ts'], outfile: join(temp, 'format.mjs'), bundle: true, platform: 'node', format: 'esm', logLevel: 'silent' });
-  const { money, percent, decimal, financialName } = await import(pathToFileURL(join(temp, 'format.mjs')));
+  const { money, percent, decimal, financialName, moneyWhole, compactMoney } = await import(pathToFileURL(join(temp, 'format.mjs')));
   const plain = text => text.replace(/\s/g, ' ');
   for (const [cents, expected] of [[0,'0,00 €'],[55,'0,55 €'],[100000,'1.000,00 €'],[916098,'9.160,98 €'],[-405845,'-4.058,45 €'],[123456789,'1.234.567,89 €']]) assert.equal(plain(money(cents)), expected);
+  for (const [cents, expected] of [[0,'0 €'],[85000,'850 €'],[720900,'7.209 €'],[720950,'7.210 €'],[-12345,'-123 €'],[12345678,'123.457 €']]) assert.equal(plain(moneyWhole(cents)), expected, 'whole euros with thousands grouping');
+  for (const [cents, expected] of [[0,'0'],[85000,'850'],[99900,'999'],[100000,'1,0k'],[720900,'7,2k'],[12400000,'124k'],[-720900,'-7,2k']]) assert.equal(compactMoney(cents), expected, 'compact thousands for narrow labels');
   assert.equal(percent(26.1), '26,1%'); assert.equal(percent(-10.456), '-10,5%'); assert.equal(percent(0), '0,0%'); assert.equal(percent(null), '—');
   assert.equal(decimal(0.247,2,3), '0,247'); assert.equal(decimal(1.5,2), '1,50');
   assert.equal(financialName('Weguest Sl.'), 'Weguest SL');

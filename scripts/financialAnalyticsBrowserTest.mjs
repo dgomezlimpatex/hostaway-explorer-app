@@ -44,7 +44,7 @@ try {
   await page.goto('https://financial.p2.local/');
   const indicators = page.getByRole('region', { name: 'Comparativa del periodo' }), comparison = page.getByRole('region', { name: 'Comparativas financieras' }), props = page.getByRole('region', { name: 'Análisis por propiedad' });
   const openFilters = async () => { const toggle = page.getByRole('button', { name: /^Filtros/ }); if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click(); };
-  const revenue = text => indicators.getByRole('button', { name: new RegExp('^Ingresos · .*' + text) });
+  const revenue = text => indicators.getByRole('button', { name: new RegExp('^Facturación · .*' + text) });
   const filter = label => page.locator('details').filter({ has: page.locator('summary').filter({ hasText: `${label}:` }) });
   const open = async label => { const target = filter(label); if (!await target.evaluate(node=>node.open)) await target.locator('summary').click(); return target; };
   const clear = async label => { const target = await open(label); await target.getByRole('button', { name: 'Mostrar todos', exact: true }).click(); await target.locator('summary').click(); };
@@ -59,12 +59,12 @@ try {
   await (await open('Clientes')).getByLabel('Cliente Mar',{exact:true}).check(); await filter('Clientes').locator('summary').click(); await expect(revenue('0,00')).toBeVisible();
   await clear('Clientes'); await clear('Edificios');
   await (await open('Categorías de gasto')).getByLabel('Personal · incluye dirección',{exact:true}).check(); await filter('Categorías de gasto').locator('summary').click();
-  await expect(indicators.getByText(/salen 2\.724,00/)).toBeVisible(); await expect(indicators.getByText('Parcial · provisional',{exact:true})).toHaveCount(1); await expect(page.getByText(/Vista parcial de gastos:/)).toBeVisible(); await clear('Categorías de gasto');
+  await expect(indicators.getByText(/gastos suman 2\.724,00/)).toBeVisible(); await expect(indicators.getByText('Parcial · provisional',{exact:true})).toHaveCount(1); await expect(page.getByText(/Vista parcial de gastos:/)).toBeVisible(); await clear('Categorías de gasto');
   await (await open('Tipos de servicio')).getByLabel('check-in',{exact:true}).check(); await filter('Tipos de servicio').locator('summary').click();
   await expect(revenue('0,00')).toBeVisible(); await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Servicios con ingreso cero · 1'); await clear('Tipos de servicio');
-  const balanceBefore = await indicators.getByText(/^Resultado: /).textContent();
+  const balanceBefore = await indicators.getByText(/^Beneficio: /).textContent();
   await page.getByLabel('Reparto de gastos generales',{exact:true}).selectOption('revenue');
-  await expect(indicators.getByText(/^Resultado: /)).toHaveText(balanceBefore);
+  await expect(indicators.getByText(/^Beneficio: /)).toHaveText(balanceBefore);
   await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Clientes con margen bajo · 2');
   await page.getByLabel('Avisar si el margen del cliente es inferior a (%)').fill('0'); await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Clientes con margen bajo · 0');
   await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Costes pendientes antiguos · 1'); await page.getByLabel('Costes pendientes con más de (días)').fill('90'); await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Costes pendientes antiguos · 0');
