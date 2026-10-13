@@ -1,0 +1,25 @@
+{
+  "request": "Dani pidió continuar con el resto de la parte inferior del análisis financiero y buscar la forma más óptima de organizarlo. Esta tercera entrega integra la composición de ingresos y de personal en la propia cascada, elimina los bloques «Distribución de gastos» y «Origen de los ingresos», unifica la paleta de todos los gráficos, da el mismo estilo a «Comparar», «Evolución» y la vista anual y renombra la vista «General» como «Resumen».",
+  "reason": "Solo reorganiza y presenta cifras que ya se calculaban: el origen de los ingresos sale de la misma serie del análisis que usaba el bloque retirado y la composición del personal de los mismos totales (actividad y dirección). Cada parte abre el mismo desglose que antes. El cambio de colores es presentación pura. No cambia el motor de cálculo, las consultas, los permisos ni el guardado. Una vista guardada con la pestaña «general» sigue funcionando.",
+  "verification": "Regresión de las pruebas financieras existentes, entre ellas la prueba Node de gráficos que fija la relación entre colores y conceptos, y las pruebas Node de cascada, rentabilidad y bandeja. Pruebas de navegador locales con datos ficticios, adaptadas a la nueva estructura, en verde: composición desplegable de facturación y personal, desglose desde una parte de la composición con retorno de foco a ese mismo elemento, comparativas, evolución, vista anual, filtros, informes y cuatro anchos. Paleta de los gráficos validada con el validador de daltonismo y contraste (cinco series). Revisión visual en Chromium con datos ficticios. Build, tipos del módulo y lint sin errores nuevos. Limitaciones: la cola no ejecuta las pruebas de navegador y no se ha visto la pantalla con datos reales autenticados.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialMonthViewTest.mjs",
+    "scripts/financialProfitabilityTest.mjs",
+    "scripts/financialReviewTest.mjs",
+    "scripts/financialViewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "65dce0d103d17cd76b32cf01dda39d175bd0866461527ccf5191f26340c06cb1"
+}
