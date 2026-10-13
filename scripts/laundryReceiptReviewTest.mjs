@@ -92,7 +92,8 @@ try {
   const corrections = [];
   const discardCorrections = [];
   let confirmations = 0,
-    back = 0;
+    back = 0,
+    menu = 0;
   let props = {
     counts,
     discardedCounts: Object.fromEntries(Object.keys(counts).map((k) => [k, 0])),
@@ -105,6 +106,7 @@ try {
     onCorrect: (...args) => corrections.push(args),
     onConfirm: () => confirmations++,
     onBack: () => back++,
+    onMainMenu: () => menu++,
   };
   let tree;
   function render() {
@@ -210,7 +212,16 @@ try {
   assert.ok(button("Confirmar cambios y reenviar Excel"));
   click("Volver al recuento");
   assert.equal(back, 1);
+  assert.equal(nodes().some(n => n.type === "button" && text(n) === "Volver al menú principal"), false, "Unconfirmed review cannot return as approved");
   props = { ...props, confirmed: true };
+  render();
+  click("Volver al menú principal");
+  assert.equal(menu, 1);
+  assert.equal(confirmations, 1, "Return does not confirm again");
+  props = { ...props, locked: true };
+  render();
+  assert.equal(button("Volver al menú principal").props.disabled, true);
+  props = { ...props, locked: false };
   render();
   assert.ok(text(tree).includes("Recuento confirmado"));
   assert.equal(
@@ -220,6 +231,7 @@ try {
   );
   assert.equal(confirmations, 1, "Success view cannot send again");
   click("Editar Edredón");
+  assert.equal(button("Volver al menú principal").props.disabled, true, "Unsaved correction blocks return");
   fill("10");
   click("Guardar corrección");
   assert.deepEqual(corrections[2], ["duvets", 10, 8]);

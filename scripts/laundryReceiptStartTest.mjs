@@ -47,5 +47,14 @@ try {
   assert.equal(nodes(tree).filter(n => n.type === 'h3').length, 1);
   assert.ok(nodes(tree).filter(n => ['input', 'button'].includes(n.type)).every(n => n.props.disabled));
   assert.equal(nodes(tree).find(n => n.type === 'input').props.id, 'receipt-date-admin');
+  tree = Start({...props, date: '2026-10-11', receiptStatus: 'confirmed'});
+  assert.ok(text(tree).includes('Ver recuento confirmado'));
+  assert.equal(nodes(tree).some(n => n.props?.role === 'note'), false, 'Confirmed historical day has no future stock warning');
+  tree = Start({...props, receiptStatus: 'draft'});
+  assert.ok(text(tree).includes('Continuar recuento'));
+  const resumed = [];
+  tree = Start({...props, pendingDates: ['2026-10-05'], onResume: d => resumed.push(d)});
+  nodes(tree).find(n => n.type === 'button' && text(n).includes('Retomar')).props.onClick();
+  assert.deepEqual(resumed, ['2026-10-05']);
   console.log('receipt-start: fecha, hoy, pendientes, callbacks, bloqueos y encabezado administrativo correctos; sin red.');
 } finally { await rm(folder, {recursive: true, force: true}); }

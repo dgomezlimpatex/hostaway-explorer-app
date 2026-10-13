@@ -46,6 +46,7 @@ const artifacts = await mkdtemp(join(tmpdir(), "laundry-receipt-browser-"));
 const errors = [];
 let dropNextAdd = false;
 let delayNextAdd = false;
+let mutationRequests = 0;
 try {
   await new Promise((resolve, reject) => {
     const timeout = setTimeout(
@@ -74,6 +75,7 @@ try {
     if (url.origin === base) return route.continue();
     if (url.pathname === "/functions/v1/laundry-receipts") {
       const body = route.request().postDataJSON();
+      if (body.action === "mutate") mutationRequests++;
       if (delayNextAdd && body.action === "mutate" && body.payload.action === "add") {
         delayNextAdd = false;
         await new Promise(resolve => setTimeout(resolve, 450));
@@ -343,6 +345,17 @@ try {
     ).rows[0].n,
     235,
   );
+  const beforeMenu = JSON.stringify(await t.state());
+  const beforeMenuMutations = mutationRequests;
+  await page.getByRole("button", { name: "Volver al menú principal", exact: true }).click();
+  await page.getByRole("button", { name: "Ver recuento confirmado", exact: true }).waitFor();
+  assert.equal(await page.getByLabel("Tu PIN de empleado").count(), 0, "Returning keeps PIN session");
+  assert.equal(await page.getByLabel("Cantidad Toallas de baño", {exact: true}).count(), 0, "Return displays the main menu, not the editor");
+  await page.screenshot({animations: 'disabled', path: join(artifacts, 'confirmed-main-menu.png'), fullPage: true});
+  await page.getByRole("button", { name: "Ver recuento confirmado", exact: true }).click();
+  await page.getByRole("heading", { name: "Recuento confirmado", exact: true }).waitFor();
+  assert.equal(JSON.stringify(await t.state()), beforeMenu, "Return/reopen preserves receipt, versions and operations");
+  assert.equal(mutationRequests, beforeMenuMutations, "Return/reopen performs no mutation");
   await page.getByRole("button", { name: "Volver al recuento" }).click();
   dropNextAdd = true;
   await page.getByLabel("Cantidad Toallas de baño", { exact: true }).fill("15");

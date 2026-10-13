@@ -74,6 +74,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
   const [state, setState] = useState<ReceiptState | null>(null);
   const [date, setDate] = useState(() => readStored<Pending>(pendingKey)?.date || madridReceiptDate());
   const [reviewing, setReviewing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -269,7 +270,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
     setError("");
     setDate(next);
   }
-  const starting = Boolean(access && state && !state.receipt);
+  const starting = Boolean(access && state && (!state.receipt || menuOpen));
   const Container = adminMode ? "section" : "main";
   const Heading = adminMode ? "h3" : "h1";
 
@@ -360,7 +361,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
               </Button>
               </div>
             )}
-            {access && state && (state.receipt || busy || pending) && <div role="status" aria-live="polite" className={`flex min-h-9 items-center gap-2 text-xs ${pending && !busy ? "text-amber-800" : "text-slate-600"}`}>
+            {access && state && (!starting || busy || pending) && <div role="status" aria-live="polite" className={`flex min-h-9 items-center gap-2 text-xs ${pending && !busy ? "text-amber-800" : "text-slate-600"}`}>
               {busy ? <><Loader2 className="receipt-spinner h-4 w-4 shrink-0 text-primary" aria-hidden="true" /><span>Guardando operación…</span></> : pending ? <span>Hay una operación pendiente de recuperar.</span> : state.receipt ? <><CheckCircle2 className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /><span>{changed ? "Borrador guardado · el stock cambia al confirmar" : "Recuento confirmado"}</span></> : <span>Listo para registrar la entrega</span>}
             </div>}
             {pending && !busy && (
@@ -436,7 +437,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                     </Button>
                   )}
                 </section>
-                {state.receipt && state.pendingDates.length > 0 && (
+                {!starting && state.pendingDates.length > 0 && (
                   <div className="rounded-xl bg-amber-50 p-4 text-sm">
                     <p className="font-medium">
                       Hay recuentos anteriores sin confirmar
@@ -457,7 +458,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                     </div>
                   </div>
                 )}
-                {!state.receipt ? (
+                {starting ? (
                   <LaundryReceiptStart
                     workerName={state.workerName || access.workerName}
                     warehouseName={state.warehouseName}
@@ -468,7 +469,16 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                     resumeDisabled={locked || unsubmitted || reviewing}
                     adminMode={adminMode}
                     onSelectDate={selectDate}
-                    onStart={() => void mutate({ action: "start" })}
+                    receiptStatus={state.receipt ? (changed ? "draft" : "confirmed") : undefined}
+                    onResume={(next) => {
+                      selectDate(next);
+                      setMenuOpen(false);
+                    }}
+                    onStart={() => {
+                      setMenuOpen(false);
+                      if (state.receipt) setReviewing(!changed);
+                      else void mutate({ action: "start" });
+                    }}
                   />
                 ) : (
                   <>
@@ -502,6 +512,12 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                           })
                         }
                         onConfirm={() => void mutate({ action: "confirm" })}
+                        onMainMenu={adminMode ? undefined : () => {
+                          if (locked || changed || unsubmitted) return;
+                          setReviewing(false);
+                          setMenuOpen(true);
+                          window.scrollTo({ top: 0 });
+                        }}
                         onBack={() => {
                           setReviewing(false);
                           window.scrollTo({ top: 0 });

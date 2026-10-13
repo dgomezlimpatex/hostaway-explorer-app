@@ -13,6 +13,8 @@ type Props = {
   adminMode: boolean;
   onSelectDate: (date: string) => void;
   onStart: () => void;
+  receiptStatus?: "draft" | "confirmed";
+  onResume?: (date: string) => void;
 };
 
 function displayDate(date: string) {
@@ -21,7 +23,7 @@ function displayDate(date: string) {
   }).format(new Date(`${date}T12:00:00Z`));
 }
 
-export default function LaundryReceiptStart({ workerName, warehouseName, date, today, pendingDates, locked, resumeDisabled, adminMode, onSelectDate, onStart }: Props) {
+export default function LaundryReceiptStart({ workerName, warehouseName, date, today, pendingDates, locked, resumeDisabled, adminMode, onSelectDate, onStart, receiptStatus, onResume }: Props) {
   const dateId = `receipt-date-${adminMode ? "admin" : "public"}`;
   const Heading = adminMode ? "h3" : "h1";
   return (
@@ -46,7 +48,7 @@ export default function LaundryReceiptStart({ workerName, warehouseName, date, t
         <div className="space-y-4 p-4 sm:p-5">
           <div>
             <h2 className="text-base font-bold text-slate-900">Registrar una entrega</h2>
-            <p className="mt-1 text-sm leading-5 text-slate-500">Selecciona la fecha en la que recibiste la lencería.</p>
+            <p className="mt-1 text-sm leading-5 text-slate-500">{receiptStatus === "confirmed" ? "Esta entrega ya está confirmada. Puedes consultarla o seleccionar otra fecha." : receiptStatus === "draft" ? "Esta entrega tiene un recuento en curso. Puedes continuarlo o seleccionar otra fecha." : "Selecciona la fecha en la que recibiste la lencería."}</p>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
@@ -56,9 +58,9 @@ export default function LaundryReceiptStart({ workerName, warehouseName, date, t
             <Input id={dateId} type="date" min="0001-01-01" max={today} value={date} disabled={locked} onChange={(event) => onSelectDate(event.target.value)}
               className="block h-12 min-w-0 max-w-full appearance-none rounded-xl border-slate-300 bg-slate-50 text-base [color-scheme:light] [&::-webkit-date-and-time-value]:text-left" />
           </div>
-          {date < today && <div className="flex gap-2 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900" role="note"><Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><p>Esta entrega es de un día anterior. Al confirmar el recuento, se actualizará el stock actual.</p></div>}
+          {date < today && receiptStatus !== "confirmed" && <div className="flex gap-2 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900" role="note"><Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><p>Esta entrega es de un día anterior. Al confirmar el recuento, se actualizará el stock actual.</p></div>}
           <Button className="h-auto min-h-12 w-full gap-2 whitespace-normal rounded-xl px-4 py-3 text-base font-semibold" disabled={locked} onClick={onStart}>
-            {date === today ? "Iniciar recuento de hoy" : `Iniciar recuento del ${displayDate(date)}`}<ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {receiptStatus === "confirmed" ? "Ver recuento confirmado" : receiptStatus === "draft" ? "Continuar recuento" : date === today ? "Iniciar recuento de hoy" : `Iniciar recuento del ${displayDate(date)}`}<ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
           </Button>
         </div>
         <p className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-center text-xs leading-5 text-slate-500">Añade las cantidades por tandas y revisa antes de confirmar.</p>
@@ -73,7 +75,7 @@ export default function LaundryReceiptStart({ workerName, warehouseName, date, t
           </div>
         </div>
         <div className="mt-3 space-y-2">
-          {pendingDates.map((pendingDate) => <Button key={pendingDate} variant="outline" disabled={resumeDisabled} onClick={() => onSelectDate(pendingDate)} className="flex h-auto min-h-11 w-full justify-between gap-3 whitespace-normal rounded-xl border-amber-200 bg-white px-3 py-3 text-left text-sm">
+          {pendingDates.map((pendingDate) => <Button key={pendingDate} variant="outline" disabled={resumeDisabled} onClick={() => (onResume || onSelectDate)(pendingDate)} className="flex h-auto min-h-11 w-full justify-between gap-3 whitespace-normal rounded-xl border-amber-200 bg-white px-3 py-3 text-left text-sm">
             <span>{displayDate(pendingDate)}</span><span className="flex shrink-0 items-center gap-1 font-semibold text-primary">Retomar<ArrowRight className="h-4 w-4" aria-hidden="true" /></span>
           </Button>)}
         </div>

@@ -26,6 +26,7 @@ type Props = {
   ) => void;
   onConfirm: () => void;
   onBack: () => void;
+  onMainMenu?: () => void;
 };
 
 export default function LaundryReceiptReview({
@@ -40,6 +41,7 @@ export default function LaundryReceiptReview({
   onCorrect,
   onConfirm,
   onBack,
+  onMainMenu,
 }: Props) {
   const [edit, setEdit] = useState<{
     material: MaterialKey;
@@ -190,6 +192,13 @@ export default function LaundryReceiptReview({
         </p>
       )}
       <div className="receipt-action-dock space-y-3">
+      {confirmed && onMainMenu && <Button
+        className="h-auto min-h-12 w-full whitespace-normal rounded-xl px-3 py-3 text-base"
+        disabled={locked || Boolean(edit)}
+        onClick={onMainMenu}
+      >
+        Volver al menú principal
+      </Button>}
       {!confirmed && (
         <>
           {edit && (
