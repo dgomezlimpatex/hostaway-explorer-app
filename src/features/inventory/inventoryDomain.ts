@@ -23,7 +23,7 @@ export function centralWarehouse(warehouses: StockWarehouse[]): StockWarehouse |
 
 export type InventoryState = 'shortage' | 'replenish' | 'unknown' | 'covered';
 export function levelState(level: StockLevel, needed = 0): { state: InventoryState; label: string; missing: number } {
-  const current = Number(level.current_quantity);
+  const current = Number(level.current_quantity) - Number(level.reserved_quantity ?? 0);
   if (!Number.isFinite(current) || !Number.isFinite(needed) || needed < 0) return { state: 'unknown', label: 'Pendiente de comprobar', missing: 0 };
   if (current < 0) return { state: 'unknown', label: 'Revisar saldo negativo', missing: 0 };
   if (needed > current) return { state: 'shortage', label: `Faltan ${quantity(needed - current)}`, missing: needed - current };
