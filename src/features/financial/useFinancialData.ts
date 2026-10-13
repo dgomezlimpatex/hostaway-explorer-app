@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { buildServices, readAllPages, type SourceTask, type SourceProperty } from './financialSource';
+import { buildServices, readAllPages, normalizeFinancialProperties, type SourceTask, type SourcePropertyRow } from './financialSource';
 import { readFinancialConsumption } from './financialConsumption';
 import { formatMadridDate } from '@/utils/date';
 
@@ -23,7 +23,7 @@ export function useFinancialData(sedeId: string | undefined, start: string, end:
         readAllPages((from, to) => supabase.from('cleaners').select('id,name').eq('sede_id', sedeId!).order('id').range(from, to)),
       ]);
       const clientDirectory = clients.map(client => ({ id: client.id as string, name: client.nombre as string, amenitiesControlEnabled: client.amenities_control_enabled as boolean }));
-      const propertyRows = properties as SourceProperty[];
+      const propertyRows = normalizeFinancialProperties(properties as SourcePropertyRow[]);
       const rules = await readFinancialConsumption(supabase, propertyRows.map(property => property.id));
       const buildings = new Map<string, { id: string; name: string; propertyIds: string[] }>();
       for (const property of propertyRows) for (const assignment of property.property_group_assignments || []) {
