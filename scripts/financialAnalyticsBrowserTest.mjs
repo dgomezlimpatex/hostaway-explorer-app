@@ -42,7 +42,7 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', route => route.request().url() === 'https://financial.p2.local/' ? route.fulfill({ contentType: 'text/html', body: html }) : (unexpected.push(route.request().url()), route.abort()));
   await page.goto('https://financial.p2.local/');
-  const indicators = page.getByRole('region', { name: 'Comparativa del periodo' }), comparison = page.getByRole('region', { name: 'Comparativas financieras' }), props = page.getByRole('region', { name: 'Análisis por propiedad' });
+  const indicators = page.getByRole('region', { name: 'Comparativa del periodo' }), comparison = page.getByRole('region', { name: 'Comparativas financieras' }), props = page.getByRole('region', { name: 'Rentabilidad' });
   const openFilters = async () => { const toggle = page.getByRole('button', { name: /^Filtros/ }); if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click(); };
   const revenue = text => indicators.getByRole('button', { name: new RegExp('^Facturación · .*' + text) });
   const filter = label => page.locator('details').filter({ has: page.locator('summary').filter({ hasText: `${label}:` }) });
@@ -51,9 +51,9 @@ try {
   await expect(revenue('2\\.980,00')).toBeVisible(); await openFilters();
   for (const label of ['Clientes', 'Propiedades', 'Edificios', 'Trabajadores', 'Tipos de servicio', 'Categorías de gasto']) await expect(filter(label).locator('summary')).toBeVisible();
   assert.equal(await page.getByRole('button', { name: /^Filtros/ }).getAttribute('aria-expanded'), 'true', 'Data filters are reachable from the Filtros toggle');
-  await expect(props).toContainText('26 propiedades con actividad');
-  await expect(props.getByRole('table')).toContainText('2.860,00');
-  await props.getByRole('button', { name: 'Página siguiente de propiedades' }).click(); await expect(props.getByRole('table')).toContainText('Apartamento 11'); await expect(props.getByRole('table')).toContainText('2.860,00');
+  await props.getByRole('button',{name:'Propiedades',exact:true}).click(); await expect(props).toContainText('26 propiedades con actividad');
+  await expect(props.getByRole('row').filter({hasText:'Sin propiedad asignada'})).toContainText('120,00'); await expect(props.getByRole('row').filter({hasText:'Total del análisis'})).toContainText('2.980,00');
+  await props.getByRole('button', { name: /^Ver todos \(26\)/ }).click(); await expect(props.getByRole('table')).toContainText('Apartamento 11'); await expect(props.getByRole('row').filter({hasText:'Total del análisis'})).toContainText('2.980,00');
   await (await open('Edificios')).getByLabel('Edificio Centro', { exact:true }).check(); await filter('Edificios').locator('summary').click();
   await expect(revenue('1\\.300,00')).toBeVisible(); await expect(props).toContainText('13 propiedades con actividad');
   await (await open('Clientes')).getByLabel('Cliente Mar',{exact:true}).check(); await filter('Clientes').locator('summary').click(); await expect(revenue('0,00')).toBeVisible();
@@ -84,7 +84,7 @@ try {
   await page.screenshot({path:join(tmpdir(),'limpatex-financial-p2-desktop.png'),fullPage:true});
   await props.screenshot({path:join(tmpdir(),'limpatex-financial-p2-properties-demo.png')});
   for (const width of [375,768,1024,1440]) { await page.setViewportSize({width,height:900}); assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`Viewport ${width} must not overflow`); await openFilters(); await expect(filter('Clientes').locator('summary')).toBeVisible(); }
-  await page.setViewportSize({width:375,height:900}); await (await open('Propiedades')).getByLabel('Apartamento 01',{exact:true}).check(); await filter('Propiedades').locator('summary').click(); await expect(revenue('100,00')).toBeVisible(); await page.getByRole('button',{name:'Por propiedad',exact:true}).click(); await expect(props.getByRole('table')).toContainText('Apartamento 01'); await page.screenshot({path:join(tmpdir(),'limpatex-financial-p2-mobile.png'),fullPage:true});
+  await page.setViewportSize({width:375,height:900}); await (await open('Propiedades')).getByLabel('Apartamento 01',{exact:true}).check(); await filter('Propiedades').locator('summary').click(); await expect(revenue('100,00')).toBeVisible(); await props.getByRole('button',{name:'Propiedades',exact:true}).click(); await expect(props.getByRole('table')).toContainText('Apartamento 01'); await page.screenshot({path:join(tmpdir(),'limpatex-financial-p2-mobile.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>window.writes),0); assert.deepEqual(errors,[]); assert.deepEqual(unexpected,[]);
   console.log('financial-analytics-browser: real page and readonly sources, six visible filters and empty intersections, partial-cost badges, KPIs/property pages, unchanged global balance, allocation/alerts persistence, year drilldown and focus, budget scoped comparison/error, downloads and four screen sizes passed');
 } finally { await browser.close(); }

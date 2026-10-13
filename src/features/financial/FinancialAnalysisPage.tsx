@@ -24,10 +24,9 @@ import { FinancialMonthHero, FinancialSummarySkeleton } from './FinancialMonthHe
 import { FinancialMonthBar } from './FinancialMonthBar';
 import { ActiveFilterChips, FinancialFilterPanel, type FilterKey } from './FinancialFilterPanel';
 import './financialTheme.css';
-import { FinancialClientTable } from './FinancialClientTable';
+import { FinancialProfitability } from './FinancialProfitability';
 import { financialHistoryRange, financialInsights } from './financialInsights';
 import { analyzeWithAllocation, scopeBuildings, type Allocation, type AlertRules } from './financialAnalytics';
-import { FinancialPropertyAnalysis } from './FinancialPropertyAnalysis';
 import { FinancialComparisons } from './FinancialComparisons';
 import { FinancialAlerts } from './FinancialAlerts';
 import { FinancialReports } from './FinancialReports';
@@ -83,7 +82,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
     return () => { active = false; };
   }, [sedeId, reload]);
   const [message, setMessage] = useState('');
-  const [tab, setTab] = useState(view.tab);
+  const [tab, setTab] = useState(view.tab === 'clients' || view.tab === 'properties' ? 'general' : view.tab);
   const [drilldown, setDrilldown] = useState<FinancialDrilldown | undefined>(view.drilldown);
   const workspace = useRef<HTMLElement>(null);
   const chartFocus = useRef<{ concept: string; month?: string; origin?: 'comparison' } | null>(null);
@@ -206,23 +205,20 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
             <FinancialMonthHero key={`${filters.start}:${filters.end}:${allocation}`} total={result.total} previous={insights.previous} comparisonLabel={insights.period?.label ?? null} start={filters.start} singleMonth={singleMonth}
               partial={singleMonth && !monthValue} onDetails={id => openDetails(id)} />
             <nav aria-label="Vistas del análisis" className="flex flex-wrap items-end justify-between gap-x-6 border-b border-[var(--fin-line)]">
-              <div className="flex gap-1 overflow-x-auto">{([['general', 'General'], ['clients', 'Por cliente'], ['properties', 'Por propiedad'], ['services', 'Servicios']] as const).map(([id, title]) =>
+              <div className="flex gap-1 overflow-x-auto">{([['general', 'General'], ['services', 'Servicios']] as const).map(([id, title]) =>
                 <button key={id} type="button" aria-pressed={tab === id} className={tabClass(tab === id)} onClick={() => setTab(id)}>{title}</button>)}{tab === 'details' && drilldown && <button type="button" aria-pressed="true" className={tabClass(true)} onClick={() => setTab('details')}>{isIncomeConcept(drilldown.concept) ? 'Ingresos' : 'Desglose de gastos'}</button>}</div>
               <div className="flex items-center gap-1 overflow-x-auto"><span className="fin-muted pr-1 text-xs uppercase tracking-wider">Ajustes</span>{([['incomes', 'Otros ingresos'], ['expenses', 'Otros gastos'], ['rates', 'Tarifas']] as const).map(([id, title]) =>
                 <button key={id} type="button" aria-pressed={tab === id} className={tabClass(tab === id)} onClick={() => setTab(id)}>{title}</button>)}</div>
             </nav>
             {tab === 'general' && <>
               {annualYear && <FinancialAnnual services={data?.services || []} settings={settings} filters={effectiveFilters} allocation={allocation} comparison={annualComparison} onComparison={setAnnualComparison} onDetails={openDetails} />}
+              <FinancialProfitability result={result} clients={data?.clients || []} properties={data?.properties || []} onClient={selectClient} onProperty={selectProperty} />
               <FinancialComparisons sedeId={sedeId} services={data?.services || []} settings={settings} filters={effectiveFilters} allocation={allocation} summary={result.total} insights={insights} comparison={comparison} budgetId={budgetId} onComparison={setComparison} onBudget={setBudgetId} onDetails={(id, period) => openDetails(id, period, 'comparison')} />
-              <FinancialDashboard hideComparison result={result} allocation={allocation} assigned={result.allocation.assigned} names={data?.clients || []} onClient={selectClient} onServices={() => { setProfitFilter('all'); setTab('services'); }} onIncomes={() => setTab('incomes')} onEdit={setEditing} onDetails={openDetails} />
+              <FinancialDashboard hideComparison hideProfitability result={result} allocation={allocation} assigned={result.allocation.assigned} names={data?.clients || []} onClient={selectClient} onServices={() => { setProfitFilter('all'); setTab('services'); }} onIncomes={() => setTab('incomes')} onEdit={setEditing} onDetails={openDetails} />
               {!annualYear && <FinancialTrend services={data?.services || []} settings={settings} filters={effectiveFilters} allocation={allocation} view={trendView} onViewChange={patch => setTrendView(current => ({ ...current, ...patch }))} onDetails={openDetails} />}
-              <FinancialPropertyAnalysis result={result} properties={data?.properties || []} onProperty={selectProperty} />
               <FinancialAlerts result={result} rules={alertRules} today={today} clients={data?.clients || []} onRules={setAlertRules} onClient={selectClient} onEdit={setEditing} onIncomes={() => setTab('incomes')} onExcluded={service => { if (service.propertyId) selectProperty(service.propertyId); else { setProfitFilter('all'); setTab('services'); } }} />
-              <section className={panel} aria-label="Tabla de resultados por cliente"><h2 className="mb-4 text-lg font-semibold text-[#310984]">Tabla de resultados por cliente</h2><FinancialClientTable compact result={result} names={data?.clients || []} onClient={selectClient} /></section>
             </>}
-            {tab === 'properties' && <FinancialPropertyAnalysis result={result} properties={data?.properties || []} onProperty={selectProperty} />}
             {tab === 'details' && drilldown && <FinancialDetail result={result} settings={settings} concept={drilldown.concept} filters={filters} clients={data?.clients || []} onBack={returnToChart} />}
-            {tab === 'clients' && <section className={panel}><h2 className="text-lg mb-4 font-semibold text-[#310984]">Todos los clientes del análisis</h2><FinancialClientTable result={result} names={data?.clients || []} onClient={selectClient} /></section>}
             {tab === 'incomes' && <IncomePanel settings={settings} result={result} clients={data?.clients || []} properties={data?.properties || []} workers={data?.workers || []} date={filters.start} onChange={commit} />}
             {tab === 'services' && <><ExternalIncomeDetail result={result} onManage={() => setTab('incomes')} /><section className={panel}><h2 className="text-lg mb-4 font-semibold text-[#310984]">Servicios · origen de cada importe</h2>
               <div className="mb-3 flex flex-wrap gap-2">{([['all','Todos los servicios'],['negative','Resultado negativo'],['low','Margen inferior al 10%']] as const).map(([id,label])=><Button key={id} variant={profitFilter===id?'default':'outline'} onClick={()=>setProfitFilter(id)}>{label}</Button>)}</div>

@@ -183,14 +183,14 @@ try {
   await page.getByRole('button',{name:'Mes siguiente',exact:true}).click();
   await expect(page.getByLabel('Mes del análisis')).toHaveValue(previousEnd.slice(0,7));
   await page.getByLabel('Hasta',{exact:true}).fill(previousEnd);
-  await page.getByRole('button',{name:'Margen %',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Margen %',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.getByRole('button',{name:'Ordenar por Margen',exact:true}).click();
+  await expect(page.getByRole('columnheader',{name:'Ordenar por Margen',exact:true})).toHaveAttribute('aria-sort','descending');
   await page.getByRole('button',{name:/^Ver detalle de Cliente de prueba ·/}).click();
   await expect(page.getByRole('heading',{name:'Servicios · origen de cada importe'})).toBeVisible();
   await page.getByRole('button',{name:'Ver todo · mes actual'}).click();
   await page.getByRole('button',{name:'General',exact:true}).click();
   await expect(page.getByRole('region',{name:'Evolución mensual'}).locator('.recharts-line')).toHaveCount(3);
-  await expect(page.getByRole('region',{name:'Tabla de resultados por cliente'}).getByRole('table')).toBeVisible();
+  await expect(page.getByRole('region',{name:'Rentabilidad'}).getByRole('table')).toBeVisible();
   await expect(page.getByRole('region',{name:'Evolución mensual'}).locator('svg.recharts-surface').first()).toBeVisible();
   await openDetails('Datos de la evolución · 12 meses');
   await expect(page.getByRole('region',{name:'Evolución mensual'}).getByRole('row')).toHaveCount(13);
@@ -310,7 +310,7 @@ try {
   await page.getByLabel('Cliente del ingreso').selectOption('c');
   await page.getByRole('button',{name:'Añadir ingreso',exact:true}).click();
   await page.getByRole('button',{name:'General',exact:true}).click();
-  await expect(page.getByRole('region',{name:'Tabla de resultados por cliente'}).getByRole('table')).toBeVisible();
+  await expect(page.getByRole('region',{name:'Rentabilidad'}).getByRole('table')).toBeVisible();
   await expect(page.getByRole('row').filter({hasText:'Cliente de prueba'}).first()).toContainText('102,75 €');
   await expect(page.getByRole('region',{name:'Origen de los ingresos'})).toContainText('Suplementos por limpieza');
   const incomeChart=page.getByRole('region',{name:'Origen de los ingresos'});
@@ -338,8 +338,9 @@ try {
   await expect(page.getByText('No hay servicios contabilizables con estos filtros.')).toBeVisible();
   await page.getByRole('button',{name:'Ver todo · mes actual'}).click();
   await page.getByLabel('Hasta',{exact:true}).fill(monthEnd);
-  await page.getByRole('button',{name:'Por cliente',exact:true}).click();
-  await expect(page.getByRole('row').filter({hasText:'Cliente de prueba'}).first()).toContainText('4,20 €');
+  await page.getByRole('button',{name:'General',exact:true}).click();
+  await expect(page.getByRole('row').filter({hasText:'Cliente de prueba'}).first()).toContainText('48,02 €');
+  await expect(page.getByRole('region',{name:'Comparativa del periodo'})).toContainText('4,20');
   await expect(page.getByRole('row').filter({hasText:'Cliente sin servicios'})).toContainText('1.329,60 €');
   await page.getByRole('button',{name:'Otros ingresos',exact:true}).click();
   await page.locator('div.rounded-lg').filter({hasText:'Recepción de prueba'}).getByRole('button',{name:'Editar ingreso'}).click();
