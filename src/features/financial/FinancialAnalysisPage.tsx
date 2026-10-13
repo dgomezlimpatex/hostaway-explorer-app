@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, ChevronLeft, ChevronRight, Plus, Settings2 } from 'lucide-react';
+import { ArrowLeft, Plus, Settings2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSede } from '@/contexts/SedeContext';
 import { formatMadridDate } from '@/utils/date';
@@ -20,7 +20,10 @@ import { FinancialAnnual } from './FinancialAnnual';
 import { FinancialDetail } from './FinancialDetail';
 import { isIncomeConcept } from './financialDrilldown';
 import { money, percent, decimal, financialName } from './financialFormat';
-import { FinancialIndicators } from './FinancialIndicators';
+import { FinancialMonthHero, FinancialSummarySkeleton } from './FinancialMonthHero';
+import { FinancialMonthBar } from './FinancialMonthBar';
+import { ActiveFilterChips, FinancialFilterPanel, type FilterKey } from './FinancialFilterPanel';
+import './financialTheme.css';
 import { FinancialClientTable } from './FinancialClientTable';
 import { financialHistoryRange, financialInsights } from './financialInsights';
 import { analyzeWithAllocation, scopeBuildings, type Allocation, type AlertRules } from './financialAnalytics';
@@ -32,24 +35,15 @@ import { FinancialReports } from './FinancialReports';
 
 const rateMoney = (mills: number) => decimal(mills / 1000, 2, 3) + ' €';
 const formatRate = (item: ItemId, mills: number) => item === 'products' ? decimal(mills / 1000, 0, 3) + '%' : rateMoney(mills);
-const panel = 'min-w-0 rounded-2xl border border-violet-100 bg-white p-5 shadow-sm';
+const panel = 'min-w-0 rounded-2xl border border-[var(--fin-line)] bg-[var(--fin-surface)] p-5';
 const selectClass = 'h-10 rounded-md border border-input bg-background px-3 text-sm w-full';
 function download(filename: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-function MultiFilter({ label, entries, selected, onChange }: { label: string; entries: DirectoryEntry[]; selected: string[]; onChange: (ids: string[]) => void }) {
-  return <details className="relative rounded-lg border border-violet-200 bg-white">
-    <summary className="cursor-pointer px-3 py-2 text-sm">{label}: {selected.length ? `${selected.length} seleccionados` : 'Todos'}</summary>
-    <div className="absolute z-20 mt-1 max-h-64 w-64 overflow-auto rounded-xl border bg-white p-3 shadow-xl">
-      <button className="mb-2 text-sm text-[#310984] underline" onClick={() => onChange([])}>Mostrar todos</button>
-      {entries.map(entry => <label key={entry.id} className="flex items-center gap-2 py-1.5 text-sm">
-        <input type="checkbox" checked={selected.includes(entry.id)} onChange={event => onChange(event.target.checked ? [...selected, entry.id] : selected.filter(id => id !== entry.id))} />{financialName(entry.name)}
-      </label>)}{!entries.length && <p className="text-sm text-slate-500">Sin registros disponibles</p>}
-    </div>
-  </details>;
-}
+const tabClass = (active: boolean) => `fin-focus relative shrink-0 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${active ? 'text-[var(--fin-ink)] after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:rounded-full after:bg-[var(--fin-ink)]' : 'fin-muted hover:text-[var(--fin-ink)]'}`;
+const headerButton = 'fin-focus inline-flex h-10 items-center justify-center rounded-full border border-[var(--fin-line)] bg-[var(--fin-surface)] px-3 text-[13px] font-medium sm:px-4 sm:text-sm transition-colors hover:bg-[var(--fin-sunk)] disabled:opacity-50';
 export default function FinancialAnalysisPage() {
   const { activeSede } = useSede();
   const { user } = useAuth();
@@ -96,6 +90,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
   const [trendView, setTrendView] = useState<FinancialTrendView>({ open: true, matchingDays: true, comparison: 'balance', chart: 'lines' });
   const [editing, setEditing] = useState<FinancialService | null>(null);
   const [profitFilter, setProfitFilter] = useState(view.profitFilter);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   useEffect(() => { saveFinancialView(storageKey, { filters, tab, profitFilter, ...(drilldown ? { drilldown } : {}), ...(monthlyPeriod ? { monthlyPeriod } : {}), annualComparison, allocation, comparison, budgetId, alerts: alertRules }); }, [storageKey, filters, tab, profitFilter, drilldown, monthlyPeriod, annualComparison, allocation, comparison, budgetId, alertRules]);
   const [imported, setImported] = useState<FinanceSettings | null>(null);
   const history = financialHistoryRange(filters, comparison);
@@ -121,7 +116,7 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
         return element ? [{ element, month: node.getAttribute('data-period-start') }] : [];
       });
       const selected = candidates.find(candidate => !target.month || candidate.month === target.month) || candidates.at(-1);
-      if (!selected?.element.closest('section')?.querySelector('svg.recharts-surface')) return;
+      if (!selected?.element.closest('section')?.querySelector('svg.recharts-surface, .fin-wf')) return;
       observer.disconnect(); chartFocus.current = null; selected.element.focus();
     };
     observer.observe(region, { childList: true, subtree: true });
@@ -167,55 +162,52 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
     setTab('general');
   };
   const updateFilter = (key: 'clients' | 'properties' | 'workers' | 'buildings' | 'types' | 'categories', ids: string[]) => setFilters(current => ({ ...current, [key]: ids }));
-  return <main ref={workspace} className="min-h-screen bg-[#f7f5fc] p-4 sm:p-6">
-    <div className="mx-auto max-w-[1500px] space-y-5">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3"><div className="rounded-2xl bg-[#310984] p-3 text-white"><BarChart3 className="h-6 w-6" /></div>
-          <div><p className="text-xs font-semibold uppercase tracking-widest text-violet-600">APP GESTIÓN LIMPATEX · {sedeName}</p><h1 className="text-2xl font-bold text-[#310984] sm:text-3xl">Análisis financiero</h1><p className="text-sm text-slate-500">Toda la actividad, con detalle por cliente · siempre sin IVA</p></div></div>
-        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!sharedReady || query.isFetching} onClick={() => query.refetch()}>{query.isFetching ? 'Actualizando datos…' : 'Actualizar datos'}</Button><FinancialReports disabled={!data || !sharedReady || query.isFetching || !!query.error || !!storageError || !validDate(filters.start) || !validDate(filters.end) || filters.start > filters.end} input={{ result, filters: effectiveFilters, sedeName, clients: data?.clients || [], properties: data?.properties || [], workers: data?.workers || [], buildings: data?.buildings || [], allocation, rows: insights.rows, draft: dirty }} /><Button variant="outline" asChild><Link to="/">Volver</Link></Button></div>
+  const monthValue = selectedFinancialMonth(filters);
+  const singleMonth = !annualYear && filters.start.slice(0, 7) === filters.end.slice(0, 7);
+  const filterKeys: FilterKey[] = ['clients', 'properties', 'workers', 'buildings', 'types', 'categories'];
+  const filterGroups = [
+    { key: 'clients' as const, label: 'Clientes', entries: data?.clients || [] },
+    { key: 'properties' as const, label: 'Propiedades', entries: data?.properties || [] },
+    { key: 'buildings' as const, label: 'Edificios', entries: data?.buildings || [] },
+    { key: 'workers' as const, label: 'Trabajadores', entries: data?.workers || [] },
+    { key: 'types' as const, label: 'Tipos de servicio', entries: [...new Set([...(data?.services.map(service => applyFinanceRules(service, settings).type) || []), 'external-income'])].map(type => ({ id: type, name: type === 'external-income' ? 'Ingresos externos' : type || 'Tipo pendiente' })) },
+    { key: 'categories' as const, label: 'Categorías de gasto', entries: ['personal', 'laundry', 'supplies', 'products', 'other'].map(category => ({ id: category, name: category === 'personal' ? 'Personal · incluye dirección' : categoryNames[category as Category] })) },
+  ];
+  const chips = filterGroups.flatMap(group => ((filters[group.key] as string[] | undefined) || []).map(id => ({ key: group.key, id, label: `${group.label}: ${financialName(group.entries.find(entry => entry.id === id)?.name || id)}` })));
+  const filterCount = filterKeys.reduce((sum, key) => sum + (((filters[key] as string[] | undefined) || []).length ? 1 : 0), 0) + (allocation !== 'none' ? 1 : 0);
+  const years = [...new Set([...Array.from({ length: 26 }, (_, index) => String(Number(today.slice(0, 4)) - 20 + index)), annualYear].filter(Boolean))].sort((a, b) => Number(b) - Number(a));
+  const pickMonth = (month: string) => { const range = financialMonthRange(month); if (range) setFilters(current => ({ ...current, ...range })); };
+  const resetFilters = () => { setFilters({ start: `${today.slice(0, 7)}-01`, end: today, clients: [], properties: [], workers: [] }); setAllocation('none'); };
+  return <main ref={workspace} className="fin-root min-h-screen p-4 sm:p-6 lg:p-8">
+    <div className="mx-auto max-w-[1280px] space-y-6">
+      <header className="fin-rise relative z-40 flex flex-wrap items-end justify-between gap-4">
+        <div><p className="fin-muted text-xs font-semibold uppercase tracking-[0.14em]">APP GESTIÓN LIMPATEX · {sedeName}</p><h1 className="fin-display mt-1 text-3xl font-bold sm:text-4xl">Análisis financiero</h1></div>
+        <div className="flex flex-wrap gap-2"><button className={headerButton} disabled={!sharedReady || query.isFetching} onClick={() => query.refetch()}>{query.isFetching ? 'Actualizando datos…' : 'Actualizar datos'}</button><FinancialReports disabled={!data || !sharedReady || query.isFetching || !!query.error || !!storageError || !validDate(filters.start) || !validDate(filters.end) || filters.start > filters.end} input={{ result, filters: effectiveFilters, sedeName, clients: data?.clients || [], properties: data?.properties || [], workers: data?.workers || [], buildings: data?.buildings || [], allocation, rows: insights.rows, draft: dirty }} /><Link className={headerButton} to="/" aria-label="Volver"><ArrowLeft aria-hidden className="h-4 w-4 sm:hidden" /><span className="hidden sm:inline">Volver</span></Link></div>
       </header>
-      <details open={dirty || !!storageError || revision === null} className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-[#310984]">
+      <details open={dirty || !!storageError || revision === null} className="fin-rise rounded-2xl border border-[var(--fin-line)] bg-[var(--fin-surface)] px-4 py-2.5 text-sm" style={{ ['--i' as string]: 1 }}>
         <summary className="cursor-pointer font-medium">{dirty ? 'Cambios sin guardar' : 'Configuración compartida de esta sede'}</summary>
-        Configuración compartida por sede · Los cambios quedan en borrador hasta «Guardar cambios». Los servicios utilizan siempre la tarifa actual de la propiedad. Todo sin IVA.
-        <div className="mt-2 flex flex-wrap gap-2"><Button disabled={!sharedReady || saving || !dirty && revision !== null} onClick={save}>{saving ? 'Guardando…' : 'Guardar cambios'}</Button><Button variant="outline" disabled={saving} onClick={() => { setMessage(''); setReload(n => n + 1); }}>Descartar y recargar</Button>
+        <p className="fin-muted mt-2">Configuración compartida por sede · Los cambios quedan en borrador hasta «Guardar cambios». Los servicios utilizan siempre la tarifa actual de la propiedad. Todo sin IVA.</p>
+        <div className="mt-3 flex flex-wrap gap-2 pb-1"><Button className="rounded-full" disabled={!sharedReady || saving || !dirty && revision !== null} onClick={save}>{saving ? 'Guardando…' : 'Guardar cambios'}</Button><Button className="rounded-full" variant="outline" disabled={saving} onClick={() => { setMessage(''); setReload(n => n + 1); }}>Descartar y recargar</Button>
           {dirty && <span className="self-center">Cambios sin guardar</span>}</div>
       </details>
       {storageError && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-amber-900">{storageError}</p>}
-      {message && <p role="status" className="text-sm text-[#310984]">{message}</p>}
-      <section className={`${panel} space-y-3`} aria-label="Filtros del análisis">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="flex max-w-full flex-wrap items-end gap-2"><div className="flex max-w-full items-end gap-2"><Button variant="outline" size="icon" aria-label={annualYear ? 'Año anterior' : 'Mes anterior'} onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-            {annualYear ? <label className="min-w-0 text-sm font-medium text-[#310984]">Año<select className={`${selectClass} mt-1 text-base font-semibold sm:w-56`} aria-label="Año del análisis" value={annualYear} onChange={event => { const range = financialYearRange(event.target.value); if (range) setFilters(current => ({ ...current, ...range })); }}>{[...new Set([...Array.from({ length: 26 }, (_, index) => String(Number(today.slice(0, 4)) - 20 + index)), annualYear])].sort((a, b) => Number(b) - Number(a)).map(year => <option key={year} value={year}>{year}</option>)}</select></label>
-              : <label className="min-w-0 text-sm font-medium text-[#310984]">Mes<Input className="mt-1 w-full text-base font-semibold sm:w-56" type="month" aria-label="Mes del análisis" value={selectedFinancialMonth(filters)} onChange={event => { const range = financialMonthRange(event.target.value); if (range) setFilters(current => ({ ...current, ...range })); }} /></label>}
-            <Button variant="outline" size="icon" aria-label={annualYear ? 'Año siguiente' : 'Mes siguiente'} onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button></div>
-            <Button aria-pressed={!!annualYear} variant={annualYear ? 'default' : 'outline'} onClick={showAnnual}>Vista Anual</Button>{annualYear && <Button variant="outline" onClick={showMonthly}>Vista Mensual</Button>}
-          </div>
-          <div className="text-sm"><p className="font-medium text-[#310984]">{filters.start.split('-').reverse().join('/')} – {filters.end.split('-').reverse().join('/')} · Sin IVA</p><p className="mt-1 text-xs text-slate-500">{filters.clients.length ? filters.clients.map(clientName).join(', ') : 'Toda la sede'}{filters.properties.length > 0 && ` · ${filters.properties.length} propiedades`}{filters.workers.length > 0 && ` · ${filters.workers.length} trabajadores`}</p></div>
-        </div>
-        <details className="border-t border-violet-100 pt-3"><summary className="cursor-pointer text-sm font-medium text-[#310984]">Fechas personalizadas y filtros</summary><div className="mt-3 grid items-end gap-3 sm:grid-cols-2">
-          <label className="text-sm font-medium">Desde<Input type="date" value={filters.start} onChange={event => setFilters({ ...filters, start: event.target.value })} /></label>
-          <label className="text-sm font-medium">Hasta<Input type="date" value={filters.end} onChange={event => setFilters({ ...filters, end: event.target.value })} /></label>
-        </div></details>
-        <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Filtros visibles">
-          <MultiFilter label="Clientes" entries={data?.clients || []} selected={filters.clients} onChange={ids => updateFilter('clients', ids)} />
-          <MultiFilter label="Propiedades" entries={data?.properties || []} selected={filters.properties} onChange={ids => updateFilter('properties', ids)} />
-          <MultiFilter label="Edificios" entries={data?.buildings || []} selected={filters.buildings || []} onChange={ids => updateFilter('buildings', ids)} />
-          <MultiFilter label="Trabajadores" entries={data?.workers || []} selected={filters.workers} onChange={ids => updateFilter('workers', ids)} />
-          <MultiFilter label="Tipos de servicio" entries={[...new Set([...(data?.services.map(service => applyFinanceRules(service, settings).type) || []), 'external-income'])].map(type => ({ id: type, name: type === 'external-income' ? 'Ingresos externos' : type || 'Tipo pendiente' }))} selected={filters.types || []} onChange={ids => updateFilter('types', ids)} />
-          <MultiFilter label="Categorías de gasto" entries={['personal', 'laundry', 'supplies', 'products', 'other'].map(category => ({ id: category, name: category === 'personal' ? 'Personal · incluye dirección' : categoryNames[category] }))} selected={filters.categories || []} onChange={ids => updateFilter('categories', ids)} />
-        </div>
-        <div className="grid items-end gap-3 border-t border-violet-100 pt-3 sm:grid-cols-[minmax(220px,1fr)_2fr]"><label className="text-sm font-medium text-[#310984]">Reparto de gastos generales<select aria-label="Reparto de gastos generales" className={`${selectClass} mt-1`} value={allocation} onChange={event => setAllocation(event.target.value as Allocation)}><option value="none">Sin repartir</option><option value="revenue">Por ingresos</option><option value="services">Por número de servicios</option></select></label><p className="text-xs leading-relaxed text-slate-500">Reparto mensual sobre toda la sede antes de aplicar los filtros. Cambia el análisis por cliente y propiedad; el balance total de la empresa se conserva. Los gastos adicionales sin tipo de servicio siguen incluidos según sus vínculos.</p></div>
+      {message && <p role="status" className="text-sm">{message}</p>}
+      <section className="space-y-3" aria-label="Filtros del análisis">
+        <FinancialMonthBar start={filters.start} end={filters.end} annualYear={annualYear} monthValue={monthValue} filterCount={filterCount} busy={query.isFetching} rows={insights.rows}
+          onMove={moveMonth} onPickMonth={pickMonth} onMonthInput={pickMonth} onFullMonth={() => pickMonth(filters.start.slice(0, 7))} onAnnual={showAnnual} onMonthly={showMonthly} filtersOpen={filtersOpen} onToggleFilters={() => setFiltersOpen(open => !open)} years={years} onYear={year => { const range = financialYearRange(year); if (range) setFilters(current => ({ ...current, ...range })); }} />
+        <ActiveFilterChips chips={chips} onRemove={(key, id) => updateFilter(key, ((filters[key] as string[] | undefined) || []).filter(value => value !== id))} />
+        <FinancialFilterPanel id="financial-filters" open={filtersOpen} filters={filters} groups={filterGroups} allocation={allocation} onChange={updateFilter} onDates={patch => setFilters(current => ({ ...current, ...patch }))} onAllocation={setAllocation} onReset={resetFilters} />
         {!!filters.categories?.length && <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Vista parcial de gastos: los ingresos se mantienen; resultado y margen solo descuentan las categorías elegidas. No representan el margen completo.</p>}
-        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500"><span>{annualYear ? `Año ${annualYear} completo seleccionado` : selectedFinancialMonth(filters) ? 'Mes completo seleccionado' : 'Periodo personalizado · selecciona un mes o ajusta las fechas'}</span><button className="text-[#310984] underline" onClick={() => setFilters({ start: `${today.slice(0, 7)}-01`, end: today, clients: [], properties: [], workers: [] })}>Ver todo · mes actual</button>
-          {!!filters.workers.length && <span>Servicios en los que participa el trabajador; ingreso único y coste de todo el equipo.</span>}
-          {(!!filters.clients.length || !!filters.properties.length || !!filters.workers.length) && <span>Los gastos generales sin vínculo quedan fuera de estos filtros.</span>}
-        </div>
+        {(!!filters.clients.length || !!filters.properties.length || !!filters.workers.length) && <p className="fin-muted text-xs">{!!filters.workers.length && 'Servicios en los que participa el trabajador; ingreso único y coste de todo el equipo. '}Los gastos generales sin vínculo quedan fuera de estos filtros.</p>}
       </section>
       {!filters.start || !filters.end || filters.start > filters.end ? <p role="alert">Selecciona un intervalo de fechas válido.</p> : storageError ? <p role="alert" className={panel}>Configuración sin cargar. No se muestran balances; pulsa Descartar y recargar para reintentar.</p> : query.error ?
         <div role="alert" className={panel}><p>No se pudieron cargar los datos. No se muestran totales parciales.</p><Button variant="outline" onClick={() => query.refetch()}>Reintentar</Button></div> : query.isPending ?
-          <p role="status" className={panel}>Cargando servicios y costes…</p> : !sharedReady ? <p role="status">Cargando configuración compartida…</p> : <>
-            <FinancialIndicators summary={result.total} insights={insights} partial={!!filters.categories?.length} />
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600"><p>{result.total.services} servicios contabilizados · {result.incomes.length} ingresos externos · {result.total.estimated} registros con estimaciones</p>{result.total.pending > 0 && <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-900">{result.total.pending} con datos pendientes · resultado provisional</span>}</div>
+          <FinancialSummarySkeleton /> : !sharedReady ? <FinancialSummarySkeleton /> : <>
+            <FinancialMonthHero key={`${filters.start}:${filters.end}:${allocation}`} total={result.total} previous={insights.previous} comparisonLabel={insights.period?.label ?? null} start={filters.start} singleMonth={singleMonth}
+              partial={singleMonth && !monthValue} partialCategories={!!filters.categories?.length} onDetails={id => openDetails(id)}>
+              <p className="fin-muted mt-5 border-t border-[var(--fin-line)] pt-4 text-[13px] leading-relaxed">{result.total.services} servicios contabilizados · {result.incomes.length} ingresos externos · {result.total.estimated} registros con estimaciones{result.total.pending > 0 && <> · <strong className="font-semibold text-[var(--fin-expense-ink)]">{result.total.pending} con datos pendientes · resultado provisional</strong></>}</p>
+              <p className="fin-muted mt-2 text-xs leading-relaxed">{allocation === 'none' ? <>Gastos generales incluidos: <strong>{money(result.general.expense)}</strong>. Se cuentan una vez y no se reparten entre clientes.</> : <>Gastos generales repartidos en esta selección: <strong>{money(result.allocation.assigned)}</strong> · Actividad general restante: <strong>{money(result.general.expense)}</strong>. El balance de toda la sede se conserva.</>}</p>
+            </FinancialMonthHero>
             <details className="text-sm text-slate-600"><summary className="cursor-pointer text-[#310984]">Cómo se calcula</summary><p className="mt-2 leading-relaxed">
               {' '}Ingresos por fecha del servicio; no representan facturas ni cobros. El personal se estima repartiendo la duración total de la tarea entre sus personas asignadas; los ajustes manuales por persona prevalecen.
               {' '}Se utiliza siempre la tarifa actual de la propiedad, también cuando el importe antiguo de la tarea es distinto.
@@ -226,12 +218,16 @@ export function FinancialWorkspace({ storageKey, sedeId, sedeName }: { storageKe
               <p className="mt-2 text-sm text-slate-600">Estas tareas no aportan ingresos ni costes de personal, lavandería, consumibles o productos. Un precio pendiente debe revisarse; no implica que el servicio sea gratuito.</p>
               <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm">{result.excludedIncomeServices.map(service => <li key={service.id}>{service.date.split('-').reverse().join('/')} · {service.propertyName} · {service.revenue === null ? 'Precio pendiente' : money(service.revenue)}</li>)}</ul>
             </details>}
-            <nav aria-label="Vistas del análisis" className="flex gap-2 overflow-x-auto pb-1">{([['general', 'General'], ['clients', 'Por cliente'], ['properties', 'Por propiedad'], ['services', 'Servicios'], ['incomes', 'Otros ingresos'], ['expenses', 'Otros gastos'], ['rates', 'Tarifas']] as const).map(([id, title]) =>
-              <Button key={id} aria-pressed={tab === id} variant={tab === id ? 'default' : 'outline'} className={tab === id ? 'bg-[#310984] hover:bg-[#45209a]' : ''} onClick={() => setTab(id)}>{title}</Button>)}{tab === 'details' && drilldown && <Button aria-pressed="true" className="bg-[#310984]" onClick={() => setTab('details')}>{isIncomeConcept(drilldown.concept) ? 'Ingresos' : 'Desglose de gastos'}</Button>}</nav>
+            <nav aria-label="Vistas del análisis" className="flex flex-wrap items-end justify-between gap-x-6 border-b border-[var(--fin-line)]">
+              <div className="flex gap-1 overflow-x-auto">{([['general', 'General'], ['clients', 'Por cliente'], ['properties', 'Por propiedad'], ['services', 'Servicios']] as const).map(([id, title]) =>
+                <button key={id} type="button" aria-pressed={tab === id} className={tabClass(tab === id)} onClick={() => setTab(id)}>{title}</button>)}{tab === 'details' && drilldown && <button type="button" aria-pressed="true" className={tabClass(true)} onClick={() => setTab('details')}>{isIncomeConcept(drilldown.concept) ? 'Ingresos' : 'Desglose de gastos'}</button>}</div>
+              <div className="flex items-center gap-1 overflow-x-auto"><span className="fin-muted pr-1 text-xs uppercase tracking-wider">Ajustes</span>{([['incomes', 'Otros ingresos'], ['expenses', 'Otros gastos'], ['rates', 'Tarifas']] as const).map(([id, title]) =>
+                <button key={id} type="button" aria-pressed={tab === id} className={tabClass(tab === id)} onClick={() => setTab(id)}>{title}</button>)}</div>
+            </nav>
             {tab === 'general' && <>
               {annualYear && <FinancialAnnual services={data?.services || []} settings={settings} filters={effectiveFilters} allocation={allocation} comparison={annualComparison} onComparison={setAnnualComparison} onDetails={openDetails} />}
               <FinancialComparisons sedeId={sedeId} services={data?.services || []} settings={settings} filters={effectiveFilters} allocation={allocation} summary={result.total} insights={insights} comparison={comparison} budgetId={budgetId} onComparison={setComparison} onBudget={setBudgetId} onDetails={(id, period) => openDetails(id, period, 'comparison')} />
-              <FinancialDashboard result={result} allocation={allocation} assigned={result.allocation.assigned} names={data?.clients || []} onClient={selectClient} onServices={() => { setProfitFilter('all'); setTab('services'); }} onIncomes={() => setTab('incomes')} onEdit={setEditing} onDetails={openDetails} />
+              <FinancialDashboard hideComparison result={result} allocation={allocation} assigned={result.allocation.assigned} names={data?.clients || []} onClient={selectClient} onServices={() => { setProfitFilter('all'); setTab('services'); }} onIncomes={() => setTab('incomes')} onEdit={setEditing} onDetails={openDetails} />
               {!annualYear && <FinancialTrend services={data?.services || []} settings={settings} filters={effectiveFilters} allocation={allocation} view={trendView} onViewChange={patch => setTrendView(current => ({ ...current, ...patch }))} onDetails={openDetails} />}
               <FinancialPropertyAnalysis result={result} properties={data?.properties || []} onProperty={selectProperty} />
               <FinancialAlerts result={result} rules={alertRules} today={today} clients={data?.clients || []} onRules={setAlertRules} onClient={selectClient} onEdit={setEditing} onIncomes={() => setTab('incomes')} onExcluded={service => { if (service.propertyId) selectProperty(service.propertyId); else { setProfitFilter('all'); setTab('services'); } }} />

@@ -42,27 +42,29 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', route => route.request().url() === 'https://financial.p2.local/' ? route.fulfill({ contentType: 'text/html', body: html }) : (unexpected.push(route.request().url()), route.abort()));
   await page.goto('https://financial.p2.local/');
-  const indicators = page.getByRole('region', { name: 'Indicadores financieros' }), comparison = page.getByRole('region', { name: 'Comparativas financieras' }), props = page.getByRole('region', { name: 'Análisis por propiedad' });
+  const indicators = page.getByRole('region', { name: 'Comparativa del periodo' }), comparison = page.getByRole('region', { name: 'Comparativas financieras' }), props = page.getByRole('region', { name: 'Análisis por propiedad' });
+  const openFilters = async () => { const toggle = page.getByRole('button', { name: /^Filtros/ }); if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click(); };
+  const revenue = text => indicators.getByRole('button', { name: new RegExp('^Ingresos · .*' + text) });
   const filter = label => page.locator('details').filter({ has: page.locator('summary').filter({ hasText: `${label}:` }) });
   const open = async label => { const target = filter(label); if (!await target.evaluate(node=>node.open)) await target.locator('summary').click(); return target; };
   const clear = async label => { const target = await open(label); await target.getByRole('button', { name: 'Mostrar todos', exact: true }).click(); await target.locator('summary').click(); };
-  await expect(indicators.getByRole('article', { name: 'Ingresos totales' })).toContainText('2.980,00');
+  await expect(revenue('2\\.980,00')).toBeVisible(); await openFilters();
   for (const label of ['Clientes', 'Propiedades', 'Edificios', 'Trabajadores', 'Tipos de servicio', 'Categorías de gasto']) await expect(filter(label).locator('summary')).toBeVisible();
-  assert.equal(await page.locator('summary').filter({ hasText: 'Fechas personalizadas y filtros' }).evaluate(node=>node.parentElement.open), false, 'Data filters must be visible while custom dates remain collapsed');
+  assert.equal(await page.getByRole('button', { name: /^Filtros/ }).getAttribute('aria-expanded'), 'true', 'Data filters are reachable from the Filtros toggle');
   await expect(props).toContainText('26 propiedades con actividad');
   await expect(props.getByRole('table')).toContainText('2.860,00');
   await props.getByRole('button', { name: 'Página siguiente de propiedades' }).click(); await expect(props.getByRole('table')).toContainText('Apartamento 11'); await expect(props.getByRole('table')).toContainText('2.860,00');
   await (await open('Edificios')).getByLabel('Edificio Centro', { exact:true }).check(); await filter('Edificios').locator('summary').click();
-  await expect(indicators.getByRole('article', { name:'Ingresos totales' })).toContainText('1.300,00'); await expect(props).toContainText('13 propiedades con actividad');
-  await (await open('Clientes')).getByLabel('Cliente Mar',{exact:true}).check(); await filter('Clientes').locator('summary').click(); await expect(indicators.getByRole('article',{name:'Ingresos totales'})).toContainText('0,00');
+  await expect(revenue('1\\.300,00')).toBeVisible(); await expect(props).toContainText('13 propiedades con actividad');
+  await (await open('Clientes')).getByLabel('Cliente Mar',{exact:true}).check(); await filter('Clientes').locator('summary').click(); await expect(revenue('0,00')).toBeVisible();
   await clear('Clientes'); await clear('Edificios');
   await (await open('Categorías de gasto')).getByLabel('Personal · incluye dirección',{exact:true}).check(); await filter('Categorías de gasto').locator('summary').click();
-  await expect(indicators.getByRole('article',{name:'Gastos incluidos'})).toContainText('2.724,00'); await expect(indicators.getByText('Parcial · provisional',{exact:true})).toHaveCount(4); await expect(page.getByText(/Vista parcial de gastos:/)).toBeVisible(); await clear('Categorías de gasto');
+  await expect(indicators.getByText(/salen 2\.724,00/)).toBeVisible(); await expect(indicators.getByText('Parcial · provisional',{exact:true})).toHaveCount(1); await expect(page.getByText(/Vista parcial de gastos:/)).toBeVisible(); await clear('Categorías de gasto');
   await (await open('Tipos de servicio')).getByLabel('check-in',{exact:true}).check(); await filter('Tipos de servicio').locator('summary').click();
-  await expect(indicators.getByRole('article',{name:'Ingresos totales'})).toContainText('0,00'); await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Servicios con ingreso cero · 1'); await clear('Tipos de servicio');
-  const balanceBefore = await indicators.getByRole('article',{name:'Resultado',exact:true}).textContent();
+  await expect(revenue('0,00')).toBeVisible(); await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Servicios con ingreso cero · 1'); await clear('Tipos de servicio');
+  const balanceBefore = await indicators.getByText(/^Resultado: /).textContent();
   await page.getByLabel('Reparto de gastos generales',{exact:true}).selectOption('revenue');
-  await expect(indicators.getByRole('article',{name:'Resultado',exact:true})).toHaveText(balanceBefore);
+  await expect(indicators.getByText(/^Resultado: /)).toHaveText(balanceBefore);
   await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Clientes con margen bajo · 2');
   await page.getByLabel('Avisar si el margen del cliente es inferior a (%)').fill('0'); await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Clientes con margen bajo · 0');
   await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Costes pendientes antiguos · 1'); await page.getByLabel('Costes pendientes con más de (días)').fill('90'); await expect(page.getByRole('region',{name:'Alertas financieras'})).toContainText('Costes pendientes antiguos · 0');
@@ -81,8 +83,8 @@ try {
   await page.locator('summary').filter({hasText:'Informes y exportación'}).click();
   await page.screenshot({path:join(tmpdir(),'limpatex-financial-p2-desktop.png'),fullPage:true});
   await props.screenshot({path:join(tmpdir(),'limpatex-financial-p2-properties-demo.png')});
-  for (const width of [375,768,1024,1440]) { await page.setViewportSize({width,height:900}); assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`Viewport ${width} must not overflow`); await expect(filter('Clientes').locator('summary')).toBeVisible(); }
-  await page.setViewportSize({width:375,height:900}); await (await open('Propiedades')).getByLabel('Apartamento 01',{exact:true}).check(); await filter('Propiedades').locator('summary').click(); await expect(indicators.getByRole('article',{name:'Ingresos totales'})).toContainText('100,00'); await page.getByRole('button',{name:'Por propiedad',exact:true}).click(); await expect(props.getByRole('table')).toContainText('Apartamento 01'); await page.screenshot({path:join(tmpdir(),'limpatex-financial-p2-mobile.png'),fullPage:true});
+  for (const width of [375,768,1024,1440]) { await page.setViewportSize({width,height:900}); assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`Viewport ${width} must not overflow`); await openFilters(); await expect(filter('Clientes').locator('summary')).toBeVisible(); }
+  await page.setViewportSize({width:375,height:900}); await (await open('Propiedades')).getByLabel('Apartamento 01',{exact:true}).check(); await filter('Propiedades').locator('summary').click(); await expect(revenue('100,00')).toBeVisible(); await page.getByRole('button',{name:'Por propiedad',exact:true}).click(); await expect(props.getByRole('table')).toContainText('Apartamento 01'); await page.screenshot({path:join(tmpdir(),'limpatex-financial-p2-mobile.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>window.writes),0); assert.deepEqual(errors,[]); assert.deepEqual(unexpected,[]);
   console.log('financial-analytics-browser: real page and readonly sources, six visible filters and empty intersections, partial-cost badges, KPIs/property pages, unchanged global balance, allocation/alerts persistence, year drilldown and focus, budget scoped comparison/error, downloads and four screen sizes passed');
 } finally { await browser.close(); }
