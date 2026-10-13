@@ -1,0 +1,24 @@
+{
+  "request": "Completar la correccion del analisis financiero que Dani no puede cargar: resolver el error local que persistia tras eliminar el timeout de consumos.",
+  "reason": "Normaliza en memoria la relacion de edificios antes de construir filtros y servicios. La clave unica property_id verificada en produccion produce un objeto o null; el lector asumía un array. Solo adapta la lectura existente, sin nuevas consultas ni cambios de reglas, datos, esquema o permisos.",
+  "verification": "Reproducidos los errores not iterable y map is not a function con la forma uno-a-uno real. Normalizacion probada para objeto, array, null, undefined, edificios retirados y grupo no visible, conservando importes y duraciones. Regresion de consumo por bloques y modelo financiero correctas. Navegador con pagina y lector reales y fixtures mixtas objeto/array: filtros de edificios, propiedades, comparativas y movil correctos. Reproduccion local adicional con estructura anonimizada de 9953 tareas y 176 propiedades: el modelo anterior falla; normalizado produce 7417 servicios y conserva las 111 propiedades con edificio. Build y lint focalizado correctos; app 102 errores heredados sin nuevos, Node 0. Comprobacion autenticada de produccion pendiente del despliegue.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialPropertyShapeTest.mjs",
+    "scripts/financialConsumptionTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialAnalyticsBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "8272de9ea194fe1b1a0c550cd79a3e29cd76fcefa268dcc1c5c0254c6c57f341"
+}
