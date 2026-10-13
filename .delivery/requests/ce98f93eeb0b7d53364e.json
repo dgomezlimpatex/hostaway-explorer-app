@@ -1,0 +1,25 @@
+{
+  "request": "Dani pidió continuar con el rediseño de la parte inferior del análisis financiero, sin tener que mantener las pestañas actuales, buscando la forma más óptima de organizarlo. Esta primera entrega sustituye el gráfico y la tabla de clientes, el análisis por propiedad y las pestañas «Por cliente» y «Por propiedad» por una única tabla de rentabilidad con selector Clientes / Propiedades.",
+  "reason": "Solo reorganiza y presenta cifras que ya se calculaban: facturación, gastos, beneficio y margen por cliente y por propiedad salen del mismo análisis que las tablas anteriores. No cambia el motor de cálculo, las consultas, los permisos ni el guardado. Los filtros rápidos, la búsqueda y la ordenación son estado local de la pantalla. Una vista guardada con la antigua pestaña de clientes o propiedades se abre ahora en General.",
+  "verification": "Prueba Node nueva de la lógica de filtros y recuentos (pérdidas, margen bajo con el límite exacto del 10 %, datos pendientes, búsqueda sin acentos y combinaciones) y regresión de las pruebas financieras existentes. Pruebas de navegador locales con datos ficticios, adaptadas a la nueva tabla, en verde: clientes y propiedades, ordenación, ver todos, totales y fila de gastos sin propiedad, navegación a servicios al pulsar una fila, filtros, vistas anual y mensual, informes y cuatro anchos. Revisión visual en Chromium en escritorio y móvil, con la columna de beneficio siempre visible en móvil. Build, tipos del módulo y lint sin errores nuevos. Limitaciones: la cola no ejecuta las pruebas de navegador y no se ha visto la pantalla con datos reales autenticados.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialProfitabilityTest.mjs",
+    "scripts/financialMonthViewTest.mjs",
+    "scripts/financialAnalyticsTest.mjs",
+    "scripts/financialInsightsTest.mjs",
+    "scripts/financialViewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "03795d02df8bf3e096d6fb885ff10df90c7de34bcef094648b41eae24a1f1ace"
+}
