@@ -1,0 +1,22 @@
+{
+  "request": "Anadir un boton para volver al menu principal tras finalizar y aprobar el recuento de inventario del dia.",
+  "reason": "Navegacion local a la pantalla de entregas manteniendo sesion, fecha y estado. El boton solo aparece confirmado, bloquea guardado o correccion abierta y permite consultar el recuento existente sin ejecutar iniciar ni confirmar de nuevo. No cambia autenticacion, datos, stock, solicitudes ni correo.",
+  "verification": "Build y lint focalizado correctos, tipos Node sin errores y mismos errores heredados de aplicacion antes/despues. Tests reales de revision: boton solo tras confirmar, bloqueo durante guardado y correccion; entrada: estados confirmado/borrador y retomar. Navegador completo con PGlite local y red externa interceptada verifica confirmar, volver al menu, conservar PIN, consultar confirmado y ausencia de mutaciones o cambios en cantidades/versiones/operaciones. Flujo de fechas, cortes/reintentos, correccion, Excel y administracion sigue pasando. Captura del menu revisada.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/laundryReceiptReviewTest.mjs",
+    "scripts/laundryReceiptStartTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "95a9ce8d4c2a61239f9ab79ff51b2247a7283439d028f12ac45230b1dac2035f"
+}
