@@ -68,7 +68,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
     readStored<Pending>(pendingKey),
   );
   const [state, setState] = useState<ReceiptState | null>(null);
-  const [date, setDate] = useState(() => readStored<Pending>(pendingKey)?.date || "");
+  const [date, setDate] = useState(() => readStored<Pending>(pendingKey)?.date || madridReceiptDate());
   const [reviewing, setReviewing] = useState(false);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -414,7 +414,7 @@ export default function PublicLaundryReceipt({ adminAccess, onSaved, onEditingCh
                     {" "}
                     {state.date}
                   </p>
-                  {date && (
+                  {state.date !== today && (
                     <Button
                       variant="outline"
                       className="mt-2"
