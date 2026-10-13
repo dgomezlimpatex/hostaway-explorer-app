@@ -302,9 +302,9 @@ try {
     assert.equal(
       (await other.db.query("SELECT count(*)::int AS n FROM stock_movements"))
         .rows[0].n,
-      9,
+      10,
     );
-    check("nueve materiales con cientos de unidades y sumas de dos empleados");
+    check("diez materiales con cientos de unidades y sumas de dos empleados");
     await other.db.query(
       "UPDATE laundry_route_workers SET pin_synced_at=pin_synced_at+interval '1 second' WHERE id=$1",
       [other.worker],

@@ -150,13 +150,13 @@ try {
     render();
   }
   render();
-  assert.equal(nodes().filter((n) => n.type === "output").length, 18);
+  assert.equal(nodes().filter((n) => n.type === "output").length, 20);
   assert.equal(
     nodes().filter(
       (n) =>
         n.type === "button" && n.props["aria-label"]?.startsWith("Editar "),
     ).length,
-    18,
+    20,
   );
   assert.equal(
     corrections.length + confirmations,
@@ -185,7 +185,7 @@ try {
     0,
     "Successful saved correction closes editor",
   );
-  click("Editar Almohadas");
+  click("Editar Almohada");
   fill("50");
   props = { ...props, counts: { ...props.counts, pillows: 35 }, revision: 7 };
   render();
@@ -193,7 +193,7 @@ try {
   assert.ok(text(tree).includes("recuento ha cambiado"));
   assert.equal(button("Confirmar y enviar Excel").props.disabled, true);
   click("Cancelar edición");
-  click("Editar Almohadas");
+  click("Editar Almohada");
   fill("50");
   click("Guardar corrección");
   assert.deepEqual(corrections[1], ["pillows", 50, 7]);
@@ -216,10 +216,10 @@ try {
   assert.equal(
     nodes().filter((n) => n.props?.["aria-label"]?.startsWith("Editar "))
       .length,
-    18,
+    20,
   );
   assert.equal(confirmations, 1, "Success view cannot send again");
-  click("Editar Edredones");
+  click("Editar Edredón");
   fill("10");
   click("Guardar corrección");
   assert.deepEqual(corrections[2], ["duvets", 10, 8]);
@@ -236,7 +236,7 @@ try {
     undefined,
     "Discards collapsed by default",
   );
-  click("Editar descartes Almohadas");
+  click("Editar descartes Almohada");
   fill("4");
   assert.equal(
     button("Confirmar cambios y reenviar Excel").props.disabled,
@@ -251,7 +251,7 @@ try {
   };
   render();
   assert.equal(nodes().filter((n) => n.type === "input").length, 0);
-  click("Editar descartes Almohadas");
+  click("Editar descartes Almohada");
   fill("3");
   props = { ...props, revision: 10 };
   render();
@@ -262,7 +262,7 @@ try {
   );
   assert.equal(confirmations, 1, "Discard editing does not send");
   console.log(
-    "Review: nine totals, no automatic writes/send, edits, validation, stale revision, pending work, confirmation, updated receipt and success view verified.",
+    "Review: ten totals, no automatic writes/send, edits, validation, stale revision, pending work, confirmation, updated receipt and success view verified.",
   );
 } finally {
   delete globalThis.__receiptReviewHooks;

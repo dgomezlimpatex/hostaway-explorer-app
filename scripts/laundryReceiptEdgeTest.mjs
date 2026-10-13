@@ -108,12 +108,12 @@ try {
   assert.equal(
     rows.filter((row) => typeof row[1] === "number" && row[0] !== "Versión")
       .length,
-    9,
+    10,
   );
   assert.ok(!JSON.stringify(rows).includes("stock"));
-  assert.equal(wb.Sheets.Recuento.B19.t, "s");
+  assert.equal(wb.Sheets.Recuento.B20.t, "s");
   assert.equal(
-    wb.Sheets.Recuento.B19.f,
+    wb.Sheets.Recuento.B20.f,
     undefined,
     "la observación no se convierte en fórmula de Excel",
   );

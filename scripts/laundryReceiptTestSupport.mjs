@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 export const materialKeys = [
+  "suite_sheets",
   "double_sheets",
   "single_sheets",
   "pillowcases",
@@ -13,7 +14,7 @@ export const materialKeys = [
   "mattress_protectors",
   "pillows",
 ];
-export async function receiptTestDatabase() {
+export async function receiptTestDatabase({ suiteSheets = true } = {}) {
   const db = new PGlite();
   // Synthetic pre-existing contracts. PIN verifier is a fixture only: the new
   // migration calls the existing production verifier and never changes PIN storage.
@@ -56,6 +57,7 @@ export async function receiptTestDatabase() {
       "utf8",
     ),
   );
+  if (suiteSheets) await db.exec(await readFile(new URL('../supabase/migrations/20261013120000_laundry_receipt_suite_sheets.sql', import.meta.url), 'utf8'));
   const sede = randomUUID(),
     warehouse = randomUUID(),
     warehouse2 = randomUUID(),
@@ -72,6 +74,7 @@ export async function receiptTestDatabase() {
   ]);
   const productMap = {};
   for (const key of materialKeys) {
+    if (!suiteSheets && key === "suite_sheets") continue;
     productMap[key] = randomUUID();
     await db.query(
       "INSERT INTO stock_products(id,sede_id,category_id) VALUES($1,$2,$3)",
