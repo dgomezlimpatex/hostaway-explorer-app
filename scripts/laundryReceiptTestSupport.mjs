@@ -14,12 +14,17 @@ export const materialKeys = [
   "mattress_protectors",
   "pillows",
 ];
-export async function receiptTestDatabase({ suiteSheets = true } = {}) {
+export async function receiptTestDatabase({ suiteSheets = true, history = true } = {}) {
   const db = new PGlite();
   // Synthetic pre-existing contracts. PIN verifier is a fixture only: the new
   // migration calls the existing production verifier and never changes PIN storage.
   await db.exec(`
     CREATE SCHEMA extensions;
+    CREATE SCHEMA auth;
+    CREATE TABLE auth.users(id uuid PRIMARY KEY);
+    CREATE TABLE public.profiles(id uuid PRIMARY KEY REFERENCES auth.users,full_name text);
+    CREATE TABLE public.user_roles(user_id uuid REFERENCES auth.users,role text);
+    CREATE TABLE public.user_sede_access(user_id uuid REFERENCES auth.users,sede_id uuid,can_access boolean);
     CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
     CREATE FUNCTION extensions.gen_random_bytes(n integer) RETURNS bytea LANGUAGE sql AS $$ SELECT decode(string_agg(md5(random()::text),''),'hex') FROM generate_series(1,(n+15)/16) $$;
     CREATE TABLE public.sedes(id uuid PRIMARY KEY);
@@ -58,6 +63,7 @@ export async function receiptTestDatabase({ suiteSheets = true } = {}) {
     ),
   );
   if (suiteSheets) await db.exec(await readFile(new URL('../supabase/migrations/20261013120000_laundry_receipt_suite_sheets.sql', import.meta.url), 'utf8'));
+  if (history && suiteSheets) await db.exec(await readFile(new URL('../supabase/migrations/20261013140000_laundry_receipt_history_admin.sql', import.meta.url), 'utf8'));
   const sede = randomUUID(),
     warehouse = randomUUID(),
     warehouse2 = randomUUID(),
@@ -65,6 +71,11 @@ export async function receiptTestDatabase({ suiteSheets = true } = {}) {
     worker = randomUUID(),
     worker2 = randomUUID();
   await db.query("INSERT INTO sedes VALUES ($1)", [sede]);
+  const admin = "00000000-0000-4000-8000-000000000001";
+  await db.query("INSERT INTO auth.users VALUES ($1)", [admin]);
+  await db.query("INSERT INTO profiles VALUES ($1,'Administración de prueba')", [admin]);
+  await db.query("INSERT INTO user_roles VALUES ($1,'admin')", [admin]);
+  await db.query("INSERT INTO user_sede_access VALUES ($1,$2,true)", [admin,sede]);
   await db.query(
     "INSERT INTO stock_warehouses(id,sede_id,name) VALUES($1,$3,'Almacén de prueba'),($2,$3,'Otro almacén')",
     [warehouse, warehouse2, sede],
@@ -144,6 +155,7 @@ export async function receiptTestDatabase({ suiteSheets = true } = {}) {
     });
   return {
     db,
+    admin,
     sede,
     rpc,
     config,

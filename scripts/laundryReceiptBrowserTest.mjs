@@ -397,10 +397,47 @@ try {
     path: join(artifacts, "desktop.png"),
     fullPage: true,
   });
+  // Use the real page with a historical date; recover a lost response on that date.
+  const pastDate = (await t.db.query("SELECT ((now() AT TIME ZONE 'Europe/Madrid')::date-5)::text AS d")).rows[0].d;
+  const adminPastDate = (await t.db.query("SELECT ((now() AT TIME ZONE 'Europe/Madrid')::date-7)::text AS d")).rows[0].d;
+  const futureDate = (await t.db.query("SELECT ((now() AT TIME ZONE 'Europe/Madrid')::date+1)::text AS d")).rows[0].d;
+  const suiteBalance = () => t.db.query('SELECT current_quantity::int AS n FROM stock_levels WHERE product_id=$1',[t.productMap.suite_sheets]).then(r=>r.rows[0]?.n??0);
+  const beforePast = await suiteBalance();
+  if (await page.getByRole('button',{name:'Volver al recuento',exact:true}).count()) await page.getByRole('button',{name:'Volver al recuento',exact:true}).click();
+  await page.getByLabel('Fecha de la entrega',{exact:true}).fill(pastDate);
+  await page.getByRole('button',{name:`Iniciar recuento del ${pastDate}`,exact:true}).click();
+  dropNextAdd = true;
+  await page.getByLabel('Cantidad Sábanas de suite',{exact:true}).fill('17');
+  await page.locator('section').filter({has:page.locator('label[for="count-suite_sheets"]')}).getByRole('button',{name:'Añadir',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Recuperar operación',exact:true})).toBeEnabled();
+  await expect(page.getByLabel('Fecha de la entrega',{exact:true})).toBeDisabled();
+  await page.reload();
+  await expect(page.getByLabel('Fecha de la entrega',{exact:true})).toHaveValue(pastDate);
+  await page.getByRole('button',{name:'Recuperar operación',exact:true}).click();
+  await expect(page.getByLabel('Total Sábanas de suite',{exact:true})).toHaveText('17');
+  await page.getByRole('button',{name:'Revisar recuento',exact:true}).click();
+  await page.getByRole('button',{name:'Confirmar y enviar Excel',exact:true}).click();
+  await page.getByRole('heading',{name:'Recuento confirmado',exact:true}).waitFor();
+  assert.equal(await suiteBalance(),beforePast+17);
+  assert.equal((await t.state({date:pastDate})).versions[0].snapshot.receipt_date,pastDate);
+  await page.screenshot({path:join(artifacts,'historical-public.png'),fullPage:true});
+  await page.getByRole('button',{name:'Volver al recuento',exact:true}).click();
+  await page.getByLabel('Fecha de la entrega',{exact:true}).fill(t.date);
+  await expect(page.getByLabel('Total Sábanas de suite',{exact:true})).toHaveText('12');
+  await page.getByLabel('Cantidad Sábanas de suite',{exact:true}).fill('6');
+  page.removeAllListeners('dialog');
+  page.once('dialog',dialog=>dialog.dismiss());
+  await page.getByLabel('Fecha de la entrega',{exact:true}).fill(adminPastDate);
+  await expect(page.getByLabel('Fecha de la entrega',{exact:true})).toHaveValue(t.date);
+  await expect(page.getByLabel('Cantidad Sábanas de suite',{exact:true})).toHaveValue('6');
+  page.once('dialog',dialog=>dialog.accept());
+  await page.getByLabel('Fecha de la entrega',{exact:true}).fill(adminPastDate);
+  await page.getByRole('button',{name:`Iniciar recuento del ${adminPastDate}`,exact:true}).waitFor();
+  assert.equal((await t.db.query('SELECT count(*)::int AS n FROM laundry_receipts WHERE receipt_date=$1',[adminPastDate])).rows[0].n,0,'Selecting a day alone cannot create a receipt');
   const adminContext = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
   });
-  await adminContext.addInitScript(() => {
+  await adminContext.addInitScript(({admin}) => {
     localStorage.setItem(
       "sb-qyipyygojlfhdghnraus-auth-token",
       JSON.stringify({
@@ -410,7 +447,7 @@ try {
         expires_at: Math.floor(Date.now() / 1000) + 3600,
         expires_in: 3600,
         user: {
-          id: "fixture-admin",
+          id: admin,
           email: "fixture-admin@example.invalid",
           app_metadata: { provider: "email", providers: ["email"] },
           user_metadata: {},
@@ -419,7 +456,7 @@ try {
         },
       }),
     );
-  });
+  }, {admin:t.admin});
   await adminContext.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.origin === base) return route.continue();
@@ -437,7 +474,7 @@ try {
       data = [t.sede];
     else if (url.pathname.endsWith("/profiles"))
       data = {
-        id: "fixture-admin",
+        id: t.admin,
         full_name: "Administración de prueba",
         email: null,
       };
@@ -506,13 +543,46 @@ try {
   assert.ok((await historyRow.innerText()).includes("Última versión 3"));
   await historyRow.click();
   await admin.getByRole("button", { name: "Descargar Excel v3" }).waitFor();
+  assert.equal(await admin.getByLabel('Tu PIN de empleado').count(),0,'Administrator uses the existing authenticated session');
+  await admin.getByLabel('Fecha de la entrega',{exact:true}).fill(pastDate);
+  await expect(admin.getByLabel('Total Sábanas de suite',{exact:true})).toHaveText('17');
+  await admin.getByRole('button',{name:'Revisar recuento',exact:true}).click();
+  await expect(admin.getByLabel('Almacén que recibe la ropa limpia')).toBeDisabled();
+  await expect(admin.getByLabel('Fecha de la entrega',{exact:true})).toBeDisabled();
+  await admin.getByRole('button',{name:'Editar Sábanas de suite',exact:true}).click();
+  await admin.getByLabel('Total corregido Sábanas de suite',{exact:true}).fill('19');
+  await admin.getByRole('button',{name:'Guardar corrección',exact:true}).click();
+  await expect(admin.getByLabel('Revisado Sábanas de suite',{exact:true})).toHaveText('19');
+  assert.equal(await suiteBalance(),beforePast+17,'Admin draft correction cannot change stock');
+  await admin.getByRole('button',{name:'Confirmar cambios y reenviar Excel',exact:true}).click();
+  await admin.getByRole('heading',{name:'Recuento confirmado',exact:true}).waitFor();
+  assert.equal(await suiteBalance(),beforePast+19);
+  const corrected=await t.state({date:pastDate});
+  assert.equal(corrected.versions[0].admin_user_id,t.admin);
+  assert.equal(corrected.versions[0].snapshot.counts.suite_sheets,19);
+  assert.equal(corrected.versions[1].snapshot.counts.suite_sheets,17);
+  await admin.screenshot({path:join(artifacts,'historical-admin-correction.png'),fullPage:true});
+  await admin.getByRole('button',{name:'Volver al recuento',exact:true}).click();
+  await admin.getByLabel('Fecha de la entrega',{exact:true}).fill(adminPastDate);
+  await admin.getByRole('button',{name:`Iniciar recuento del ${adminPastDate}`,exact:true}).click();
+  await admin.getByLabel('Cantidad Toallas de baño',{exact:true}).fill('4');
+  await admin.locator('label[for="count-bath_towels"]').locator('xpath=ancestor::section[1]').getByRole('button',{name:'Añadir',exact:true}).click();
+  await expect(admin.getByLabel('Total Toallas de baño',{exact:true})).toHaveText('4');
+  await admin.getByRole('button',{name:'Revisar recuento',exact:true}).click();
+  await admin.getByRole('button',{name:'Confirmar y enviar Excel',exact:true}).click();
+  await admin.getByRole('heading',{name:'Recuento confirmado',exact:true}).waitFor();
+  assert.equal((await t.state({date:adminPastDate})).versions[0].admin_user_id,t.admin);
+  await admin.getByRole('button',{name:'Volver al recuento',exact:true}).click();
+  await admin.getByLabel('Fecha de la entrega',{exact:true}).fill(futureDate);
+  await admin.getByRole('alert').filter({hasText:'fecha válida'}).waitFor();
+  assert.equal((await t.db.query('SELECT count(*)::int AS n FROM laundry_receipts WHERE receipt_date=$1',[futureDate])).rows[0].n,0);
   await admin.screenshot({
     path: join(artifacts, "admin.png"),
     fullPage: true,
   });
   assert.deepEqual(errors, []);
   console.log(
-    `laundry-receipt-browser: móvil/escritorio, PIN, 10 materiales, tandas, Excel descargado, pérdida de respuesta, recarga/reintento, corrección, continuidad y configuración/historial administrativos correctos. Artefactos: ${artifacts}`,
+    `laundry-receipt-browser: móvil/escritorio, PIN, 10 materiales, fechas pasadas, recarga/reintento histórico, alta/corrección administrativa sin PIN, stock por diferencia, bloqueo de fechas futuras, Excel y configuración/historial correctos. Artefactos: ${artifacts}`,
   );
 } finally {
   await browser?.close();

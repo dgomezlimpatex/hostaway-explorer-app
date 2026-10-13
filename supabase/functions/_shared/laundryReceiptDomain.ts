@@ -39,6 +39,11 @@ export function receiptQuantity(value: string): number {
     throw new Error("Introduce una cantidad entera entre 0 y 999.999.999.");
   return Number(value);
 }
+export function isReceiptDate(value: string, today = madridReceiptDate()): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value < "0001-01-01" || value > today) return false;
+  const parsed = new Date(`${value}T12:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
 export type ReceiptExport = {
   receipt_date: string;
   warehouse_name: string;

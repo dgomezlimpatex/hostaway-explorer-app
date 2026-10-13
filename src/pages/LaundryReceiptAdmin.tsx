@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { StockLayout } from "@/components/stock/StockLayout";
@@ -9,8 +9,11 @@ import {
   downloadReceiptExcel,
 } from "@/services/laundryReceiptService";
 import { receiptEmail, type ReceiptAdminState } from "@/types/laundryReceipt";
+import { useAuth } from "@/hooks/useAuth";
+import PublicLaundryReceipt from "./PublicLaundryReceipt";
 
 export default function LaundryReceiptAdmin() {
+  const { user } = useAuth();
   const { data: warehouses = [] } = useStockWarehouses();
   const { data: products = [] } = useStockProducts("laundry");
   const [warehouseId, setWarehouseId] = useState("");
@@ -18,6 +21,7 @@ export default function LaundryReceiptAdmin() {
   const [workerIds, setWorkerIds] = useState<string[]>([]);
   const [active, setActive] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [editorLocked, setEditorLocked] = useState(false);
   const [message, setMessage] = useState("");
   const client = useQueryClient();
   const query = useQuery({
@@ -84,7 +88,7 @@ export default function LaundryReceiptAdmin() {
   return (
     <StockLayout
       title="Recepciones de ropa limpia"
-      description="Configura el acceso del almacén y consulta los recuentos enviados a administración."
+      description="Registra o corrige entregas por fecha, consulta su historial y configura el acceso del almacén."
       showWarehouseSelect={false}
     >
       <section className="space-y-4 rounded-2xl border bg-background p-5">
@@ -93,6 +97,7 @@ export default function LaundryReceiptAdmin() {
         </label>
         <select
           id="receipt-warehouse"
+          disabled={busy || editorLocked}
           className="h-12 w-full rounded-md border bg-background px-3"
           value={warehouseId}
           onChange={(e) => setWarehouseId(e.target.value)}
@@ -115,6 +120,16 @@ export default function LaundryReceiptAdmin() {
             </Button>
           </p>
         )}
+        {config && user && (
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold">Registrar o corregir una entrega</h2>
+            <p className="text-sm text-muted-foreground">Selecciona la fecha de la entrega. Las correcciones conservan el historial y solo ajustan la diferencia de stock al confirmar.</p>
+            <PublicLaundryReceipt key={`${warehouseId}:${user.id}`} adminAccess={{ warehouseId, userId: user.id }}
+              onEditingChange={setEditorLocked}
+              onSaved={() => { void client.invalidateQueries({ queryKey: ["laundry-receipt-admin", warehouseId] }); }} />
+          </section>
+        )}
+
         {query.data && (
           <>
             <p className="text-sm text-muted-foreground">
