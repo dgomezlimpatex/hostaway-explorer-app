@@ -16,6 +16,9 @@
   --fin-loss: #b3203f;
   --fin-brand: #310984;
   --fin-ease: cubic-bezier(.2, .8, .2, 1);
+  --primary: 192 60% 11%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 192 60% 11%;
   background: var(--fin-bg);
   color: var(--fin-ink);
 }
