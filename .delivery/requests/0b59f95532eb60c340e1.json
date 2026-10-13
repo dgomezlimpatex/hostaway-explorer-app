@@ -1,0 +1,25 @@
+{
+  "request": "Dani pidió quitar del resumen del análisis financiero el recuento de servicios, la nota de gastos generales incluidos, la etiqueta «Provisional», el bloque desplegable «Cómo se calcula» de la página y el desplegable «Servicios fuera del balance», y que las barras de la cascada partan todas desde la izquierda formando una escalera.",
+  "reason": "Solo se quitan textos y bloques informativos de la pantalla y se cambia la posición de las barras. No cambia ningún cálculo, consulta, permiso ni guardado. La información de servicios fuera del balance y de costes pendientes sigue disponible en el apartado «Revisar», y la explicación del cálculo del resumen sigue en su ayuda «Cómo se calcula». Los gastos generales siguen reflejados en la fila «Otros gastos» de la cascada.",
+  "verification": "Prueba Node de la cascada actualizada al nuevo contrato (todas las barras parten de la izquierda, anchuras proporcionales a la facturación, caso de pérdidas con línea de cero compartida, vacío e importes mínimos). Pruebas de navegador locales con datos ficticios, adaptadas a lo retirado (los gastos generales se comprueban en la fila «Otros gastos» y los servicios fuera del balance en «Revisar»), en verde: página completa, filtros, vistas anual y mensual, desglose con retorno de foco, informes y cuatro anchos. Regresión de las pruebas financieras existentes, tipos del módulo y lint sin errores nuevos. Revisión visual en Chromium con datos ficticios. Limitaciones: la cola no ejecuta las pruebas de navegador y no se ha visto la pantalla con datos reales autenticados salvo por las capturas de contexto que aportó Dani.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialMonthViewTest.mjs",
+    "scripts/financialFormattingTest.mjs",
+    "scripts/financialInsightsTest.mjs",
+    "scripts/financialChartsTest.mjs",
+    "scripts/financialViewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "ffc1ff6c37628a594315729472ee0c01bc4a3f331388bf36c241de90dc0beaff"
+}
