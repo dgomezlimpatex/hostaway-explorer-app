@@ -48,6 +48,7 @@ export interface StockLevel {
   product_id: string;
   warehouse_id: string;
   current_quantity: number;
+  reserved_quantity?: number;
   minimum_quantity: number;
   target_quantity: number;
   cost_per_unit: number | null;
