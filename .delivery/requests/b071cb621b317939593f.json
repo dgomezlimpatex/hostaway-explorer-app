@@ -1,0 +1,25 @@
+{
+  "tests": [
+    "scripts/inventorySimplificationTest.mjs",
+    "scripts/inventorySimplificationBrowserTest.mjs",
+    "scripts/stockCountTest.mjs",
+    "scripts/stockReportBuildTest.mjs",
+    "scripts/stockReportsTest.mjs"
+  ],
+  "request": "Dani solicita implementar la simplificación de todo el inventario, centrada en Simón Bolívar, mudas y repuestos por edificio.",
+  "reason": "Interfaz y cálculos locales de necesidades con consultas de solo lectura. Conserva las operaciones existentes y los controles de acceso; no activa descuentos ni ejecuta operaciones de negocio.",
+  "verification": "Build correcto; lint focalizado sin errores; tipos de aplicación idénticos a la base, Node y tsc raíz correctos. Pruebas locales de estados, cantidades por propiedad, entrega antigua, duplicados, paginación, informes y recuento. Navegador con componentes reales, datos ficticios y operaciones simuladas: cuatro pantallas, filtros, móvil, consulta fallida. Metadatos SQL verificados solo en lectura. Recuento físico y nueva activación de descuentos excluidos; explicados en docs/INVENTARIO-SIMPLIFICADO.md.",
+  "effects": {
+    "costs": false,
+    "authentication": false,
+    "communications": false,
+    "productionData": false,
+    "integrations": false,
+    "database": false,
+    "infrastructure": false,
+    "security": false
+  },
+  "version": 1,
+  "scope": "application",
+  "digest": "cfa626556a5ff625e2e97dee2bd1467a10ebc17fb84c66a79ee0cd29f92c0944"
+}
