@@ -46,34 +46,47 @@ try {
   assert.ok(tiny.rows.find(row => row.id === 'products').width >= 0.8, 'A non-zero step never disappears');
   assert.deepEqual(tiny.rows.map(row => row.id), ['revenue', 'personal', 'products', 'other', 'result']);
 
-  // Headline: states the result in plain words and compares with the reference period.
+  // Row labels use the owner's vocabulary: billing first, profit last.
+  assert.deepEqual([gain.rows[0].label, gain.rows.at(-1).label], ['Facturación', 'Beneficio']);
+
+  // Headline: billing leads, profit follows, both compared with the reference period.
   const current = summary(100000, { personal: 40000 }), before = summary(90000, { personal: 40000 });
   const base = { total: current, previous: before, start: '2026-09-01', singleMonth: true, partial: false, comparisonLabel: 'vs mes anterior' };
   const done = monthHeadline(base);
-  assert.equal(done.kicker, 'Resultado de septiembre');
-  assert.equal(plain(done.value), '600,00 €');
-  assert.equal(plain(done.sentence), 'Entran 1.000,00 € y salen 400,00 €; el margen es del 60,0%.');
-  assert.equal(plain(done.compare), '+100,00 € · 20,0% vs mes anterior');
-  assert.deepEqual([done.tone, done.direction], ['gain', 'better']);
-  assert.equal(monthHeadline({ ...base, partial: true }).kicker, 'Resultado de septiembre · en curso');
-  assert.equal(monthHeadline({ ...base, singleMonth: false }).kicker, 'Resultado del periodo', 'Custom ranges are called the period');
+  assert.equal(done.kicker, 'Facturación de septiembre');
+  assert.equal(plain(done.revenue), '1.000,00 €'); assert.equal(plain(done.profit), '600,00 €');
+  assert.equal(plain(done.sentence), 'Los gastos suman 400,00 €; el margen es del 60,0%.');
+  assert.equal(plain(done.revenueCompare), '+100,00 € · 11,1% vs mes anterior');
+  assert.equal(plain(done.profitCompare), '+100,00 € · 20,0% vs mes anterior');
+  assert.deepEqual([done.tone, done.revenueDirection, done.profitDirection], ['gain', 'better', 'better']);
+  assert.equal(monthHeadline({ ...base, partial: true }).kicker, 'Facturación de septiembre · en curso');
+  assert.equal(monthHeadline({ ...base, singleMonth: false }).kicker, 'Facturación del periodo', 'Custom ranges are called the period');
   const worse = monthHeadline({ ...base, previous: summary(100000, { personal: 10000 }) });
-  assert.equal(worse.direction, 'worse'); assert.ok(plain(worse.compare).startsWith('-300,00 € · -33,3%'));
-  assert.equal(monthHeadline({ ...base, previous: null }).compare, null, 'No invented comparison without a reference');
-  assert.equal(monthHeadline({ ...base, comparisonLabel: null }).compare, null);
+  assert.equal(worse.revenueDirection, 'same'); assert.equal(worse.profitDirection, 'worse'); assert.ok(plain(worse.profitCompare).startsWith('-300,00 € · -33,3%'));
+  assert.equal(monthHeadline({ ...base, previous: null }).revenueCompare, null, 'No invented comparison without a reference');
+  assert.equal(monthHeadline({ ...base, comparisonLabel: null }).profitCompare, null);
   const negative = monthHeadline({ ...base, total: summary(10000, { personal: 25000 }), previous: null });
-  assert.equal(negative.tone, 'loss'); assert.equal(plain(negative.value), '-150,00 €');
-  assert.equal(plain(monthHeadline({ ...base, total: summary(0, {}), previous: null }).sentence), 'Entran 0,00 € y salen 0,00 €.', 'Margin is omitted when there is no revenue');
+  assert.equal(negative.tone, 'loss'); assert.equal(plain(negative.profit), '-150,00 €'); assert.equal(plain(negative.revenue), '100,00 €');
+  assert.equal(plain(monthHeadline({ ...base, total: summary(0, {}), previous: null }).sentence), 'Los gastos suman 0,00 €.', 'Margin is omitted when there is no revenue');
   assert.equal(monthHeadline({ ...base, total: summary(5000, { personal: 5000 }), previous: null }).tone, 'flat');
   assert.equal(monthTitle('2026-10-13'), 'Octubre de 2026');
 
-  // Month strip: height follows magnitude, sign and selection are explicit.
-  const strip = stripBars([{ start: '2026-08-01', result: 500 }, { start: '2026-09-01', result: -1000 }, { start: '2026-10-01', result: 0 }], '2026-09');
+  // Month strip: height follows billing from zero; the dark part is the profit.
+  const months = [{ start: '2026-08-01', revenue: 50000, result: 10000 }, { start: '2026-09-01', revenue: 100000, result: -5000 }, { start: '2026-10-01', revenue: 0, result: 0 }];
+  const strip = stripBars(months, '2026-09');
   assert.deepEqual(strip.map(bar => bar.selected), [false, true, false]);
-  assert.deepEqual(strip.map(bar => bar.negative), [false, true, false]);
-  assert.deepEqual(strip.map(bar => bar.height), [50, 100, 4]);
+  assert.deepEqual(strip.map(bar => bar.loss), [false, true, false]);
+  assert.deepEqual(strip.map(bar => bar.height), [50, 100, 2]);
+  assert.deepEqual(strip.map(bar => bar.profitHeight), [10, 0, 0], 'Profit is drawn only when positive, on the same scale');
   assert.deepEqual(strip.map(bar => bar.label), ['ago', 'sept', 'oct']);
-  assert.ok(stripBars([{ start: '2026-10-01', result: 0 }], '').every(bar => Number.isFinite(bar.height) && !bar.selected));
-  assert.ok(stripBars([{ start: '2026-10-01', result: 1 }, { start: '2026-09-01', result: 100000 }], '2026-10')[0].height >= 8, 'Small months stay clickable');
-  console.log('financial-month-view: waterfall geometry for gain/loss/empty/tiny, plain-language headline and comparison, and 12-month strip passed');
+  assert.ok(stripBars([{ start: '2026-10-01', revenue: 0, result: 0 }], '').every(bar => Number.isFinite(bar.height) && !bar.selected));
+  assert.ok(stripBars([{ start: '2026-10-01', revenue: 10, result: 1 }, { start: '2026-09-01', revenue: 1000000, result: 1 }], '2026-10')[0].height >= 6, 'Small months stay clickable');
+  assert.ok(stripBars([{ start: '2026-10-01', revenue: 100000, result: 99999 }], '')[0].profitHeight <= 100, 'Profit never exceeds its bar');
+  // Zoom: close figures separate clearly, still ordered, and the profit part is dropped.
+  const close = [{ start: '2026-08-01', revenue: 90000, result: 9000 }, { start: '2026-09-01', revenue: 95000, result: 9000 }, { start: '2026-10-01', revenue: 100000, result: 9000 }];
+  const flat = stripBars(close, ''), zoomed = stripBars(close, '', true);
+  assert.ok(flat[2].height - flat[0].height < 11, 'On a zero-based scale a 10% difference is small');
+  assert.ok(zoomed[2].height - zoomed[0].height > 30 && zoomed[0].height < zoomed[1].height && zoomed[1].height < zoomed[2].height, 'Zoom makes the difference obvious without reordering');
+  assert.deepEqual(zoomed.map(bar => bar.profitHeight), [0, 0, 0]);
+  console.log('financial-month-view: waterfall geometry for gain/loss/empty/tiny, plain-language headline and comparison, and billing-based 12-month strip with zoom passed');
 } finally { rmSync(temp, { recursive: true, force: true }); }

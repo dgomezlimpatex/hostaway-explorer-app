@@ -110,7 +110,7 @@ try {
   await page.getByLabel('Mes del análisis', { exact: true }).fill(previousEnd.slice(0,7));
   await expect(page.getByLabel('Desde',{exact:true})).toHaveValue(previousEnd.slice(0,7)+'-01');
   await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue(monthEnd);
-  await expect(page.getByRole('region',{name:'Comparativa del periodo'}).getByText(/salen 2\.356,27\s€/)).toBeVisible();
+  await expect(page.getByRole('region',{name:'Comparativa del periodo'}).getByText(/gastos suman 2\.356,27\s€/)).toBeVisible();
   const graph=page.getByRole('region',{name:'Comparativa del periodo'});
   const costChart=page.getByRole('region',{name:'Distribución de gastos'});
   await expect(costChart.getByRole('listitem').filter({hasText:'Personal'}).last()).toContainText('2.346,00 €');
@@ -130,7 +130,7 @@ try {
   await expect(costChart.getByRole('listitem').filter({hasText:'Personal'}).last()).toContainText('2.346,00 €');
   await graph.screenshot({path:join(tmpdir(),'limpatex-financial-segmented-personal-demo.png')});
   const detailRegion=page.getByRole('region',{name:'Desglose del gráfico'});
-  const revenueBar=graph.getByRole('button',{name:/^Ingresos · /});
+  const revenueBar=graph.getByRole('button',{name:/^Facturación · /});
   await revenueBar.hover();
   await expect(revenueBar).toContainText('100,00 €');
   await graph.screenshot({path:join(tmpdir(),'limpatex-financial-hover.png')});
@@ -319,7 +319,7 @@ try {
   await expect(detailRegion.getByRole('row').filter({hasText:'Recepción de prueba'})).toContainText('1.329,60 €');
   await expect(detailRegion.locator('tbody tr')).toHaveCount(1);
   await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
-  await graph.getByRole('button',{name:/^Ingresos · /}).click();
+  await graph.getByRole('button',{name:/^Facturación · /}).click();
   await expect(detailRegion.locator('tbody tr')).toHaveCount(3);
   await expect(detailRegion.getByRole('row').filter({hasText:'Apartamento Centro'})).toContainText('102,75 €');
   await expect(detailRegion.getByRole('row').filter({hasText:'Lavandería externa de prueba'})).toContainText('300,00 €');
@@ -565,7 +565,7 @@ try {
   await page.locator('summary').filter({hasText:'Clientes:'}).click();
   await page.getByRole('button', { name: /^Filtros/ }).click();
   await page.screenshot({path:join(tmpdir(),'limpatex-financial-mobile-populated.png'),fullPage:true});
-  await graph.getByRole('button',{name:/^Ingresos · /}).tap();
+  await graph.getByRole('button',{name:/^Facturación · /}).tap();
   await expect(page.getByRole('heading',{name:'Ingresos · desglose',exact:true})).toBeVisible();
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Detail table scrolls inside mobile viewport');
   await page.getByRole('button',{name:'Volver al gráfico',exact:true}).click();
