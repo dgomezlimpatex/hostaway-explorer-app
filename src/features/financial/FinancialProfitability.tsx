@@ -46,7 +46,7 @@ export function FinancialProfitability({ result, clients, properties, onClient, 
   const resultCell = (row: { result: number }) => <span className={`inline-flex items-center justify-end gap-1 font-semibold ${row.result < 0 ? 'text-[var(--fin-loss)]' : 'text-[var(--fin-gain)]'}`}>{row.result < 0 && <TrendingDown aria-hidden className="h-3.5 w-3.5" />}{money(row.result)}</span>;
   return <section aria-label="Rentabilidad" className="min-w-0 space-y-4 rounded-3xl border border-[var(--fin-line)] bg-[var(--fin-surface)] p-5 sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h2 className="fin-display text-2xl font-bold">Rentabilidad</h2><p role="status" className="fin-muted mt-0.5 text-sm">{all.length} {noun} con actividad · sin IVA</p></div>
+      <div><h2 className="fin-display text-2xl font-bold">Rentabilidad</h2><p role="status" className="sr-only">{all.length} {noun} con actividad · sin IVA</p></div>
       <div className="flex items-center gap-2">
         <div role="group" aria-label="Agrupar por" className="inline-flex rounded-full border border-[var(--fin-line)] bg-[var(--fin-bg)] p-1">{([['clients', 'Clientes'], ['properties', 'Propiedades']] as const).map(([id, label]) =>
           <button key={id} type="button" aria-pressed={mode === id} onClick={() => choose(id)} className={`fin-focus rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${mode === id ? 'bg-[var(--fin-ink)] text-white' : 'fin-muted hover:text-[var(--fin-ink)]'}`}>{label}</button>)}</div>

@@ -42,8 +42,8 @@ export function FinancialMonthBar({ start, end, annualYear, monthValue, filterCo
       </div>
     </div>
     <div className={`transition-opacity ${busy ? 'opacity-60' : ''}`}>
-      <p className="fin-muted mb-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs"><span>Facturación de cada mes</span>
-        {zoom ? <span>escala ajustada: las barras no parten de cero</span> : <span className="inline-flex items-center gap-1.5"><span aria-hidden className="h-2.5 w-2.5 rounded-[3px]" style={{ background: 'var(--fin-income-ink)' }} />parte oscura: beneficio</span>}
+      <p className="fin-muted mb-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        {zoom ? <span>escala ajustada: las barras no parten de cero</span> : <span className="inline-flex items-center gap-1.5"><span aria-hidden className="h-2.5 w-2.5 rounded-[3px]" style={{ background: 'var(--fin-income-ink)' }} />Beneficio</span>}
         <span className="sm:hidden">k = miles de €</span>
         <button type="button" aria-pressed={zoom} onClick={() => setZoom(value => !value)} className="fin-focus rounded-full border border-[var(--fin-line)] px-2.5 py-0.5 font-medium hover:bg-[var(--fin-sunk)] aria-pressed:bg-[var(--fin-ink)] aria-pressed:text-white sm:ml-auto">Ajustar escala</button></p>
       <div className="grid grid-cols-12 gap-1" role="group" aria-label="Facturación de los últimos 12 meses">
