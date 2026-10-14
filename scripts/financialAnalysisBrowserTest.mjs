@@ -116,6 +116,10 @@ try {
   await expect(page.getByLabel('Desde',{exact:true})).toHaveValue(previousEnd.slice(0,7)+'-01');
   await expect(page.getByLabel('Hasta',{exact:true})).toHaveValue(monthEnd);
   await expect(page.getByRole('region',{name:'Comparativa del periodo'}).getByText(/gastos suman 2\.356,27\s€/)).toBeVisible();
+  // The management salary (2.317,00 €) is Personnel of the company: it never shows up in the client ledger.
+  const ledgerRows = page.getByRole('region',{name:'Rentabilidad'}).getByRole('row');
+  await expect(ledgerRows.filter({hasText:'Actividad general'})).not.toContainText('2.317,00');
+  await expect(ledgerRows.filter({hasText:'Total de la actividad'})).toContainText('39,27');
   const graph=page.getByRole('region',{name:'Comparativa del periodo'});
   await expect(graph.getByRole('button',{name:/^Personal · /})).toContainText('2.346,00 €');
   await graph.getByRole('button',{name:'Cómo se calcula: Comparativa del periodo',exact:true}).click();
