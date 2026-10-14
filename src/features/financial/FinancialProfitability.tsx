@@ -7,7 +7,7 @@ import { sortFinancialClients, type ClientRow, type ClientSort } from './financi
 import { propertyResults } from './financialAnalytics';
 import type { FinancialAnalysis } from './financialCharts';
 import type { DirectoryEntry } from './financialSource';
-import { filterProfitability, isLoss, isLow, LOW_MARGIN, quickCounts, type Quick } from './financialProfitabilityRows';
+import { filterProfitability, LOW_MARGIN, quickCounts, withoutStructure, type Quick } from './financialProfitabilityRows';
 
 type Mode = 'clients' | 'properties';
 const VISIBLE_ROWS = 10;
@@ -23,17 +23,18 @@ export function FinancialProfitability({ result, clients, properties, onClient, 
   const [query, setQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
   const all = useMemo<ClientRow[]>(() => mode === 'clients'
-    ? result.clients.map(row => ({ ...row, name: financialName(clients.find(entry => entry.id === row.id)?.name || row.name) }))
-    : propertyResults(result, properties).map(row => ({ ...row, name: financialName(row.name) })), [mode, result, clients, properties]);
+    ? result.clients.map(row => withoutStructure({ ...row, name: financialName(clients.find(entry => entry.id === row.id)?.name || row.name) }))
+    : propertyResults(result, properties).map(row => withoutStructure({ ...row, name: financialName(row.name) })), [mode, result, clients, properties]);
+  const total = withoutStructure(result.total);
   const peak = Math.max(1, ...all.map(row => row.revenue));
   const counts = quickCounts(all);
   const filtered = filterProfitability(all, quick, query);
   const ordered = sortFinancialClients(filtered, sort.key, sort.descending);
   const shown = showAll ? ordered : ordered.slice(0, VISIBLE_ROWS);
   const noun = mode === 'clients' ? 'clientes' : 'propiedades';
-  const unassigned = mode === 'clients' ? result.general : {
-    ...result.total, revenue: result.total.revenue - all.reduce((sum, row) => sum + row.revenue, 0), expense: result.total.expense - all.reduce((sum, row) => sum + row.expense, 0),
-    result: result.total.result - all.reduce((sum, row) => sum + row.result, 0), margin: null,
+  const unassigned = mode === 'clients' ? withoutStructure(result.general) : {
+    ...total, revenue: total.revenue - all.reduce((sum, row) => sum + row.revenue, 0), expense: total.expense - all.reduce((sum, row) => sum + row.expense, 0),
+    result: total.result - all.reduce((sum, row) => sum + row.result, 0), margin: null,
   };
   const choose = (next: Mode) => { setMode(next); setQuick('all'); setQuery(''); setShowAll(false); };
   const header = (key: ClientSort, label: string, className = '') => {
@@ -52,7 +53,8 @@ export function FinancialProfitability({ result, clients, properties, onClient, 
           <button key={id} type="button" aria-pressed={mode === id} onClick={() => choose(id)} className={`fin-focus rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${mode === id ? 'bg-[var(--fin-ink)] text-white' : 'fin-muted hover:text-[var(--fin-ink)]'}`}>{label}</button>)}</div>
         <FinancialHelp section="Rentabilidad"><p>Facturación, gastos y beneficio sin IVA de cada {mode === 'clients' ? 'cliente' : 'propiedad'}. La barra es la facturación; su parte oscura, el beneficio que queda.</p>
           <p>El margen se pondera por ingresos, no es una media de porcentajes. Los gastos generales siguen la opción de reparto elegida y el remanente se muestra aparte.</p>
-          <p>Pulsa una fila para ver sus servicios e ingresos externos.</p></FinancialHelp>
+          <p>Pulsa una fila para ver sus servicios e ingresos externos.</p>
+          <p>No incluye la dirección y estructura (el salario de dirección): es un gasto de Personal de la empresa y se ve en el resumen, no en un cliente ni en una propiedad.</p></FinancialHelp>
       </div>
     </div>
     <div className="flex flex-wrap items-center gap-2">
@@ -75,7 +77,7 @@ export function FinancialProfitability({ result, clients, properties, onClient, 
       </tr>)}
       {!shown.length && <tr><td colSpan={5} className="fin-muted p-6 text-center">Ningún {mode === 'clients' ? 'cliente' : 'propiedad'} coincide con estos filtros.</td></tr>}</tbody>
       <tfoot className="text-sm"><tr className="border-b border-[var(--fin-line)]/70"><th scope="row" className="fin-muted p-2 text-left font-medium">{mode === 'clients' ? 'Actividad general · sin repartir' : 'Sin propiedad asignada'}</th><td className="p-2 tabular-nums">{money(unassigned.revenue)}</td><td className="hidden p-2 text-right tabular-nums sm:table-cell">{money(unassigned.expense)}</td><td className="p-2 text-right tabular-nums">{resultCell(unassigned)}</td><td className="hidden p-2 sm:table-cell" /></tr>
-        <tr className="font-bold"><th scope="row" className="p-2 text-left">Total del análisis</th><td className="p-2 tabular-nums">{money(result.total.revenue)}</td><td className="hidden p-2 text-right tabular-nums sm:table-cell">{money(result.total.expense)}</td><td className="p-2 text-right tabular-nums">{resultCell(result.total)}</td><td className="hidden p-2 text-right tabular-nums sm:table-cell">{percent(result.total.margin)}</td></tr></tfoot>
+        <tr className="font-bold"><th scope="row" className="p-2 text-left">Total de la actividad</th><td className="p-2 tabular-nums">{money(total.revenue)}</td><td className="hidden p-2 text-right tabular-nums sm:table-cell">{money(total.expense)}</td><td className="p-2 text-right tabular-nums">{resultCell(total)}</td><td className="hidden p-2 text-right tabular-nums sm:table-cell">{percent(total.margin)}</td></tr></tfoot>
     </table></div>
     {ordered.length > VISIBLE_ROWS && <button type="button" onClick={() => setShowAll(value => !value)} className="fin-focus rounded-full border border-[var(--fin-line)] px-4 py-1.5 text-sm font-medium hover:bg-[var(--fin-sunk)]">{showAll ? 'Ver menos' : `Ver todos (${ordered.length})`}</button>}
   </section>;

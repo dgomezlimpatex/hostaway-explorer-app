@@ -52,8 +52,8 @@ try {
   for (const label of ['Clientes', 'Propiedades', 'Edificios', 'Trabajadores', 'Tipos de servicio', 'Categorías de gasto']) await expect(filter(label).locator('summary')).toBeVisible();
   assert.equal(await page.getByRole('button', { name: /^Filtros/ }).getAttribute('aria-expanded'), 'true', 'Data filters are reachable from the Filtros toggle');
   await props.getByRole('button',{name:'Propiedades',exact:true}).click(); await expect(props).toContainText('26 propiedades con actividad');
-  await expect(props.getByRole('row').filter({hasText:'Sin propiedad asignada'})).toContainText('120,00'); await expect(props.getByRole('row').filter({hasText:'Total del análisis'})).toContainText('2.980,00');
-  await props.getByRole('button', { name: /^Ver todos \(26\)/ }).click(); await expect(props.getByRole('table')).toContainText('Apartamento 11'); await expect(props.getByRole('row').filter({hasText:'Total del análisis'})).toContainText('2.980,00');
+  await expect(props.getByRole('row').filter({hasText:'Sin propiedad asignada'})).toContainText('120,00'); await expect(props.getByRole('row').filter({hasText:'Total de la actividad'})).toContainText('2.980,00');
+  await props.getByRole('button', { name: /^Ver todos \(26\)/ }).click(); await expect(props.getByRole('table')).toContainText('Apartamento 11'); await expect(props.getByRole('row').filter({hasText:'Total de la actividad'})).toContainText('2.980,00');
   await (await open('Edificios')).getByLabel('Edificio Centro', { exact:true }).check(); await filter('Edificios').locator('summary').click();
   await expect(revenue('1\\.300,00')).toBeVisible(); await expect(props).toContainText('13 propiedades con actividad');
   await (await open('Clientes')).getByLabel('Cliente Mar',{exact:true}).check(); await filter('Clientes').locator('summary').click(); await expect(revenue('0,00')).toBeVisible();

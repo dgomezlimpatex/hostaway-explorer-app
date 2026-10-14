@@ -1,0 +1,25 @@
+{
+  "request": "Dani indicó que el salario de dirección no debería aparecer en la tabla de rentabilidad de clientes: es simplemente un gasto de Personal de la empresa.",
+  "reason": "Solo cambia qué importes muestra la tabla de Rentabilidad: la fila de actividad general sin repartir, el total y las filas de clientes o propiedades dejan de incluir el salario de dirección (dirección y estructura), también cuando el reparto de gastos generales lo atribuye a clientes. El motor de cálculo no cambia: el resumen, la cascada y el desglose de Personal siguen incluyendo ese salario, y los informes exportados siguen igual. La ayuda de la sección lo explica. No cambia ninguna consulta, permiso ni guardado.",
+  "verification": "Prueba Node ampliada de la función que retira la dirección y estructura de una fila (gasto, resultado y margen coherentes, sin ingresos no hay margen, una fila sin salario no cambia, no muta la original y un cliente que solo parecía negativo por la dirección deja de ser pérdida) y regresión de todas las pruebas financieras. Pruebas de navegador locales con datos ficticios en verde, con una comprobación nueva sobre la página: la fila de actividad general no contiene los 2.317,00 € del salario y el total de la actividad es el gasto total menos ese salario (39,27 €). Tipos del módulo, lint y build sin errores nuevos. Limitaciones: la cola no ejecuta las pruebas de navegador; no se ha visto con datos reales autenticados salvo la lectura previa de la configuración de Dani.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialProfitabilityTest.mjs",
+    "scripts/financialAnalyticsTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialMonthViewTest.mjs",
+    "scripts/financialViewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "4b621272a934c7edbb871f180a1d33f0c4e918fdfaeafed050f86ca40e8c6332"
+}
