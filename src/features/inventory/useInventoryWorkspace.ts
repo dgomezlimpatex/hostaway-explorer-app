@@ -6,6 +6,7 @@ import { addInventoryDays, centralWarehouse, pendingDemand, buildingInventory } 
 import { readInventoryBags } from './inventoryReadiness';
 import { readCycleStock } from '@/services/laundryCycleService';
 import { useAuth } from '@/hooks/useAuth';
+import { readBagAccounting } from '@/services/stockBagAccounting';
 
 export function useInventoryWorkspace(days = 3) {
   const { activeSede } = useSede();
@@ -19,6 +20,8 @@ export function useInventoryWorkspace(days = 3) {
   const central = centralWarehouse(warehouses);
   const from = formatMadridDate(new Date());
   const to = addInventoryDays(from, days - 1);
+  const bagAccountingQuery = useQuery({queryKey:['stock-bag-accounting',activeSede?.id,user?.id],queryFn:()=>readBagAccounting(activeSede!.id),enabled:!!activeSede?.id,staleTime:30000,refetchInterval:60000,retry:1});
+  const bagAccounting = bagAccountingQuery.data;
   const cycleQuery = useQuery({
     queryKey: ['laundry-cycle-stock', activeSede?.id, user?.id, from, to],
     queryFn: () => readCycleStock(activeSede!.id, from, to), enabled: !!activeSede?.id,
@@ -28,7 +31,8 @@ export function useInventoryWorkspace(days = 3) {
   const cycleLevels = new Map((cycle?.levels ?? []).map(level => [`${level.warehouseId}:${level.productId}`, level]));
   const levels = (levelsQuery.data ?? []).map(level => {
     const live = cycleLevels.get(`${level.warehouse_id}:${level.product_id}`);
-    return live ? { ...level, current_quantity: live.quantity, reserved_quantity: live.reserved } : level;
+    const tracked = bagAccounting?.active && level.warehouse_id === bagAccounting.config?.central_id;
+    return live ? { ...level, current_quantity: live.quantity, reserved_quantity: live.reserved } : {...level,bag_accounting_active:!!tracked};
   });
   const bagsQuery = useQuery({
     queryKey: ['inventory-preparation', activeSede?.id, from, to, productsQuery.dataUpdatedAt, warehousesQuery.dataUpdatedAt],
@@ -45,16 +49,16 @@ export function useInventoryWorkspace(days = 3) {
     const nonTextiles = bag.lines.filter(line => products.find(p => p.id === line.productId)?.category?.kind !== 'laundry');
     return { ...bag, state: live.state, lines: [...nonTextiles, ...live.lines.map(line => ({...line, name: products.find(p => p.id === line.productId)?.name ?? 'Ropa'}))] };
   });
-  const stockError = warehousesQuery.isError || levelsQuery.isError || productsQuery.isError || cycleQuery.isError;
-  const stockLoading = !activeSede || warehousesQuery.isLoading || levelsQuery.isLoading || productsQuery.isLoading || cycleQuery.isLoading;
+  const stockError = warehousesQuery.isError || levelsQuery.isError || productsQuery.isError || cycleQuery.isError || bagAccountingQuery.isError;
+  const stockLoading = !activeSede || warehousesQuery.isLoading || levelsQuery.isLoading || productsQuery.isLoading || cycleQuery.isLoading || bagAccountingQuery.isLoading;
   const demandReady = !stockLoading && !stockError && bagsQuery.isSuccess && !bagsQuery.isError;
   return { central, warehouses, levels, products, bags, from, to, stockError, stockLoading, demandReady,
     demandError: bagsQuery.isError, demand: demandReady ? pendingDemand(bags) : new Map<string, number>(),
     buildings: buildingInventory(warehouses, levels, demandReady ? bags : [], central?.id),
     centralLevels: central ? levels.filter(l => l.warehouse_id === central.id) : [],
     settings: settingsQuery.data, settingsError: settingsQuery.isError,
-    cycleActive: cycle?.active ?? false,
+    cycleActive: cycle?.active ?? false, bagAccounting,
     updatedAt: levelsQuery.dataUpdatedAt,
-    refresh: () => Promise.all([warehousesQuery.refetch(), levelsQuery.refetch(), productsQuery.refetch(), settingsQuery.refetch(), bagsQuery.refetch(), cycleQuery.refetch()]),
+    refresh: () => Promise.all([warehousesQuery.refetch(), levelsQuery.refetch(), productsQuery.refetch(), settingsQuery.refetch(), bagsQuery.refetch(), cycleQuery.refetch(), bagAccountingQuery.refetch()]),
   };
 }

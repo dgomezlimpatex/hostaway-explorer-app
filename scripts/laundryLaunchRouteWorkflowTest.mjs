@@ -41,9 +41,9 @@ function database(options = {}) {
       { id: 'friday', sede_id: sede, day_of_week: 5, collection_days: [5], sort_order: 1, is_active: true },
     ],
     tasks: [{ id: task, sede_id: sede, propiedad_id: property.id, date: options.nextTask ? '2026-10-16' : '2026-10-13',
-      type: 'limpieza-turistica', status: options.cancelled ? 'cancelled' : 'pending', properties: property }],
+      type: 'limpieza-turistica', status: options.cancelled ? 'cancelled' : 'pending', properties: structuredClone(property) }],
     laundry_classic_route_order: [], stock_property_consumption_rules: [],
-    laundry_bag_preparations: [{ task_id: task, status: 'prepared', prepared_at: '2026-10-13T07:00:00Z' }],
+    laundry_bag_preparations: [{ task_id: task, status: options.partialPending ? 'pending' : 'prepared', prepared_at: '2026-10-13T07:00:00Z' }],
     laundry_delivery_tracking: [],
     laundry_route_workers: options.workers ? [worker] : [],
     laundry_route_sessions: [{ id: 'session-fixture', share_link_id: link,
@@ -74,6 +74,7 @@ function database(options = {}) {
     }; return q;
   }, async rpc(name, args) {
     calls.push({ rpc: name, args });
+    if (name === 'stock_bag_accounting_route_state') return {data:{active:options.partial===true,bags:[]},error:options.bagStateError?{code:'XX000',message:'Cannot read bag mode'}:null};
     if (name === 'laundry_cycle_eligible') return options.cycleReadFailure ? {data:null,error:{message:'Cannot read cycle',code:'XX000'}} : {data:options.cycle === true,error:options.cycleMissing?{code:'PGRST202'}:null};
     if (name === 'laundry_cycle_preview') return {data:options.cycle ? [{taskId:task,generation:0,dirtyLines:[],lines:[{productId:'towel-fixture',propertyField:'numero_toallas_grandes',quantity:4,name:'Toalla',unit:'unidades'}]}] : [],error:options.cycleMissing?{code:'PGRST202'}:null};
     return options.rpcError ? { data: null, error: { message: options.rpcError } }
@@ -88,7 +89,7 @@ const invoke = async (handler, options = {}, payload = {}) => {
   }));
   return { status: response.status, data: await response.json(), calls: db.calls };
 };
-const rpcs = r => r.calls.filter(c => c.rpc && !['laundry_cycle_eligible','laundry_cycle_preview'].includes(c.rpc));
+const rpcs = r => r.calls.filter(c => c.rpc && !['laundry_cycle_eligible','laundry_cycle_preview','stock_bag_accounting_route_state'].includes(c.rpc));
 const trackingWrites = r => r.calls.filter(c => c.table === 'laundry_delivery_tracking' && c.mutation);
 const workerWrites = r => r.calls.filter(c => c.table === 'laundry_route_worker_events' && c.mutation);
 try {
@@ -162,6 +163,16 @@ try {
   const readFailed=await invoke(fixed,{cycleReadFailure:true,workers:true},{sessionToken});assert.equal(readFailed.status,500);assert.equal(trackingWrites(readFailed).length,0);count++;
   const stale=await invoke(fixed,{cycle:true,workers:true},{action:'prepare',sessionToken,expectedBag:{propertyId:property.id,date:'2026-10-13',cycleGeneration:0,dirtyLines:[],cycleLines:[{productId:'towel-fixture',quantity:2}]}});assert.equal(stale.status,409);assert.equal(rpcs(stale).length,0);count++;
   const oldClient=await invoke(fixed,{cycle:true,workers:true},{sessionToken,expectedBag:null});assert.equal(oldClient.status,409);assert.equal(rpcs(oldClient).length,0);count++;
+  const partialExpected={propertyId:property.id,date:'2026-10-13',stockChangedAt:null,textiles:{towelsLarge:2},amenities:{},stockConsumables:[]};
+  const partial=await invoke(fixed,{partial:true},{action:'prepare',expectedBag:partialExpected});
+  assert.equal(partial.status,200);assert.equal(partial.data.workflow.stockTrackingMode,'partial');assert.equal(partial.data.workflow.inventoryCycleEnabled,true);count++;
+  for(const expectedBag of [null,{...partialExpected,textiles:{towelsLarge:99}},{...partialExpected,stockConsumables:undefined}]){
+   const denied=await invoke(fixed,{partial:true},{action:'prepare',expectedBag});assert.equal(denied.status,409);assert.equal(denied.calls.filter(c=>c.table==='laundry_bag_preparations'&&c.mutation).length,0);count++;
+  }
+  const pendingPartial=await invoke(fixed,{partial:true,partialPending:true},{action:'deliver'});assert.equal(pendingPartial.status,409);assert.equal(trackingWrites(pendingPartial).length,0);count++;
+  const partialDelivery=await invoke(fixed,{partial:true},{action:'deliver',expectedBag:partialExpected});assert.equal(partialDelivery.status,200);assert.equal(rpcs(partialDelivery).length,1);assert.equal(rpcs(partialDelivery)[0].rpc,'deliver_stock_bag_checked');assert.equal(trackingWrites(partialDelivery).length,0);count++;
+  const staleDelivery=await invoke(fixed,{partial:true},{action:'deliver',expectedBag:{...partialExpected,stockChangedAt:'2020-01-01'}});assert.equal(staleDelivery.status,409);assert.equal(rpcs(staleDelivery).length,0);count++;
+  const failedBagRead=await invoke(fixed,{bagStateError:true},{action:'prepare',expectedBag:partialExpected});assert.equal(failedBagRead.status,500);assert.equal(failedBagRead.calls.filter(c=>c.mutation).length,0);count++;
   // The deployed dependency pack is held unchanged by this correction.
   const source = await readFile('supabase/functions/laundry-route-workflow/index.ts', 'utf8');
   assert.ok(source.includes('preparationTrashSackQuantity'));

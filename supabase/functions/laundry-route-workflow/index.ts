@@ -26,6 +26,12 @@ async function hasCompleteCycle(supabase: SupabaseClientLike, taskId: string): P
   if (error) throw error;
   return data === true;
 }
+async function bagAccountingRoute(supabase: SupabaseClientLike, sedeId: string, taskIds: string[]) {
+  const {data,error}=await supabase.rpc('stock_bag_accounting_route_state',{_sede:sedeId,_tasks:taskIds});
+  if(error&&['PGRST202','42883'].includes(error.code))return {active:false,bags:[]};
+  if(error)throw error;
+  return data??{active:false,bags:[]};
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -659,10 +665,11 @@ async function loadWorkflow(
   }
 
   const originalSet = new Set(nextOriginal);
-  const [preparations, tracking, stockConsumablesByProperty] = await Promise.all([
+  const [preparations, tracking, stockConsumablesByProperty, bagAccounting] = await Promise.all([
     loadPreparations(supabase, allTaskIds),
     loadDeliveryTracking(supabase, String(link.id)),
     fetchStockConsumablesByProperty(supabase, [...currentTasks, ...nextTasks]),
+    bagAccountingRoute(supabase,String(link.sede_id),allTaskIds),
   ]);
 
   for (const task of [...currentTasks, ...nextTasks]) {
@@ -677,13 +684,21 @@ async function loadWorkflow(
   }
 
   const currentRouteBags = currentTasks.map((task) =>
-    mapTask(task, preparations, tracking, stockConsumablesByProperty, originalSet)
+    ({...mapTask(task, preparations, tracking, stockConsumablesByProperty, originalSet),stockChangedAt:null as string|null})
   );
   const nextRouteBags = nextTasks.map((task) =>
-    mapTask(task, preparations, new Map(), stockConsumablesByProperty, originalSet)
+    ({...mapTask(task, preparations, new Map(), stockConsumablesByProperty, originalSet),stockChangedAt:null as string|null})
   );
 
   for (const bag of [...currentRouteBags, ...nextRouteBags]) {
+    const partialBag=bagAccounting.active?(bagAccounting.bags as JsonRecord[]).find(item=>item.taskId===bag.taskId):null;
+    Object.assign(bag,{stockChangedAt:partialBag?.changedAt??null});
+    if(partialBag) {
+      if(partialBag.state==='released')bag.bagStatus.status='pending';
+      if(partialBag.state==='released'||!bag.deliveryTracking.deliveredAt||Date.parse(String(bag.deliveryTracking.deliveredAt))<Date.parse(String(partialBag.changedAt))) {
+        bag.deliveryTracking.deliveryStatus='pending';bag.deliveryTracking.deliveredAt=null;
+      }
+    }
     const preview = previewRows.find(row => row.taskId === bag.taskId);
     if (preview) Object.assign(bag, { cycleLines: (Array.isArray(preview.lines) ? preview.lines as JsonRecord[] : []).map(line => ({ productId: line.productId, quantity: line.quantity })),cycleGeneration:preview.generation ?? 0,dirtyLines:preview.dirtyLines ?? [] });
     if (!preview) continue;
@@ -710,7 +725,7 @@ async function loadWorkflow(
 
   const urgentBags = currentRouteBags.filter((bag) => bag.bagStatus.status === "pending");
   const nextPendingBags = nextRouteBags.filter((bag) => bag.bagStatus.status === "pending");
-  const inventoryCycleEnabled=previewRows.length>0;
+  const inventoryCycleEnabled=previewRows.length>0||bagAccounting.active===true;
   const routePending=inventoryCycleEnabled && currentRouteBags.some(bag=>bag.deliveryTracking.collectionStatus!=="collected" || bag.bagStatus.status!=="issue" && bag.deliveryTracking.deliveryStatus!=="delivered");
   const blockingStep = urgentBags.length > 0
     ? "urgent"
@@ -722,6 +737,7 @@ async function loadWorkflow(
   return {
     workflowVersion,
     inventoryCycleEnabled,
+    stockTrackingMode:bagAccounting.active?'partial':null,
     link: {
       id: link.id,
       token: link.token,
@@ -913,6 +929,11 @@ serve(async (req) => {
         workerActionRecorded = true;
       } else if (action === "prepare") {
         const bag = [...(workflow.currentRouteBags ?? []), ...(workflow.nextRouteBags ?? [])].find((item) => item.taskId === taskId);
+        if(workflow.stockTrackingMode==='partial') {
+          const expected=body.expectedBag;
+          if(!bag||!expected||expected.propertyId!==bag.propertyId||expected.date!==bag.date||expected.stockChangedAt!==bag.stockChangedAt||!Array.isArray(expected.stockConsumables)
+            ||bagRequirementsChanged(expected,bag))return json({error:'El contenido cambió: recarga la ruta antes de preparar la bolsa'},409);
+        }
         if (Number(bag?.amenities?.trashSacks100L) > 0 && body.bagContentsVersion !== 2) {
           return json({ error: "Recarga la página para ver los sacos de 100 L antes de preparar esta bolsa" }, 409);
         }
@@ -923,6 +944,15 @@ serve(async (req) => {
       } else if (action === "collect" || action === "deliver") {
         const currentTaskIds = new Set((workflow.currentRouteBags ?? []).map((bag: JsonRecord) => String(bag.taskId)));
         if (!currentTaskIds.has(taskId)) return json({ error: "Solo se puede recoger o entregar la ruta actual" }, 400);
+        if(workflow.stockTrackingMode==='partial'&&action==='deliver') {
+          const bag=(workflow.currentRouteBags??[]).find(item=>item.taskId===taskId);
+          if(bag?.bagStatus?.status!=='prepared')return json({error:'Confirma el contenido preparado antes de entregar esta bolsa'},409);
+          const expected=body.expectedBag;
+          if(!expected||expected.stockChangedAt!==bag.stockChangedAt||bagRequirementsChanged(expected,bag))return json({error:'La bolsa cambió: recarga antes de entregar'},409);
+          const {error}=await supabase.rpc('deliver_stock_bag_checked',{_task:taskId,_link:String(workflow.link.id),_worker:access.actor?.routeWorkerId??null,_cleaner:access.actor?.cleanerId??null,_name:access.actor?.workerName??'Repartidor',_snapshot:expected});
+          if(error)throw error;
+          workerActionRecorded=true;
+        } else {
         workerActionRecorded = await recordRouteAction(
           supabase,
           String(workflow.link.id),
@@ -931,6 +961,7 @@ serve(async (req) => {
           action,
           access.actor,
         );
+        }
       }
 
       if (!workerActionRecorded) await logRouteWorkerAction(
@@ -944,7 +975,7 @@ serve(async (req) => {
 
       return json({
         success: true,
-        workflow: applyActionToWorkflow(workflow as JsonRecord, taskId, action, issueReason),
+        workflow: workflow.stockTrackingMode==='partial' ? await loadWorkflow(supabase,token) : applyActionToWorkflow(workflow as JsonRecord, taskId, action, issueReason),
       });
     }
 

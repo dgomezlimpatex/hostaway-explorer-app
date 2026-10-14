@@ -50,6 +50,7 @@ type RouteAccessState = {
 const ROUTE_DELIVERY_ENABLED = false;
 
 type RouteBag = {
+  stockChangedAt?: string | null;
   taskId: string;
   propertyId?: string;
   cycleLines?: Array<{productId:string;quantity:number}>;
@@ -88,6 +89,7 @@ type RouteBag = {
 type RouteWorkflow = {
   workflowVersion: 'route_v2';
   inventoryCycleEnabled?: boolean;
+  stockTrackingMode?: 'partial' | null;
   route: {
     deliveryDate: string;
     routeName: string;
@@ -128,7 +130,7 @@ const invokeWorkflow = async (
   taskId?: string,
   issueReason?: string,
   taskIds?: string[],
-  expectedBag?: Pick<RouteBag,'propertyId'|'date'|'cycleLines'|'cycleGeneration'|'dirtyLines'>,
+  expectedBag?: Pick<RouteBag,'propertyId'|'date'|'cycleLines'|'cycleGeneration'|'dirtyLines'|'textiles'|'amenities'|'stockConsumables'|'stockChangedAt'>,
 ): Promise<RouteWorkflow> => {
   const { data, error } = await supabase.functions.invoke('laundry-route-workflow', {
     body: {
@@ -771,7 +773,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   const actionMutation = useMutation({
     mutationFn: ({ action, taskId, reason }: { action: RouteAction; taskId: string; reason?: string }) => {
       const bag=findWorkflowBag(queryClient.getQueryData<RouteWorkflow>(queryKey),taskId);
-      return invokeWorkflow(token, routeAccess?.sessionToken, action, taskId, reason, undefined,bag?{propertyId:bag.propertyId,date:bag.date,cycleLines:bag.cycleLines,cycleGeneration:bag.cycleGeneration,dirtyLines:bag.dirtyLines}:undefined);
+      return invokeWorkflow(token, routeAccess?.sessionToken, action, taskId, reason, undefined,bag?{propertyId:bag.propertyId,date:bag.date,stockChangedAt:bag.stockChangedAt,cycleLines:bag.cycleLines,cycleGeneration:bag.cycleGeneration,dirtyLines:bag.dirtyLines,textiles:bag.textiles,amenities:bag.amenities,stockConsumables:bag.stockConsumables}:undefined);
     },
     onMutate: ({ action, taskId, reason }) => {
       void queryClient.cancelQueries({ queryKey });
@@ -1164,6 +1166,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   return (
     <div ref={scrollContainerRef} className="fixed inset-x-0 top-0 h-dvh overflow-clip overscroll-none bg-[#faf7f1] font-sans" data-laundry-scroll>
       <main className="mx-auto flex h-full max-w-md flex-col gap-1.5 px-4 py-1 landscape:max-w-3xl" style={{ paddingBottom: buildingViewActive ? 12 : dockHeight + 8 }}>
+        {workflow.stockTrackingMode==='partial'&&<p className="shrink-0 rounded-md bg-purple-50 px-2 py-1 text-[10px] leading-4 text-purple-900">Las bolsas descuentan material al prepararlas. Confirma entrega y recogida; las cantidades sucias anteriores siguen pendientes de recuento.</p>}
         {accessRequired && routeAccess?.worker && (
           <div className="flex shrink-0 items-center gap-2 border-b border-[#e8e1d7] pb-0.5">
             <div className="min-w-0">
