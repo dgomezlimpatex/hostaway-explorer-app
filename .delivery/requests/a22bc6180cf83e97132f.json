@@ -1,0 +1,25 @@
+{
+  "request": "Dani pidió acelerar el cambio de mes en el análisis financiero: la primera carga puede tardar, pero al moverse a otros meses para comparar debe ser rápido.",
+  "reason": "Solo cambia cómo se leen los mismos datos, y solo en lectura: las mismas tablas y columnas, con el mismo filtro por sede. Antes cada cambio de mes volvía a pedir unos doce meses de tareas en páginas secuenciales, junto con propiedades, clientes, personal y reglas de consumo, que no cambian de un mes a otro. Ahora el catálogo se pide una vez, las tareas se piden por meses naturales en paralelo y cada mes queda guardado en la memoria de la pantalla (los cerrados diez minutos, el actual y los futuros uno), de modo que cambiar de mes solo pide los meses que faltan. Al empezar a navegar hacia atrás se precargan los tres meses anteriores. «Actualizar datos» vuelve a leer todo. No se escribe ni se modifica ningún dato, no hay cambios de esquema, consultas nuevas ni funciones de backend. Las peticiones totales por sesión bajan.",
+  "verification": "Prueba Node nueva de los meses naturales (límites incluido bisiesto, meses que cubre un periodo a través de años, periodos inválidos o demasiado grandes, meses a precargar y caducidad de la memoria). Comparación directa entre el código anterior y el nuevo sobre los mismos datos ficticios, en el mes actual y cuatro meses hacia atrás: facturación, beneficio, gastos, márgenes, comparaciones y cada fila de la rentabilidad coinciden (solo difieren valores intermedios de la animación del número). Medición con 200 ms de latencia simulada: primera carga de unos 2,3 s a 1,2 s y cada mes anterior de unos 2,0 s a 0,15-0,4 s, con la mitad de peticiones en total. Pruebas de navegador adaptadas a la nueva lectura (catálogo una vez, meses naturales sin repetir, el año anterior cubierto, actualización explícita que vuelve a leer todas las fuentes) y en verde; las de error de lectura y de consumos siguen en verde. Tipos del módulo, lint y build sin errores nuevos. Limitaciones: no se ha medido con la base de datos real de Dani; las cifras de tiempo son con latencia simulada. La cola no ejecuta las pruebas de navegador.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialMonthsTest.mjs",
+    "scripts/financialInsightsTest.mjs",
+    "scripts/financialAnalysisTest.mjs",
+    "scripts/financialPropertyShapeTest.mjs",
+    "scripts/financialViewTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "8f240142e805fac0969beddc478febfe8fe932070c87dde6c60f6917c2115db7"
+}

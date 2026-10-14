@@ -23,7 +23,7 @@ const modules = {
       {...task,id:'excluded-cancelled',status:'cancelled',coste:999});
     data.stock_property_consumption_rules=[{property_id:'p',product_id:'sheets',quantity_per_cleaning:2}];
     data.stock_products=[{id:'sheets',name:'Sabanas matrimonio'}];
-    export const supabase={from(table){const calls=[];let payload=null;const q={select(...a){calls.push(['select',...a]);return q},insert(value){payload=value;return q},update(value){payload=value;return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},async maybeSingle(){if(table!=='financial_settings')throw new Error('Unexpected table');if(window.failFinance)return {data:null,error:{message:'Fallo simulado'}};return fetch('https://financial.local.test/config',{method:payload?'POST':'GET',headers:{'Content-Type':'application/json'},body:payload?JSON.stringify({payload,calls}):undefined}).then(r=>r.json())},range(from,to){if(window.failSource)return Promise.resolve({data:null,error:{message:'Source unavailable'}});window.reads=window.reads||[];window.reads.push({table,calls,from,to});return new Promise(resolve=>setTimeout(()=>resolve({data:data[table].slice(from,to+1),error:null}),window.sourceDelay || 0))}};return q}};
+    export const supabase={from(table){const calls=[];let payload=null;const q={select(...a){calls.push(['select',...a]);return q},insert(value){payload=value;return q},update(value){payload=value;return q},eq(...a){calls.push(['eq',...a]);return q},gte(...a){calls.push(['gte',...a]);return q},lte(...a){calls.push(['lte',...a]);return q},order(...a){calls.push(['order',...a]);return q},async maybeSingle(){if(table!=='financial_settings')throw new Error('Unexpected table');if(window.failFinance)return {data:null,error:{message:'Fallo simulado'}};return fetch('https://financial.local.test/config',{method:payload?'POST':'GET',headers:{'Content-Type':'application/json'},body:payload?JSON.stringify({payload,calls}):undefined}).then(r=>r.json())},range(from,to){if(window.failSource)return Promise.resolve({data:null,error:{message:'Source unavailable'}});window.reads=window.reads||[];window.reads.push({table,calls,from,to});return new Promise(resolve=>setTimeout(()=>{let rows=data[table];if(table==='tasks'){const g=calls.find(c=>c[0]==='gte'),l=calls.find(c=>c[0]==='lte');rows=rows.filter(t=>(!g||t.date>=g[2])&&(!l||t.date<=l[2]))}resolve({data:rows.slice(from,to+1),error:null})},window.sourceDelay || 0))}};return q}};
     // Extend the existing source fixture for the batched reader; the HTTP contract
     // and actual filtering are exercised by financialConsumptionTest.mjs.
     const sourceFrom = supabase.from;
@@ -88,7 +88,10 @@ try {
   await expect(page.getByRole('region',{name:'Comparativa del periodo'}).getByText('Productos de limpieza', { exact: true })).toBeVisible();
   await expect(page.getByRole('region',{name:'Comparativa del periodo'}).getByText(/(^|\D)3,00\s€/).first()).toBeVisible();
   const reads = await page.evaluate(() => window.reads);
-  assert.equal(reads.length, 6);
+  assert.equal(reads.filter(read => read.table !== 'tasks').length, 5, 'The catalog (properties, clients, staff, rules and products) is read once');
+  const monthReads = reads.filter(read => read.table === 'tasks');
+  assert.ok(monthReads.length >= 12, 'The twelve-month history is read in calendar months');
+  assert.equal(new Set(monthReads.map(read => read.calls.find(call => call[0] === 'gte')[2])).size, monthReads.length, 'No month is read twice');
   for (const read of reads) {
     if (read.table === 'stock_property_consumption_rules') {
       assert.deepEqual(read.calls.find(call => call[0] === 'eq'), ['eq', 'is_active', true]);
@@ -449,7 +452,8 @@ try {
   await expect(page.getByRole('button',{name:'Actualizando datos…',exact:true})).toBeVisible();
   await expect(page.getByLabel('Concepto del ingreso')).toHaveValue('Formulario que debe mantenerse');
   await expect(page.getByRole('button',{name:'Actualizar datos',exact:true})).toBeEnabled();
-  assert.equal(await page.evaluate(()=>window.reads.length),beforeFocus+6,'Explicit update must read every source');
+  const fresh=(await page.evaluate(()=>window.reads)).slice(beforeFocus).map(read=>read.table);
+  for(const table of ['tasks','properties','clients','cleaners','stock_property_consumption_rules'])assert.ok(fresh.includes(table),'Explicit update must read '+table+' again');
   await expect(page.getByLabel('Concepto del ingreso')).toHaveValue('Formulario que debe mantenerse');
   const retainedEnd=await page.getByLabel('Hasta',{exact:true}).inputValue();
   await page.reload();
@@ -475,9 +479,10 @@ try {
   await expect(annualRegion.locator('.recharts-bar')).toHaveCount(5);
   await expect(annualRegion.locator('ul[aria-label^="Leyenda"]').getByRole('listitem')).toHaveCount(5);
   await expect(annualRegion.locator('.recharts-line')).toHaveCount(3);
-  const annualRead=(await page.evaluate(()=>window.reads)).findLast(read=>read.table==='tasks');
-  assert.deepEqual(annualRead.calls.find(call=>call[0]==='gte'),['gte','date',String(Number(annualYear)-1)+'-01-01']);
-  assert.deepEqual(annualRead.calls.find(call=>call[0]==='lte'),['lte','date',annualYear+'-12-31']);
+  const taskRanges=(await page.evaluate(()=>window.reads)).filter(read=>read.table==='tasks').map(read=>[read.calls.find(call=>call[0]==='gte')[2],read.calls.find(call=>call[0]==='lte')[2]]);
+  assert.ok(taskRanges.some(([from])=>from===String(Number(annualYear)-1)+'-01-01'),'The previous year is read from its first day');
+  assert.ok(taskRanges.some(([,to])=>to===annualYear+'-12-31'),'The selected year is read to its last day');
+  assert.ok(taskRanges.every(([from,to])=>from.endsWith('-01')&&from.slice(0,7)===to.slice(0,7)),'Tasks are read one whole calendar month at a time');
   for(const [filter,label] of [['Clientes:','Cliente de prueba'],['Propiedades:','Apartamento Centro'],['Trabajadores:','Ana']]){
     await page.locator('summary').filter({hasText:filter}).click();
     await expect(page.getByLabel(label,{exact:true})).toBeChecked();
