@@ -18,6 +18,7 @@ const bags=[{taskId:'t',propertyCode:'DEMO-1',date:'2026-10-13',warehouseId:'w0'
 export const useInventoryWorkspace=days=>({central,warehouses,products,levels,bags,centralLevels:levels.filter(l=>l.warehouse_id==='central'),buildings:buildingInventory(warehouses,levels,bags,'central'),demand:pendingDemand(bags),from:'2026-10-13',to:days===1?'2026-10-13':days===7?'2026-10-19':'2026-10-15',stockError:window.fixtureError==='stock',stockLoading:false,demandError:window.fixtureError==='demand',demandReady:!window.fixtureError,settings:{preparation_mode:true},settingsError:false,updatedAt:1791885600000,refresh:()=>{window.retries=(window.retries||0)+1;}});
 `;
 const mocks={
+  '@/features/inventory/ProvisionalInventoryPanel':`export const ProvisionalInventoryPanel=()=>null;`,
   '@/features/inventory/useInventoryWorkspace':workspace,
   '@/components/sede/SedeSelector':`export const SedeSelector=()=>null;`,
   './StockWarehouseSelect':`export const StockWarehouseSelect=()=>null;`,
