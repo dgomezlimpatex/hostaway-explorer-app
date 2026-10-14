@@ -8,7 +8,7 @@ import type { StockProduct, StockWarehouse } from '@/types/stock';
 type Row = Record<string, unknown>;
 type Result = { data: Row[] | null; error: { message: string } | null };
 // Deliberately read-only interface: no RPC, write method, tokens or service credentials.
-interface ReadQuery extends PromiseLike<Result> {
+export interface ReadQuery extends PromiseLike<Result> {
   select(columns: string): ReadQuery;
   eq(column: string, value: string | boolean): ReadQuery;
   gte(column: string, value: string): ReadQuery;

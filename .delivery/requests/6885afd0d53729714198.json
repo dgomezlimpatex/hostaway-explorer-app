@@ -1,0 +1,24 @@
+{
+  "request": "Usar los registros recientes de Coruña y las bolsas preparadas para empezar un seguimiento automático provisional, dejando el stock anterior pendiente de recuento e incluyendo la revisión de amenities y consumibles.",
+  "reason": "La vista solicitada calcula en memoria una comparación de entradas confirmadas y bolsas registradas. Usa únicamente lecturas con el cliente y permisos existentes; no escribe datos ni activa el circuito físico. La visibilidad sigue los roles que ya pueden leer ese historial.",
+  "verification": "Build correcto; tipos de aplicación conservan los mismos 102 errores heredados y Node sin errores. Lint focalizado correcto. Pruebas del algoritmo real: correcciones por diferencia, recepciones retroactivas, duplicados, marcas anteriores, cambios de composición, Madrid, detalle ausente, cantidades inválidas, ajustes y consumo estimado sin doble resta. Navegador con componentes y React Query reales: refresco automático, fecha y URL, error oculta caché previa, reintento, sede y rol, modo circuito activo, móvil y escritorio. Consultas de producción solo de lectura usadas para contraste privado; las pruebas entregadas usan fixtures y ninguna sesión o red. No se ha certificado stock físico ni devoluciones no registradas.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/provisionalInventoryTest.mjs",
+    "scripts/provisionalInventoryBrowserTest.mjs",
+    "scripts/inventorySimplificationTest.mjs",
+    "scripts/inventorySimplificationBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "31c1bf1f1e175e8d54bd7ef8da98ce9d918f3bc15e2dcbb02bc2dc2e4346fff3"
+}
