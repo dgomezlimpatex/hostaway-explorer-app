@@ -50,9 +50,9 @@ export const buildStockReport = (movements: StockMovement[], levels: StockLevel[
   const automaticConsumption = movements.filter((movement) => movement.movement_type === 'consumo_automatico');
   const exits = movements.filter((movement) => movement.movement_type === 'salida' || movement.movement_type === 'consumo_automatico');
   const entries = movements.filter((movement) => movement.movement_type === 'entrada');
-  const lowStock = levels.filter((level) => level.minimum_quantity > 0 && level.current_quantity <= level.minimum_quantity);
+  const lowStock = levels.filter((level) => level.quantity_basis !== 'partial' && level.minimum_quantity > 0 && level.current_quantity <= level.minimum_quantity);
 
-  const reorder = levels
+  const reorder = levels.filter(level => level.quantity_basis !== 'partial')
     .map((level) => {
       const needed = Math.max(0, level.target_quantity - level.current_quantity);
       return { level, needed, estimatedCost: round2(needed * (level.cost_per_unit || 0)) };

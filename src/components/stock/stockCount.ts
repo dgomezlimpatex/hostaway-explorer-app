@@ -60,7 +60,7 @@ export const summarizeCount = (lines: CountLine[]): CountSummary => {
   return summary;
 };
 
-export const linesToApply = (lines: CountLine[]): CountLine[] => lines.filter((line) => line.status === 'difference');
+export const linesToApply = (lines: CountLine[]): CountLine[] => lines.filter((line) => line.status === 'difference' || line.status === 'same' && line.level.bag_accounting_active);
 
 export const countReason = (madridDate: string, note: string): string => {
   const [year, month, day] = madridDate.split('-');

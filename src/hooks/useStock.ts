@@ -113,6 +113,7 @@ export const useStockLevels = (warehouseId?: string, kind?: StockItemKind) => {
       warehouseId,
       kind,
     }),
+    refetchInterval: 60000,
     enabled: !!activeSede?.id,
   });
 };

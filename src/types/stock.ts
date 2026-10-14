@@ -44,6 +44,10 @@ export interface StockProduct {
 }
 
 export interface StockLevel {
+  quantity_basis?: 'registered' | 'partial' | 'counted';
+  counted_at?: string | null;
+  stock_version?: number;
+  bag_accounting_active?: boolean;
   id: string;
   product_id: string;
   warehouse_id: string;
@@ -195,6 +199,8 @@ export interface UpdateStockProductData {
 }
 
 export interface StockAdjustmentData {
+  verified_count?: boolean;
+  operation_key?: string;
   stock_level: StockLevel;
   movement_type: Extract<StockMovementType, 'entrada' | 'salida' | 'ajuste'>;
   quantity: number;

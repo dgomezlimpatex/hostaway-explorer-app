@@ -17,7 +17,7 @@ export default function InventoryDashboard() {
   return <StockLayout title="Tu inventario, de un vistazo" description="Empieza por el almacén central y continúa con lo que necesita el próximo reparto.">
     <WorkspaceNotice workspace={w} />
     {!w.stockLoading && !w.stockError && <>
-      {w.central && <ProvisionalInventoryPanel warehouseId={w.central.id} products={w.products} levels={w.centralLevels} cycleActive={w.cycleActive} refreshStock={w.refresh} />}
+      {w.central && !w.bagAccounting?.active && <ProvisionalInventoryPanel warehouseId={w.central.id} products={w.products} levels={w.centralLevels} cycleActive={w.cycleActive} refreshStock={w.refresh} />}
       <InventoryPeriod days={days} onChange={setDays} from={w.from} to={w.to} />
       <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         <section className="rounded-2xl bg-primary p-6 text-primary-foreground sm:p-8"><p className="text-sm text-white/70">Centro de distribución</p><h2 className="mt-2 text-2xl font-bold">{w.central?.name ?? 'Almacén central por identificar'}</h2><p className="mt-3 max-w-lg text-sm leading-relaxed text-white/85">{!w.central ? 'Revisa las ubicaciones antes de calcular necesidades.' : attention.length ? `${attention.length} ${attention.length === 1 ? 'producto necesita' : 'productos necesitan'} revisión de existencias o reposición.` : 'Revisa las reservas y el material necesario antes de preparar las bolsas.'}</p><Link to="/inventory/stock" className="mt-6 inline-flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-sm font-bold text-primary">Abrir almacén central<ArrowRight className="h-4 w-4" /></Link></section>

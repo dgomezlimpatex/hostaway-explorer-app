@@ -79,6 +79,7 @@ export function StockCountDialog({ open, onOpenChange, levels }: StockCountDialo
             quantity: line.counted as number,
             reason,
             user_id: user!.id,
+            verified_count: line.level.bag_accounting_active === true,
           });
           applied += 1;
         } catch (error) {
@@ -116,7 +117,7 @@ export function StockCountDialog({ open, onOpenChange, levels }: StockCountDialo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" />Recuento físico</DialogTitle>
           <DialogDescription>
-            Escribe lo que has contado. Las líneas en blanco no se tocan y solo se ajustan las que difieren del sistema; cada ajuste queda registrado como movimiento.
+            {levels.some(level=>level.bag_accounting_active) ? 'Cuenta solo el material suelto, sin incluir bolsas preparadas. Las líneas en blanco siguen pendientes. Una cantidad coincidente también queda acreditada como recuento. Las recepciones anteriores al recuento conservan su historial y no se suman de nuevo.' : 'Escribe lo que has contado. Las líneas en blanco no se tocan y solo se ajustan las que difieren del sistema; cada ajuste queda registrado como movimiento.'}
           </DialogDescription>
         </DialogHeader>
 

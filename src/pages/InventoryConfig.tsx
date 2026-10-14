@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { StockLayout } from '@/components/stock/StockLayout';
 import LaundryCycleSetup from '@/components/stock/LaundryCycleSetup';
+import BagAccountingSetup from '@/components/stock/BagAccountingSetup';
 import { useAuth } from '@/hooks/useAuth';
 import { useProperties } from '@/hooks/useProperties';
 import {
@@ -102,6 +103,7 @@ export default function InventoryConfig() {
       showWarehouseSelect={false}
     >
       <div className="space-y-4">
+        <BagAccountingSetup />
         <LaundryCycleSetup />
         <Card className={cn('border-l-4', autoConsumptionReady ? 'border-l-emerald-500' : 'border-l-amber-500')}>
           <CardHeader>

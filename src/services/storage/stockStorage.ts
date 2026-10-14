@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { recordAiObservedEvent } from '@/services/aiObservedEvents';
 import { madridRangeBounds } from '@/utils/stockDateRange';
+import { adjustBagStock } from '@/services/stockBagAccounting';
 import type {
   CreateStockCategoryData,
   CreateStockProductData,
@@ -540,7 +541,8 @@ class StockStorageService {
 
   async adjustStock(input: StockAdjustmentData): Promise<void> {
     // La función SQL bloquea la fila y escribe stock y movimiento en una sola transacción.
-    const { data, error } = await (db as unknown as AdjustStockRpcClient).rpc('adjust_stock_level', {
+    const tracked = input.stock_level.bag_accounting_active || input.stock_level.quantity_basis === 'partial';
+    const { data, error } = tracked ? {data:await adjustBagStock(input),error:null} : await (db as unknown as AdjustStockRpcClient).rpc('adjust_stock_level', {
       stock_level_id_param: input.stock_level.id,
       movement_type_param: input.movement_type,
       quantity_param: input.quantity,
@@ -550,7 +552,8 @@ class StockStorageService {
 
     if (error) throw new Error(translateAdjustStockError(error.message));
 
-    const result = (data ?? {}) as { previous_quantity?: number; new_quantity?: number; quantity?: number };
+    const result = (data ?? {}) as { previous_quantity?: number; new_quantity?: number; quantity?: number; replayed?:boolean };
+    if(result.replayed) return;
     void recordAiObservedEvent({
       eventType: 'stock_adjusted',
       entityType: 'stock_level',
@@ -708,8 +711,8 @@ class StockStorageService {
 
   getDashboardStats(levels: StockLevel[], warehouses: StockWarehouse[]): StockDashboardStats {
     const uniqueProducts = new Set(levels.map((level) => level.product_id));
-    const lowStock = levels.filter((level) => level.current_quantity > 0 && level.current_quantity <= level.minimum_quantity).length;
-    const criticalStock = levels.filter((level) => level.current_quantity <= 0).length;
+    const lowStock = levels.filter((level) => level.quantity_basis !== 'partial' && level.current_quantity > 0 && level.current_quantity <= level.minimum_quantity).length;
+    const criticalStock = levels.filter((level) => level.quantity_basis !== 'partial' && level.current_quantity <= 0).length;
     const totalUnits = levels.reduce((sum, level) => sum + level.current_quantity, 0);
     const totalValue = levels.reduce(
       (sum, level) => sum + level.current_quantity * (level.cost_per_unit || 0),
