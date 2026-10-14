@@ -1,0 +1,21 @@
+{
+  "request": "Quitar el texto «Facturación de cada mes» de la barra de meses, dejar la leyenda como cuadrado verde oscuro con «Beneficio» y ocultar visualmente el recuento de Rentabilidad",
+  "reason": "Solo textos y clases de presentación; no cambia datos, cálculos, permisos ni integraciones. Se retira un elemento de texto, por eso no pasa el filtro visual",
+  "verification": "Test Node que renderiza la barra real con datos locales (falla con el código anterior); pruebas de navegador financialAnalysisBrowserTest y financialAnalyticsBrowserTest correctas en local; build correcto, sin errores nuevos de tipos y lint limpio. Los navegadores no se listan porque la cola no tiene Chromium",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/financialMonthBarLabelsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "7d55dfc16f03f6aa05cd04fdf5abf9beaa27dae8a1948cfba04670942482412a"
+}
