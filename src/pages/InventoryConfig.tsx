@@ -109,10 +109,11 @@ export default function InventoryConfig() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" />
-              Consumo automático
+              Consumo al completar limpiezas
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">Este bloque controla el descuento por limpieza. El descuento por bolsas se gestiona en el arranque diario de arriba; utiliza una sola vía de descuento.</p>
             <div className="grid gap-3 md:grid-cols-3">
               <StatusMetric label="Sede activa" value={activeSede?.nombre || '-'} />
               <StatusMetric label="Propiedades con consumo" value={`${diagnostics.propertiesWithPositiveConsumption}/${activeProperties.length}`} />
@@ -122,7 +123,7 @@ export default function InventoryConfig() {
             <div className="grid gap-3 md:grid-cols-2">
               <SwitchRow
                 title="Modo de preparación"
-                description="Impide descuentos automáticos mientras se cargan stock inicial, mínimos y objetivos."
+                description="Impide el descuento al completar limpiezas mientras se cargan existencias y reservas. No controla el descuento por bolsas."
                 checked={settings?.preparation_mode ?? true}
                 disabled={settingsLoading || updateSettings.isPending}
                 onCheckedChange={(checked) => handleUpdateSettings({ preparation_mode: checked })}
@@ -137,9 +138,9 @@ export default function InventoryConfig() {
             </div>
 
             <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-              Estado actual:{' '}
+              Estado del descuento por limpieza:{' '}
               <Badge variant={autoConsumptionReady ? 'default' : 'outline'}>
-                {autoConsumptionReady ? 'Activo para esta sede' : 'Seguro / sin descuentos'}
+                {autoConsumptionReady ? 'Activo para esta sede' : 'Desactivado'}
               </Badge>
             </div>
           </CardContent>

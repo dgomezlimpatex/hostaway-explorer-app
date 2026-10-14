@@ -25,10 +25,12 @@ Preparado para la cola con autorización específica; no aplicar a producción p
 3. Aplicar únicamente `20261014173000_stock_bag_accounting.sql` y `20261014173100_stock_bag_estimated_cutover.sql`, en orden. No usar `db push` ni aplicar migraciones históricas.
 4. Publicar solo `laundry-route-workflow`, conservando su autenticación de sesión/PIN y sus dependencias verificadas. La consulta de modo es privada para la función; no se concede a clientes públicos.
 5. Incorporar el commit revisado y entregar Vercel al workflow reservado. Verificar los dos alias y los assets previstos. Las migraciones y la nueva interfaz, por sí solas, dejan el modo desactivado.
-6. Si la activación está expresamente autorizada, obtener una vista previa productiva nueva con una sesión administrativa autorizada, revisar sus saldos y confirmar su huella con una identidad de operación persistente. No reutilizar huellas de pruebas ni inventar `auth.uid()`.
+6. La interfaz nueva solo está disponible después de publicar. Si la activación está expresamente autorizada, preparar su registro operativo en una propuesta separada y reservar un nuevo turno después de cerrar la publicación del código. Con ese turno activo, obtener una vista previa productiva nueva desde la sesión administrativa de la aplicación, revisar sus saldos y confirmar su huella con una identidad de operación persistente. No reutilizar huellas de pruebas ni inventar `auth.uid()`.
 7. Verificar configuración activa de la sede solicitada, existencias parciales, ausencia de doble consumo y permanencia del circuito físico completo apagado. No preparar bolsas ni introducir movimientos de prueba en producción.
 
 La publicación cambia SQL, una Edge Function y la aplicación. La activación posterior concilia datos reales. Ambos alcances requieren autorización específica según AGENTS.md. Las recepciones mantienen su comunicación existente; no se añaden destinatarios, envíos de prueba ni notificaciones.
+
+La autorización de Dani para publicar la PR #143 y activar el saldo provisional de Coruña desde el 8 de octubre de 2026 cubre esos dos pasos. La apertura queda acreditada por la operación administrativa persistida y su comprobación posterior, conservadas en el informe privado; no por esta documentación. No se incluyen existencias reales, códigos de propiedades ni identidades de trabajadores en el repositorio público.
 
 ## Verificación local
 
