@@ -1,13 +1,25 @@
-/* Scoped to inventory: shared app typography, surfaces and responsive data tables. */
-.inventory-workspace .shadow-sm { box-shadow: 0 2px 8px hsl(var(--foreground) / .025); }
+/* Inventory workspace: one compact system for surfaces, controls, lists and states. */
+.inventory-workspace { font-family: "Source Sans 3", sans-serif; font-size: .875rem; line-height: 1.45; }
+.inventory-workspace h1, .inventory-workspace h2, .inventory-workspace h3 { font-family: Manrope, sans-serif; }
+.inventory-workspace .inv-surface { background: #fff; border: 1px solid hsl(var(--border)); border-radius: .625rem; }
+.inventory-workspace .inv-control { height: 2.5rem; border: 1px solid hsl(var(--border)); border-radius: .5rem; background: #fff; padding: 0 .75rem; font-size: .875rem; max-width: 100%; }
+.inventory-workspace .inv-control:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 1px; }
+.inventory-workspace .inv-segmented { display: flex; gap: .25rem; overflow-x: auto; scrollbar-width: none; max-width: 100%; padding: .125rem; }
+.inventory-workspace .inv-segmented::-webkit-scrollbar { display: none; }
+.inventory-workspace .inv-segmented button { display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap; min-height: 2.5rem; padding: 0 .75rem; border-radius: .5rem; border: 1px solid hsl(var(--border)); background: #fff; font-weight: 500; color: hsl(var(--foreground) / .8); }
+.inventory-workspace .inv-segmented button span { font-size: .8125rem; color: hsl(var(--muted-foreground)); }
+.inventory-workspace .inv-segmented button:hover { border-color: hsl(var(--primary) / .35); }
+.inventory-workspace .inv-segmented button[aria-pressed=true] { background: hsl(var(--primary) / .07); border-color: hsl(var(--primary) / .45); color: hsl(var(--primary)); font-weight: 600; }
+.inventory-workspace .inv-segmented button[aria-pressed=true] span { color: hsl(var(--primary)); }
+.inventory-workspace .inv-segmented button:focus-visible, .inventory-workspace .inv-row-button:focus-visible, .inventory-workspace .inv-explain summary:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
+.inventory-workspace .inv-explain summary { list-style: none; }
+.inventory-workspace .inv-explain summary::-webkit-details-marker { display: none; }
+/* Column header for row lists; hidden on phones where each value carries its own label. */
+.inventory-workspace .inv-head { font-size: .75rem; font-weight: 600; color: hsl(var(--muted-foreground)); background: hsl(var(--muted) / .5); }
+.inventory-workspace .inv-num { font-variant-numeric: tabular-nums; font-weight: 600; font-size: .9375rem; color: hsl(var(--foreground)); }
+.inventory-workspace .inv-selected { background: hsl(var(--primary) / .045); box-shadow: inset 3px 0 0 hsl(var(--primary)); }
 .inventory-workspace table { font-size: .8125rem; }
 .inventory-workspace thead { background: hsl(var(--muted) / .65); }
-.inventory-workspace th { white-space: nowrap; font-size: .6875rem; letter-spacing: .025em; }
-.inventory-workspace td { padding-top: .9rem; padding-bottom: .9rem; }
-.inventory-workspace tbody tr:hover { background: hsl(var(--primary) / .025); }
-.inventory-workspace h3 { font-size: 1rem; line-height: 1.5; }
-.inventory-workspace input, .inventory-workspace [role=combobox] { min-height: 2.5rem; }
-@media (max-width: 640px) {
-  .inventory-workspace td { min-width: 6rem; }
-  .inventory-workspace td:first-child { min-width: 10rem; }
-}
+.inventory-workspace th { white-space: nowrap; font-size: .75rem; }
+@media (max-width: 640px) { .inventory-workspace td, .inventory-workspace th { padding-left: .5rem; padding-right: .5rem; } }
+@media (prefers-reduced-motion: reduce) { .inventory-workspace * { transition: none !important; animation: none !important; } }

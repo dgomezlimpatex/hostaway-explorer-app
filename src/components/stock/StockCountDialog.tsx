@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ClipboardCheck } from 'lucide-react';
@@ -49,12 +49,25 @@ export function StockCountDialog({ open, onOpenChange, levels }: StockCountDialo
     [levels]
   );
 
+  // Counted quantities survive closing the dialog or losing the page until they are saved or discarded.
+  const draftKey = `inventory-count-draft:${user?.id ?? 'anonymous'}`;
+  const persistDraft = useCallback((values: Record<string, string>, text: string) => {
+    const filled = Object.fromEntries(Object.entries(values).filter(([, value]) => String(value).trim() !== ''));
+    try {
+      if (Object.keys(filled).length || text.trim()) localStorage.setItem(draftKey, JSON.stringify({ drafts: filled, note: text }));
+      else localStorage.removeItem(draftKey);
+    } catch { /* storage unavailable: the draft lives only while the dialog is open */ }
+  }, [draftKey]);
   useEffect(() => {
     if (!open) return;
-    setDrafts({});
-    setNote('');
+    let saved: { drafts?: unknown; note?: unknown } = {};
+    try { saved = JSON.parse(localStorage.getItem(draftKey) || '{}'); } catch { saved = {}; }
+    setDrafts(saved.drafts && typeof saved.drafts === 'object' ? saved.drafts as Record<string, string> : {});
+    setNote(typeof saved.note === 'string' ? saved.note : '');
     setSearch('');
-  }, [open]);
+  }, [open, draftKey]);
+  useEffect(() => { if (open) persistDraft(drafts, note); }, [open, drafts, note, persistDraft]);
+  const discardDraft = () => { setDrafts({}); setNote(''); persistDraft({}, ''); };
 
   const lines = useMemo(() => buildCountLines(sortedLevels, drafts), [sortedLevels, drafts]);
   const summary = useMemo(() => summarizeCount(lines), [lines]);
@@ -70,6 +83,7 @@ export function StockCountDialog({ open, onOpenChange, levels }: StockCountDialo
       const reason = countReason(formatMadridDate(new Date()), note);
       const failed: Array<{ name: string; message: string }> = [];
       let applied = 0;
+      const appliedIds: string[] = [];
       // Cada línea es un ajuste atómico propio: un fallo no deshace las demás y se informa al final.
       for (const line of toApply) {
         try {
@@ -82,6 +96,7 @@ export function StockCountDialog({ open, onOpenChange, levels }: StockCountDialo
             verified_count: line.level.bag_accounting_active === true,
           });
           applied += 1;
+          appliedIds.push(line.level.id);
         } catch (error) {
           failed.push({
             name: `${line.level.product?.name || 'Producto'} (${line.level.warehouse?.name || 'almacén'})`,
@@ -89,19 +104,24 @@ export function StockCountDialog({ open, onOpenChange, levels }: StockCountDialo
           });
         }
       }
-      return { applied, failed };
+      return { applied, failed, appliedIds };
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-levels', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['stock-alerts', activeSede?.id] });
     },
-    onSuccess: ({ applied, failed }) => {
+    onSuccess: ({ applied, failed, appliedIds }) => {
+      const remaining = Object.fromEntries(Object.entries(drafts).filter(([id]) => !appliedIds.includes(id)));
+      setDrafts(remaining);
       if (failed.length === 0) {
-        toast.success(`Recuento aplicado: ${applied} ${applied === 1 ? 'ajuste' : 'ajustes'}`);
+        setNote('');
+        persistDraft(remaining, '');
+        toast.success(`Recuento guardado: ${applied} ${applied === 1 ? 'línea' : 'líneas'}`);
         onOpenChange(false);
         return;
       }
+      persistDraft(remaining, note);
       toast.error(`${failed.length} ${failed.length === 1 ? 'línea no se pudo' : 'líneas no se pudieron'} ajustar (${applied} aplicadas): ${failed.map((item) => `${item.name}: ${item.message}`).join('; ')}`, { duration: 15000 });
     },
     onError: (error) => {
@@ -115,7 +135,7 @@ export function StockCountDialog({ open, onOpenChange, levels }: StockCountDialo
     <Dialog open={open} onOpenChange={(next) => { if (!applyCount.isPending) onOpenChange(next); }}>
       <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-4xl overflow-y-auto overflow-x-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" />Recuento físico</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5" />Contar existencias</DialogTitle>
           <DialogDescription>
             {levels.some(level=>level.bag_accounting_active) ? 'Cuenta solo el material suelto, sin incluir bolsas preparadas. Las líneas en blanco siguen pendientes. Una cantidad coincidente también queda acreditada como recuento. Las recepciones anteriores al recuento conservan su historial y no se suman de nuevo.' : 'Escribe lo que has contado. Las líneas en blanco no se tocan y solo se ajustan las que difieren del sistema; cada ajuste queda registrado como movimiento.'}
           </DialogDescription>
@@ -138,6 +158,12 @@ export function StockCountDialog({ open, onOpenChange, levels }: StockCountDialo
             {summary.withDifference > 0 && <> ({formatQuantity(summary.unitsDifference)} unidades netas · {formatCurrency(summary.valueDifference)})</>}
             {summary.invalid > 0 && <span className="text-red-700"> · {summary.invalid} con valor no válido</span>}
           </p>
+          {lines.some((line) => line.status !== 'pending') && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/15 bg-primary/[.04] px-3 py-2 text-xs">
+              <span>Borrador sin guardar: se conserva en este dispositivo si cierras, hasta guardarlo o descartarlo.</span>
+              <Button type="button" variant="ghost" size="sm" className="h-8 text-red-700 hover:text-red-800" disabled={applyCount.isPending} onClick={discardDraft}>Descartar recuento</Button>
+            </div>
+          )}
 
           <ul className="divide-y rounded-md border">
             {visibleLines.length === 0 && (
@@ -167,9 +193,9 @@ export function StockCountDialog({ open, onOpenChange, levels }: StockCountDialo
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" disabled={applyCount.isPending} onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button type="button" variant="outline" disabled={applyCount.isPending} onClick={() => onOpenChange(false)}>Cerrar</Button>
           <Button type="button" disabled={!canApply} onClick={() => applyCount.mutate()}>
-            {applyCount.isPending ? 'Aplicando…' : `Aplicar ${toApply.length} ${toApply.length === 1 ? 'ajuste' : 'ajustes'}`}
+            {applyCount.isPending ? 'Guardando…' : `Guardar recuento (${toApply.length} ${toApply.length === 1 ? 'línea' : 'líneas'})`}
           </Button>
         </DialogFooter>
       </DialogContent>

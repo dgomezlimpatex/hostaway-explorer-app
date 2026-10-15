@@ -1,56 +1,182 @@
+// Local browser check of the inventory workflows. Real pages and dialogs, mocked reads and writes, no network or session.
 import assert from 'node:assert/strict';
-import { build } from 'esbuild';
+import { existsSync } from 'node:fs';
 import { chromium, expect } from '@playwright/test';
-import { readFileSync, existsSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import postcss from 'postcss';
-import tailwindcss from 'tailwindcss';
-import autoprefixer from 'autoprefixer';
-const workspace=`
-import {buildingInventory,pendingDemand} from '@/features/inventory/inventoryDomain';
-const central={id:'central',name:'Simón Bolívar',is_active:true,location_type:'central'};
-const warehouses=[central,...Array.from({length:23},(_,i)=>({id:'w'+i,name:'Edificio '+i,is_active:true,location_type:'building_storage'}))];
-const products=[{id:'sheet',name:'Sábanas matrimonio',is_consumable:true,category:{kind:'laundry'},unit_of_measure:'unidades'},{id:'spare',name:'Edredones',is_consumable:false,category:{kind:'laundry'},unit_of_measure:'unidades'},{id:'soap',name:'Amenities baño',is_consumable:true,category:{kind:'amenity'},unit_of_measure:'unidades'}];
-const levels=products.map((product,i)=>({id:'l'+i,warehouse_id:'central',product_id:product.id,product,current_quantity:i===0?2:10,minimum_quantity:0,target_quantity:0,cost_per_unit:null}));
-levels.push({id:'sp',warehouse_id:'w0',product_id:'spare',product:products[1],current_quantity:0,minimum_quantity:1,target_quantity:2});
-const bags=[{taskId:'t',propertyCode:'DEMO-1',date:'2026-10-13',warehouseId:'w0',state:'pending',lines:[{productId:'sheet',name:'Sábanas matrimonio',quantity:3}]},{taskId:'t2',propertyCode:'DEMO-2',date:'2026-10-13',warehouseId:'w1',state:'prepared',lines:[{productId:'sheet',name:'Sábanas matrimonio',quantity:3}]}];
-export const useInventoryWorkspace=days=>({central,warehouses,products,levels,bags,centralLevels:levels.filter(l=>l.warehouse_id==='central'),buildings:buildingInventory(warehouses,levels,bags,'central'),demand:pendingDemand(bags),from:'2026-10-13',to:days===1?'2026-10-13':days===7?'2026-10-19':'2026-10-15',stockError:window.fixtureError==='stock',stockLoading:false,demandError:window.fixtureError==='demand',demandReady:!window.fixtureError,settings:{preparation_mode:true},settingsError:false,updatedAt:1791885600000,refresh:()=>{window.retries=(window.retries||0)+1;}});
-`;
-const mocks={
-  '@/features/inventory/ProvisionalInventoryPanel':`export const ProvisionalInventoryPanel=()=>null;`,
-  '@/features/inventory/useInventoryWorkspace':workspace,
-  '@/components/sede/SedeSelector':`export const SedeSelector=()=>null;`,
-  './StockWarehouseSelect':`export const StockWarehouseSelect=()=>null;`,
-  '@/components/stock/WarehouseSettings':`export default ()=>null;`,
-  '@/hooks/useRolePermissions':`export const useRolePermissions=()=>({hasPermission:()=>true,isAdminOrManager:()=>true});`,
-};
-for(const name of ['StockCountDialog','StockBulkSetupDialog','StockAdjustmentDialog','StockTransferDialog','StockProductDialog']) mocks['@/components/stock/'+name]=`export const ${name}=({open,onOpenChange,levels,initialWarehouseId})=>open?<div role="dialog" aria-label="${name}"><p>{initialWarehouseId||levels?.map(l=>l.product.name).join(', ')}</p><button onClick={()=>onOpenChange(false)}>Cerrar operación de prueba</button></div>:null;`;
-const built=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import {MemoryRouter,Routes,Route} from 'react-router-dom';import Dashboard from './src/pages/InventoryDashboard';import Stock from './src/pages/InventoryStock';import Buildings from './src/pages/InventoryWarehouses';import Preparation from './src/pages/InventoryPreparation';const root=createRoot(document.getElementById('root'));window.renderFixture=()=>root.render(<MemoryRouter key={Math.random()} initialEntries={[window.fixturePath||'/inventory']}><Routes><Route path='/inventory' element={<Dashboard/>}/><Route path='/inventory/stock' element={<Stock/>}/><Route path='/inventory/laundry' element={<Stock kind='laundry'/>}/><Route path='/inventory/warehouses' element={<Buildings/>}/><Route path='/inventory/preparation' element={<Preparation/>}/></Routes></MemoryRouter>);window.renderFixture();`,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',metafile:true,loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'offline',setup(b){b.onResolve({filter:/.*/},a=>Object.hasOwn(mocks,a.path)?{path:a.path,namespace:'fixture'}:null);b.onLoad({filter:/.*/,namespace:'fixture'},a=>({contents:mocks[a.path],loader:'tsx',resolveDir:process.cwd()}));}}]});
-assert.ok(!Object.keys(built.metafile.inputs).some(p=>p.includes('integrations/supabase')),'No backend or session in fixture');
-const cssSource=readFileSync('src/index.css','utf8').replace(/^\s*@import\s+"@fontsource\/[^"\n]+";\s*$/gm,'');
-const {css}=await postcss([tailwindcss('tailwind.config.ts'),autoprefixer]).process(cssSource,{from:'src/index.css'});
-const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body><div id="root"></div><script>${built.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></body></html>`;
-writeFileSync(join(tmpdir(),'inventory-simplification-fixture.html'),html);
-const executablePath=process.platform==='linux'&&existsSync('/usr/bin/google-chrome')?'/usr/bin/google-chrome':undefined;
-const browser=await chromium.launch({headless:true,executablePath,...(process.platform==='win32'?{channel:'msedge'}:{})});
-try{
-const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
-await page.route('**/*',r=>r.request().url()==='https://inventory.local.test/'?r.fulfill({contentType:'text/html',body:html}):r.abort());
-await page.goto('https://inventory.local.test/');
-await expect(page.getByRole('heading',{name:'Simón Bolívar'})).toBeVisible();await expect(page.getByText('Faltan 1',{exact:true})).toBeVisible();
-await page.getByRole('link',{name:'Abrir almacén central'}).click();
-await expect(page.getByRole('heading',{name:'Sábanas matrimonio'})).toBeVisible();await expect(page.getByText('Edificio 22',{exact:true})).not.toBeVisible();
-await page.getByRole('button',{name:'Repuestos',exact:true}).click();await expect(page.getByRole('heading',{name:'Edredones'})).toBeVisible();await expect(page.getByRole('heading',{name:'Sábanas matrimonio'})).toHaveCount(0);
-await page.getByRole('button',{name:'Contar existencias'}).click();await expect(page.getByRole('dialog')).toContainText('Edredones');await page.getByRole('button',{name:'Cerrar operación de prueba'}).click();
-await page.getByRole('button',{name:'Todo',exact:true}).click();await page.getByRole('textbox',{name:'Buscar producto'}).fill('sabanas');await expect(page.getByRole('heading',{name:'Sábanas matrimonio'})).toBeVisible();await expect(page.getByRole('heading',{name:'Edredones'})).toHaveCount(0);
-await page.getByRole('link',{name:'Edificios',exact:true}).click();await expect(page.getByRole('heading',{name:'Edificio 0',exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:'Edificio 22',exact:true})).toHaveCount(0);await expect(page.getByText('Repuestos del edificio',{exact:true})).not.toBeVisible();
-await page.getByRole('button',{name:'Todos los edificios'}).click();await expect(page.getByRole('heading',{name:'Edificio 22',exact:true})).toBeVisible();await page.getByRole('textbox',{name:'Buscar edificio'}).fill('Edificio 0');await page.locator('summary').filter({has:page.getByRole('heading',{name:'Edificio 0',exact:true})}).click();await expect(page.getByText('Repuestos del edificio',{exact:true})).toBeVisible();
-await page.getByRole('link',{name:'Mudas y reparto',exact:true}).click();await expect(page.getByText('DEMO-1',{exact:true})).not.toBeVisible();await page.locator('summary').filter({hasText:'Edificio 0'}).click();await expect(page.getByText('DEMO-1',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Preparadas',exact:true}).click();await page.locator('summary').filter({hasText:'Edificio 1'}).click();await expect(page.getByText('Preparada · entrega sin confirmar',{exact:true})).toBeVisible();
-for(const path of ['/inventory','/inventory/stock','/inventory/warehouses','/inventory/preparation']){
-await page.setViewportSize({width:390,height:844});await page.evaluate(path=>{window.fixturePath=path;window.renderFixture();},path);await expect(page.getByRole('navigation',{name:'Secciones de inventario'})).toBeVisible();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,`No horizontal overflow ${path}`);
-}
-await page.evaluate(()=>{window.fixtureError='stock';window.fixturePath='/inventory/stock';window.renderFixture();});await expect(page.getByRole('alert')).toContainText('No se pudo consultar el inventario');await expect(page.getByRole('heading',{name:'Sábanas matrimonio'})).toHaveCount(0);await page.getByRole('button',{name:'Reintentar',exact:true}).click();assert.equal(await page.evaluate(()=>window.retries),1);
-await page.evaluate(()=>{window.fixtureError='demand';window.fixturePath='/inventory/preparation';window.renderFixture();});await expect(page.getByText('No se pudieron cargar las mudas. Reintenta la consulta.')).toBeVisible();await expect(page.getByText('DEMO-1',{exact:true})).toHaveCount(0);
-assert.deepEqual(errors,[]);console.log('PASS inventory browser: four pages, central default, folded buildings and bags, filters, accented search, count scope, mobile layout and truthful errors. Real components, mocked reads and operations, no network.');
-}finally{await browser.close();}
+import { buildInventoryFixture } from './inventoryWorkspaceFixture.mjs';
+
+const html = await buildInventoryFixture();
+const browser = await chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : existsSync('/usr/bin/google-chrome') ? { executablePath: '/usr/bin/google-chrome' } : {}) });
+const where = page => page.getByLabel('Ubicación actual', { exact: true }).textContent();
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.route('**/*', r => r.request().url() === 'https://inventory.local.test/' ? r.fulfill({ contentType: 'text/html', body: html }) : r.abort());
+  await page.goto('https://inventory.local.test/');
+  const render = (path, setup = {}) => page.evaluate(([p, s]) => { Object.assign(window, { fixtureError: undefined, fixtureRole: undefined, failWrites: false, writes: [] }, s); window.fixturePath = p; window.renderFixture(); }, [path, setup]);
+
+  // Summary: the shortage, its cause and the next action come first.
+  const shortage = page.getByRole('link', { name: /Faltan 7 Sábanas 150 para las mudas/ });
+  await expect(shortage).toContainText('Disponible en Simón Bolívar: 12 · Para mudas por preparar: 19');
+  await expect(page.getByRole('link', { name: /2 productos sin reserva definida/ })).toContainText('No es una falta');
+  await expect(page.getByRole('link', { name: /4 mudas preparadas sin entrega confirmada/ })).toBeVisible();
+  await shortage.click();
+  assert.equal(await where(page), '/inventory/stock?product=sab150');
+  const sheets = page.getByRole('button', { name: /Sábanas 150/ });
+  await expect(sheets).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByText('6 reservadas en bolsas, incluidas en el stock')).toBeVisible();
+
+  // Search and filter keep the location; accents do not matter.
+  await page.getByRole('button', { name: /^Necesitan atención/ }).click();
+  await expect(page.getByRole('button', { name: /Toallas grandes/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Fundas de almohada/ })).toHaveCount(0);
+  await page.getByRole('button', { name: /^Todos/ }).click();
+  await page.getByRole('searchbox', { name: 'Buscar producto' }).fill('sabanas');
+  await expect(page.getByRole('button', { name: /Sábanas 90/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Edredones/ })).toHaveCount(0);
+  await page.getByRole('searchbox', { name: 'Buscar producto' }).fill('');
+  await page.getByRole('button', { name: /^Comprobar saldo/ }).click();
+  await expect(page.getByRole('button', { name: /Bayetas cocina/ })).toBeVisible();
+  await expect(page.getByText('Revisar saldo negativo')).toBeVisible();
+  await page.getByRole('button', { name: /^Todos/ }).click();
+
+  // Another location never mixes its balances with the central one.
+  await page.getByLabel('Consultar ubicación').selectOption('b0');
+  await expect(page.getByRole('heading', { name: 'Orzán 12', level: 1 })).toBeVisible();
+  await expect(page.getByText('Para mudas', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Protector de colchón/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Sábanas 150/ })).toHaveCount(0);
+  await page.getByLabel('Consultar ubicación').selectOption('central');
+
+  // Register a movement: the preview warns before saving; a failed save keeps the form.
+  await page.getByRole('button', { name: /Toallas grandes/ }).click();
+  const detail = page.locator('li').filter({ has: page.getByRole('button', { name: /Toallas grandes/ }) });
+  await detail.getByRole('button', { name: 'Registrar movimiento' }).last().click();
+  const adjust = page.getByRole('dialog', { name: 'Registrar movimiento' });
+  await adjust.getByText('Salida', { exact: true }).click();
+  await adjust.getByRole('spinbutton', { name: 'Cantidad' }).fill('50');
+  await expect(adjust.getByRole('status')).toContainText('Quedará en -15: la salida supera el saldo registrado');
+  await adjust.getByRole('spinbutton', { name: 'Cantidad' }).fill('5');
+  await expect(adjust.getByRole('status')).toHaveText('Quedará en 30');
+  await adjust.getByLabel('Motivo').fill('Rotura en lavandería');
+  await page.evaluate(() => { window.failWrites = true; });
+  await adjust.getByRole('button', { name: 'Guardar movimiento' }).click();
+  await expect(page.getByText('No se pudo guardar: conexión perdida')).toBeVisible();
+  await expect(adjust).toBeVisible();
+  await expect(adjust.getByLabel('Motivo')).toHaveValue('Rotura en lavandería');
+  await page.evaluate(() => { window.failWrites = false; });
+  await adjust.getByRole('button', { name: 'Guardar movimiento' }).click();
+  await expect(adjust).toHaveCount(0);
+  const saved = await page.evaluate(() => window.writes.filter(w => w.name === 'adjust').map(w => [w.v.movement_type, w.v.quantity, w.v.reason]));
+  assert.deepEqual(saved, [['salida', 5, 'Rotura en lavandería'], ['salida', 5, 'Rotura en lavandería']]);
+
+  // Move: the destination must be chosen explicitly.
+  await detail.getByRole('button', { name: 'Mover a otra ubicación' }).click();
+  const move = page.getByRole('dialog', { name: 'Mover a otra ubicación' });
+  await move.getByRole('spinbutton', { name: 'Cantidad' }).fill('4');
+  await expect(move.getByRole('status')).toHaveText('Quedarán 31 disponibles en origen.');
+  await expect(move.getByRole('button', { name: 'Mover', exact: true })).toBeDisabled();
+  await move.getByRole('combobox', { name: 'Ubicación de destino' }).click();
+  await page.getByRole('option', { name: 'Orzán 12' }).click();
+  await move.getByLabel('Motivo').fill('Reposición del trastero');
+  await move.getByRole('button', { name: 'Mover', exact: true }).click();
+  await expect(move).toHaveCount(0);
+  assert.equal(await page.evaluate(() => window.writes.find(w => w.name === 'transfer')?.v.to_warehouse_id), 'b0');
+
+  // Count: the draft survives closing; discard is explicit; failed lines stay pending.
+  await page.getByRole('button', { name: 'Contar existencias' }).click();
+  let count = page.getByRole('dialog', { name: /Contar existencias/ });
+  await count.getByLabel('Contado: Sábanas 90 en Simón Bolívar').fill('38');
+  await expect(count.getByText('Borrador sin guardar')).toBeVisible();
+  await count.getByRole('button', { name: 'Cerrar' }).first().click();
+  await page.getByRole('button', { name: 'Contar existencias' }).click();
+  count = page.getByRole('dialog', { name: /Contar existencias/ });
+  await expect(count.getByLabel('Contado: Sábanas 90 en Simón Bolívar')).toHaveValue('38');
+  await page.evaluate(() => { window.failWrites = true; });
+  await count.getByRole('button', { name: 'Guardar recuento (1 línea)' }).click();
+  await expect(count).toBeVisible();
+  await expect(count.getByLabel('Contado: Sábanas 90 en Simón Bolívar')).toHaveValue('38');
+  await count.getByRole('button', { name: 'Descartar recuento' }).click();
+  await expect(count.getByLabel('Contado: Sábanas 90 en Simón Bolívar')).toHaveValue('');
+  await page.evaluate(() => { window.failWrites = false; });
+  await count.getByLabel('Contado: Fundas de almohada en Simón Bolívar').fill('118');
+  await count.getByRole('button', { name: 'Guardar recuento (1 línea)' }).click();
+  await expect(count).toHaveCount(0);
+  assert.equal(await page.evaluate(() => localStorage.getItem('inventory-count-draft:u1')), null);
+
+  // History of a product from its row, with the location preserved.
+  await page.getByRole('button', { name: /Toallas grandes/ }).click();
+  await page.getByRole('button', { name: /Sábanas 90/ }).click();
+  await page.locator('li').filter({ has: page.getByRole('button', { name: /Sábanas 90/ }) }).getByRole('link', { name: 'Ver historial' }).click();
+  assert.equal(await where(page), '/inventory/movements?product=sab90&warehouse=central');
+  await expect(page.getByText('Producto: Sábanas 90')).toBeVisible();
+  await expect(page.getByText(/Sábanas 150/)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Quitar filtros' }).click();
+  await page.getByLabel('Tipo de movimiento').selectOption('transferencia');
+  await expect(page.getByText('Simón Bolívar → Orzán 12').first()).toBeVisible();
+  await expect(page.locator('li').filter({ hasText: /Entrada \+/ })).toHaveCount(0);
+
+  // Bags: a summary link opens the right filter; search covers buildings; the period is kept between pages.
+  await render('/inventory');
+  await page.getByRole('link', { name: /2 mudas tienen incidencia/ }).click();
+  await expect(page.getByRole('button', { name: /^Incidencias/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('Falta una toalla grande')).toBeVisible();
+  await expect(page.getByText('ORZ-1A', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: /^Todas/ }).click();
+  await page.getByRole('searchbox', { name: 'Buscar propiedad o edificio' }).fill('riazor');
+  await expect(page.getByText('RIA-3', { exact: true })).toBeVisible();
+  await expect(page.getByText('ORZ-1A', { exact: true })).toHaveCount(0);
+  const material = page.getByRole('table', { name: /Material necesario/ });
+  await expect(material.getByRole('row', { name: /Sábanas 150/ })).toContainText('19');
+  await page.getByLabel('Período de preparación').selectOption('7');
+  await page.getByRole('link', { name: 'Edificios', exact: true }).click();
+  await expect(page.getByLabel('Período de preparación')).toHaveValue('7');
+
+  // Buildings: list and detail side by side, selection in the URL.
+  await expect(page.getByRole('region', { name: 'Ficha del edificio seleccionado' })).toContainText('Matogrande 7');
+  await page.getByRole('button', { name: /^Orzán 12/ }).click();
+  assert.match(await where(page), /edificio=b0/);
+  const panel = page.getByRole('region', { name: 'Ficha del edificio seleccionado' });
+  await expect(panel.getByText('ORZ-1A', { exact: true })).toBeVisible();
+  await expect(panel.getByText('Edredones')).toBeVisible();
+
+  // Failed reads are never shown as zero.
+  await render('/inventory/stock', { fixtureError: 'stock' });
+  await expect(page.getByRole('alert')).toContainText('No se pudo consultar el inventario');
+  await expect(page.getByRole('button', { name: /Sábanas 150/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Reintentar', exact: true }).click();
+  assert.ok(await page.evaluate(() => window.retries >= 1));
+  await render('/inventory/stock', { fixtureError: 'demand' });
+  await expect(page.getByRole('alert')).toContainText('No se pudieron consultar las mudas');
+  await expect(page.locator('li').filter({ has: page.getByRole('button', { name: /Sábanas 150/ }) })).toContainText('Mudas sin consultar');
+  await render('/inventory/preparation', { fixtureError: 'demand' });
+  await expect(page.getByText('No se pudieron cargar las mudas')).toBeVisible();
+  await expect(page.getByText('ORZ-1A', { exact: true })).toHaveCount(0);
+  await render('/inventory/movements', { fixtureError: 'stock' });
+  await expect(page.getByRole('alert')).toContainText('No se pudo consultar el historial');
+
+  // Read-only users see the figures, not the operations.
+  await render('/inventory/stock', { fixtureRole: 'reader' });
+  await expect(page.getByRole('button', { name: /Sábanas 150/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Registrar movimiento' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Contar existencias' })).toHaveCount(0);
+
+  // Phone: no horizontal overflow; a tap or the keyboard opens a product with its operations.
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const path of ['/inventory', '/inventory/stock', '/inventory/preparation', '/inventory/warehouses', '/inventory/movements', '/inventory/reports']) {
+    await render(path);
+    await expect(page.getByRole('navigation', { name: 'Secciones de inventario' })).toBeVisible();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `No horizontal overflow ${path}`);
+  }
+  await render('/inventory/stock');
+  await page.getByRole('button', { name: /Toallas grandes/ }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Registrar movimiento' })).toBeVisible();
+  await render('/inventory/warehouses');
+  await page.getByRole('button', { name: /^Riazor 4/ }).click();
+  await expect(page.getByRole('region', { name: 'Lista de edificios' }).getByText('RIA-3', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Ficha del edificio seleccionado' })).toBeHidden();
+
+  assert.deepEqual(errors, []);
+  console.log('PASS inventory redesign browser: summary actions, stock filters and locations, movement preview and failed save, explicit move destination, count draft, history, bags, buildings, truthful errors, read-only role and phone layout. Mocked data, no network.');
+} finally { await browser.close(); }

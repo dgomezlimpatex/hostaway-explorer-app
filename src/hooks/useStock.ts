@@ -400,11 +400,11 @@ export const useAdjustStock = () => {
       queryClient.invalidateQueries({ queryKey: ['stock-levels', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['stock-alerts', activeSede?.id] });
-      toast.success('Stock actualizado');
+      toast.success('Movimiento guardado');
     },
     onError: (error) => {
       console.error('Error adjusting stock:', error);
-      toast.error(getErrorMessage(error, 'No se pudo actualizar el stock'));
+      toast.error(getErrorMessage(error, 'No se pudo guardar el movimiento'));
     },
   });
 };
@@ -436,11 +436,11 @@ export const useTransferStock = () => {
       queryClient.invalidateQueries({ queryKey: ['stock-levels', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements', activeSede?.id] });
       queryClient.invalidateQueries({ queryKey: ['stock-alerts', activeSede?.id] });
-      toast.success('Transferencia realizada');
+      toast.success('Material movido');
     },
     onError: (error) => {
       console.error('Error transferring stock:', error);
-      toast.error(getErrorMessage(error, 'No se pudo transferir el stock'));
+      toast.error(getErrorMessage(error, 'No se pudo mover el material'));
     },
   });
 };

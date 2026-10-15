@@ -46,7 +46,7 @@ try{
  const soap=await t.level(t.soap);
  await page.evaluate(level=>{window.fixtureLevels=[{...level,current_quantity:Number(level.current_quantity),stock_version:Number(level.stock_version),bag_accounting_active:true,product:{name:'Amenities de prueba',unit_of_measure:'unidades'},warehouse:{name:'Almacén de prueba'}}];window.showCount=true;window.renderFixture();},soap);
  await page.getByLabel('Contado: Amenities de prueba en Almacén de prueba').fill('18');
- await page.getByRole('button',{name:'Aplicar 1 ajuste',exact:true}).click();
+ await page.getByRole('button',{name:'Guardar recuento (1 línea)',exact:true}).click();
  await expect.poll(async()=>(await t.level(t.soap)).quantity_basis).toBe('counted');
  assert.equal(Number((await t.level(t.soap)).current_quantity),18,'same quantity became a checked physical count');
  await expect(page.getByRole('dialog')).toBeHidden();
@@ -55,7 +55,7 @@ try{
   await page.evaluate(level=>{window.fixtureLevel={...level,current_quantity:Number(level.current_quantity),stock_version:Number(level.stock_version),bag_accounting_active:true,product:{name:'Amenities de prueba'},warehouse:{name:'Almacén de prueba'}};window.showAdjustment=true;window.renderFixture();},level);
  };
  await showAdjustment();await page.getByLabel('Cantidad',{exact:true}).fill('2');await page.getByLabel('Motivo',{exact:true}).fill('Compra comprobada');
- await page.getByRole('button',{name:'Guardar ajuste',exact:true}).click();
+ await page.getByRole('button',{name:'Guardar movimiento',exact:true}).click();
  await expect(page.getByRole('button',{name:'Reintentar movimiento pendiente'})).toBeVisible();
  assert.equal(Number((await t.level(t.soap)).current_quantity),20);
  const pendingManual=requests.filter(r=>r.name==='adjust_bag_stock_checked'&&r.args._kind==='entrada')[0];
