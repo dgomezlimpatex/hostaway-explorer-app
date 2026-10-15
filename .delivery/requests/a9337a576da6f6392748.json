@@ -1,0 +1,23 @@
+{
+  "request": "Dani pidió rediseñar por completo las páginas de Inventario (Resumen, Almacén central, Mudas y reparto, Edificios, historial y funciones adicionales) para que sean prácticas, claras y rápidas para personal no técnico, y entregarlo por la cola protegida.",
+  "reason": "Cambio de frontend: reorganiza pantallas, textos y componentes y añade cálculos locales de presentación (lista de acciones, filtros, vista previa del saldo) a partir de los datos que ya se leían. Usa las mismas lecturas, mutaciones y RPC existentes sin cambiar sus argumentos; no hay SQL, esquema, Edge Functions, permisos, autenticación, comunicaciones ni integraciones. Los permisos canEdit/canCreate/isAdminOrManager se conservan tal cual. El borrador del recuento se guarda en localStorage del navegador del propio usuario.",
+  "verification": "Prueba Node scripts/inventoryViewsTest.mjs sobre el módulo real (tonos de estado, filtros, búsqueda sin acentos, fechas de negocio, movimientos con signo, vista previa, orden de acciones y ausencia de faltas inventadas sin mudas). Pruebas Node existentes inventorySimplificationTest y stockCountTest correctas. En local con Edge y datos simulados (sin red ni sesión): scripts/inventorySimplificationBrowserTest.mjs recorre resumen, filtros y ubicaciones, registrar movimiento con fallo de guardado y reintento, mover con destino explícito, recuento con borrador y descarte, historial por producto, mudas, edificios, errores de carga, rol de solo lectura y móvil sin desbordamiento; stockBagAccountingBrowserTest y laundryCycleAvailabilityBrowserTest (PGlite local) actualizados y correctos; provisionalInventoryBrowserTest correcto. Capturas revisadas en escritorio y móvil. Limitación: no se ha probado con sesión real ni datos de producción; las pruebas de navegador no se repiten en la cola porque no tiene Chromium.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/inventoryViewsTest.mjs",
+    "scripts/inventorySimplificationTest.mjs",
+    "scripts/stockCountTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "38ed1cce15a9634cb859d70e240024a4591fb9bccf9c06bb52405b218a3493cc"
+}

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, CheckCircle2, PackageSearch, Settings2, ShieldCheck } from 'lucide-react';
+import { ArrowRight, PackageSearch, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,9 +105,9 @@ export default function InventoryConfig() {
       <div className="space-y-4">
         <BagAccountingSetup />
         <LaundryCycleSetup />
-        <Card className={cn('border-l-4', autoConsumptionReady ? 'border-l-emerald-500' : 'border-l-amber-500')}>
+        <Card className={cn('rounded-[.625rem] border-l-4 shadow-none', autoConsumptionReady ? 'border-l-emerald-500' : 'border-l-amber-500')}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-[15px] font-semibold">
               <ShieldCheck className="h-5 w-5" />
               Consumo al completar limpiezas
             </CardTitle>
@@ -130,7 +130,7 @@ export default function InventoryConfig() {
               />
               <SwitchRow
                 title="Descuento automático"
-                description="Permite descontar stock al completar tareas solo si el modo preparacion esta desactivado."
+                description="Permite descontar stock al completar tareas solo si el modo preparación está desactivado."
                 checked={settings?.auto_consumption_enabled ?? false}
                 disabled={settingsLoading || updateSettings.isPending}
                 onCheckedChange={(checked) => handleUpdateSettings({ auto_consumption_enabled: checked })}
@@ -146,32 +146,12 @@ export default function InventoryConfig() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <DiagnosticCard
-            title="Sin consumo"
-            value={diagnostics.propertiesWithoutConsumption.length}
-            description="Propiedades activas sin ningun consumo positivo efectivo."
-            danger={diagnostics.propertiesWithoutConsumption.length > 0}
-          />
-          <DiagnosticCard
-            title="Con consumo"
-            value={diagnostics.propertiesWithPositiveConsumption}
-            description="Propiedades con consumo desde reglas nuevas o campos antiguos."
-            danger={false}
-          />
-          <DiagnosticCard
-            title="Reglas a 0"
-            value={diagnostics.zeroRules.length}
-            description="Reglas guardadas sin consumo."
-            danger={false}
-          />
-          <DiagnosticCard
-            title="Productos sin uso"
-            value={diagnostics.productsWithoutUsage.length}
-            description="Consumibles sin ninguna regla positiva."
-            danger={diagnostics.productsWithoutUsage.length > 0}
-          />
-        </div>
+        <p className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+          <span><strong className="tabular-nums text-slate-950">{diagnostics.propertiesWithoutConsumption.length}</strong> propiedades activas sin consumo</span>
+          <span><strong className="tabular-nums text-slate-950">{diagnostics.propertiesWithPositiveConsumption}</strong> con consumo</span>
+          <span><strong className="tabular-nums text-slate-950">{diagnostics.zeroRules.length}</strong> reglas guardadas a 0</span>
+          <span><strong className="tabular-nums text-slate-950">{diagnostics.productsWithoutUsage.length}</strong> consumibles sin ninguna regla positiva</span>
+        </p>
 
         <div className="grid gap-4 xl:grid-cols-2">
           <ActionList
@@ -197,7 +177,7 @@ export default function InventoryConfig() {
               id: product.id,
               title: product.name,
               description: product.category?.name || 'Sin tipo',
-              badge: product.category?.kind || 'stock',
+              badge: product.category?.kind === 'laundry' ? 'Ropa' : product.category?.kind === 'amenity' ? 'Amenities' : 'Otros',
             }))}
             actionLabel="Ver stock"
             to="/inventory/stock"
@@ -205,9 +185,9 @@ export default function InventoryConfig() {
           />
         </div>
 
-        <Card className="rounded-2xl border-border/60 shadow-sm">
+        <Card className="rounded-[.625rem] border shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-[15px] font-semibold">
               <PackageSearch className="h-5 w-5" />
               Siguiente paso operativo
             </CardTitle>
@@ -262,37 +242,6 @@ function SwitchRow({
   );
 }
 
-function DiagnosticCard({
-  title,
-  value,
-  description,
-  danger,
-}: {
-  title: string;
-  value: number;
-  description: string;
-  danger: boolean;
-}) {
-  return (
-    <Card className="rounded-2xl border-border/60 shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="mt-1 text-3xl font-bold">{value}</p>
-          </div>
-          {danger ? (
-            <AlertTriangle className="h-5 w-5 text-amber-600" />
-          ) : (
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-          )}
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
 function ActionList({
   title,
   emptyText,
@@ -309,7 +258,7 @@ function ActionList({
   loading?: boolean;
 }) {
   return (
-    <Card className="rounded-2xl border-border/60 shadow-sm">
+    <Card className="rounded-[.625rem] border shadow-none">
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle className="text-base">{title}</CardTitle>
         <Button asChild variant="outline" size="sm">
@@ -318,7 +267,7 @@ function ActionList({
       </CardHeader>
       <CardContent className="space-y-2">
         {loading ? (
-          <p className="text-sm text-muted-foreground">Cargando diagnostico...</p>
+          <p className="text-sm text-muted-foreground">Cargando diagnóstico…</p>
         ) : items.length === 0 ? (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
             {emptyText}

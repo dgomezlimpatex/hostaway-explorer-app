@@ -1,6 +1,6 @@
 import { formatMadridDate } from '@/utils/date';
 import { useMemo, useState } from 'react';
-import { Download, FileSpreadsheet, PackageCheck, TrendingDown, WalletCards } from 'lucide-react';
+import { Download, FileSpreadsheet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import { buildStockReport, reorderToCsv } from '@/utils/stockReport';
 import { useStockLevels, useStockMovementsRange, useStockProducts, useStockWarehouses } from '@/hooks/useStock';
 import type { StockMovement, StockMovementType } from '@/types/stock';
 import { centralWarehouse } from '@/features/inventory/inventoryDomain';
+import { movementLabels, movementTime } from '@/features/inventory/inventoryViews';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
@@ -32,13 +33,6 @@ const formatCurrency = (value: number) =>
 const formatQuantity = (value: number) =>
   new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(value);
 
-const movementLabels: Record<StockMovementType, string> = {
-  entrada: 'Entrada',
-  salida: 'Salida',
-  ajuste: 'Ajuste',
-  consumo_automatico: 'Consumo automático',
-  transferencia: 'Transferencia',
-};
 
 type MovementFilter = StockMovementType | 'all';
 
@@ -151,7 +145,7 @@ export default function InventoryReports() {
       <div className="space-y-4"><p className="rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">Movimientos del rango elegido, por días completos en horario de Madrid. El valor de los consumos usa el coste guardado en cada movimiento cuando existe y, si no, el coste actual del producto. La reposición refleja las existencias actuales.</p>
         {movementsRange?.truncated && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">El rango tiene demasiados movimientos y el informe está incompleto: acorta las fechas para ver todos.</p>}
         {dateFrom > dateTo && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">La fecha «Desde» es posterior a «Hasta».</p>}
-        <Card className="rounded-2xl border-border/60 shadow-sm">
+        <Card className="rounded-[.625rem] border shadow-none">
           <CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
             <Input aria-label="Desde" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
             <Input aria-label="Hasta" type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
@@ -196,17 +190,17 @@ export default function InventoryReports() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Metric title="Movimientos" value={filteredMovements.length} icon={PackageCheck} />
-          <Metric title="Consumos auto" value={report.automaticConsumption.length} icon={TrendingDown} />
-          <Metric title="Bajo mínimo" value={report.lowStock.length} icon={TrendingDown} />
-          <Metric title="Valor reposición" value={formatCurrency(totalReorderValue)} icon={WalletCards} />
-        </div>
+        <p className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+          <span><strong className="tabular-nums text-slate-950">{filteredMovements.length}</strong> movimientos</span>
+          <span><strong className="tabular-nums text-slate-950">{report.automaticConsumption.length}</strong> consumos automáticos</span>
+          <span><strong className="tabular-nums text-slate-950">{report.lowStock.length}</strong> bajo mínimo</span>
+          <span>Reposición estimada: <strong className="tabular-nums text-slate-950">{formatCurrency(totalReorderValue)}</strong></span>
+        </p>
 
         <div className="grid gap-4 xl:grid-cols-2">
-          <Card className="rounded-2xl border-border/60 shadow-sm">
+          <Card className="rounded-[.625rem] border shadow-none">
             <CardHeader>
-              <CardTitle>Consumo por producto</CardTitle>
+              <CardTitle className="text-[15px] font-semibold">Consumo por producto</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <SimpleTable
@@ -221,10 +215,10 @@ export default function InventoryReports() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl border-border/60 shadow-sm">
+          <Card className="rounded-[.625rem] border shadow-none">
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <div>
-                <CardTitle>Reposición sugerida</CardTitle>
+                <CardTitle className="text-[15px] font-semibold">Reposición sugerida</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {report.reorder.length === 0 ? 'Todo en objetivo' : `${report.reorder.length > 12 ? 'Mostrando 12 de ' : ''}${report.reorder.length} productos · ${formatCurrency(totalReorderValue)} estimados`}
                 </p>
@@ -249,9 +243,9 @@ export default function InventoryReports() {
           </Card>
         </div>
 
-        <Card className="rounded-2xl border-border/60 shadow-sm">
+        <Card className="rounded-[.625rem] border shadow-none">
           <CardHeader>
-            <CardTitle>Movimientos recientes</CardTitle>
+            <CardTitle className="text-[15px] font-semibold">Movimientos recientes</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -274,12 +268,12 @@ export default function InventoryReports() {
                   ) : (
                     filteredMovements.slice(0, 80).map((movement) => (
                       <TableRow key={movement.id}>
-                        <TableCell>{new Date(movement.created_at).toLocaleString('es-ES')}</TableCell>
+                        <TableCell className="whitespace-nowrap">{movementTime(movement.created_at)}</TableCell>
                         <TableCell>{movement.product?.name || 'Producto'}</TableCell>
                         <TableCell><Badge variant="outline">{movementLabels[movement.movement_type]}</Badge></TableCell>
                         <TableCell>
                           {movement.warehouse?.name || 'Almacén'}
-                          {movement.to_warehouse ? ` -> ${movement.to_warehouse.name}` : ''}
+                          {movement.to_warehouse ? ` → ${movement.to_warehouse.name}` : ''}
                         </TableCell>
                         <TableCell className="text-right font-mono">{formatQuantity(movement.quantity)}</TableCell>
                         <TableCell>{movement.reason}</TableCell>
@@ -297,28 +291,6 @@ export default function InventoryReports() {
         </div>
       </div>
     </StockLayout>
-  );
-}
-
-function Metric({
-  title,
-  value,
-  icon: Icon,
-}: {
-  title: string;
-  value: string | number;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <Card className="rounded-2xl border-border/60 shadow-sm">
-      <CardContent className="flex items-center justify-between gap-3 p-4">
-        <div>
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <p className="mt-1 text-2xl font-bold">{value}</p>
-        </div>
-        <Icon className="h-5 w-5 text-muted-foreground" />
-      </CardContent>
-    </Card>
   );
 }
 
