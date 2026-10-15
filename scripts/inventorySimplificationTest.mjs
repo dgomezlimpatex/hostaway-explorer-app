@@ -28,6 +28,8 @@ assert.equal(bags([task],[{...prepared,content_snapshot:null}])[0].state,'review
 assert.equal(bags([task],[prepared],[{task_id:'t1',status:'delivered',delivered_at:null}])[0].state,'prepared','status without physical confirmation is insufficient');
 assert.equal(bags([task],[prepared],[{task_id:'t1',status:'delivered',delivered_at:'2026-10-13T10:00:00Z'}])[0].state,'delivered');
 assert.equal(bags([{...task,status:'completed'},{...task,id:'cancel',status:'cancelled'}]).length,0);
+assert.equal(m.buildBags([{...task,status:'completed'}],[],[],assignments,products,[central,store],true).length,1,'full circuit keeps replenishment after a completed cleaning');
+assert.equal(m.buildBags([{...task,status:'cancelled'}],[],[],assignments,products,[central,store],true).length,0,'full circuit still excludes cancelled tasks');
 assert.equal(bags([{...task,properties:{...task.properties,linen_control_enabled:false}}]).length,0);
 assert.equal(bags([{...task,properties:{...task.properties,linen_control_enabled:null,clients:{linen_control_enabled:true}}}]).length,1);
 assert.equal(m.buildingInventory([central,store],[{...level,warehouse_id:'store',product:products[2],target_quantity:2}],bags(),'central').length,1);
