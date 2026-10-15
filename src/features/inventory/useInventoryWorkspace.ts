@@ -35,8 +35,8 @@ export function useInventoryWorkspace(days = 3) {
     return live ? { ...level, current_quantity: live.quantity, reserved_quantity: live.reserved } : {...level,bag_accounting_active:!!tracked};
   });
   const bagsQuery = useQuery({
-    queryKey: ['inventory-preparation', activeSede?.id, from, to, productsQuery.dataUpdatedAt, warehousesQuery.dataUpdatedAt],
-    queryFn: () => readInventoryBags(activeSede!.id, from, to, products, warehouses),
+    queryKey: ['inventory-preparation', activeSede?.id, from, to, productsQuery.dataUpdatedAt, warehousesQuery.dataUpdatedAt, !!cycle?.active],
+    queryFn: () => readInventoryBags(activeSede!.id, from, to, products, warehouses, !!cycle?.active),
     enabled: !!activeSede?.id && productsQuery.isSuccess && warehousesQuery.isSuccess,
     staleTime: 30000,
     refetchInterval: 60000,

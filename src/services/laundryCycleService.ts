@@ -4,7 +4,7 @@ export type OpeningCount = { productId: string; warehouseId?: string | null; pro
 export type CountRequirement = Omit<OpeningCount, 'quantity' | 'preparedQuantity'> & { key: string; productName: string; locationName: string; quantity: number | null; preparedQuantity?: number | null };
 export type CycleBag = { id: string; task_key: string; property_code: string; state: 'prepared' | 'delivered'; lines: { productId: string; quantity: number }[] };
 export type CycleState = {
- config: { active: boolean; start_date: string; central_id: string; collection_mode: 'all' | 'one'; collection_destination: 'central' | 'laundry'; rejection_mode:'immediate'|'central'; strict_receipts: boolean; opened_at: string | null } | null;
+ config: { active: boolean; start_date: string; central_id: string; collection_mode: 'all' | 'one'; collection_destination: 'central' | 'laundry'; rejection_mode:'immediate'|'central'; strict_receipts: boolean; opened_at: string | null; opening_unknown_kinds?: CountKind[] } | null;
  scope: string[]; bags: CycleBag[]; outside: { product_id: string; quantity: number }[]; collected: { product_id: string; quantity: number }[];
  dirty: { property_id: string; product_id: string; quantity: number }[];
  rejected: {product_id:string;current_quantity:number}[];

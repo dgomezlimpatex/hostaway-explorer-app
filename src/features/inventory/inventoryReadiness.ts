@@ -46,7 +46,7 @@ const snapshotKeys: Record<string, [string, string]> = {
   cantidadRollosPapelCocina: ['amenities', 'kitchenPaper'], bayetasCocina: ['amenities', 'kitchenCloths'], bolsasBasura: ['amenities', 'trashBags'],
 };
 
-export function buildBags(tasks: Row[], preparations: Row[], deliveries: Row[], assignments: Row[], products: StockProduct[], warehouses: StockWarehouse[]): InventoryBag[] {
+export function buildBags(tasks: Row[], preparations: Row[], deliveries: Row[], assignments: Row[], products: StockProduct[], warehouses: StockWarehouse[], includeCompleted = false): InventoryBag[] {
   const prepByTask = new Map(preparations.map(p => [String(p.task_id), p]));
   const delivered = new Map<string, number>();
   for (const delivery of deliveries) {
@@ -57,7 +57,7 @@ export function buildBags(tasks: Row[], preparations: Row[], deliveries: Row[], 
   const seen = new Set<string>();
   for (const task of tasks) {
     const id = String(task.id);
-    if (seen.has(id) || ['cancelled', 'canceled', 'completed'].includes(String(task.status)) || isNotCountCleaner(String(task.cleaner ?? ''))) continue;
+    if (seen.has(id) || ['cancelled', 'canceled'].includes(String(task.status)) || (!includeCompleted && task.status === 'completed') || isNotCountCleaner(String(task.cleaner ?? ''))) continue;
     seen.add(id);
     const property = row(task.properties);
     const client = row(property.clients);
@@ -99,7 +99,7 @@ export function buildBags(tasks: Row[], preparations: Row[], deliveries: Row[], 
   return result.sort((a, b) => a.date.localeCompare(b.date) || a.propertyCode.localeCompare(b.propertyCode, 'es'));
 }
 
-export async function readInventoryBags(sedeId: string, from: string, to: string, products: StockProduct[], warehouses: StockWarehouse[]) {
+export async function readInventoryBags(sedeId: string, from: string, to: string, products: StockProduct[], warehouses: StockWarehouse[], includeCompleted = false) {
   const tasks = await readAll(() => db.from('tasks').select(`id,property,date,status,cleaner,propiedad_id,
     properties:propiedad_id(id,codigo,sede_id,is_active,linen_control_enabled,numero_sabanas,numero_sabanas_pequenas,numero_sabanas_suite,
       numero_fundas_almohada,numero_toallas_grandes,numero_toallas_pequenas,numero_alfombrines,kit_alimentario,amenities_bano,amenities_cocina,
@@ -118,5 +118,5 @@ export async function readInventoryBags(sedeId: string, from: string, to: string
     ]);
     preparations.push(...p); deliveries.push(...d); assignments.push(...a);
   }
-  return buildBags(tasks, preparations, deliveries, assignments, products, warehouses);
+  return buildBags(tasks, preparations, deliveries, assignments, products, warehouses, includeCompleted);
 }
