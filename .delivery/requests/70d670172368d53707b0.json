@@ -1,0 +1,21 @@
+{
+  "request": "En el planificador diario, quitar el color verde de fondo de los trabajadores disponibles y quitar los horarios de disponibilidad; mostrar el horario solo en las franjas en las que no están disponibles.",
+  "reason": "Cambio solo de presentación del tablero: la franja disponible se pinta sin color ni texto y se elimina su entrada de la leyenda. No cambia cálculos, disponibilidad, guardado, permisos ni envíos.",
+  "verification": "Prueba Node sobre el código real del componente. Navegador local sin red, escritorio y móvil, escenario con ausencias, mantenimiento y horario estimado: sin fondo verde ni etiqueta Disponible, y Mantenimiento/Ausencia/No disponible conservan su horario; el tramado de fuera de horario se mantiene. Pruebas de arrastre, reasignación y contexto guardado siguen en verde. Build correcto y sin errores nuevos de tipos (102 previos). Limitación: sin sesión ni datos reales; las franjas de horario estimado (violeta) no se han tocado.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/planningAvailabilityBandsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "572af4eae000b8882a66f955249edf06ae8b7fb04afe1abed796dde843cce0a2"
+}
