@@ -132,7 +132,7 @@ export const useCleaningPlanningActions = () => {
             cleanerIds,
             { notify: false },
           ),
-        });
+        }, { concurrency: 4 });
       } catch (error) {
         throw new Error(error instanceof Error
           ? `No se pudo aplicar la propuesta completa. Se intentó revertir responsables y horarios. Detalle: ${error.message}`
