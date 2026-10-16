@@ -1,0 +1,21 @@
+{
+  "request": "Arreglar el indicador de horas semanales bajo el nombre de cada trabajador en el planificador diario: debe sumarse al momento al asignar horas y contar todas las horas de tareas asignadas esa semana y las horas de los servicios de mantenimiento de cada empleado.",
+  "reason": "Solo cambia lecturas y un cálculo local en memoria del planificador: suma los horarios de mantenimiento activos (sin los bloqueos de no disponibilidad) y las tareas recurrentes pendientes de la semana, renueva la consulta semanal al guardar cambios del planificador (misma clave de caché que ya invalida el guardado) y lee la semana día a día para no quedar truncada en 1000 filas. No escribe datos ni cambia permisos, autenticación, envíos o integraciones.",
+  "verification": "Prueba Node con código real: mantenimientos por día de la semana (incluido domingo), inactivos y no disponibilidad excluidos, asignar 5 h en el borrador suma 5 h al instante, reasignar mueve horas sin duplicar, recurrentes contados una sola vez, hook con mocks (clave de caché, staleTime 0, refresco periódico, siete lecturas diarias con la sede). Navegador local sin red (escritorio y móvil): 9 h iniciales con tarea de otro día y mantenimiento, 10 h tras asignar 1 h. Build correcto, sin errores nuevos de tipos (102 previos), lint limpio en archivos tocados. Limitación: no se probó con sesión ni datos reales; tres pruebas antiguas del planificador ya fallaban en main por motivos ajenos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/planningCalendarWeeklyTotalsTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "a56ccfabd73e67b2f87835f4f276c84d843036c65ca81d2d8def79a63ac3a1d5"
+}
