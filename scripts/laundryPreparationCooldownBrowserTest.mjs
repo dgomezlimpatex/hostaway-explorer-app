@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { laundryRouteTestStyles } from './laundryRouteTestStyles.mjs';
 import { build } from 'esbuild';
 import { chromium, expect } from '@playwright/test';
 
@@ -16,10 +16,10 @@ const bundle = await build({
     builder.onLoad({ filter: /.*/, namespace: 'mock' }, () => ({ contents: 'export const supabase = {functions:{invoke: async (name, options) => {const result = await window.mockWorkflow(name, options.body); return {data: name === "laundry-route-workflow" ? {success:true,workflow:result} : result, error:null};}}};' }));
   } }],
 });
-const css = readdirSync('dist/assets').filter(name => name.endsWith('.css')).map(name => readFileSync(`dist/assets/${name}`, 'utf8')).join('\n');
-const browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined) });
+const css = await laundryRouteTestStyles();
+const browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'msedge' : 'chrome') });
 try {
-  for (const viewport of [{ width: 390, height: 844 }, { width: 1100, height: 900 }]) {
+  for (const viewport of [{ width: 320, height: 740 }, { width: 390, height: 844 }, { width: 1100, height: 900 }]) {
     const page = await browser.newPage({ viewport });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -41,13 +41,14 @@ try {
           if (window.holdNext) { window.holdNext = false; await new Promise(resolve => { window.releaseSave = resolve; }); }
           [...current, ...next].find(item => item.taskId === body.taskId).bagStatus.status = 'prepared';
         }
-        return structuredClone({ workflowVersion: 'route_v2', route: { deliveryDate: '2026-10-09', nextDeliveryDate: '2026-10-10', nextRouteName: 'Siguiente' }, currentRouteBags: current, urgentBags: current.filter(item => item.bagStatus.status === 'pending'), nextRouteBags: next, blockingStep: 'prepare_next', stats: { nextTotal: next.length } });
+        return structuredClone({ workflowVersion: 'route_v2', inventoryCycleEnabled: true, route: { deliveryDate: '2026-10-09', nextDeliveryDate: '2026-10-10', nextRouteName: 'Siguiente' }, currentRouteBags: current, urgentBags: current.filter(item => item.bagStatus.status === 'pending'), nextRouteBags: next, blockingStep: 'deliver', stats: { nextTotal: next.length } });
       };
     });
     await page.addScriptTag({ content: bundle.outputFiles[0].text });
     const ready = () => page.getByRole('button', { name: 'Bolsa preparada', exact: true });
     const waiting = () => page.getByRole('button', { name: /^Espera \d s/ });
     await ready().waitFor();
+    await expect(page.getByRole('button', { name: 'Recogida y entrega', exact: true })).toBeDisabled();
     // Multiple same-event-loop activations exercise the synchronous guard too.
     await ready().evaluate(button => { button.click(); button.click(); button.click(); });
     await page.getByRole('heading', { name: 'A2', exact: true }).waitFor();
@@ -58,6 +59,16 @@ try {
     await ready().click();
     await page.getByRole('heading', { name: 'B1', exact: true }).waitFor();
     await expect(waiting()).toBeDisabled();
+    await expect(page.locator('[data-bag-contents]')).toBeVisible();
+    if (process.env.LAUNDRY_ENTRY_SCREENSHOT && viewport.width === 390) await page.screenshot({ path: process.env.LAUNDRY_ENTRY_SCREENSHOT });
+    await expect(page.getByRole('heading', { name: 'Recogida y entrega de hoy' })).toHaveCount(0);
+    // The inventory-enabled server still requests delivery, but preparation remains the default.
+    await page.getByRole('button', { name: 'Recogida y entrega', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Recogida y entrega de hoy' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Entregar', exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Preparar bolsas', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'B1', exact: true })).toBeVisible();
+    assert.equal(await page.evaluate(() => window.calls.length), 2, 'Switching views does not prepare or deliver bags');
     // Cooldown survives the phase change and switching to the building list.
     await page.getByRole('button', { name: 'Ver bolsas' }).click();
     await page.locator('details').evaluateAll(items => items.forEach(item => { item.open = true; }));
@@ -86,6 +97,16 @@ try {
     for (let i = 1; i < calls.length; i++) assert.ok(calls[i].time - calls[i - 1].time >= 2990);
     assert.deepEqual(errors, []);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    // Reopening a link with today's bags already prepared must show next-route contents directly.
+    await page.reload();
+    await page.evaluate(() => {
+      window.mockWorkflow = async name => name === 'laundry-route-access'
+        ? { success: true, required: false }
+        : { workflowVersion: 'route_v2', inventoryCycleEnabled: true, route: { deliveryDate: '2026-10-09', nextDeliveryDate: '2026-10-10' }, currentRouteBags: [], urgentBags: [], nextRouteBags: [{ taskId: 'NEXT', propertyCode: 'NEXT', date: '2026-10-10', textiles: { sheets: 2 }, amenities: {}, stockConsumables: [], bagStatus: { status: 'pending' }, deliveryTracking: {} }], blockingStep: 'deliver', stats: { nextTotal: 1 } };
+    });
+    await page.addScriptTag({ content: bundle.outputFiles[0].text });
+    await expect(page.getByRole('heading', { name: 'NEXT', exact: true })).toBeVisible();
+    await expect(page.locator('[data-bag-contents]')).toContainText('2');
     console.log(`PASS ${viewport.width}: repeated clicks, cross-bag/phase/view cooldown, slow save, fast failure and retry`);
     await page.close();
   }
