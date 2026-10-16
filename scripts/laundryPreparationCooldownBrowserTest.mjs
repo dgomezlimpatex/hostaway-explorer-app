@@ -48,7 +48,7 @@ try {
     const ready = () => page.getByRole('button', { name: 'Bolsa preparada', exact: true });
     const waiting = () => page.getByRole('button', { name: /^Espera \d s/ });
     await ready().waitFor();
-    await expect(page.getByRole('button', { name: 'Recogida y entrega', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Recogida y entrega', exact: true })).toHaveCount(0);
     // Multiple same-event-loop activations exercise the synchronous guard too.
     await ready().evaluate(button => { button.click(); button.click(); button.click(); });
     await page.getByRole('heading', { name: 'A2', exact: true }).waitFor();
@@ -62,13 +62,11 @@ try {
     await expect(page.locator('[data-bag-contents]')).toBeVisible();
     if (process.env.LAUNDRY_ENTRY_SCREENSHOT && viewport.width === 390) await page.screenshot({ path: process.env.LAUNDRY_ENTRY_SCREENSHOT });
     await expect(page.getByRole('heading', { name: 'Recogida y entrega de hoy' })).toHaveCount(0);
-    // The inventory-enabled server still requests delivery, but preparation remains the default.
-    await page.getByRole('button', { name: 'Recogida y entrega', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Recogida y entrega de hoy' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Entregar', exact: true }).first()).toBeVisible();
-    await page.getByRole('button', { name: 'Preparar bolsas', exact: true }).click();
+    // The inventory-enabled server can still say deliver; workers only prepare bags.
+    await expect(page.getByRole('navigation', { name: 'Vista de lavandería' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^(Recoger|Entregar)$/ })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'B1', exact: true })).toBeVisible();
-    assert.equal(await page.evaluate(() => window.calls.length), 2, 'Switching views does not prepare or deliver bags');
+    assert.equal(await page.evaluate(() => window.calls.length), 2);
     // Cooldown survives the phase change and switching to the building list.
     await page.getByRole('button', { name: 'Ver bolsas' }).click();
     await page.locator('details').evaluateAll(items => items.forEach(item => { item.open = true; }));

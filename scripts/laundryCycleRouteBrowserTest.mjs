@@ -31,10 +31,9 @@ try{
  await t.db.query('UPDATE properties SET numero_toallas_grandes=2');for(const task of[t.task,t.second,t.direct])await t.route(task,'prepare');await open();
  await expect(page.getByRole('heading',{name:'Sin bolsas pendientes de preparar',exact:true})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Ruta completada',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Recogida y entrega',exact:true}).click();
- await page.getByRole('heading',{name:'Recogida y entrega de hoy',exact:true}).waitFor();await expect(page.getByRole('button',{name:'Recoger y entregar edificio',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Recoger',exact:true}).first().click();await expect.poll(()=>requests.filter(r=>r.action==='collect').length).toBe(1);
- await page.getByRole('button',{name:'Entregar',exact:true}).first().click();await expect.poll(()=>requests.filter(r=>r.action==='deliver').length).toBe(1);assert.equal(Number((await t.db.query('SELECT current_quantity FROM stock_levels WHERE warehouse_id=$1 AND product_id=$2',[t.central,t.productMap.bath_towels])).rows[0].current_quantity),8);
+ await expect(page.getByRole('button',{name:'Recogida y entrega',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/^(Recoger|Entregar)$/})).toHaveCount(0);
+ assert.equal(requests.filter(r=>['collect','deliver'].includes(r.action)).length,0);
  enabled=false;await open();await expect(page.getByRole('button',{name:'Entregar',exact:true})).toHaveCount(0);assert.deepEqual(errors,[]);
- console.log('PASS real worker route: stale displayed quantity rejected by exact database, collection/delivery appear only with enabled circuit, original hidden mode preserved, requests carry property/date/generation and quantities. No external network.');
+ console.log('PASS real worker route: stale quantity rejected, preparation-only with active/inactive inventory, no manual delivery/collection requests. No external network.');
 }finally{await browser.close();await t.db.close();}
