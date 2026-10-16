@@ -96,8 +96,8 @@ export async function run(assert: Assert) {
   );
   assert.match(
     actionsSource,
-    /updateSchedule:[\s\S]*startTime[\s\S]*endTime[\s\S]*setAssignments:[\s\S]*notify: false/,
-    'proposal application must persist proposed times before task_assignments without early notifications',
+    /updateSchedule:[\s\S]*startTime[\s\S]*endTime[\s\S]*setAssignments:[\s\S]*setTaskAssignmentsQueueingEmails[\s\S]*revertAssignments:[\s\S]*notify: false/,
+    'proposal application must persist proposed times before task_assignments, queue emails with the save and revert without notifications',
   );
   assert.match(
     batchExecutionSource,
@@ -106,8 +106,8 @@ export async function run(assert: Assert) {
   );
   assert.match(
     actionsSource,
-    /notifyAssignmentDiff\(item\.taskId, item\.result\.added, item\.result\.removed\)/,
-    'proposal application must notify only after all task assignment writes succeed',
+    /setTaskAssignmentsQueueingEmails\(/,
+    'proposal application must queue emails in the same transaction as each assignment save, sent later only if still valid',
   );
   assert.match(
     actionsSource,
