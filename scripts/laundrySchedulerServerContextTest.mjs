@@ -46,12 +46,12 @@ try {
  await assert.rejects(t.db.query("UPDATE laundry_delivery_tracking SET status='delivered' WHERE task_id=$1",[id]),/only be changed by the route server/);
  await assert.rejects(t.db.query('SELECT public.complete_scheduled_laundry_bag($1,now())',[randomUUID()]),/no rows/);
  assert.equal((await t.db.query('SELECT auth.role() role')).rows[0].role,null);
- assert.notEqual((await t.db.query("SELECT current_setting('laundry.scheduled_completion',true) marker")).rows[0].marker,'on');
- // Simulate an API connection identity that forges the marker. The guard must
+ // Simulate an API connection while a matching pending job exists. The guard must
  // check session_user, not current_user (which is postgres inside the definer).
  await t.db.exec('CREATE ROLE authenticator; GRANT USAGE ON SCHEMA public TO authenticator; GRANT SELECT,UPDATE ON laundry_delivery_tracking TO authenticator;');
- await t.db.exec("SET SESSION AUTHORIZATION authenticator; SET laundry.scheduled_completion='on';");
+ await t.db.query("UPDATE laundry_scheduled_completions SET status='pending' WHERE task_key=$1",[id]);
+ await t.db.exec('SET SESSION AUTHORIZATION authenticator;');
  await assert.rejects(t.db.query("UPDATE laundry_delivery_tracking SET status='delivered' WHERE task_id=$1",[id]),/only be changed by the route server/);
- await t.db.exec('RESET SESSION AUTHORIZATION; RESET laundry.scheduled_completion;');
- console.log('PASS scoped server context, restored afterwards; retry once, no duplicate; client privileges unchanged and direct writes still blocked');
+ await t.db.exec('RESET SESSION AUTHORIZATION;');
+ console.log('PASS internal connection plus pending operation; retry once, no duplicate; client privileges unchanged and API identity rejected even with pending job');
 } finally {await t.db.close();}

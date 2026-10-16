@@ -1,32 +1,13 @@
-# Corrección del contexto del proceso automático
+# Corrección del proceso automático de lavandería
 
-La primera ejecución de la PR #148 encontró la protección productiva
-`guard_route_v2_tracking_write`: exige `auth.role() = service_role`, mientras
-que pg_cron ejecuta como postgres sin JWT. Las 25 operaciones de hoy quedaron
-bloqueadas y cada subtransacción deshizo todos sus movimientos y eventos.
+La primera ejecución de PR148 bloqueó 25 bolsas por el guard de rutas V2: cron ejecuta como postgres sin JWT. Todas las operaciones se revirtieron, sin eventos ni stock parcial.
 
-El primer intento de corrección configuraba request.jwt.claim.role en la función;
-Supabase lo rechazó por ser un parámetro protegido. La transacción se revirtió
-completa y se canceló/reconcilió la reserva, sin merge ni despliegue ni movimientos.
+Supabase rechazó dos propuestas que configuraban parámetros en la función (JWT y señal personalizada). Ambas transacciones se revirtieron completas; sus reservas fueron canceladas y reconciliadas, sin merge ni publicación.
 
-La propuesta revisada configura una señal interna únicamente durante la ejecución
-de `complete_scheduled_laundry_bag`, que ya es privada para postgres. PostgreSQL
-restaura la señal al retornar o fallar. Ajusta el guard para reconocer esa señal
-solo cuando session_user es postgres: la identidad real de la conexión, no el
-propietario de la función SECURITY DEFINER. Clientes API no pueden suplantarla.
-No modifica JWT, RLS, grants ni credenciales. Reabre solo bloqueos con ese mensaje exacto de rutas
-de hoy/futuras. El siguiente tick repite todas las validaciones e idempotencia;
-otros bloqueos e históricos quedan intactos.
+La solución final no configura parámetros. El guard conserva el acceso del servidor de rutas y admite también la conexión interna session_user=postgres, sin rol JWT, exclusivamente para registrar delivered/collected de una bolsa con operación privada pendiente y enlace coincidente. No confunde session_user con el propietario de SECURITY DEFINER. Conserva el guard del ciclo físico, los permisos y RLS. El proceso privado valida fecha, tarea, bolsa, ruta y stock antes del registro atómico.
 
-`node scripts/laundrySchedulerServerContextTest.mjs` reproduce primero el fallo
-con las definiciones productivas de auth.role y del guard, verifica rollback total,
-aplica la migración y comprueba entrega única, restauración de contexto incluso
-tras error, permisos intactos, rechazo de escritura directa y de una conexión
-authenticator que falsifica la señal. Prueba aislada,
-sin conexión a producción.
+Reabre únicamente el error conocido de rutas de hoy/futuras. El siguiente tick repite las validaciones e idempotencia. No toca otros bloqueos ni históricos.
 
-Dani autorizó la primera versión y el reproceso de las 25 bolsas. Esta revisión
-requiere autorización específica adicional para ajustar el guard, ya que la
-autorización anterior indicaba expresamente conservarlo sin cambios.
-No se debe afirmar operativo el registro automático hasta aplicar la corrección
-y verificar el resultado real del cron y la ausencia de duplicados.
+Dani autorizó explícitamente ajustar el guard para admitir al proceso interno manteniendo bloqueados los clientes y reprocesar las 25 bolsas.
+
+Prueba aislada: node scripts/laundrySchedulerServerContextTest.mjs. Reproduce el fallo y rollback; comprueba éxito y descuento único tras corrección, ausencia de duplicados, rechazo de escritura directa sin operación pendiente y rechazo de conexión API authenticator incluso con operación pendiente. No conecta a producción.
