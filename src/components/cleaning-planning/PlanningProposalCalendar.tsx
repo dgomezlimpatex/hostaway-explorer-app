@@ -830,8 +830,8 @@ export const PlanningProposalCalendar = ({
 
   const weeklyHours = useMemo(() => planningCalendarWeeklyHours(
     weeklyQuery.data ?? [], cleaners, new Set(calendarTasks.map(task => task.id)), calendarItems,
-    weeklyQuery.startDate, weeklyQuery.endDate,
-  ), [weeklyQuery.data, weeklyQuery.startDate, weeklyQuery.endDate, cleaners, calendarTasks, calendarItems]);
+    weeklyQuery.startDate, weeklyQuery.endDate, weeklyQuery.maintenance,
+  ), [weeklyQuery.data, weeklyQuery.startDate, weeklyQuery.endDate, weeklyQuery.maintenance, cleaners, calendarTasks, calendarItems]);
 
   const warnings = useMemo(
     () =>
@@ -1924,7 +1924,7 @@ export const PlanningProposalCalendar = ({
                               {cleaner.name}
                             </p>
                             <p
-                              title={`Semana ${weeklyQuery.startDate} — ${weeklyQuery.endDate}. Horas asignadas, incluida esta propuesta, / horas de contrato de la ficha.`}
+                              title={`Semana ${weeklyQuery.startDate} — ${weeklyQuery.endDate}. Horas asignadas en tareas y mantenimientos, incluida esta propuesta, / horas de contrato de la ficha.`}
                               className={`text-xs font-semibold ${availability?.isAvailable === false ? 'text-red-600' : 'text-emerald-700'}`}
                             >
                               {weeklyQuery.isError ? 'No se pudo cargar la semana' : !weeklyReady ? 'Cargando semana…'
