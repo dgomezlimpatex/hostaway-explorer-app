@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {chromium,expect} from '@playwright/test';
-import {readFileSync,readdirSync} from 'node:fs';
+import {laundryRouteTestStyles} from './laundryRouteTestStyles.mjs';
 import {completeCycleDatabase} from './laundryCompleteCycleTestSupport.mjs';
 const t=await completeCycleDatabase();await t.configure();await t.open();await t.activate();
 const worker={routeWorkerId:t.worker,cleanerId:(await t.db.query('SELECT cleaner_id FROM laundry_route_workers WHERE id=$1',[t.worker])).rows[0].cleaner_id,workerName:'Equipo de prueba',sedeId:t.sede};
@@ -14,8 +14,8 @@ async function workflow(){
  return{workflowVersion:'route_v2',inventoryCycleEnabled:enabled,route:{deliveryDate:t.date,nextDeliveryDate:t.date,routeName:'Ruta de prueba',nextRouteName:'Siguiente',routeDates:[t.date],nextRouteDates:[]},urgentBags:urgent,currentRouteBags:bags,nextRouteBags:[],blockingStep:urgent.length?'urgent':pending?'deliver':'complete',stats:{urgentPending:urgent.length,currentTotal:bags.length,nextTotal:0,nextPrepared:0,nextIssues:0,collected:bags.filter(b=>b.deliveryTracking.collectionStatus==='collected').length,delivered:bags.filter(b=>b.deliveryTracking.deliveryStatus==='delivered').length}};
 }
 const bundle=await build({stdin:{contents:`import React from'react';import{createRoot}from'react-dom/client';import{QueryClient,QueryClientProvider}from'@tanstack/react-query';import{LaundryRouteV2View}from'./src/components/laundry-share/LaundryRouteV2View';createRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><LaundryRouteV2View token="fixture"/></QueryClientProvider>);`,loader:'tsx',resolveDir:process.cwd()},bundle:true,write:false,format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'isolated',setup(b){b.onResolve({filter:/integrations\/supabase\/client$/},()=>({path:'db',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`export const supabase={functions:{invoke:(name,opts)=>window.fixtureRequest(name,opts.body)}};`}));}}]});
-const css=readdirSync('dist/assets').filter(n=>n.endsWith('.css')).map(n=>readFileSync('dist/assets/'+n,'utf8')).join('\n');
-const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+const css=await laundryRouteTestStyles();
+const browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||(process.platform==='win32'?'msedge':'chrome')});
 try{
  const page=await browser.newPage({viewport:{width:390,height:844}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.exposeFunction('fixtureRequest',async(name,body)=>{
@@ -29,6 +29,9 @@ try{
  await page.getByRole('button',{name:'Bolsa preparada',exact:true}).click();await expect.poll(()=>requests.filter(r=>r.action==='prepare').length).toBe(1);await expect.poll(async()=>Number((await t.db.query('SELECT count(*) n FROM laundry_cycle_bags')).rows[0].n)).toBe(0);
  assert.equal(requests.find(r=>r.action==='prepare').expectedBag.cycleLines[0].quantity,2,'Request carries the quantity actually displayed');
  await t.db.query('UPDATE properties SET numero_toallas_grandes=2');for(const task of[t.task,t.second,t.direct])await t.route(task,'prepare');await open();
+ await expect(page.getByRole('heading',{name:'Sin bolsas pendientes de preparar',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Ruta completada',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Recogida y entrega',exact:true}).click();
  await page.getByRole('heading',{name:'Recogida y entrega de hoy',exact:true}).waitFor();await expect(page.getByRole('button',{name:'Recoger y entregar edificio',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Recoger',exact:true}).first().click();await expect.poll(()=>requests.filter(r=>r.action==='collect').length).toBe(1);
  await page.getByRole('button',{name:'Entregar',exact:true}).first().click();await expect.poll(()=>requests.filter(r=>r.action==='deliver').length).toBe(1);assert.equal(Number((await t.db.query('SELECT current_quantity FROM stock_levels WHERE warehouse_id=$1 AND product_id=$2',[t.central,t.productMap.bath_towels])).rows[0].current_quantity),8);

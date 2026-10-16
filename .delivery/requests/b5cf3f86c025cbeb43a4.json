@@ -1,0 +1,23 @@
+{
+  "request": "Recuperar la preparación de bolsas con su material como entrada de los enlaces de lavandería y explicar por qué se mostraba recogida y entrega.",
+  "reason": "Cambio local de navegación y presentación: selecciona preparación por defecto, mantiene recogida/entrega explícita y no cambia peticiones, contratos, cantidades, permisos ni contabilización. Cambiar de vista no ejecuta operaciones.",
+  "verification": "Build, tipos raíz/Node y lint focalizado correctos. Tipos de aplicación comparados con la base sin nuevos diagnósticos. Navegador con componente real y red bloqueada a 320, 390 y 1100 px: urgentes, siguientes con servidor en deliver, recarga del enlace, contenido visible, vista por edificios, cambio a reparto, protección de 3 segundos, guardado lento y fallo/reintento. Circuito PGlite sintético conserva validación de cantidades y recogida/entrega; inventario desactivado conserva acciones ocultas. Sin sesión ni escrituras reales.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/laundryPreparationClickGuardTest.mjs",
+    "scripts/laundryPreparationCooldownBrowserTest.mjs",
+    "scripts/laundryCycleRouteBrowserTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "cdac659f712001e3c3b74b4830927e2b93dc3d6b0024796cf6f997211c359cd7"
+}
