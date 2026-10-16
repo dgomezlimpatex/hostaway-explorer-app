@@ -364,7 +364,7 @@ const WorkerAvailabilityBands = ({
     ? getAvailabilitySummary(availability)
     : 'Disponibilidad no cargada';
   const colors: Record<AvailabilityBandKind, string> = {
-    available: 'border-emerald-600/50 bg-emerald-200/65 text-emerald-950',
+    available: 'bg-white',
     estimated: 'border-violet-500/60 bg-violet-200/60 text-violet-950',
     absence: 'border-rose-600/70 bg-rose-200/75 text-rose-950',
     fixed_day_off: 'border-slate-500/70 bg-slate-300/80 text-slate-900',
@@ -416,7 +416,7 @@ const WorkerAvailabilityBands = ({
               backgroundImage: patterns[band.kind],
             }}
           >
-            {!compact && widthPercent >= 6 && (
+            {!compact && band.kind !== 'available' && widthPercent >= 6 && (
               <span className="absolute left-1 top-1 max-w-[calc(100%-0.5rem)] truncate text-[10px] font-bold leading-tight">
                 {labelText}
               </span>
@@ -1787,7 +1787,6 @@ export const PlanningProposalCalendar = ({
                   Mueve horizontalmente para ajustar la hora o cambia de fila para reasignar.
                 </p>
                 <div aria-label="Leyenda de disponibilidad" className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-[11px] text-ink-3">
-                  <span className="inline-flex items-center gap-1.5"><i aria-hidden="true" className="h-3 w-4 rounded border border-emerald-600/50 bg-emerald-200/70" />Horario disponible</span>
                   <span className="inline-flex items-center gap-1.5"><i aria-hidden="true" className="h-3 w-4 rounded border border-slate-400 bg-slate-100" style={{ backgroundImage: 'repeating-linear-gradient(135deg, rgba(100,116,139,.24) 0 2px, transparent 2px 6px)' }} />Fuera de horario</span>
                   <span className="inline-flex items-center gap-1.5"><i aria-hidden="true" className="h-3 w-4 rounded border border-amber-600/70 bg-amber-200/80" />Mantenimiento</span>
                   <span className="inline-flex items-center gap-1.5"><i aria-hidden="true" className="h-3 w-4 rounded border border-rose-600/70 bg-rose-200/75" />Ausencia o bloqueo</span>
