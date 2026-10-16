@@ -1,0 +1,21 @@
+{
+  "request": "Reducir la espera al pulsar «Guardar reparto y avisar» en el planificador diario para que la operativa sea más fluida, sin comprometer que las planificaciones se guarden bien.",
+  "reason": "Cambia solo el orden de ejecución en el cliente de las mismas operaciones de guardado que ya existían: hasta 4 tareas a la vez en lugar de una detrás de otra, y no reescribe un horario que la base ya tiene idéntico. Las escrituras, funciones y permisos son los mismos; no se añade ningún efecto nuevo ni se toca base de datos, correos, WhatsApp o integraciones.",
+  "verification": "Prueba Node sobre el código real: orden secuencial por defecto sin cambios, paralelismo acotado a 4 con resultados en el orden del reparto, cada tarea guardada una vez, horarios idénticos (con o sin segundos) no reescritos y los distintos sí, fallo a mitad: no se inician tareas nuevas, se espera a las que están en marcha y se deshace toda asignación y horario intentado por la vía sin avisos. Pruebas existentes del guardado (aplicación, anulación pendiente, compatibilidad, lote) en verde; navegador local de reasignación sin red en verde; build y tipos sin errores nuevos. Se comprobó en la base de producción (solo lectura de definiciones) que no hay triggers ni validaciones de solape entre tareas y que los bloqueos por trabajadora se toman siempre en orden, por lo que guardar varias tareas a la vez no puede producir bloqueos cruzados. Limitación: no medido con datos reales ni sesión; la mejora depende de la latencia de red.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/proposalBatchExecutionSpeedTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "654189a22c09fe7c5a470191bea3617fd2360367c315153b3fa5c7db45a4ad07"
+}
