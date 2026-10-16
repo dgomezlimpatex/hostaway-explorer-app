@@ -673,7 +673,6 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   });
   const [pin, setPin] = useState('');
   const [showBuildings, setShowBuildings] = useState(false);
-  const [routeView, setRouteView] = useState<'preparation' | 'delivery'>('preparation');
   const [issueTaskId, setIssueTaskId] = useState<string | null>(null);
   const [issueReason, setIssueReason] = useState('');
   const [completeFlashTaskId, setCompleteFlashTaskId] = useState<string | null>(null);
@@ -1131,12 +1130,9 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   }
 
   const urgentBag = workflow.urgentBags[0] || null;
-  const deliveryEnabled = ROUTE_DELIVERY_ENABLED || workflow.inventoryCycleEnabled === true;
   // Preparing the next bags must not depend on confirming today's physical route.
   // Keep the server workflow intact; this choice only selects the visible screen.
-  const visibleStep = urgentBag ? 'urgent'
-    : routeView === 'delivery' && deliveryEnabled ? 'deliver'
-      : nextPendingBag ? 'prepare_next' : 'complete';
+  const visibleStep = urgentBag ? 'urgent' : nextPendingBag ? 'prepare_next' : 'complete';
   const preparationBags = (urgentBag
     ? workflow.urgentBags
     : visibleStep === 'prepare_next' ? workflow.nextRouteBags : []
@@ -1173,20 +1169,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
   return (
     <div ref={scrollContainerRef} className="fixed inset-x-0 top-0 h-dvh overflow-clip overscroll-none bg-[#faf7f1] font-sans" data-laundry-scroll>
       <main className="mx-auto flex h-full max-w-md flex-col gap-1.5 px-4 py-1 landscape:max-w-3xl" style={{ paddingBottom: buildingViewActive ? 12 : dockHeight + 8 }}>
-        {deliveryEnabled && (
-          <nav aria-label="Vista de lavandería" className="grid shrink-0 grid-cols-2 gap-1">
-            <Button variant={visibleStep !== 'deliver' ? 'default' : 'outline'} size="sm"
-              aria-pressed={visibleStep !== 'deliver'} onClick={() => setRouteView('preparation')}>
-              Preparar bolsas
-            </Button>
-            <Button variant={visibleStep === 'deliver' ? 'default' : 'outline'} size="sm"
-              aria-pressed={visibleStep === 'deliver'} disabled={Boolean(urgentBag) || Boolean(issueTaskId) || pendingActionKeys.size > 0}
-              onClick={() => setRouteView('delivery')}>
-              Recogida y entrega
-            </Button>
-          </nav>
-        )}
-        {workflow.stockTrackingMode==='partial'&&<p className="shrink-0 rounded-md bg-purple-50 px-2 py-1 text-[10px] leading-4 text-purple-900">Las bolsas descuentan material al prepararlas. Confirma entrega y recogida; las cantidades sucias anteriores siguen pendientes de recuento.</p>}
+        {workflow.stockTrackingMode==='partial'&&<p className="shrink-0 rounded-md bg-purple-50 px-2 py-1 text-[10px] leading-4 text-purple-900">Las bolsas descuentan material al prepararlas. Las cantidades sucias anteriores siguen pendientes de recuento.</p>}
         {accessRequired && routeAccess?.worker && (
           <div className="flex shrink-0 items-center gap-2 border-b border-[#e8e1d7] pb-0.5">
             <div className="min-w-0">
@@ -1365,7 +1348,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           </section>
         )}
 
-        {!buildingViewActive && !urgentBag && visibleStep === 'deliver' && (
+        {!buildingViewActive && ROUTE_DELIVERY_ENABLED && !urgentBag && workflow.blockingStep === 'deliver' && (
           <section className="min-h-0 overflow-y-auto space-y-2">
             <div className="rounded-lg border border-[#dfd2bf] bg-[#fbf6ec] p-2.5 text-[#17130f]">
               <div className="flex items-center gap-1.5">
@@ -1507,7 +1490,7 @@ export const LaundryRouteV2View = ({ token }: LaundryRouteV2ViewProps) => {
           <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center text-green-950">
             <CheckCircle2 className="mx-auto h-7 w-7" />
             <h2 className="mt-2 text-base font-black">Sin bolsas pendientes de preparar</h2>
-            <p className="mt-1 text-xs">{deliveryEnabled ? 'Puedes consultar el reparto en Recogida y entrega.' : 'No quedan bolsas pendientes de preparación en este enlace.'}</p>
+            <p className="mt-1 text-xs">No quedan bolsas pendientes de preparación en este enlace.</p>
           </div>
         )}
       </main>
