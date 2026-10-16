@@ -3,6 +3,8 @@ import type { ProposalBatchTaskPlan } from './proposalBatchApply';
 interface ProposalBatchExecutionDependencies<TResult> {
   updateSchedule: (taskId: string, startTime: string, endTime: string) => Promise<unknown>;
   setAssignments: (taskId: string, cleanerIds: string[]) => Promise<TResult>;
+  // Deshacer un lote fallido no debe generar avisos: por defecto usa setAssignments.
+  revertAssignments?: (taskId: string, cleanerIds: string[]) => Promise<unknown>;
 }
 
 interface AppliedPlanState {
@@ -66,7 +68,7 @@ export const executeProposalBatch = async <TResult>(
       const { plan } = state;
       if (state.assignmentAttempted) {
         try {
-          await dependencies.setAssignments(plan.taskId, plan.previousCleanerIds);
+          await (dependencies.revertAssignments ?? dependencies.setAssignments)(plan.taskId, plan.previousCleanerIds);
         } catch {
           // Continue reverting the remaining batch state.
         }

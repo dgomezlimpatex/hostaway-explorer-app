@@ -73,6 +73,24 @@ export class MultipleTaskAssignmentService {
     return { added, removed, final: result.final || [] };
   }
 
+  /**
+   * Igual que setTaskAssignments, pero los correos de alta y baja se apuntan en
+   * la cola de la base de datos dentro de la misma transacción (como WhatsApp).
+   * Un proceso automático los envía con reintentos; la app no espera por ellos.
+   */
+  async setTaskAssignmentsQueueingEmails(taskId: string, cleanerIds: string[]): Promise<SetAssignmentsResult> {
+    const queueRpc = (supabase as unknown as {
+      rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+    }).rpc;
+    const { data, error } = await queueRpc.call(supabase, 'set_task_assignments_queue_email', {
+      _task_id: stripVirtualId(taskId),
+      _cleaner_ids: cleanerIds,
+    });
+    if (error) throw new Error(`Error setting task assignments: ${error.message}`);
+    const result = (data || {}) as Partial<SetAssignmentsResult>;
+    return { added: result.added || [], removed: result.removed || [], final: result.final || [] };
+  }
+
   async notifyAssignmentDiff(taskId: string, added: CleanerLite[], removed: CleanerLite[], workerCount = 1): Promise<void> {
     const actualTaskId = stripVirtualId(taskId);
     // WhatsApp se encola de forma canónica mediante el trigger de

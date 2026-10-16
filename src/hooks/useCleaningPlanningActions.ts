@@ -123,7 +123,11 @@ export const useCleaningPlanningActions = () => {
             startTime,
             endTime,
           }),
-          setAssignments: (taskId, cleanerIds) => multipleTaskAssignmentService.setTaskAssignments(
+          setAssignments: (taskId, cleanerIds) => multipleTaskAssignmentService.setTaskAssignmentsQueueingEmails(
+            taskId,
+            cleanerIds,
+          ),
+          revertAssignments: (taskId, cleanerIds) => multipleTaskAssignmentService.setTaskAssignments(
             taskId,
             cleanerIds,
             { notify: false },
@@ -135,9 +139,6 @@ export const useCleaningPlanningActions = () => {
           : 'No se pudo aplicar la propuesta completa. Se intentó revertir responsables y horarios.');
       }
 
-      for (const item of results) {
-        await multipleTaskAssignmentService.notifyAssignmentDiff(item.taskId, item.result.added, item.result.removed);
-      }
       recordPlanningCopilotApply({
         activeSedeId,
         proposals,
