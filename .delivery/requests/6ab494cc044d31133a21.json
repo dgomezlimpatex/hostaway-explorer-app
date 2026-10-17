@@ -1,0 +1,21 @@
+{
+  "request": "Poder recuperar los cambios pendientes del planificador diario si se recarga la página, se cierra la pestaña o el navegador, o se sale de la pantalla, con recuperación y descarte explícitos y sin aplicar nada a las tareas reales hasta «Guardar cambios».",
+  "reason": "Solo añade almacenamiento local del navegador (localStorage, por usuario, sede y día), avisos de interfaz y validación en memoria contra los datos ya cargados. No escribe tareas, no envía comunicaciones, no cambia permisos ni inicio de sesión (solo lee el identificador de usuario ya existente) y no toca Supabase.",
+  "verification": "Pruebas Node del código real (almacén, gestor, validación): reconstrucción exacta, equipos de varias personas, desasignaciones y horarios, aislamiento usuario/sede/día, cambios externos (cancelada, completada, horario, responsables, trabajadora inactiva/no apta, disponibilidad) con recuperación parcial o bloqueada, descarte y guardado sin carreras, carga inicial sin sobrescribir, almacenamiento corrupto/lleno/bloqueado/de otra versión, dos pestañas, caducidad y hora de Madrid. Además, prueba de navegador local (no incluida en la cola, sin Chromium allí) sobre la página real con backend simulado: editar, recargar, recuperar, guardar y descartar en móvil y escritorio, sin peticiones de red. Limitación: no se prueba contra Supabase ni con sesión real.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/planningDraftRecoveryTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "89538b8dc89dc49d7a2826964cdab21ed982722c7570b60c20e50978c258930f"
+}

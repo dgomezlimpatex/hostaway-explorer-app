@@ -86,6 +86,9 @@ interface PlanningProposalCalendarProps {
   isStale?: boolean;
   savedTaskIds?: string[];
   onTaskSaved?: (taskId: string) => void;
+  /** Limpiezas ya asignadas cuya edición quedó recogida en un borrador recuperado. */
+  initialEditedTaskIds?: string[];
+  onEditedTaskIdsChange?: (taskIds: string[]) => void;
   onDraftProposalsChange: (proposals: AssignmentProposal[]) => void;
   onDraftWarningsChange: (warnings: PlanningProposalDraftWarning[]) => void;
 }
@@ -637,6 +640,8 @@ export const PlanningProposalCalendar = ({
   isStale,
   savedTaskIds = [],
   onTaskSaved,
+  initialEditedTaskIds,
+  onEditedTaskIdsChange,
   onDraftProposalsChange,
   onDraftWarningsChange,
 }: PlanningProposalCalendarProps) => {
@@ -689,8 +694,11 @@ export const PlanningProposalCalendar = ({
   const [placementCleanerId, setPlacementCleanerId] = useState('');
   const [placementStartTime, setPlacementStartTime] = useState('09:00');
   const [editedExistingTaskIds, setEditedExistingTaskIds] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set(initialEditedTaskIds),
   );
+  useEffect(() => {
+    onEditedTaskIdsChange?.(Array.from(editedExistingTaskIds));
+  }, [editedExistingTaskIds, onEditedTaskIdsChange]);
   const dragPointerRef = useRef<{ x: number; y: number } | null>(null);
   const dragOriginRef = useRef<{ left: number; top: number } | null>(null);
   const previewAtPointer: Modifier = ({ activeNodeRect, transform }) => {

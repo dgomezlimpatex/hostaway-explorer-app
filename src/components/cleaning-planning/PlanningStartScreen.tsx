@@ -24,6 +24,8 @@ interface PlanningStartScreenProps {
   onGenerateProposal: () => void;
   onRetry: () => void;
   advancedContent: ReactNode;
+  /** Aviso de un reparto sin guardar recuperable en este navegador. */
+  draftNotice?: ReactNode;
 }
 
 const parsePlanningDate = (value: string): Date | null => {
@@ -48,6 +50,7 @@ export const PlanningStartScreen = ({
   onGenerateProposal,
   onRetry,
   advancedContent,
+  draftNotice,
 }: PlanningStartScreenProps) => {
   const hasSeveralSedes = availableSedes.length > 1;
   const hasBlockingError = isError || buildingDataError;
@@ -77,6 +80,7 @@ export const PlanningStartScreen = ({
         </div>
 
         <div className="space-y-5 p-5 md:p-8">
+          {draftNotice}
           <div className={hasSeveralSedes ? 'grid gap-4 sm:grid-cols-2' : 'grid gap-4'}>
             <label className="space-y-2">
               <span className="flex items-center gap-2 text-sm font-semibold text-ink">

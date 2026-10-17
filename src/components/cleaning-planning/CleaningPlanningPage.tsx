@@ -1,12 +1,15 @@
 import { usePlanningSavedTaskContext } from '@/hooks/usePlanningSavedTaskContext';
 import { buildProposalContextKey } from '@/utils/cleaning-planning/proposalContext';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { addDays } from 'date-fns';
 import { useCleaningPlanning } from '@/hooks/useCleaningPlanning';
 import { useCleaningPlanningActions } from '@/hooks/useCleaningPlanningActions';
 import { useCleaningPlanningBuildingData } from '@/hooks/useCleaningPlanningBuildingData';
 import { useCleaners } from '@/hooks/useCleaners';
+import { useAuth } from '@/hooks/useAuth';
+import { usePlanningDraftManager, usePlanningDraftView } from '@/hooks/usePlanningDraft';
+import { usePlanningDraftRecovery, type RecoveredDraft } from '@/hooks/usePlanningDraftRecovery';
 import { useSede } from '@/contexts/SedeContext';
 import {
   AssignmentProposalResult,
@@ -28,6 +31,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { buildAssignmentProposal } from '@/utils/cleaning-planning/proposalEngine';
 import { applyBuildingOperationalWindow } from '@/utils/cleaning-planning/buildingOperationalWindow';
 import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
+import type { DraftEvaluation } from '@/utils/cleaning-planning/planningDraftRecovery';
+import { presetForDraftPeriod } from '@/utils/cleaning-planning/planningDraftText';
+import type { DraftSummary } from '@/utils/cleaning-planning/planningDraftStore';
+import { PlanningDraftNotice, PlanningDraftOthers, PlanningDraftReport } from './PlanningDraftNotice';
 import { extractBuildingCode } from '@/services/laundryScheduleService';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
 import { AssignmentProposalPanel } from './AssignmentProposalPanel';
@@ -66,6 +73,12 @@ type ProposalState = {
   result: AssignmentProposalResult;
   contextKey: string;
   tasksSnapshot: CleaningPlanningTask[];
+  /** Borrador recuperado de forma explícita (o conservado al cambiar de día); solo se aplica al abrir el reparto. */
+  initialDraft?: RecoveredDraft;
+  /** Identifica cada recuperación para que el reparto se abra de nuevo con el borrador recuperado. */
+  recoveryId?: number;
+  /** Resumen de lo recuperado y lo que no, mientras el usuario no lo cierre. */
+  recovery?: { recovered: number; total: number; conflicts: DraftEvaluation['conflicts'] };
 };
 
 const buildIndividualBuilding = (task: CleaningPlanningTask, codePrefix: string): DetectedBuilding => {
@@ -245,6 +258,80 @@ export const CleaningPlanningPage = () => {
   const hasPartialScope = filteredUnassignedTasks.length !== enhancedUnassignedTasks.length;
   const isProposalStale = Boolean(proposalState && proposalState.contextKey !== proposalContextKey);
 
+  // Borrador local: identidad = usuario + sede + día (o rango) real de planificación.
+  const { user } = useAuth();
+  const draftManager = usePlanningDraftManager();
+  const draftIdentity = useMemo(() => (user?.id && activeSede?.id
+    ? { userId: user.id, sedeId: activeSede.id, startDate: range.startDate, endDate: range.endDate }
+    : null), [user?.id, activeSede?.id, range.startDate, range.endDate]);
+  const draftView = usePlanningDraftView(draftManager, draftIdentity);
+  const allPlanningTasks = useMemo(
+    () => [...enhancedUnassignedTasks, ...enhancedCleanerDays.flatMap((day) => day.tasks)],
+    [enhancedCleanerDays, enhancedUnassignedTasks],
+  );
+  const draftDataReady = !isLoading && !isError && buildingDataReady && !buildingDataQuery.isError;
+  const latestPlanning = useRef({ filteredUnassignedTasks, operationalCleaners, effectiveAvailability, cleanerAssignments: buildingData.cleanerAssignments, proposalContextKey });
+  latestPlanning.current = { filteredUnassignedTasks, operationalCleaners, effectiveAvailability, cleanerAssignments: buildingData.cleanerAssignments, proposalContextKey };
+  const latestDrafts = useRef<Record<string, RecoveredDraft>>({});
+  const recoveryCounter = useRef(0);
+
+  const presentProposal = (next: ProposalState) => {
+    const showProposal = () => {
+      flushSync(() => setProposalState(next));
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    };
+    const focusHeading = () => {
+      // No quitar el foco a quien ya empezó a navegar mientras terminaba la transición.
+      if (document.activeElement === document.body || document.activeElement === document.documentElement) {
+        document.querySelector<HTMLElement>('[data-planner-proposal-title]')?.focus({ preventScroll: true });
+      }
+    };
+    if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // Mantiene continuidad entre la cabecera de preparación y el tablero, sin retrasar la propuesta.
+      void document.startViewTransition(showProposal).finished.then(focusHeading, focusHeading);
+    } else {
+      showProposal();
+      focusHeading();
+    }
+  };
+
+  /** Abre el reparto con el borrador que el usuario ha elegido recuperar. No guarda nada en las tareas. */
+  const handleDraftRecovered = (draft: RecoveredDraft, evaluation: DraftEvaluation) => {
+    const current = latestPlanning.current;
+    const result = buildAssignmentProposal({
+      tasks: current.filteredUnassignedTasks,
+      cleaners: current.operationalCleaners,
+      availability: current.effectiveAvailability,
+      cleanerGroupAssignments: current.cleanerAssignments,
+    });
+    recoveryCounter.current += 1;
+    presentProposal({
+      result,
+      contextKey: current.proposalContextKey,
+      tasksSnapshot: current.filteredUnassignedTasks,
+      initialDraft: draft,
+      recoveryId: recoveryCounter.current,
+      recovery: { recovered: evaluation.recoveredTaskCount, total: evaluation.totalTaskCount, conflicts: evaluation.conflicts },
+    });
+  };
+
+  const draftRecovery = usePlanningDraftRecovery({
+    manager: draftManager,
+    identity: draftIdentity,
+    view: draftView,
+    ready: draftDataReady,
+    allTasks: allPlanningTasks,
+    scopeTasks: filteredTasks,
+    cleaners: operationalCleaners,
+    availability: effectiveAvailability,
+    excludedCleanerAssignments: buildingData.excludedCleanerAssignments,
+    refreshTasks: async () => {
+      const fresh = await refetch();
+      return fresh.isError || !fresh.data ? null : fresh.data;
+    },
+    onRecovered: handleDraftRecovered,
+  });
+
   useEffect(() => {
     if (filters.cleanerId === 'all') return;
     const cleanerStillAvailable = operationalCleaners.some((cleaner) => cleaner.id === filters.cleanerId);
@@ -276,29 +363,13 @@ export const CleaningPlanningPage = () => {
       availability: effectiveAvailability,
       cleanerGroupAssignments: buildingData.cleanerAssignments,
     });
-    const showProposal = () => {
-      flushSync(() => setProposalState({ result: nextProposal, contextKey: proposalContextKey, tasksSnapshot: filteredUnassignedTasks }));
-      window.scrollTo({ top: 0, behavior: 'instant' });
-    };
-    const focusHeading = () => {
-      // No quitar el foco a quien ya empezó a navegar mientras terminaba la transición.
-      if (document.activeElement === document.body || document.activeElement === document.documentElement) {
-        document.querySelector<HTMLElement>('[data-planner-proposal-title]')?.focus({ preventScroll: true });
-      }
-    };
-    if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      // Mantiene continuidad entre la cabecera de preparación y el tablero, sin retrasar la propuesta.
-      void document.startViewTransition(showProposal).finished.then(focusHeading, focusHeading);
-    } else {
-      showProposal();
-      focusHeading();
-    }
+    presentProposal({ result: nextProposal, contextKey: proposalContextKey, tasksSnapshot: filteredUnassignedTasks });
     return nextProposal;
   };
 
   const handleCalendarDateChange = (nextDate: Date) => {
     if (isSavingDay || isApplyingProposal || formatMadridDate(nextDate) === formatMadridDate(date)) return;
-    if (proposalState) dayProposals.current.set(dayKey, proposalState);
+    if (proposalState) dayProposals.current.set(dayKey, { ...proposalState, recovery: undefined, initialDraft: latestDrafts.current[dayKey] ?? proposalState.initialDraft });
     setProposalState(null);
     setCalendarNavigation(true);
     setPreset('today');
@@ -349,6 +420,29 @@ export const CleaningPlanningPage = () => {
     }
   };
 
+  const handleDraftSnapshot = useCallback((draft: RecoveredDraft) => {
+    latestDrafts.current[dayKey] = draft;
+  }, [dayKey]);
+
+  const handleOpenDraftPeriod = (summary: DraftSummary) => {
+    const nextPreset = presetForDraftPeriod(summary.identity.startDate, summary.identity.endDate);
+    if (!nextPreset) return;
+    setPreset(nextPreset);
+    setDate(new Date(`${summary.identity.startDate}T12:00:00`));
+  };
+
+  const draftNoticeNode = (variant: 'start' | 'panel') => (
+    <PlanningDraftNotice
+      variant={variant}
+      view={draftView}
+      evaluation={draftRecovery.evaluation}
+      busy={draftRecovery.busy}
+      error={draftRecovery.error}
+      onRecover={() => { void draftRecovery.recover(); }}
+      onDiscard={() => { draftRecovery.discard(); }}
+    />
+  );
+
   const advancedContent = (
     <div className="space-y-5">
       <div className="rounded-lg border border-line bg-white p-4 text-sm text-ink-3">
@@ -392,8 +486,24 @@ export const CleaningPlanningPage = () => {
       {proposalState ? (
         <div className="mx-auto w-full max-w-none">
           <AssignmentProposalPanel
-            key={dayKey}
+            key={`${dayKey}:${proposalState.recoveryId ?? 0}`}
             draftScopeKey={dayKey}
+            draftStore={{ manager: draftManager, identity: draftIdentity }}
+            initialDraft={proposalState.initialDraft}
+            onDraftSnapshot={handleDraftSnapshot}
+            draftNotice={(
+              <>
+                {draftNoticeNode('panel')}
+                {proposalState.recovery && (
+                  <PlanningDraftReport
+                    recovered={proposalState.recovery.recovered}
+                    total={proposalState.recovery.total}
+                    conflicts={proposalState.recovery.conflicts}
+                    onClose={() => setProposalState((current) => (current ? { ...current, recovery: undefined } : current))}
+                  />
+                )}
+              </>
+            )}
             selectedDay={range.startDate === range.endDate ? range.startDate : undefined}
             proposal={proposal}
             tasks={proposalTasks}
@@ -434,6 +544,27 @@ export const CleaningPlanningPage = () => {
           onGenerateProposal={handleGenerateProposal}
           onRetry={handleRefresh}
           advancedContent={advancedContent}
+          draftNotice={(
+            <>
+              {draftNoticeNode('start')}
+              <PlanningDraftOthers
+                others={draftView.others}
+                onOpen={handleOpenDraftPeriod}
+                canOpen={(summary) => presetForDraftPeriod(summary.identity.startDate, summary.identity.endDate) !== null}
+              />
+              {draftView.corruptRemoved && draftIdentity && (
+                <p role="status" className="rounded-lg border border-line bg-paper p-3 text-sm text-ink-3">
+                  Había un borrador dañado en este navegador y se ha eliminado.{' '}
+                  <button type="button" className="font-semibold text-brand underline underline-offset-2" onClick={() => draftManager.dismissCorruptNotice(draftIdentity)}>Entendido</button>
+                </p>
+              )}
+              {!draftView.storageAvailable && (
+                <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  Este navegador no permite guardar borradores: si cierras o recargas, perderás el reparto sin guardar.
+                </p>
+              )}
+            </>
+          )}
         />
       )}
       <Dialog
