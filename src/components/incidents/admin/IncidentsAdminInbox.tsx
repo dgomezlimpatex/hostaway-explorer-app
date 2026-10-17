@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAddIncidentComment, useIncidents, useIncidentDetail, useIncidentStats, useUpdateIncidentStatus, IncidentStatus } from '@/hooks/useIncidents';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -40,12 +40,14 @@ export const IncidentsAdminInbox: React.FC = () => {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<IncidentStatus | 'all'>('pending_limpatex');
   const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  // ?incidencia=<id> abre directamente su ficha (enlace desde la actividad de una propiedad).
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get('incidencia'));
   const [manualDialogOpen, setManualDialogOpen] = useState(false);
 
   const { data: stats } = useIncidentStats();
   const { data: incidents = [], isLoading } = useIncidents({ status: statusFilter, search });
-  const { data: detail } = useIncidentDetail(selectedId);
+  const { data: detail, isLoading: detailLoading, isError: detailError } = useIncidentDetail(selectedId);
   const updateStatus = useUpdateIncidentStatus();
   const addComment = useAddIncidentComment();
 
@@ -435,9 +437,14 @@ export const IncidentsAdminInbox: React.FC = () => {
                 )}
               </div>
             </>
-          ) : (
+          ) : detailLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div role="alert" className="py-16 text-center text-sm text-muted-foreground">
+              <SheetTitle className="sr-only">Incidencia no disponible</SheetTitle>
+              {detailError ? 'No se ha podido cargar la incidencia.' : 'No se ha encontrado la incidencia o no tienes acceso a ella.'}
             </div>
           )}
         </SheetContent>

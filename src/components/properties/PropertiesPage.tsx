@@ -1,5 +1,6 @@
 import { normalizeDirectorySearch } from '@/components/directory/directorySearch';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,6 +15,10 @@ import { CreatePropertyModal } from './CreatePropertyModal';
 import { PropertyList } from './PropertyList';
 import { PropertyEditorSession, type PropertyEditorStatus } from './PropertyEditorSession';
 import { isPropertyActive } from './propertyPresentation';
+import { ACTIVITY_PARAMS } from '@/features/property-activity/propertyActivityModel';
+
+/** Propiedad abierta en la URL (?propertyId=), contrato que ya usa la ficha de edificio. */
+const PROPERTY_PARAM = 'propertyId';
 
 export const PropertiesPage = () => {
   const { activeSede } = useSede();
@@ -62,7 +67,19 @@ function PropertiesWorkspace() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('active');
   const [clientFilter, setClientFilter] = useState('all');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(() => params.get(PROPERTY_PARAM));
+  const urlPropertyId = params.get(PROPERTY_PARAM);
+  useEffect(() => {
+    if (urlPropertyId === selectedId) return;
+    setParams(current => {
+      const next = new URLSearchParams();
+      // Al cambiar de propiedad se vuelve al tramo inicial de su actividad.
+      current.forEach((value, key) => { if (key !== PROPERTY_PARAM && key !== ACTIVITY_PARAMS.windows) next.append(key, value); });
+      if (selectedId) next.set(PROPERTY_PARAM, selectedId);
+      return next;
+    }, { replace: true });
+  }, [selectedId, urlPropertyId, setParams]);
   const properties = useMemo(() => propertiesQuery.data || [], [propertiesQuery.data]);
   const clients = useMemo(() => new Map((clientsQuery.data || []).map(client => [client.id, client])), [clientsQuery.data]);
   const getClientName = (property: Property) => clients.get(property.clienteId)?.nombre || property.clientName || (property.clienteId ? 'Cliente no disponible' : 'Sin cliente asignado');
