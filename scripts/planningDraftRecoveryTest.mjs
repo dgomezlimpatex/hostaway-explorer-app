@@ -219,6 +219,24 @@ const writeAndFlush = (t, id = identity, c = content) => { t.manager.schedule(id
   assert.equal(readDraft(storage, identity).status, 'invalid');
 }
 
+// --- 3b. Cerrar sesión o cambiar de usuario/sede: una escritura pendiente nunca termina bajo otra identidad ------
+{
+  const storage = new FakeStorage();
+  const t = tab(storage, 'tab-1');
+  const sedeA = { ...identity, sedeId: 'sede-A' };
+  t.manager.begin(sedeA);
+  t.manager.schedule(sedeA, content);
+  // Cambia el usuario/sede activos antes de que venza el retardo.
+  const nextUser = { ...identity, userId: 'user-next', sedeId: 'sede-B' };
+  t.manager.begin(nextUser);
+  t.manager.schedule(nextUser, contentFromDraft([], [], { tasks: {}, availability: {} }));
+  t.clock.run();
+  const keys = Object.keys(storage.items);
+  assert.deepEqual(keys, [draftStorageKey(sedeA)], 'La escritura pendiente se hace con la identidad con la que se programó');
+  assert.equal(readDraft(storage, nextUser).status, 'none');
+  assert.equal(JSON.parse(storage.items[keys[0]]).userId, 'user-a');
+}
+
 // --- 4. Cambios externos: tareas canceladas/completadas y validación parcial ---------------------------------
 {
   const storage = new FakeStorage();
