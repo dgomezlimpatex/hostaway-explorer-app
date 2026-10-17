@@ -119,7 +119,8 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { GlobalSearch } from './src/components/navigation/GlobalSearch';
+import { GlobalSearch, GlobalSearchIconTrigger } from './src/components/navigation/GlobalSearch';
+import { MobileDashboardHeader } from './src/components/dashboard/MobileDashboardHeader';
 import { MobileDashboardSidebar } from './src/components/dashboard/MobileDashboardSidebar';
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from './src/components/ui/drawer';
 import { ClientsPage } from './src/components/clients/ClientsPage';
@@ -139,6 +140,7 @@ createRoot(document.getElementById('root')).render(
       <header className="flex items-center gap-2 border-b p-2"><Where />{mobile ? <MobileMenu /> : <div className="w-64"><GlobalSearch /></div>}<Link to="/">Inicio</Link></header>
       <Routes>
         <Route path="/" element={<p>Inicio de prueba</p>} />
+        <Route path="/triggers" element={<><div data-testid="icon-trigger"><GlobalSearchIconTrigger /></div><div data-testid="mobile-header"><MobileDashboardHeader /></div></>} />
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/properties" element={<PropertiesPage />} />
         <Route path="/tasks" element={<TasksPage />} />

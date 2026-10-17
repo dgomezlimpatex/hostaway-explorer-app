@@ -1,0 +1,22 @@
+{
+  "request": "Dani pide arreglar los botones personalizados del buscador global (botón de icono GlobalSearchIconTrigger y botón de la cabecera móvil), que se mostraban pero no abrían el buscador.",
+  "reason": "Cambio solo de interfaz en el cliente: GlobalSearch envuelve el botón recibido para que su clic abra el diálogo de búsqueda existente, conserva el onClick propio y añade un nombre accesible. No cambia consultas, datos, permisos, autenticación, backend ni comunicaciones.",
+  "verification": "Reproducido: con el código de main la prueba de navegador no encuentra un botón de búsqueda funcional en el botón de icono. Tras el cambio: prueba Node del envoltorio real (abre, ejecuta antes el onClick propio, respeta preventDefault, conserva props y da aria-label). Prueba de navegador local con Supabase falso: botón de icono en escritorio y cabecera móvil a 390 px abren el buscador y llevan a la ficha del cliente elegido; el resto de comprobaciones del buscador siguen correctas (19 en total), sin escrituras. Build, tsc de app idéntico a main, tsc Node y lint focalizado limpios.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/globalSearchTriggerTest.mjs",
+    "scripts/globalSearchEntityLinksTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "68f3c02a7704b45619c89096146688c82271e3d538457436cf0ad487e90afe25"
+}

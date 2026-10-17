@@ -23,9 +23,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { entityDetailPath } from './entityLinks';
 import { rememberSearchOrigin } from './useLinkedSelection';
+import { withSearchTrigger, type SearchTriggerElement } from './searchTrigger';
 
 interface GlobalSearchProps {
-  trigger?: React.ReactNode;
+  /** Custom button; GlobalSearch adds the click that opens the search. */
+  trigger?: SearchTriggerElement;
   /** Called after a result is opened, e.g. to close the mobile menu that hosts the search. */
   onNavigate?: () => void;
 }
@@ -124,7 +126,7 @@ export const GlobalSearch = ({ trigger, onNavigate }: GlobalSearchProps) => {
 
   return (
     <>
-      {trigger || defaultTrigger}
+      {trigger ? withSearchTrigger(trigger, openSearch) : defaultTrigger}
 
       <CommandDialog
         open={open}
@@ -263,21 +265,12 @@ export const GlobalSearch = ({ trigger, onNavigate }: GlobalSearchProps) => {
   );
 };
 
-export const GlobalSearchIconTrigger = () => {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <GlobalSearch
-      trigger={
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9"
-          onClick={() => setOpen(true)}
-        >
-          <Search className="h-5 w-5" />
-        </Button>
-      }
-    />
-  );
-};
+export const GlobalSearchIconTrigger = () => (
+  <GlobalSearch
+    trigger={
+      <Button variant="ghost" size="icon" className="h-9 w-9">
+        <Search className="h-5 w-5" />
+      </Button>
+    }
+  />
+);
