@@ -33,7 +33,7 @@ export interface PmsHealthView {
   isFetching: boolean;
   /** Vuelve a LEER la información. No inicia ninguna sincronización. */
   refresh: () => Promise<void>;
-  /** Sede a la que se acotan las incidencias de Little Hotelier. */
+  /** Sede activa, a la que se acotan las incidencias asociadas a una sede. */
   sedeName: string | null;
   /** Cuándo se leyó por última vez la información mostrada. */
   readAt: Date | null;
@@ -42,6 +42,7 @@ export interface PmsHealthView {
 export function usePmsHealth(): PmsHealthView {
   const { activeSede, loading: sedeLoading } = useSede();
   const sedeId = activeSede?.id ?? null;
+  const sedeNombre = activeSede?.nombre ?? null;
   const clock = useMinuteClock();
 
   const smoobuQuery = useQuery({
@@ -53,9 +54,9 @@ export function usePmsHealth(): PmsHealthView {
   });
 
   const lhQuery = useQuery({
-    queryKey: ['pms-health', 'little-hotelier', sedeId],
-    queryFn: () => readLhRaw(readOnlyDb, getMadridToday(), sedeId),
-    enabled: !sedeLoading,
+    // La lectura no depende de la sede: la sede activa solo filtra lo que se muestra.
+    queryKey: ['pms-health', 'little-hotelier'],
+    queryFn: () => readLhRaw(readOnlyDb, getMadridToday()),
     staleTime: 30_000,
     refetchOnWindowFocus: false,
     retry: false,
@@ -70,8 +71,11 @@ export function usePmsHealth(): PmsHealthView {
     [smoobuRaw, clock],
   );
   const littleHotelier = useMemo(
-    () => (lhRaw ? evaluatePmsHealth(buildLhEvidence(lhRaw, clock)) : null),
-    [lhRaw, clock],
+    () =>
+      lhRaw
+        ? evaluatePmsHealth(buildLhEvidence(lhRaw, clock, sedeId ? { id: sedeId, nombre: sedeNombre } : null))
+        : null,
+    [lhRaw, clock, sedeId, sedeNombre],
   );
 
   const { refetch: refetchSmoobu } = smoobuQuery;

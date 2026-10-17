@@ -62,7 +62,11 @@ export interface Attempt {
   at: string;
   /** Cuándo empezó, solo si la fuente lo registra. */
   startedAt: string | null;
-  kind: 'scheduled' | 'manual' | 'unknown';
+  /**
+   * `off_schedule` es una inferencia: la pasada empezó claramente fuera del horario esperado,
+   * así que podría ser manual. Ninguna fuente lo registra.
+   */
+  kind: 'scheduled' | 'manual' | 'off_schedule' | 'unknown';
   outcome: AttemptOutcome;
   read: number;
   created: number;
@@ -79,15 +83,46 @@ export interface InFlight {
   since: string;
 }
 
-export interface PendingLinkItem {
+export type LinkIssueKind =
+  /** Reserva sin habitación identificada. */
+  | 'no_room'
+  /** Habitación sin ninguna propiedad vinculada (o con todos sus mapeos pausados). */
+  | 'room_unlinked'
+  /** Alojamiento de Smoobu sin mapeo activo. */
+  | 'property_unmapped'
+  /** La habitación tiene mapeo de estancia pero no de salida. */
+  | 'checkout_missing'
+  /** La habitación tiene mapeo de salida pero no de estancia. */
+  | 'stay_missing'
+  /** La sede del mapeo no coincide con la de su propiedad. */
+  | 'sede_mismatch';
+
+export interface LinkIssue {
+  kind: LinkIssueKind;
   label: string;
+  /** Reservas vigentes afectadas. */
   count: number;
 }
 
+export type SedeLinkScope =
+  /** La integración no relaciona sus incidencias con sedes. */
+  | { state: 'not_applicable' }
+  | { state: 'no_active_sede' }
+  | {
+      state: 'ok';
+      sedeName: string | null;
+      /** Impiden crear limpieza y su mapeo las asocia a esta sede. */
+      blocking: LinkIssue[];
+      /** Ningún dato dice qué servicios necesita cada habitación: se muestran para decidir. */
+      review: LinkIssue[];
+    };
+
 export interface PendingLinks {
-  /** Reservas afectadas (sin duplicar). */
-  total: number;
-  items: PendingLinkItem[];
+  /** Impiden crear limpieza y no se pueden asociar a ninguna sede. */
+  unattributed: LinkIssue[];
+  /** Reservas afectadas por `unattributed` (sin duplicar). */
+  unattributedTotal: number;
+  sede: SedeLinkScope;
   /** La consulta pudo dejar filas fuera por su límite. */
   incomplete: boolean;
 }
@@ -107,7 +142,14 @@ export interface PmsEvidence {
   attempts: EvidenceSource<Attempt[]>;
   inFlight: EvidenceSource<InFlight[]>;
   schedule: ExpectedSchedule | null;
-  pendingLinks: EvidenceSource<PendingLinks> | { state: 'unavailable' };
+  /**
+   * Qué demuestra comprobar el horario: `execution` si hay un registro por pasada;
+   * `received_data` si solo se ven las reservas recibidas (no se sabe si la pasada corrió).
+   */
+  scheduleBasis: 'execution' | 'received_data';
+  /** Hay un registro de ejecución por pasada (inicio/fin/resultado). */
+  executionRecorded: boolean;
+  pendingLinks: EvidenceSource<PendingLinks>;
   /** Intentos que no cuentan (p. ej. simulaciones) y se muestran aparte. */
   ignoredAttempts: number;
 }
@@ -122,6 +164,9 @@ export type FindingCode =
   | 'pending_links'
   | 'pending_links_incomplete'
   | 'pending_links_unavailable'
+  | 'sede_issues'
+  | 'sede_unavailable'
+  | 'config_review'
   | 'in_flight_unavailable'
   | 'no_reference_frequency'
   | 'ignored_simulations';
@@ -130,6 +175,8 @@ export interface Finding {
   code: FindingCode;
   severity: 'danger' | 'warning' | 'info';
   text: string;
+  /** `sede`: depende de la sede activa y no cambia el estado global. Por defecto, global. */
+  scope?: 'global' | 'sede';
 }
 
 export interface AttemptView {
@@ -161,6 +208,8 @@ export interface PmsHealth {
   frequencyKnown: boolean;
   /** Horas de Madrid esperadas, o null si no hay frecuencia fiable. */
   scheduleTimes: string[] | null;
+  scheduleBasis: 'execution' | 'received_data';
+  executionRecorded: boolean;
   inFlight: InFlight | null;
   lastErrorSummaries: string[];
   lastErrorAt: string | null;
@@ -228,6 +277,24 @@ export const latestExpectedPass = (
     }
   }
   return best;
+};
+
+/** true si `at` cae entre `beforeMinutes` antes y `afterMinutes` después de alguna hora esperada. */
+export const isNearExpectedPass = (
+  at: Date,
+  schedule: ExpectedSchedule,
+  beforeMinutes: number,
+  afterMinutes: number,
+): boolean => {
+  const day = formatMadridDate(at);
+  for (const candidate of [shiftCivilDate(day, -1), day, shiftCivilDate(day, 1)]) {
+    for (const time of schedule.times) {
+      const slot = madridWallTimeToDate(candidate, time).getTime();
+      const delta = (at.getTime() - slot) / MINUTE;
+      if (delta >= -beforeMinutes && delta <= afterMinutes) return true;
+    }
+  }
+  return false;
 };
 
 export const formatMadridStamp = (iso: string | Date | null | undefined): string => {
@@ -337,7 +404,7 @@ const toView = (attempt: Attempt, now: Date): AttemptView => ({
 
 const describeChanges = (view: AttemptView): string => {
   if (view.noNewReservations) return 'No hay nuevas reservas';
-  const parts = [`${view.created} nuevas`];
+  const parts = [view.created === 1 ? '1 nueva' : `${view.created} nuevas`];
   if (view.modified !== null) parts.push(`${view.modified} modificadas`);
   parts.push(`${view.cancelled} canceladas`);
   return parts.join(', ');
@@ -352,6 +419,10 @@ export const describeAttemptResult = (view: AttemptView): string => {
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
+/** El estado global solo cambia por hallazgos globales: los de sede dependen de la sede activa. */
+const hasGlobalWarning = (findings: Finding[]) =>
+  findings.some((finding) => finding.severity !== 'info' && finding.scope !== 'sede');
+
 export function evaluatePmsHealth(evidence: PmsEvidence): PmsHealth {
   const { now, integration } = evidence;
   const findings: Finding[] = [];
@@ -364,6 +435,8 @@ export function evaluatePmsHealth(evidence: PmsEvidence): PmsHealth {
     overduePass: null as PmsHealth['overduePass'],
     frequencyKnown: evidence.schedule !== null,
     scheduleTimes: evidence.schedule ? [...evidence.schedule.times] : null,
+    scheduleBasis: evidence.scheduleBasis,
+    executionRecorded: evidence.executionRecorded,
     inFlight: null as InFlight | null,
     lastErrorSummaries: [] as string[],
     lastErrorAt: null as string | null,
@@ -389,19 +462,46 @@ export function evaluatePmsHealth(evidence: PmsEvidence): PmsHealth {
 
   // Incidencias de vinculación: se leen aparte y su fallo nunca deja el estado en verde.
   if (evidence.pendingLinks.state === 'ok') {
-    base.pendingLinks = evidence.pendingLinks.data;
-    if (evidence.pendingLinks.data.total > 0) {
+    const links = evidence.pendingLinks.data;
+    base.pendingLinks = links;
+    if (links.unattributedTotal > 0) {
       findings.push({
         code: 'pending_links',
         severity: 'warning',
-        text: `${plural(evidence.pendingLinks.data.total, 'reserva', 'reservas')} sin propiedad vinculada: no crean limpieza.`,
+        text: `${plural(links.unattributedTotal, 'reserva', 'reservas')} sin propiedad vinculada ni sede atribuible: no crean limpieza.`,
       });
     }
-    if (evidence.pendingLinks.data.incomplete) {
+    if (links.incomplete) {
       findings.push({
         code: 'pending_links_incomplete',
         severity: 'warning',
         text: 'La lista de reservas sin vincular puede estar incompleta.',
+      });
+    }
+    if (links.sede.state === 'ok') {
+      const where = links.sede.sedeName ? `la sede ${links.sede.sedeName}` : 'la sede activa';
+      if (links.sede.blocking.length > 0) {
+        findings.push({
+          code: 'sede_issues',
+          severity: 'warning',
+          scope: 'sede',
+          text: `En ${where}: ${plural(links.sede.blocking.length, 'habitación pendiente de vincular', 'habitaciones pendientes de vincular')}.`,
+        });
+      }
+      if (links.sede.review.length > 0) {
+        findings.push({
+          code: 'config_review',
+          severity: 'info',
+          scope: 'sede',
+          text: `Configuración por revisar en ${where}: ${plural(links.sede.review.length, 'caso', 'casos')}. Ningún dato indica qué servicios necesita cada habitación.`,
+        });
+      }
+    } else if (links.sede.state === 'no_active_sede') {
+      findings.push({
+        code: 'sede_unavailable',
+        severity: 'info',
+        scope: 'sede',
+        text: 'Sin información disponible por sede: elige una sede para ver sus incidencias.',
       });
     }
   } else {
@@ -409,10 +509,7 @@ export function evaluatePmsHealth(evidence: PmsEvidence): PmsHealth {
     findings.push({
       code: 'pending_links_unavailable',
       severity: 'warning',
-      text:
-        evidence.pendingLinks.state === 'unavailable'
-          ? 'Sin información disponible sobre reservas sin vincular: elige una sede.'
-          : 'No se pudo comprobar si hay reservas sin vincular.',
+      text: 'No se pudo comprobar si hay reservas sin vincular.',
     });
   }
 
@@ -513,7 +610,10 @@ export function evaluatePmsHealth(evidence: PmsEvidence): PmsHealth {
         findings.unshift({
           code: 'not_run',
           severity: 'warning',
-          text: `No consta la pasada de las ${expected.label} (${formatMadridStamp(expected.at)}).`,
+          text:
+            evidence.scheduleBasis === 'execution'
+              ? `No consta la pasada de las ${expected.label} (${formatMadridStamp(expected.at)}).`
+              : `No constan reservas recibidas de la pasada de las ${expected.label} (${formatMadridStamp(expected.at)}). Puede que no se ejecutara, que fallara antes de enviar o que no encontrara reservas.`,
         });
       }
     }
@@ -529,7 +629,9 @@ export function evaluatePmsHealth(evidence: PmsEvidence): PmsHealth {
   if (base.overduePass) {
     return done(
       'stale',
-      `No se ha ejecutado la pasada de las ${base.overduePass.label}. ${lastSuccessText}`,
+      evidence.scheduleBasis === 'execution'
+        ? `No se ha ejecutado la pasada de las ${base.overduePass.label}. ${lastSuccessText}`
+        : `No constan reservas recibidas de la pasada de las ${base.overduePass.label}. ${lastSuccessText}`,
     );
   }
   if (last.outcome === 'partial') {
@@ -548,14 +650,14 @@ export function evaluatePmsHealth(evidence: PmsEvidence): PmsHealth {
       text: 'No hay una frecuencia esperada registrada, así que no se puede valorar si el dato es reciente.',
     });
     // Una incidencia real (p. ej. reservas sin vincular) pesa más que la falta de referencia.
-    const actionable = findings.some((finding) => finding.severity !== 'info');
+    const actionable = hasGlobalWarning(findings);
     return done(
       actionable ? 'warnings' : 'insufficient',
       `Último intento correcto ${formatAge(success.ageMinutes)}, pero sin frecuencia de referencia para valorarlo.`,
     );
   }
 
-  const hasWarning = findings.some((finding) => finding.severity !== 'info');
+  const hasWarning = hasGlobalWarning(findings);
   const result = success.noNewReservations ? 'No hay nuevas reservas.' : `${describeChanges(success)}.`;
   const headline = `Última importación correcta ${formatAge(success.ageMinutes)}. ${result}`;
   return done(hasWarning ? 'warnings' : 'up_to_date', headline);

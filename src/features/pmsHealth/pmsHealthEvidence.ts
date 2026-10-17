@@ -5,17 +5,21 @@
  * Fuentes reales (solo lectura):
  *  - Smoobu: `smoobu_sync_runs` (una fila por pasada terminada) y
  *    `smoobu_sync_requests` (peticiones manuales con su estado).
- *  - Little Hotelier: `lh_sync_logs` (una fila por reserva recibida; las filas
- *    cercanas en el tiempo forman una pasada).
+ *  - Little Hotelier: `lh_sync_logs` (eventos por reserva recibida; las filas
+ *    cercanas en el tiempo forman una pasada). No hay registro por pasada:
+ *    el inicio, el fin, las pasadas con cero reservas y los fallos previos al
+ *    envío solo existen en el equipo local.
  */
 import {
   type Attempt,
   type EvidenceSource,
   type ExpectedSchedule,
   type InFlight,
+  type LinkIssue,
   type PendingLinks,
   type PmsEvidence,
   dedupeSummaries,
+  isNearExpectedPass,
   safeErrorSummary,
 } from './pmsHealthDomain';
 
@@ -26,12 +30,20 @@ export const SMOOBU_SCHEDULE: ExpectedSchedule = {
 };
 
 /**
- * Little Hotelier no declara su horario en ningún sitio de la aplicación: la
- * pasada se ejecuta en un equipo local. Sin frecuencia fiable, el panel muestra
- * la antigüedad pero no afirma ningún incumplimiento. Declarar aquí las horas
- * cuando estén confirmadas.
+ * Horario de la automatización local de Little Hotelier, declarado por Dani
+ * (11/10/2026 en adelante: 09:00, 14:00 y 20:00 de Madrid). La app no puede
+ * comprobar que la automatización siga activa: es la hora ESPERADA, no una
+ * prueba de ejecución. El margen cubre el límite de 330 s del ejecutor y un
+ * inicio de sesión visible, para no avisar de noche ni por retrasos normales.
  */
-export const LITTLE_HOTELIER_SCHEDULE: ExpectedSchedule | null = null;
+export const LITTLE_HOTELIER_SCHEDULE: ExpectedSchedule = {
+  times: ['09:00', '14:00', '20:00'],
+  graceMinutes: 30,
+};
+
+/** Una pasada que empieza más allá de esta ventana respecto a todas las horas esperadas parece manual. */
+export const LH_OFF_SCHEDULE_BEFORE_MIN = 15;
+export const LH_OFF_SCHEDULE_AFTER_MIN = 60;
 
 /** Filas separadas por más de esto pertenecen a pasadas distintas (igual que el historial existente). */
 export const LH_PASS_GAP_MS = 10 * 60 * 1000;
@@ -81,6 +93,10 @@ const kindOf = (trigger: string | null): Attempt['kind'] => {
   if (/auto|program|sched|cron|tarea|timer/.test(value)) return 'scheduled';
   return 'unknown';
 };
+
+const NOT_CANCELLED = (status: string | null) => !/^cancel+ed$|^cancelada$/i.test((status ?? '').trim());
+
+const byCountThenLabel = (a: LinkIssue, b: LinkIssue) => b.count - a.count || a.label.localeCompare(b.label, 'es');
 
 // ---------------------------------------------------------------------------
 // Smoobu
@@ -150,8 +166,6 @@ export function smoobuInFlight(requests: SmoobuRequestRow[]): InFlight[] {
   return flights;
 }
 
-const NOT_CANCELLED = (status: string | null) => !/^cancel+ed$|^cancelada$/i.test((status ?? '').trim());
-
 export function smoobuPendingLinks(
   reservations: Array<{ property_name: string | null; status: string | null }>,
   mappings: Array<{ smoobu_property_name: string; is_active: boolean }>,
@@ -166,8 +180,12 @@ export function smoobuPendingLinks(
     total += 1;
   }
   return {
-    total,
-    items: [...byName.entries()].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count),
+    // Un alojamiento sin mapeo no tiene propiedad y, por tanto, tampoco sede.
+    unattributed: [...byName.entries()]
+      .map(([label, count]): LinkIssue => ({ kind: 'property_unmapped', label, count }))
+      .sort(byCountThenLabel),
+    unattributedTotal: total,
+    sede: { state: 'not_applicable' },
     incomplete: reservations.length >= MAX_PENDING_ROWS,
   };
 }
@@ -178,7 +196,11 @@ export function smoobuPendingLinks(
 
 const logFailed = (log: LhLogRow) => log.success === false || num(log.status_code) >= 400 || Boolean(log.error_message);
 
-export function lhAttempts(logs: LhLogRow[], now: Date): { attempts: Attempt[]; inFlight: InFlight[] } {
+export function lhAttempts(
+  logs: LhLogRow[],
+  now: Date,
+  schedule: ExpectedSchedule | null = LITTLE_HOTELIER_SCHEDULE,
+): { attempts: Attempt[]; inFlight: InFlight[] } {
   const valid = logs
     .map((log) => ({ log, time: new Date(log.created_at).getTime() }))
     .filter((entry) => Number.isFinite(entry.time))
@@ -199,10 +221,14 @@ export function lhAttempts(logs: LhLogRow[], now: Date): { attempts: Attempt[]; 
     const failedRows = group.rows.filter(logFailed);
     const failed = failedRows.length;
     const outcome: Attempt['outcome'] = failed === 0 ? 'success' : failed >= group.rows.length ? 'failed' : 'partial';
+    // Ninguna fuente dice si una pasada fue manual: solo se infiere cuando empieza claramente fuera de horario.
+    const offSchedule =
+      schedule !== null &&
+      !isNearExpectedPass(new Date(group.first), schedule, LH_OFF_SCHEDULE_BEFORE_MIN, LH_OFF_SCHEDULE_AFTER_MIN);
     return {
       at: new Date(group.last).toISOString(),
       startedAt: new Date(group.first).toISOString(),
-      kind: 'unknown',
+      kind: offSchedule ? 'off_schedule' : 'unknown',
       outcome,
       read: group.rows.length,
       created: group.rows.filter((row) => row.result?.reservation_created).length,
@@ -230,37 +256,156 @@ export interface LhReservationRow {
   needs_room_assignment: boolean | null;
 }
 
+export interface LhMappingRow {
+  lh_room: string;
+  service_kind: string;
+  is_active: boolean;
+  sede_id: string;
+  propiedad_id: string;
+}
+
+export interface PropertySedeRow {
+  id: string;
+  sede_id: string | null;
+}
+
+export interface ActiveSede {
+  id: string;
+  nombre: string | null;
+}
+
+const roomsOf = (reservation: LhReservationRow): string[] =>
+  reservation.needs_room_assignment
+    ? []
+    : (reservation.rooms?.length ? reservation.rooms : [reservation.room ?? ''])
+        .map((room) => (room ?? '').trim())
+        .filter((room) => room && room !== '-');
+
+/**
+ * Separa las incidencias de vinculación de Little Hotelier.
+ *
+ * La sede NO se toma de `lh_reservations.sede_id` (el receptor antiguo la rellenaba con la
+ * del primer mapeo que encontraba): se deduce del mapeo de la habitación, y de la sede de
+ * su propiedad para detectar incoherencias. Lo que no tiene mapeo no pertenece a ninguna sede.
+ *
+ * - Sin habitación identificada y habitación sin propiedad: impiden crear limpieza.
+ * - Falta de mapeo de salida o de estancia: ningún dato de la configuración indica qué
+ *   servicios necesita cada habitación, así que se muestra como «Configuración por revisar».
+ */
 export function lhPendingLinks(
   reservations: LhReservationRow[],
-  mappings: Array<{ lh_room: string; is_active: boolean }>,
+  mappings: LhMappingRow[],
+  properties: PropertySedeRow[],
+  sede: ActiveSede | null,
 ): PendingLinks {
-  const mappedRooms = new Set(mappings.filter((m) => m.is_active).map((m) => m.lh_room.trim()));
-  const byRoom = new Map<string, Set<string>>();
-  const unassigned = new Set<string>();
-  const affected = new Set<string>();
+  const mappingsByRoom = new Map<string, LhMappingRow[]>();
+  for (const mapping of mappings) {
+    const room = mapping.lh_room.trim();
+    mappingsByRoom.set(room, [...(mappingsByRoom.get(room) ?? []), mapping]);
+  }
+  const propertySede = new Map(properties.map((property) => [property.id, property.sede_id]));
+
+  const withoutRoom = new Set<string>();
+  const reservationsByRoom = new Map<string, Set<string>>();
   for (const reservation of reservations) {
     if (!NOT_CANCELLED(reservation.status)) continue;
-    if (reservation.needs_room_assignment) {
-      unassigned.add(reservation.id);
-      affected.add(reservation.id);
+    const rooms = roomsOf(reservation);
+    if (rooms.length === 0) {
+      withoutRoom.add(reservation.id);
       continue;
     }
-    const rooms = (reservation.rooms?.length ? reservation.rooms : [reservation.room ?? ''])
-      .map((room) => room.trim())
-      .filter((room) => room && room !== '-');
     for (const room of rooms) {
-      if (mappedRooms.has(room)) continue;
-      const set = byRoom.get(room) ?? new Set<string>();
-      set.add(reservation.id);
-      byRoom.set(room, set);
-      affected.add(reservation.id);
+      const ids = reservationsByRoom.get(room) ?? new Set<string>();
+      ids.add(reservation.id);
+      reservationsByRoom.set(room, ids);
     }
   }
-  const items = [...byRoom.entries()]
-    .map(([room, ids]) => ({ label: `Habitación «${room}» sin propiedad`, count: ids.size }))
-    .sort((a, b) => b.count - a.count);
-  if (unassigned.size > 0) items.push({ label: 'Reservas sin habitación asignada', count: unassigned.size });
-  return { total: affected.size, items, incomplete: reservations.length >= MAX_PENDING_ROWS };
+
+  const unattributed: LinkIssue[] = [];
+  const unattributedIds = new Set(withoutRoom);
+  if (withoutRoom.size > 0) {
+    unattributed.push({ kind: 'no_room', label: 'Reservas sin habitación identificada', count: withoutRoom.size });
+  }
+
+  const sedes = new Map<string, { blocking: LinkIssue[]; review: LinkIssue[] }>();
+  const bucket = (id: string) => {
+    const existing = sedes.get(id);
+    if (existing) return existing;
+    const created = { blocking: [] as LinkIssue[], review: [] as LinkIssue[] };
+    sedes.set(id, created);
+    return created;
+  };
+
+  for (const [room, ids] of reservationsByRoom) {
+    const count = ids.size;
+    const roomMappings = mappingsByRoom.get(room) ?? [];
+    if (roomMappings.length === 0) {
+      unattributed.push({ kind: 'room_unlinked', label: `Habitación «${room}» sin propiedad vinculada`, count });
+      ids.forEach((id) => unattributedIds.add(id));
+      continue;
+    }
+    const active = roomMappings.filter((mapping) => mapping.is_active);
+    if (active.length === 0) {
+      for (const sedeId of new Set(roomMappings.map((mapping) => mapping.sede_id))) {
+        bucket(sedeId).blocking.push({
+          kind: 'room_unlinked',
+          label: `Habitación «${room}» sin propiedad vinculada (mapeo pausado)`,
+          count,
+        });
+      }
+      continue;
+    }
+    const kinds = new Set(active.map((mapping) => mapping.service_kind));
+    for (const sedeId of new Set(active.map((mapping) => mapping.sede_id))) {
+      if (!kinds.has('checkout')) {
+        bucket(sedeId).review.push({
+          kind: 'checkout_missing',
+          label: `Habitación «${room}»: mapeo de salida pendiente (solo tiene estancia)`,
+          count,
+        });
+      }
+      if (!kinds.has('stay')) {
+        bucket(sedeId).review.push({
+          kind: 'stay_missing',
+          label: `Habitación «${room}»: mapeo de estancia pendiente (solo tiene salida)`,
+          count,
+        });
+      }
+    }
+    const mismatched = new Set<string>();
+    for (const mapping of active) {
+      const owner = propertySede.get(mapping.propiedad_id);
+      if (owner && owner !== mapping.sede_id) {
+        mismatched.add(mapping.sede_id);
+        mismatched.add(owner);
+      }
+    }
+    for (const sedeId of mismatched) {
+      bucket(sedeId).review.push({
+        kind: 'sede_mismatch',
+        label: `Habitación «${room}»: la sede del mapeo no coincide con la de su propiedad`,
+        count,
+      });
+    }
+  }
+
+  let sedeScope: PendingLinks['sede'] = { state: 'no_active_sede' };
+  if (sede) {
+    const own = sedes.get(sede.id) ?? { blocking: [], review: [] };
+    sedeScope = {
+      state: 'ok',
+      sedeName: sede.nombre,
+      blocking: [...own.blocking].sort(byCountThenLabel),
+      review: [...own.review].sort(byCountThenLabel),
+    };
+  }
+
+  return {
+    unattributed: unattributed.sort(byCountThenLabel),
+    unattributedTotal: unattributedIds.size,
+    sede: sedeScope,
+    incomplete: reservations.length >= MAX_PENDING_ROWS,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -280,11 +425,11 @@ export interface SmoobuRaw {
 
 export interface LhRaw {
   logs: RawSource<LhLogRow[]>;
-  /** unavailable cuando no hay una sede activa que acote la consulta. */
   pending: RawSource<{
     reservations: LhReservationRow[];
-    mappings: Array<{ lh_room: string; is_active: boolean }>;
-  }> | { state: 'unavailable' };
+    mappings: LhMappingRow[];
+    properties: PropertySedeRow[];
+  }>;
 }
 
 export function buildSmoobuEvidence(raw: SmoobuRaw, now: Date): PmsEvidence {
@@ -294,12 +439,11 @@ export function buildSmoobuEvidence(raw: SmoobuRaw, now: Date): PmsEvidence {
     integration: 'smoobu',
     now,
     enabled: null,
-    attempts:
-      raw.runs.state === 'ok' && derived
-        ? { state: 'ok', data: derived.attempts }
-        : { state: 'error' },
+    attempts: derived ? { state: 'ok', data: derived.attempts } : { state: 'error' },
     inFlight: raw.requests.state === 'ok' ? { state: 'ok', data: smoobuInFlight(raw.requests.data) } : { state: 'error' },
     schedule: SMOOBU_SCHEDULE,
+    scheduleBasis: 'execution',
+    executionRecorded: true,
     pendingLinks:
       raw.pending.state === 'ok'
         ? { state: 'ok', data: smoobuPendingLinks(raw.pending.data.reservations, raw.pending.data.mappings) }
@@ -308,23 +452,26 @@ export function buildSmoobuEvidence(raw: SmoobuRaw, now: Date): PmsEvidence {
   };
 }
 
-export function buildLhEvidence(raw: LhRaw, now: Date): PmsEvidence {
+export function buildLhEvidence(raw: LhRaw, now: Date, sede: ActiveSede | null): PmsEvidence {
   const derived = raw.logs.state === 'ok' ? lhAttempts(raw.logs.data, now) : null;
-  let pendingLinks: PmsEvidence['pendingLinks'];
-  if (raw.pending.state === 'ok') {
-    pendingLinks = { state: 'ok', data: lhPendingLinks(raw.pending.data.reservations, raw.pending.data.mappings) };
-  } else {
-    pendingLinks = raw.pending.state === 'unavailable' ? { state: 'unavailable' } : { state: 'error' };
-  }
   return {
     integration: 'little_hotelier',
     now,
+    // Ninguna fuente consultable confirma si la automatización local está activa.
     enabled: null,
     attempts: derived ? { state: 'ok', data: derived.attempts } : { state: 'error' },
-    // Sin registros no hay forma de saber si hay una pasada en curso: se deduce de los propios registros.
+    // Sin registro por pasada, «recibiendo datos» se deduce de los propios eventos recientes.
     inFlight: derived ? { state: 'ok', data: derived.inFlight } : { state: 'error' },
     schedule: LITTLE_HOTELIER_SCHEDULE,
-    pendingLinks,
+    scheduleBasis: 'received_data',
+    executionRecorded: false,
+    pendingLinks:
+      raw.pending.state === 'ok'
+        ? {
+            state: 'ok',
+            data: lhPendingLinks(raw.pending.data.reservations, raw.pending.data.mappings, raw.pending.data.properties, sede),
+          }
+        : { state: 'error' },
     ignoredAttempts: 0,
   };
 }
