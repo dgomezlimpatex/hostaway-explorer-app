@@ -1,8 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowUpRight, CalendarClock, Mail, Phone } from "lucide-react";
 import { useCleaners } from "@/hooks/useCleaners";
 import { useAuth } from "@/hooks/useAuth";
+import { useSede } from "@/contexts/SedeContext";
+import {
+  ENTITY_DETAIL_TITLE_ATTR,
+  focusEntityDetailTitle,
+} from "@/components/navigation/useLinkedSelection";
 import { useWorkerMaintenanceCleanings } from "@/hooks/useWorkerMaintenanceCleanings";
 import { AbsenceSummary } from "./PersonnelAbsences";
 import { WorkerProfilePanel } from "@/components/workers/WorkerDetailModal";
@@ -26,13 +31,21 @@ import { BalanceBar, BalanceLabel, HoursWorkspace } from "./HoursControl";
 
 export default function PersonnelProfile() {
   const { workerId } = useParams();
-  const { cleaners, isLoading } = useCleaners();
+  const { cleaners, isLoading: cleanersLoading } = useCleaners();
+  const { isInitialized, loading: sedeLoading } = useSede();
+  // The cleaners query waits for the sede: do not report "not found" meanwhile.
+  const isLoading = cleanersLoading || !isInitialized || sedeLoading;
   const { params, change } = usePersonnelParams();
   const { userRole } = useAuth();
   const worker = cleaners.find((c) => c.id === workerId),
     tab = params.get("tab") || "summary";
   const canManage = userRole === "admin" || userRole === "manager";
   const back = params.get("back");
+  const workerFound = !isLoading && !!worker;
+  useEffect(() => {
+    // Opening a profile (from the global search, a link or a reload) moves focus to its title.
+    if (workerFound) focusEntityDetailTitle();
+  }, [workerFound, workerId]);
   return (
     <PersonnelShell>
       <PersonnelBack to={back?.startsWith("/workers") ? back : "/workers"} />
@@ -48,7 +61,9 @@ export default function PersonnelProfile() {
             <div className="p-profile-heading">
               <span className="p-avatar">{initials(worker.name)}</span>
               <div>
-                <h1>{worker.name}</h1>
+                <h1 tabIndex={-1} {...{ [ENTITY_DETAIL_TITLE_ATTR]: "" }}>
+                  {worker.name}
+                </h1>
                 <p>
                   {worker.category || "Operario de limpieza"} ·{" "}
                   <span className={`p-tag ${worker.isActive ? "active" : ""}`}>

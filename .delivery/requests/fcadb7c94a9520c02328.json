@@ -1,0 +1,21 @@
+{
+  "request": "Dani pide que el buscador global abra exactamente la entidad seleccionada por su identificador: una tarea abre su detalle, una propiedad su ficha, una trabajadora su ficha de personal y un cliente su ficha, sin volver a buscar en el listado; con soporte de recarga, Atrás/Adelante, filtros que la ocultan, nombres repetidos y aviso si no está disponible.",
+  "reason": "Cambio de navegación y presentación en el cliente: el buscador navega a /tasks?taskId=, /properties?propertyId=, /clients?clientId= y /workers/:id, y las pantallas existentes abren su ficha actual por ese id. Solo lee con las mismas consultas y filtros de sede que ya usan las pantallas (tareas: lectura por id con filtro de sede y comprobación de sede); no escribe datos ni toca SQL, RLS, permisos, autenticación, funciones, sincronizaciones ni comunicaciones. Las rutas siguen protegidas por RoleProtectedRoute. Para quitar un parámetro de la URL se filtra la lista de parámetros en lugar de URLSearchParams.delete, que el filtro confundiría con un borrado de datos.",
+  "verification": "Reproducido antes con datos sintéticos: tarea, trabajadora y cliente iban a listados sin abrir nada (el parámetro search no lo leía ninguna pantalla) y las propiedades buscadas por nombre desaparecían de la lista por un segundo filtro de cmdk. Después: prueba Node del contrato (rutas por id, codificación, resolución por identidad, duplicados, inexistente, otra sede). Prueba de navegador local con componentes reales y Supabase falso en memoria (17 comprobaciones; 4 ejecuciones seguidas correctas tras integrar main): las 4 entidades, nombres repetidos, tarea fuera de la semana cargada, filtros que ocultan el registro, selecciones rápidas consecutivas con respuesta tardía, inexistente y de otra sede sin cambiar de sede, recarga, Atrás/Adelante, cierre sin reapertura, teclado (Ctrl+K, flechas, Enter, Escape), foco en el detalle y retorno, móvil 390 px con menú y hojas, y cero escrituras (solo la lectura STABLE get_admin_next_client_entry de la ficha de tarea). Integrado con main #155: propertyActivityTest y propertyActivityBrowserTest pasan; propertyInlineEditBrowserTest ya falla en main por su arnés y pasa con el panel de actividad simulado en una copia temporal. Build, tsc de app (213 líneas idénticas a main) y Node sin errores nuevos, lint focalizado limpio. La prueba de navegador no se lista porque la cola no tiene Chromium; no se probó con sesión real.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/globalSearchEntityLinksTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "42eff4372a66345e3ed02e2f262554a6ff58446812f5c01efd477c1fffe5a723"
+}

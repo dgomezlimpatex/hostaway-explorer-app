@@ -12,6 +12,7 @@ import { useTasksPageActions } from '@/hooks/tasks/useTasksPageActions';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { Task } from '@/types/calendar';
 import { CleanerTodayTasksPage } from './CleanerTodayTasksPage';
+import { TaskLinkDetails } from './TaskLinkDetails';
 
 const TasksPage = memo(() => {
   const { isCleaner } = useRolePermissions();
@@ -182,6 +183,8 @@ const TasksPage = memo(() => {
         onOpenChange={setIsMultipleAssignmentModalOpen}
         onAssignComplete={handleMultipleAssignmentComplete}
       />
+
+      <TaskLinkDetails />
     </div>
   );
 });

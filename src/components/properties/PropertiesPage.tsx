@@ -1,7 +1,6 @@
 import { normalizeDirectorySearch } from '@/components/directory/directorySearch';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Home } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ElementType } from 'react';
+import { Home, SearchX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,9 +15,12 @@ import { PropertyList } from './PropertyList';
 import { PropertyEditorSession, type PropertyEditorStatus } from './PropertyEditorSession';
 import { isPropertyActive } from './propertyPresentation';
 import { ACTIVITY_PARAMS } from '@/features/property-activity/propertyActivityModel';
+import { ENTITY_LINK_PARAM, resolveLinkedEntity } from '@/components/navigation/entityLinks';
+import { ENTITY_DETAIL_TITLE_ATTR, useLinkedSelection } from '@/components/navigation/useLinkedSelection';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 
-/** Propiedad abierta en la URL (?propertyId=), contrato que ya usa la ficha de edificio. */
-const PROPERTY_PARAM = 'propertyId';
+// Al cambiar de propiedad se vuelve al tramo inicial de su actividad.
+const PROPERTY_SCOPED_PARAMS = [ACTIVITY_PARAMS.windows];
 
 export const PropertiesPage = () => {
   const { activeSede } = useSede();
@@ -67,19 +69,8 @@ function PropertiesWorkspace() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('active');
   const [clientFilter, setClientFilter] = useState('all');
-  const [params, setParams] = useSearchParams();
-  const [selectedId, setSelectedId] = useState<string | null>(() => params.get(PROPERTY_PARAM));
-  const urlPropertyId = params.get(PROPERTY_PARAM);
-  useEffect(() => {
-    if (urlPropertyId === selectedId) return;
-    setParams(current => {
-      const next = new URLSearchParams();
-      // Al cambiar de propiedad se vuelve al tramo inicial de su actividad.
-      current.forEach((value, key) => { if (key !== PROPERTY_PARAM && key !== ACTIVITY_PARAMS.windows) next.append(key, value); });
-      if (selectedId) next.set(PROPERTY_PARAM, selectedId);
-      return next;
-    }, { replace: true });
-  }, [selectedId, urlPropertyId, setParams]);
+  // Propiedad abierta en la URL (?propertyId=), contrato que también usan la ficha de edificio y el buscador.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const properties = useMemo(() => propertiesQuery.data || [], [propertiesQuery.data]);
   const clients = useMemo(() => new Map((clientsQuery.data || []).map(client => [client.id, client])), [clientsQuery.data]);
   const getClientName = (property: Property) => clients.get(property.clienteId)?.nombre || property.clientName || (property.clienteId ? 'Cliente no disponible' : 'Sin cliente asignado');
@@ -96,8 +87,14 @@ function PropertiesWorkspace() {
     return matchesSearch && (status === 'all' || active(property) === (status === 'active'))
       && (clientFilter === 'all' || (clientFilter === 'unassigned' ? !property.clienteId : property.clienteId === clientFilter));
   }).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true, sensitivity: 'base' }));
+  const { linkedId } = useLinkedSelection(ENTITY_LINK_PARAM.property, selectedId, useCallback((id: string | null) => {
+    if (id && id !== visibleId.current && !canLeave(true)) return false;
+    setSelectedId(id);
+  }, [canLeave]), !unavailable, PROPERTY_SCOPED_PARAMS);
+  const linked = resolveLinkedEntity(selectedId && selectedId === linkedId ? linkedId : null, properties, { ready: !unavailable });
+  const linkUnavailable = linked.status === 'unavailable';
   const selected = properties.find(property => property.id === selectedId);
-  const desktopProperty = selected || visible[0];
+  const desktopProperty = linkUnavailable ? undefined : selected || visible[0];
   const currentProperty = isDesktop ? desktopProperty : selected;
   visibleId.current = currentProperty?.id;
   const sessionIds = [...new Set([...Object.keys(sessions), ...(currentProperty ? [currentProperty.id] : [])])];
@@ -143,8 +140,20 @@ function PropertiesWorkspace() {
           const property = properties.find(item => item.id === id);
           return property && <PropertyEditorSession key={id} property={property} clientName={getClientName(property)} active={active(property)} visible={!unavailable && currentProperty?.id === id} desktop={isDesktop} onStatus={onStatus} onClose={() => { if (canLeave(true)) setSelectedId(null); }} />;
         })}
-        {isDesktop && !unavailable && !desktopProperty && <DirectoryEmpty title="La ficha de tu alojamiento" description="Selecciona una propiedad para consultar sus características y gestionar su servicio." />}
+        {!unavailable && linkUnavailable && (isDesktop ? <UnavailableProperty onClose={() => setSelectedId(null)} /> : <Dialog open onOpenChange={open => { if (!open) setSelectedId(null); }}><DialogContent className="w-[calc(100%-1rem)] rounded-2xl"><DialogDescription className="sr-only">El enlace no corresponde a una propiedad disponible.</DialogDescription><UnavailableProperty title={DialogTitle} onClose={() => setSelectedId(null)} /></DialogContent></Dialog>)}
+        {isDesktop && !unavailable && !desktopProperty && !linkUnavailable && <DirectoryEmpty title="La ficha de tu alojamiento" description="Selecciona una propiedad para consultar sus características y gestionar su servicio." />}
       </div>
     </DirectoryPage>
+  );
+}
+
+function UnavailableProperty({ onClose, title: Title = 'h2' }: { onClose: () => void; title?: ElementType }) {
+  return (
+    <Card role="alert" className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border-dashed p-8 text-center shadow-none">
+      <SearchX aria-hidden="true" className="h-12 w-12 text-slate-300" />
+      <Title tabIndex={-1} {...{ [ENTITY_DETAIL_TITLE_ATTR]: '' }} className="mt-4 text-xl font-semibold tracking-tight text-slate-950 focus:outline-none">Propiedad no disponible</Title>
+      <p className="mt-2 max-w-sm text-sm text-slate-500">No existe, se ha eliminado o no pertenece a la sede activa. No se ha abierto ninguna otra propiedad.</p>
+      <Button variant="outline" className="mt-4" onClick={onClose}>Volver al directorio</Button>
+    </Card>
   );
 }

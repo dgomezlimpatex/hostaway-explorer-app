@@ -252,7 +252,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
   return (
     <div className="flex h-full flex-col bg-white">
       <div className="shrink-0 border-b border-line px-4 py-4">
-        <GlobalSearch />
+        <GlobalSearch onNavigate={onNavigate} />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-4" aria-label="Navegación móvil">
