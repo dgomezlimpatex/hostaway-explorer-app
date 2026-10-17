@@ -33,7 +33,7 @@ assert.doesNotMatch(proposal, /AlertDialog|Confirmar y guardar|Revisar y confirm
 assert.match(proposal, /applyInFlightRef/, 'approval must have an immediate single-flight guard against double click');
 assert.match(proposal, /Sin asignar/, 'red/uncovered work must be impossible to miss');
 assert.match(proposal, /(?:sticky|fixed)/, 'approval and red status must remain visible without a second structural scroll');
-assert.match(proposal, /sessionStorage|localStorage/, 'sandbox edits must autosave in background outside production data');
+assert.match(proposal, /draftManager.schedule|sessionStorage|localStorage/, 'sandbox edits must autosave in background outside production data');
 
 assert.match(page, /freshTasksResult\.isError/, 'a failed pre-apply refetch must block the write instead of accepting cached data');
 assert.match(page, /if\s*\(freshTasksResult\.isError\s*\|\|\s*!freshTasksResult\.data\)/, 'fresh-data failure or absence must have an explicit early guard');

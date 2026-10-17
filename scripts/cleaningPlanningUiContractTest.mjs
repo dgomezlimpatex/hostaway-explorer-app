@@ -90,7 +90,8 @@ assert.match(proposalPanel, /globalQuality\?\.globalScore/, 'Whole-plan quality 
 assert.match(proposalPanel, /Guardar reparto y avisar/, 'Proposal review must expose one-step final save');
 assert.match(proposalPanel, /Descartar propuesta/, 'Proposal review must expose explicit discard');
 assert.match(proposalPanel, /applyInFlightRef/, 'Direct approval must guard synchronously against double submission');
-assert.match(proposalPanel, /sessionStorage/, 'Draft edits must autosave locally without persisting operational data');
+assert.match(proposalPanel, /draftManager.schedule/, 'Draft edits must autosave locally (this browser only) without persisting operational data');
+assert.doesNotMatch(proposalPanel, /sessionStorage/, 'A draft must never be restored silently: recovery is explicit');
 assert.match(proposalPanel, /blockingWarnings\.length === 0/, 'Proposal apply must be blocked while the calendar draft has blocking warnings');
 assert.match(proposalPanel, /buildProposalSignature\(proposal\.proposals\)/, 'Stored drafts must be scoped to the original proposal signature');
 
