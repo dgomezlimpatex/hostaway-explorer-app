@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Clock3, XCircle } from 'lucide-react';
@@ -9,6 +9,11 @@ import { AssignmentProposal, AssignmentProposalResult, CleaningPlanningTask, Eff
 import { CleanerGroupAssignment } from '@/types/propertyGroups';
 import { minutesToHoursLabel } from '@/utils/cleaningPlanning';
 import { buildProposalSignature } from '@/utils/cleaning-planning/proposalBatchApply';
+import { PlanningDraftManager } from '@/utils/cleaning-planning/planningDraftManager';
+import { buildDraftBaseline, contentFromDraft } from '@/utils/cleaning-planning/planningDraftRecovery';
+import type { DraftBaseline, DraftIdentity } from '@/utils/cleaning-planning/planningDraftStore';
+import { usePlanningDraftView } from '@/hooks/usePlanningDraft';
+import { PlanningDraftStatus } from './PlanningDraftNotice';
 import { PlanningProposalCalendar, PlanningProposalDraftWarning } from './PlanningProposalCalendar';
 import { PlanningSteps } from './PlanningSteps';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -31,30 +36,20 @@ interface AssignmentProposalPanelProps {
   totalPendingTaskCount?: number;
   savedTaskIds?: string[];
   onTaskSaved?: (taskId: string) => void;
+  /** Dónde se conserva el borrador en este navegador. Sin identidad no hay copia local. */
+  draftStore?: { manager: PlanningDraftManager; identity: DraftIdentity | null };
+  /** Borrador recuperado de forma explícita; solo se lee al abrir el reparto. */
+  initialDraft?: { proposals: AssignmentProposal[]; editedTaskIds: string[] };
+  /** Aviso: borrador anterior pendiente de elección o resumen de lo recuperado. */
+  draftNotice?: ReactNode;
+  /** Último estado del borrador, para conservarlo al cambiar de día sin salir de la pantalla. */
+  onDraftSnapshot?: (draft: { proposals: AssignmentProposal[]; editedTaskIds: string[] }) => void;
   onApply: (draftProposals: AssignmentProposal[]) => Promise<void>;
   onClear: () => void;
 }
 
-interface StoredProposalDraft {
-  sourceSignature: string;
-  proposals: AssignmentProposal[];
-}
-
-const storageKeyForSignature = (signature: string): string => (
-  `cleaning-planning:hermes-draft:${encodeURIComponent(signature)}`
-);
-
-const readStoredDraft = (key: string, sourceSignature: string): AssignmentProposal[] | null => {
-  try {
-    const stored = sessionStorage.getItem(key);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored) as StoredProposalDraft;
-    if (parsed.sourceSignature !== sourceSignature || !Array.isArray(parsed.proposals)) return null;
-    return parsed.proposals;
-  } catch {
-    return null;
-  }
-};
+// Sin `draftStore` (ejemplos y pruebas locales) no se conserva nada; este gestor no escribe jamás.
+const NO_DRAFT_MANAGER = new PlanningDraftManager({ storage: null, eventTarget: null, visibilityTarget: null });
 
 export const AssignmentProposalPanel = ({
   draftScopeKey = '',
@@ -73,6 +68,10 @@ export const AssignmentProposalPanel = ({
   totalPendingTaskCount = 0,
   savedTaskIds = [],
   onTaskSaved,
+  draftStore,
+  initialDraft,
+  draftNotice,
+  onDraftSnapshot,
   onApply,
   onClear,
 }: AssignmentProposalPanelProps) => {
@@ -85,54 +84,73 @@ export const AssignmentProposalPanel = ({
   const [quickChangesSaved, setQuickChangesSaved] = useState(false);
   const [draftSafetyReady, setDraftSafetyReady] = useState(false);
   const applyInFlightRef = useRef(false);
+  // Un borrador recuperado solo cuenta al abrir el reparto; después manda lo que edite el usuario.
+  const initialDraftRef = useRef(initialDraft);
+  const [editedTaskIds, setEditedTaskIds] = useState<string[]>(() => initialDraft?.editedTaskIds ?? []);
+  const baselineRef = useRef<DraftBaseline | null>(null);
 
   const sourceSignature = useMemo(
     () => (proposal ? `${draftScopeKey}:${buildProposalSignature(proposal.proposals)}` : ''),
     [proposal, draftScopeKey],
   );
-  const storageKey = useMemo(
-    () => (sourceSignature ? storageKeyForSignature(sourceSignature) : ''),
-    [sourceSignature],
+  const draftManager = draftStore?.manager;
+  const draftIdentity = draftStore?.identity ?? null;
+  const draftView = usePlanningDraftView(
+    draftManager ?? NO_DRAFT_MANAGER,
+    draftManager ? draftIdentity : null,
   );
+  const draftUserId = draftIdentity?.userId;
+  const draftSedeId = draftIdentity?.sedeId;
+  const draftStartDate = draftIdentity?.startDate;
+  const draftEndDate = draftIdentity?.endDate;
 
   useEffect(() => {
-    if (!proposal || !sourceSignature || !storageKey) {
+    if (!proposal || !sourceSignature) {
       setDraftProposals([]);
       setDraftWarnings([]);
       setDraftSourceSignature('');
       setDraftSafetyReady(false);
       return;
     }
-
-    let restored = readStoredDraft(storageKey, sourceSignature);
-    // Preserve drafts opened before date-scoped navigation was introduced.
-    const previousSignature = buildProposalSignature(proposal.proposals);
-    if (!restored && previousSignature) {
-      const previousKey = storageKeyForSignature(previousSignature);
-      restored = readStoredDraft(previousKey, previousSignature);
-      if (restored) {
-        try {
-          sessionStorage.setItem(storageKey, JSON.stringify({sourceSignature, proposals:restored}));
-          sessionStorage.removeItem(previousKey);
-        } catch { /* Keep the restored draft usable if storage is unavailable. */ }
-      }
-    }
     setQuickChangesSaved(false);
-    setDraftProposals(restored || proposal.proposals.map((item) => ({ ...item })));
+    setDraftProposals((initialDraftRef.current?.proposals ?? proposal.proposals).map((item) => ({ ...item })));
     setDraftWarnings([]);
     setDraftSafetyReady(false);
     setDraftSourceSignature(sourceSignature);
-  }, [proposal, sourceSignature, storageKey]);
+  }, [proposal, sourceSignature]);
 
+  // Esta pantalla pasa a editar el borrador de su identidad; al salir se vacía lo pendiente.
   useEffect(() => {
-    if (!storageKey || !sourceSignature || draftSourceSignature !== sourceSignature) return;
-    const value: StoredProposalDraft = { sourceSignature, proposals: draftProposals };
-    try {
-      sessionStorage.setItem(storageKey, JSON.stringify(value));
-    } catch {
-      // La propuesta sigue funcionando aunque el navegador no permita sessionStorage.
+    if (!draftManager || !draftUserId || !draftSedeId || !draftStartDate || !draftEndDate) return;
+    const identity = { userId: draftUserId, sedeId: draftSedeId, startDate: draftStartDate, endDate: draftEndDate };
+    draftManager.begin(identity);
+    return () => draftManager.flush(identity);
+  }, [draftManager, draftUserId, draftSedeId, draftStartDate, draftEndDate]);
+
+  const draftReady = Boolean(sourceSignature) && draftSourceSignature === sourceSignature;
+  useEffect(() => {
+    if (!draftReady) return;
+    onDraftSnapshot?.({ proposals: draftProposals, editedTaskIds });
+  }, [draftReady, draftProposals, editedTaskIds, onDraftSnapshot]);
+
+  // Conserva el borrador mientras se edita, sin esperar al cierre de la pestaña. Solo escribe en este navegador.
+  useEffect(() => {
+    if (!draftManager || !draftUserId || !draftSedeId || !draftStartDate || !draftEndDate || !draftReady) return;
+    // Con datos externos cambiados la línea base se congela: así se detecta el cambio al recuperar.
+    if (!isStale || !baselineRef.current) {
+      baselineRef.current = buildDraftBaseline({ proposals: draftProposals, tasks: calendarTasks, availability: effectiveAvailability });
     }
-  }, [draftProposals, draftSourceSignature, sourceSignature, storageKey]);
+    draftManager.schedule(
+      { userId: draftUserId, sedeId: draftSedeId, startDate: draftStartDate, endDate: draftEndDate },
+      contentFromDraft(draftProposals, editedTaskIds, baselineRef.current),
+    );
+  }, [draftManager, draftUserId, draftSedeId, draftStartDate, draftEndDate, draftReady, draftProposals, editedTaskIds, isStale, calendarTasks, effectiveAvailability]);
+
+  const handleEditedTaskIdsChange = useCallback((taskIds: string[]) => {
+    setEditedTaskIds((current) => (
+      current.length === taskIds.length && current.every((taskId) => taskIds.includes(taskId)) ? current : taskIds
+    ));
+  }, []);
 
   const handleDraftProposalsChange = useCallback((nextProposals: AssignmentProposal[]) => {
     setDraftSafetyReady(false);
@@ -192,9 +210,15 @@ export const AssignmentProposalPanel = ({
     if (!canApply || applyInFlightRef.current) return;
     applyInFlightRef.current = true;
     setApplyError('');
+    // Lo que se va a guardar es exactamente la revisión conservada hasta este momento.
+    const savedIdentity = draftManager && draftUserId && draftSedeId && draftStartDate && draftEndDate
+      ? { userId: draftUserId, sedeId: draftSedeId, startDate: draftStartDate, endDate: draftEndDate }
+      : null;
+    const savedRevision = savedIdentity ? draftManager.checkpoint(savedIdentity) : null;
     try {
       await onApply(completeDraftProposals);
-      if (storageKey) sessionStorage.removeItem(storageKey);
+      // Guardado real confirmado: solo entonces se elimina esa revisión del borrador local.
+      if (savedIdentity) draftManager.completeSave(savedIdentity, savedRevision);
     } catch (error) {
       setApplyError(error instanceof Error
         ? error.message
@@ -206,7 +230,10 @@ export const AssignmentProposalPanel = ({
 
   const handleDiscard = () => {
     if (isApplying || applyInFlightRef.current) return;
-    if (storageKey) sessionStorage.removeItem(storageKey);
+    // Descartar elimina el borrador de esta pantalla y lo cierra: ninguna escritura retrasada lo resucita.
+    if (draftManager && draftUserId && draftSedeId && draftStartDate && draftEndDate) {
+      draftManager.drop({ userId: draftUserId, sedeId: draftSedeId, startDate: draftStartDate, endDate: draftEndDate });
+    }
     onClear();
   };
 
@@ -289,6 +316,8 @@ export const AssignmentProposalPanel = ({
         </section>
       )}
 
+      {draftNotice}
+
       <div className={isApplying ? 'pointer-events-none opacity-70' : ''} aria-disabled={isApplying}>
         <PlanningProposalCalendar
           chromeCollapsed={chrome.collapsed}
@@ -305,6 +334,8 @@ export const AssignmentProposalPanel = ({
           isStale={isStale}
           savedTaskIds={savedTaskIds}
           onTaskSaved={(taskId) => { setQuickChangesSaved(true); onTaskSaved?.(taskId); }}
+          initialEditedTaskIds={initialDraftRef.current?.editedTaskIds}
+          onEditedTaskIdsChange={handleEditedTaskIdsChange}
           onDraftProposalsChange={handleDraftProposalsChange}
           onDraftWarningsChange={handleDraftWarningsChange}
         />
@@ -333,7 +364,7 @@ export const AssignmentProposalPanel = ({
               )}
               <div className="flex items-start gap-2 rounded-md bg-paper p-3">
                 <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-                <p>Tus cambios se guardan en este navegador hasta guardar el reparto o descartar.</p>
+                <p>Tus cambios se conservan solo en este navegador hasta guardar el reparto o descartarlo. No se aplican a las limpiezas reales hasta pulsar «Guardar cambios».</p>
               </div>
             </div>
           </AccordionContent>
@@ -349,6 +380,16 @@ export const AssignmentProposalPanel = ({
             Descartar propuesta
           </Button>
           <div className="flex flex-col gap-2 sm:items-end lg:flex-row lg:items-center lg:gap-4">
+            {draftManager && (
+              <div className="sm:text-right lg:max-w-sm" aria-live="polite">
+                <PlanningDraftStatus
+                  view={draftView}
+                  identityMissing={!draftIdentity}
+                  onResume={() => draftIdentity && draftManager.resume(draftIdentity)}
+                  onRetry={() => draftIdentity && draftManager.flush(draftIdentity)}
+                />
+              </div>
+            )}
             <p className="text-xs font-semibold text-ink-3">
               {hasOnlySavedQuickChanges
                 ? 'Los ajustes rápidos ya están guardados. Puedes seguir reajustando el reparto.'

@@ -1,5 +1,12 @@
 import type { CleaningPlanningFilters, CleaningPlanningTask, EffectiveWorkerAvailability } from '@/types/cleaningPlanning';
 
+/** Huella de las reglas reales de disponibilidad; la carga ya asignada no cuenta como cambio. */
+export const availabilityContextValue = (item: EffectiveWorkerAvailability): string => JSON.stringify({
+  cleanerId: item.cleanerId, date: item.date, isAvailable: item.isAvailable,
+  source: item.source, availableWindows: item.availableWindows,
+  blockedWindows: item.blockedWindows.filter(window => window.kind !== 'assigned_task'),
+});
+
 export const buildProposalContextKey = ({ activeSedeId, cleanerIds, availability, filters, range, tasks }: {
   activeSedeId?: string;
   cleanerIds: string[];
@@ -12,11 +19,7 @@ export const buildProposalContextKey = ({ activeSedeId, cleanerIds, availability
   cleanerIds: [...cleanerIds].sort(),
   // Assigned load is already represented by tasks. Keep the actual availability
   // rules here so a saved adjustment does not look like a changed work schedule.
-  availability: availability.map(item => JSON.stringify({
-    cleanerId: item.cleanerId, date: item.date, isAvailable: item.isAvailable,
-    source: item.source, availableWindows: item.availableWindows,
-    blockedWindows: item.blockedWindows.filter(window => window.kind !== 'assigned_task'),
-  })).sort(),
+  availability: availability.map(availabilityContextValue).sort(),
   filters, range,
   tasks: tasks.map(task => ({ id: task.id, value: JSON.stringify([
     task.date, task.startTime, task.endTime, task.durationMinutes, task.cleanerId,

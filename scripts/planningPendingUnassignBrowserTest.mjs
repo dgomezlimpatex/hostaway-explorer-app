@@ -7,17 +7,19 @@ try {
   const page=await browser.newPage({viewport:{width,height:1000},reducedMotion:'reduce'});
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',route=>{if(route.request().url()==='http://planner.example.test/')return route.fulfill({contentType:'text/html',body:html});requests.push(route.request().url());return route.abort();});
-  await page.goto('http://planner.example.test/');await page.getByRole('button',{name:'Preparar el reparto'}).click();
-  for(const id of ['load-0','load-1']) {
+  const withdraw=async()=>{for(const id of ['load-0','load-1']) {
    await page.locator(`[data-planner-task-id="${id}"] [data-planner-primary-action]:visible`).click();
    await page.getByRole('button',{name:'Sin asignar Dejar sin asignar'}).click();
    await page.getByRole('button',{name:'Dejar sin asignar',exact:true}).click();
    await page.getByRole('button',{name:'Desasignar la tarea',exact:true}).click();
-  }
+  }};
+  await page.goto('http://planner.example.test/');await page.getByRole('button',{name:'Preparar el reparto'}).click();
+  await withdraw();
   expect(await page.evaluate(()=>window.planningQuickWrites || 0)).toBe(0);
   expect(await page.evaluate(()=>window.planningExampleSaved?.count || 0)).toBe(0);
   const save=page.getByRole('button',{name:'Guardar cambios',exact:true});await expect(save).toBeEnabled();
-  await page.reload();await page.getByRole('button',{name:'Preparar el reparto'}).click();await expect(save).toBeEnabled();
+  // Recargar ya no restaura nada en silencio (este ejemplo no conserva borradores; la recuperación explícita se prueba en planningDraftRecoveryBrowserTest).
+  await page.reload();await page.getByRole('button',{name:'Preparar el reparto'}).click();await expect(save).toHaveCount(0);await withdraw();await expect(save).toBeEnabled();
   await save.click();await expect.poll(()=>page.evaluate(()=>window.planningExampleSaved?.count)).toBe(1);
   const saved=await page.evaluate(()=>window.planningExampleSaved.proposals);
   expect(saved.filter(p=>p.operation==='unassign').map(p=>p.taskId).sort()).toEqual(['load-0','load-1']);
@@ -34,5 +36,5 @@ try {
   else {await page.evaluate(()=>{window.planningFailNextSave=true});await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();await expect(page.getByText('Fallo local simulado',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Guardar cambios',exact:true})).toBeEnabled();expect(await page.evaluate(()=>window.planningExampleSaved?.count || 0)).toBe(0);await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();await expect.poll(()=>page.evaluate(()=>window.planningExampleSaved?.count)).toBe(1);const saved=await page.evaluate(()=>window.planningExampleSaved.proposals);expect(saved).toHaveLength(1);expect(saved[0].operation).toBe('unassign');}
   await page.close();
  }
- expect(errors).toEqual([]);expect(requests).toEqual([]);console.log('planning-pending-unassign-browser: OK (mobile/desktop, no quick writes, two pending withdrawals, reload restore, discard restores original, unassignment-only final save; offline)');
+ expect(errors).toEqual([]);expect(requests).toEqual([]);console.log('planning-pending-unassign-browser: OK (mobile/desktop, no quick writes, two pending withdrawals, reload does not restore silently, discard restores original, unassignment-only final save; offline)');
 } finally {await browser.close();}
