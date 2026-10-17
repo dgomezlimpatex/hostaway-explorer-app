@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ElementType } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Search, Users } from 'lucide-react';
+import { ArrowLeft, SearchX, Search, Users } from 'lucide-react';
 import { CreateClientModal } from './CreateClientModal';
 import { ClientList } from './ClientList';
 import { ClientDetailPanel } from './ClientDetailPanel';
@@ -14,6 +14,8 @@ import { useClients } from '@/hooks/useClients';
 import { useDeviceType } from '@/hooks/use-mobile';
 import { useSede } from '@/contexts/SedeContext';
 import { cn } from '@/lib/utils';
+import { ENTITY_LINK_PARAM, resolveLinkedEntity } from '@/components/navigation/entityLinks';
+import { ENTITY_DETAIL_TITLE_ATTR, useLinkedSelection } from '@/components/navigation/useLinkedSelection';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -41,8 +43,13 @@ function ClientsWorkspace() {
       && (service === 'all' || client.tipoServicio === service)
       && (invoice === 'all' || client.factura === (invoice === 'yes'));
   }), [clients, search, status, service, invoice]);
-  const selectedClient = filteredClients.find(client => client.id === selectedId);
-  const desktopClient = selectedClient || filteredClients[0];
+  const ready = !busy && !error && !!activeSede;
+  const { linkedId } = useLinkedSelection(ENTITY_LINK_PARAM.client, selectedId, setSelectedId, ready);
+  // A linked client is opened by id even when the current filters hide it.
+  const linked = resolveLinkedEntity(selectedId && selectedId === linkedId ? linkedId : null, clients, { ready });
+  const selectedClient = filteredClients.find(client => client.id === selectedId) || (linked.status === 'found' ? linked.entity : undefined);
+  const linkUnavailable = linked.status === 'unavailable';
+  const desktopClient = linkUnavailable ? undefined : selectedClient || filteredClients[0];
   const hasFilters = !!search || status !== 'all' || service !== 'all' || invoice !== 'all';
   const resetFilters = () => { setSearch(''); setStatus('all'); setService('all'); setInvoice('all'); setSelectedId(null); };
 
@@ -92,10 +99,22 @@ function ClientsWorkspace() {
               {busy ? <p role="status" className="py-12 text-center text-sm text-slate-500">Cargando clientes…</p> : error ? <div role="alert" className="rounded-xl bg-red-50 p-5 text-sm text-red-700">No se han podido cargar los clientes.<Button variant="outline" className="mt-3" onClick={() => void refetch()}>Reintentar</Button></div> : !activeSede ? <p className="py-8 text-center text-sm text-slate-500">Selecciona una sede para ver sus clientes.</p> : filteredClients.length === 0 ? <div className="rounded-xl border border-dashed p-6 text-center"><Users className="mx-auto h-9 w-9 text-slate-300" /><h3 className="mt-3 font-bold text-slate-950">{clients.length ? 'No hay coincidencias' : 'Todavía no hay clientes'}</h3><p className="mt-1 text-sm text-slate-500">{clients.length ? 'Prueba con otro nombre o ajusta los filtros.' : 'Añade tu primer cliente con «Nuevo cliente».'}</p>{hasFilters && <Button variant="outline" className="mt-4 rounded-xl" onClick={resetFilters}>Limpiar filtros</Button>}</div> : <><p aria-live="polite" className="pb-3 text-xs text-slate-500">{filteredClients.length} de {clients.length} clientes</p><ClientList clients={filteredClients} selectedClientId={isMobile ? selectedClient?.id : desktopClient?.id} onSelect={client => setSelectedId(client.id)} /></>}
             </div>
           </Card>
-          {!isMobile && !busy && !error && activeSede && (desktopClient ? <ClientDetailPanel key={desktopClient.id} client={desktopClient} /> : <Card className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border-dashed p-8 text-center shadow-none"><Users className="h-12 w-12 text-slate-300" /><h2 className="mt-4 text-xl font-black text-slate-950">La ficha del cliente, de un vistazo</h2><p className="mt-2 max-w-sm text-sm text-slate-500">Selecciona un cliente del directorio para consultar sus datos y gestionar su servicio.</p></Card>)}
+          {!isMobile && !busy && !error && activeSede && (linkUnavailable ? <UnavailableClient onClose={() => setSelectedId(null)} /> : desktopClient ? <ClientDetailPanel key={desktopClient.id} client={desktopClient} /> : <Card className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border-dashed p-8 text-center shadow-none"><Users className="h-12 w-12 text-slate-300" /><h2 className="mt-4 text-xl font-black text-slate-950">La ficha del cliente, de un vistazo</h2><p className="mt-2 max-w-sm text-sm text-slate-500">Selecciona un cliente del directorio para consultar sus datos y gestionar su servicio.</p></Card>)}
         </div>
       </div>
+      {isMobile && linkUnavailable && <Dialog open onOpenChange={open => !open && setSelectedId(null)}><DialogContent className="w-[calc(100%-1rem)] rounded-2xl"><DialogDescription className="sr-only">El enlace no corresponde a un cliente disponible.</DialogDescription><UnavailableClient title={DialogTitle} onClose={() => setSelectedId(null)} /></DialogContent></Dialog>}
       {isMobile && <Dialog open={!!selectedClient && !error && !busy} onOpenChange={open => !open && setSelectedId(null)}><DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] overflow-y-auto rounded-2xl p-0 pt-10"><DialogTitle className="sr-only">Ficha de {selectedClient?.nombre}</DialogTitle><DialogDescription className="sr-only">Datos de contacto, facturación y servicio del cliente.</DialogDescription>{selectedClient && <ClientDetailPanel key={selectedClient.id} client={selectedClient} />}</DialogContent></Dialog>}
     </div>
+  );
+}
+
+function UnavailableClient({ onClose, title: Title = 'h2' }: { onClose: () => void; title?: ElementType }) {
+  return (
+    <Card role="alert" className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border-dashed p-8 text-center shadow-none">
+      <SearchX aria-hidden="true" className="h-12 w-12 text-slate-300" />
+      <Title tabIndex={-1} {...{ [ENTITY_DETAIL_TITLE_ATTR]: '' }} className="mt-4 text-xl font-black text-slate-950 focus:outline-none">Cliente no disponible</Title>
+      <p className="mt-2 max-w-sm text-sm text-slate-500">No existe, se ha eliminado o no pertenece a la sede activa. No se ha abierto ningún otro cliente.</p>
+      <Button variant="outline" className="mt-4 rounded-xl" onClick={onClose}>Volver al directorio</Button>
+    </Card>
   );
 }

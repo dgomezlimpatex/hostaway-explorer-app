@@ -31,7 +31,7 @@ export function CrmDetailFrame({ title, subtitle, avatar, status, metricLabel, m
           <div className="flex min-w-0 items-center gap-3">
             <span className={isProperties ? 'flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white text-base font-semibold text-[#310984]' : 'flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-base font-black text-[#310984]'}>{avatar}</span>
             <div className="min-w-0">
-              <h2 className={isProperties ? 'break-words text-xl font-semibold tracking-tight sm:text-2xl' : 'break-words text-xl font-black sm:text-2xl'}>{title}</h2>
+              <h2 tabIndex={-1} data-entity-detail-title="" className={isProperties ? 'break-words text-xl font-semibold tracking-tight focus:outline-none sm:text-2xl' : 'break-words text-xl font-black focus:outline-none sm:text-2xl'}>{title}</h2>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-200">
                 <span className="break-words">{subtitle}</span>
                 <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-950">{status}</span>

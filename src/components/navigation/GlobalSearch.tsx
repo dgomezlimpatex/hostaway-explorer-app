@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ClipboardList,
@@ -21,10 +21,17 @@ import { useGlobalSearch, SearchResult } from '@/hooks/useGlobalSearch';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { entityDetailPath } from './entityLinks';
+import { rememberSearchOrigin } from './useLinkedSelection';
 
 interface GlobalSearchProps {
   trigger?: React.ReactNode;
+  /** Called after a result is opened, e.g. to close the mobile menu that hosts the search. */
+  onNavigate?: () => void;
 }
+
+const ITEM_PREFIX: Record<SearchResult['type'], string> = { task: 'task', property: 'prop', worker: 'worker', client: 'client' };
+const itemValue = (result: SearchResult) => `${ITEM_PREFIX[result.type]}-${result.id}-${result.title}`;
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -33,17 +40,35 @@ const statusColors: Record<string, string> = {
   in_progress: 'bg-blue-100 text-blue-800',
 };
 
-export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
+export const GlobalSearch = ({ trigger, onNavigate }: GlobalSearchProps) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
   const { results, isSearching, hasResults } = useGlobalSearch(search);
+  // The opened detail takes focus, so closing the search must not pull it back.
+  const keepFocusOnDetail = useRef(false);
+  const openRef = useRef(open);
+  openRef.current = open;
+  // Highlight the first result of every new result set, so Enter always opens a record.
+  const [activeValue, setActiveValue] = useState('');
+  useEffect(() => {
+    const first = [...results.tasks, ...results.properties, ...results.workers, ...results.clients][0];
+    setActiveValue(first ? itemValue(first) : '');
+  }, [results, open]);
+
+  const openSearch = useCallback(() => {
+    keepFocusOnDetail.current = false;
+    rememberSearchOrigin(document.activeElement);
+    setOpen(true);
+  }, []);
 
   // Keyboard shortcut Ctrl+K / Cmd+K
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
+        if (!openRef.current) rememberSearchOrigin(document.activeElement);
+        keepFocusOnDetail.current = false;
         setOpen((prev) => !prev);
       }
     };
@@ -53,25 +78,14 @@ export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
 
   const handleSelect = useCallback(
     (result: SearchResult) => {
+      keepFocusOnDetail.current = true;
       setOpen(false);
       setSearch('');
-
-      switch (result.type) {
-        case 'task':
-          navigate(`/tasks?search=${encodeURIComponent(result.title)}`);
-          break;
-        case 'property':
-          navigate(`/properties?search=${encodeURIComponent(result.title)}`);
-          break;
-        case 'worker':
-          navigate(`/tasks?search=${encodeURIComponent(result.title)}`);
-          break;
-        case 'client':
-          navigate(`/clients?search=${encodeURIComponent(result.title)}`);
-          break;
-      }
+      // Open the exact record by its id, never by name.
+      navigate(entityDetailPath(result.type, result.id));
+      onNavigate?.();
     },
-    [navigate]
+    [navigate, onNavigate]
   );
 
   const handleOpenChange = (value: boolean) => {
@@ -87,7 +101,7 @@ export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
       size="sm"
       aria-label="Buscar en la aplicación"
       className="relative w-full justify-start text-sm text-muted-foreground gap-2"
-      onClick={() => setOpen(true)}
+      onClick={openSearch}
     >
       <Search className="h-4 w-4" />
       <span className="hidden lg:inline-flex">Buscar...</span>
@@ -102,7 +116,7 @@ export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
       variant="ghost"
       size="icon"
       className="h-8 w-8"
-      onClick={() => setOpen(true)}
+      onClick={openSearch}
     >
       <Search className="h-4 w-4" />
     </Button>
@@ -112,7 +126,14 @@ export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
     <>
       {trigger || defaultTrigger}
 
-      <CommandDialog open={open} onOpenChange={handleOpenChange}>
+      <CommandDialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        onCloseAutoFocus={(event) => { if (keepFocusOnDetail.current) event.preventDefault(); }}
+        // Results are already filtered by the server; a second client filter on
+        // the item value hid matches whose title is a code (e.g. properties).
+        commandProps={{ shouldFilter: false, value: activeValue, onValueChange: setActiveValue }}
+      >
         <CommandInput
           placeholder="Buscar tareas, propiedades, trabajadores, clientes..."
           value={search}
@@ -141,7 +162,7 @@ export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
               {results.tasks.map((task) => (
                 <CommandItem
                   key={`task-${task.id}`}
-                  value={`task-${task.id}-${task.title}`}
+                  value={itemValue(task)}
                   onSelect={() => handleSelect(task)}
                   className="flex items-center gap-3 cursor-pointer"
                 >
@@ -170,7 +191,7 @@ export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
               {results.properties.map((prop) => (
                 <CommandItem
                   key={`prop-${prop.id}`}
-                  value={`prop-${prop.id}-${prop.title}`}
+                  value={itemValue(prop)}
                   onSelect={() => handleSelect(prop)}
                   className="flex items-center gap-3 cursor-pointer"
                 >
@@ -191,7 +212,7 @@ export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
               {results.workers.map((worker) => (
                 <CommandItem
                   key={`worker-${worker.id}`}
-                  value={`worker-${worker.id}-${worker.title}`}
+                  value={itemValue(worker)}
                   onSelect={() => handleSelect(worker)}
                   className="flex items-center gap-3 cursor-pointer"
                 >
@@ -220,7 +241,7 @@ export const GlobalSearch = ({ trigger }: GlobalSearchProps) => {
               {results.clients.map((client) => (
                 <CommandItem
                   key={`client-${client.id}`}
-                  value={`client-${client.id}-${client.title}`}
+                  value={itemValue(client)}
                   onSelect={() => handleSelect(client)}
                   className="flex items-center gap-3 cursor-pointer"
                 >
