@@ -1,0 +1,21 @@
+{
+  "request": "Panel unificado de salud de las sincronizaciones de Smoobu y Little Hotelier: ver de un vistazo si llegan datos recientes, cuándo fue la última importación correcta, si hay fallos o información desactualizada, reservas sin vincular y qué requiere intervención.",
+  "reason": "Pantalla nueva de solo lectura (/sincronizaciones, solo administración). Calcula estados en memoria a partir de filas que ya registran los PMS y que ya leen las pantallas de Smoobu y Little Hotelier. No añade escrituras, funciones, tablas, permisos, horarios ni cambios en la lógica de importación; «Actualizar» solo vuelve a leer.",
+  "verification": "Prueba Node scripts/pmsHealthDomainTest.mjs compila el código real y comprueba con datos ficticios: éxito con cambios, éxito sin nuevas reservas, pasada que termina sin leer nada (advertencia), fallo posterior a un éxito, fallo parcial, historial vacío, error de lectura (nunca verde), ejecución en curso/atascada/sin atender, información antigua con horario de Madrid y cambio de hora, simulaciones ignoradas, integración desactivada solo si la configuración lo confirma, reservas sin vincular, depuración de mensajes de error y que las lecturas usan solo select, acotan por sede y no leen cargas ni nombres de huéspedes. Prueba local de navegador (Chromium, escritorio y móvil, cliente de datos falso que rechaza cualquier operación que no sea lectura): actualizar y navegar no producen escrituras ni peticiones de red, cambio de sede relee solo Little Hotelier. Limitaciones: Smoobu no registra el inicio de una pasada automática; Little Hotelier no declara horario ni distingue fallos previos al envío; ninguna fuente confirma si una integración está desactivada; las tablas de Smoobu no tienen migración en el repositorio y su política de lectura no se ha inspeccionado. Ambos puntos están documentados en docs/PANEL-SALUD-PMS.md.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/pmsHealthDomainTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "ba11fff982d033933b2db912ba3490fd9dbaa1092bc3e44201706c9818e08546"
+}

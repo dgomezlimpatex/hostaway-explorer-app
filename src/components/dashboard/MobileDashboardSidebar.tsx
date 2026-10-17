@@ -21,6 +21,7 @@ import {
   Calculator,
   ClipboardCheck,
   Route,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
@@ -117,6 +118,7 @@ const budgetItems: NavigationItem[] = [
 ];
 
 const syncItems: NavigationItem[] = [
+  { title: 'Estado de los PMS', href: '/sincronizaciones', icon: Activity, permission: 'admin-only' },
   { title: 'Avantio', href: '/avantio-automation', icon: Settings, permission: 'hostaway' },
   { title: 'Little Hotelier', href: '/little-hotelier', icon: Hotel, permission: 'admin-only' },
   { title: 'Smoobu', href: '/smoobu', icon: Hotel, permission: 'admin-only' },
