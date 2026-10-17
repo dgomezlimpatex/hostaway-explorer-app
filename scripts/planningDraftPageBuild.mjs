@@ -5,11 +5,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
- * Compila la página REAL del planificador con el backend sustituido por `planningDraftPageMocks.tsx`.
+ * Compila la página REAL del planificador con el backend sustituido por `planningDraftPageMocks.mjs`.
  * El resultado no contiene el cliente de producción y no hace ninguna petición de red.
  */
 export async function buildDraftPageFixture({ scenario = 'normal' } = {}) {
-  const mocks = resolve('scripts/planningDraftPageMocks.tsx');
+  const mocks = resolve('scripts/planningDraftPageMocks.mjs');
   const aliased = [
     /^@\/hooks\/useCleaningPlanning$/, /^@\/hooks\/useCleaningPlanningActions$/, /^@\/hooks\/useCleaningPlanningBuildingData$/,
     /^@\/hooks\/useCleaners$/, /^@\/hooks\/useAuth$/, /^@\/contexts\/SedeContext$/, /^@\/services\/laundryScheduleService$/,
@@ -22,7 +22,7 @@ export async function buildDraftPageFixture({ scenario = 'normal' } = {}) {
     },
   };
   const built = await build({
-    entryPoints: ['scripts/planningDraftPage.entry.tsx'], bundle: true, write: false, platform: 'browser',
+    entryPoints: ['scripts/planningDraftPage.entry.mjs'], bundle: true, write: false, platform: 'browser',
     format: 'iife', jsx: 'automatic', minify: true, metafile: true, logLevel: 'error',
     define: { 'process.env.NODE_ENV': '"production"' }, plugins: [plugin],
   });
@@ -33,7 +33,6 @@ export async function buildDraftPageFixture({ scenario = 'normal' } = {}) {
   const cssSource = readFileSync('src/index.css', 'utf8').replace(/^@import .*$/gm, '');
   const css = await postcss([tailwindcss({ config: resolve('tailwind.config.ts'), content: [
     'src/components/cleaning-planning/**/*.{tsx,ts}', 'src/components/ui/{button,accordion,dropdown-menu,dialog,badge,select}.tsx',
-    'scripts/planningDraftPage*.tsx',
   ] })]).process(cssSource, { from: resolve('src/index.css') });
   const settings = `window.planningScenario=${JSON.stringify(scenario)};`;
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Planificador · Recuperación de borradores</title><style>${css.css}</style></head><body><div id="root"></div><script>${settings}${built.outputFiles[0].text.replaceAll('</script', '<\\/script')}</script></body></html>`;
