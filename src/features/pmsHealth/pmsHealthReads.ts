@@ -12,7 +12,9 @@ import type { EvidenceSource } from './pmsHealthDomain';
 import type {
   LhLogRow,
   LhRaw,
+  LhMappingRow,
   LhReservationRow,
+  PropertySedeRow,
   SmoobuRaw,
   SmoobuRequestRow,
   SmoobuRunRow,
@@ -76,35 +78,38 @@ export async function readSmoobuRaw(db: ReadOnlyDb, today: string): Promise<Smoo
   return { runs, requests, pending };
 }
 
-export async function readLhRaw(db: ReadOnlyDb, today: string, sedeId: string | null): Promise<LhRaw> {
-  const logs = await guarded<LhLogRow[]>(() =>
-    db
-      .from('lh_sync_logs')
-      .select('id, success, status_code, error_message, created_at, result')
-      .order('created_at', { ascending: false })
-      .limit(LH_LOGS_LIMIT),
-  );
-
-  // Sin sede activa no se puede acotar: se declara «sin información» en vez de mezclar sedes.
-  if (!sedeId) return { logs, pending: { state: 'unavailable' } };
-
-  const [reservations, mappings] = await Promise.all([
+export async function readLhRaw(db: ReadOnlyDb, today: string): Promise<LhRaw> {
+  const [logs, reservations, mappings] = await Promise.all([
+    guarded<LhLogRow[]>(() =>
+      db
+        .from('lh_sync_logs')
+        .select('id, success, status_code, error_message, created_at, result')
+        .order('created_at', { ascending: false })
+        .limit(LH_LOGS_LIMIT),
+    ),
+    // La sede se deduce del mapeo de cada habitación, no de la columna sede_id de la reserva.
     guarded<LhReservationRow[]>(() =>
       db
         .from('lh_reservations')
         .select('id, room, rooms, status, needs_room_assignment')
-        .eq('sede_id', sedeId)
         .gte('check_out', today)
         .limit(PENDING_ROWS_LIMIT),
     ),
-    guarded<Array<{ lh_room: string; is_active: boolean }>>(() =>
-      db.from('lh_room_mapping').select('lh_room, is_active').eq('sede_id', sedeId),
+    guarded<LhMappingRow[]>(() =>
+      db.from('lh_room_mapping').select('lh_room, service_kind, is_active, sede_id, propiedad_id'),
     ),
   ]);
 
   let pending: LhRaw['pending'] = { state: 'error' };
   if (reservations.state === 'ok' && mappings.state === 'ok') {
-    pending = { state: 'ok', data: { reservations: reservations.data, mappings: mappings.data } };
+    const propertyIds = [...new Set(mappings.data.map((mapping) => mapping.propiedad_id).filter(Boolean))];
+    const properties: EvidenceSource<PropertySedeRow[]> =
+      propertyIds.length === 0
+        ? { state: 'ok', data: [] }
+        : await guarded<PropertySedeRow[]>(() => db.from('properties').select('id, sede_id').in('id', propertyIds));
+    if (properties.state === 'ok') {
+      pending = { state: 'ok', data: { reservations: reservations.data, mappings: mappings.data, properties: properties.data } };
+    }
   }
   return { logs, pending };
 }

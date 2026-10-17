@@ -245,38 +245,74 @@ assert.equal(latestExpectedPass(new Date('2026-10-17T05:00:00Z'), SMOOBU_SCHEDUL
   });
   const h = smoobu({ runs: [run()], pending });
   assert.equal(h.status, 'warnings');
-  assert.equal(h.pendingLinks.total, 2, 'las canceladas no cuentan; un mapeo pausado no vincula');
-  assert.deepEqual(h.pendingLinks.items, [{ label: 'Apto 3', count: 2 }]);
+  assert.equal(h.pendingLinks.unattributedTotal, 2, 'las canceladas no cuentan; un mapeo pausado no vincula');
+  assert.deepEqual(h.pendingLinks.unattributed, [{ kind: 'property_unmapped', label: 'Apto 3', count: 2 }]);
+  assert.deepEqual(h.pendingLinks.sede, { state: 'not_applicable' }, 'Smoobu no relaciona sus incidencias con sedes');
   assert.ok(h.findings.some((f) => f.code === 'pending_links'));
+  assert.equal(h.scheduleBasis, 'execution');
+  assert.equal(h.executionRecorded, true);
 }
 
 // ---------- Little Hotelier ----------
+// 17/10/2026 15:20 Madrid (UTC+2). Horario declarado: 09:00, 14:00 y 20:00.
 const LH_NOW = new Date('2026-10-17T13:20:00Z');
 const lhRows = (startIso, count, over = {}) => Array.from({ length: count }, (_, i) => ({
   id: `${startIso}-${i}`, success: true, status_code: 200, error_message: null,
   created_at: new Date(new Date(startIso).getTime() + i * 2000).toISOString(),
   result: { reservation_created: false, cancelled: false }, ...over,
 }));
-const lh = ({ logs, pending, now = LH_NOW } = {}) => evaluatePmsHealth(buildLhEvidence({
+const SEDE_A = { id: 'sede-a', nombre: 'Sede A' };
+const noPending = ok({ reservations: [], mappings: [], properties: [] });
+const lh = ({ logs, pending = noPending, now = LH_NOW, sede = SEDE_A } = {}) => evaluatePmsHealth(buildLhEvidence({
   logs: logs === 'error' ? err : ok(logs ?? []),
-  pending: pending ?? ok({ reservations: [], mappings: [] }),
-}, now));
+  pending,
+}, now, sede));
+
+assert.equal(M.LITTLE_HOTELIER_SCHEDULE.times.join(','), '09:00,14:00,20:00');
 
 {
-  // Sin frecuencia de referencia: se muestra la antigüedad pero no se afirma incumplimiento.
-  const h = lh({ logs: lhRows('2026-10-17T12:40:00Z', 28) });
-  assert.equal(h.frequencyKnown, false);
-  assert.equal(h.status, 'insufficient');
-  assert.ok(h.lastSuccess, 'la última pasada correcta sigue visible');
-  assert.equal(h.lastSuccess.read, 28);
-  assert.match(h.headline, /sin frecuencia de referencia/);
-  assert.ok(!h.findings.some((f) => f.code === 'not_run'));
-  assert.equal(h.overduePass, null);
-
+  // Programación, ejecución e importación confirmada son cosas distintas.
+  const h = lh({ logs: lhRows('2026-10-17T12:00:30Z', 28) }); // 14:00 Madrid
+  assert.equal(h.status, 'up_to_date');
+  assert.equal(h.scheduleBasis, 'received_data');
+  assert.equal(h.executionRecorded, false, 'ninguna fuente registra la ejecución de la pasada');
+  assert.deepEqual(h.scheduleTimes, ['09:00', '14:00', '20:00']);
+  assert.equal(h.lastSuccess.read, 28, 'importación confirmada = reservas recibidas sin error');
+  assert.equal(h.lastAttempt.kind, 'unknown', 'en horario no se afirma nada sobre cómo se lanzó');
+  assert.match(h.headline, /Última importación correcta/);
+}
+{
+  // La siguiente pasada esperada y su margen: ni avisos de noche ni de la propia pasada.
+  const pass = (iso) => lhRows(iso, 10);
+  // 14:10 Madrid: la pasada de las 14:00 aún está dentro del margen aunque no conste.
+  assert.equal(lh({ logs: pass('2026-10-17T07:00:30Z'), now: new Date('2026-10-17T12:10:00Z') }).status, 'up_to_date');
+  // 14:40 Madrid sin pasada de las 14:00: desactualizado, con texto que no afirma «no se ejecutó».
+  const missed = lh({ logs: pass('2026-10-17T07:00:30Z'), now: new Date('2026-10-17T12:40:00Z') });
+  assert.equal(missed.status, 'stale');
+  assert.equal(missed.overduePass.label, '14:00');
+  assert.match(missed.headline, /No constan reservas recibidas de la pasada de las 14:00/);
+  assert.doesNotMatch(missed.headline, /No se ha ejecutado/);
+  assert.match(missed.findings.find((f) => f.code === 'not_run').text, /Puede que no se ejecutara, que fallara antes de enviar o que no encontrara reservas/);
+  // Noche: a las 08:00 Madrid la última esperada es la de las 20:00 de ayer. No hay aviso.
+  const night = lh({ logs: pass('2026-10-17T18:00:30Z'), now: new Date('2026-10-18T06:00:00Z') });
+  assert.equal(night.status, 'up_to_date', 'durante la noche no se avisa');
+  // 09:40 Madrid del día siguiente sin pasada de las 09:00: ahora sí.
+  assert.equal(lh({ logs: pass('2026-10-17T18:00:30Z'), now: new Date('2026-10-18T07:40:00Z') }).status, 'stale');
+  // Muy antigua: desactualizada, no «al día» ni «sin horario».
   const ancient = lh({ logs: lhRows('2026-09-01T09:00:00Z', 28) });
-  assert.equal(ancient.status, 'insufficient', 'sin horario fiable ni siquiera 45 días se declaran incumplimiento');
+  assert.equal(ancient.status, 'stale');
   assert.ok(ancient.lastSuccess.ageMinutes > 60 * 24 * 40);
   assert.equal(formatAge(ancient.lastSuccess.ageMinutes).includes('días'), true);
+}
+{
+  // Ejecución manual: solo se infiere cuando una pasada empieza claramente fuera de horario.
+  const offHours = lh({ logs: lhRows('2026-10-17T09:30:00Z', 12) }); // 11:30 Madrid
+  assert.equal(offHours.lastAttempt.kind, 'off_schedule');
+  const nearSlot = lh({ logs: lhRows('2026-10-17T12:20:00Z', 12) }); // 14:20 Madrid, dentro de la ventana
+  assert.equal(nearSlot.lastAttempt.kind, 'unknown');
+  // Una pasada manual también cuenta como datos recibidos: cubre la pasada esperada.
+  const manualCovers = lh({ logs: lhRows('2026-10-17T11:55:00Z', 12), now: new Date('2026-10-17T13:20:00Z') });
+  assert.equal(manualCovers.status, 'up_to_date');
 }
 {
   // Pasadas separadas por más de diez minutos; conteos de nuevas y canceladas.
@@ -321,28 +357,94 @@ const lh = ({ logs, pending, now = LH_NOW } = {}) => evaluatePmsHealth(buildLhEv
   assert.notEqual(finished.status, 'running');
 }
 {
-  // Historial vacío y error de lectura.
-  assert.equal(lh({ logs: [] }).status, 'insufficient');
+  // Historial vacío y error de lectura. La falta de registros NUNCA se interpreta como «desactivada».
+  const empty = lh({ logs: [] });
+  assert.equal(empty.status, 'insufficient');
+  assert.notEqual(empty.status, 'disabled');
+  assert.match(empty.headline, /No hay ninguna ejecución registrada/);
   const failed = lh({ logs: 'error' });
   assert.equal(failed.status, 'insufficient');
   assert.equal(failed.diagnosticReadFailed, true);
+  assert.equal(M.buildLhEvidence({ logs: ok([]), pending: noPending }, LH_NOW, null).enabled, null);
+}
+
+// ---------- Vinculación de Little Hotelier: casos separados y sede por mapeo ----------
+{
+  const map = (lh_room, service_kind, sede_id, over = {}) => ({ lh_room, service_kind, is_active: true, sede_id, propiedad_id: `p-${lh_room}`, ...over });
+  const res = (id, room, over = {}) => ({ id, room, rooms: room ? [room] : null, status: 'confirmed', needs_room_assignment: false, ...over });
+  const reservations = [
+    res('1', 'Hab 1'),                                          // completa en A
+    res('2', 'Hab 2'),                                          // sin ningún mapeo
+    res('5', 'Hab 2'),
+    res('4', 'Hab 2', { status: 'cancelled' }),                 // cancelada: no cuenta
+    { id: '3', room: '-', rooms: null, status: 'confirmed', needs_room_assignment: true }, // sin habitación
+    res('6', 'Hab 3'),                                          // solo estancia en A
+    res('7', 'Hab 4'),                                          // mapeos pausados en B
+    res('8', 'Hab 5'),                                          // solo salida en A
+    res('9', 'Hab 6'),                                          // sede del mapeo ≠ sede de la propiedad
+    { id: '10', room: 'Hab 1, Hab 3', rooms: ['Hab 1', 'Hab 3'], status: 'confirmed', needs_room_assignment: false },
+  ];
+  const mappings = [
+    map('Hab 1', 'checkout', 'sede-a'), map('Hab 1', 'stay', 'sede-a'),
+    map('Hab 3', 'stay', 'sede-a'),
+    map('Hab 4', 'checkout', 'sede-b', { is_active: false }), map('Hab 4', 'stay', 'sede-b', { is_active: false }),
+    map('Hab 5', 'checkout', 'sede-a'),
+    map('Hab 6', 'checkout', 'sede-a'), map('Hab 6', 'stay', 'sede-a'),
+  ];
+  const properties = [{ id: 'p-Hab 6', sede_id: 'sede-b' }, { id: 'p-Hab 1', sede_id: 'sede-a' }];
+  const pending = ok({ reservations, mappings, properties });
+
+  const a = lh({ logs: lhRows('2026-10-17T12:00:30Z', 5), pending, sede: SEDE_A });
+  // Sin propiedad ni sede: sin habitación (1) + Hab 2 (2 reservas vigentes, la cancelada no cuenta).
+  assert.equal(a.pendingLinks.unattributedTotal, 3);
+  assert.deepEqual(
+    a.pendingLinks.unattributed.map((i) => [i.kind, i.count]).sort(),
+    [['no_room', 1], ['room_unlinked', 2]].sort(),
+  );
+  assert.equal(a.pendingLinks.sede.state, 'ok');
+  assert.deepEqual(a.pendingLinks.sede.blocking, [], 'en la sede A no hay nada que bloquee');
+  const kindsA = a.pendingLinks.sede.review.map((i) => `${i.kind}:${/«([^»]+)»/.exec(i.label)[1]}:${i.count}`).sort();
+  assert.deepEqual(kindsA, [
+    'checkout_missing:Hab 3:2', // reservas 6 y 10
+    'sede_mismatch:Hab 6:1',
+    'stay_missing:Hab 5:1',
+  ].sort(), 'salida y estancia pendientes se muestran como configuración por revisar');
+  assert.equal(a.status, 'warnings', 'lo que no tiene sede sí cambia el estado global');
+
+  // Otra sede ve solo lo suyo; el estado global no cambia con la sede.
+  const b = lh({ logs: lhRows('2026-10-17T12:00:30Z', 5), pending, sede: { id: 'sede-b', nombre: 'Sede B' } });
+  assert.deepEqual(b.pendingLinks.sede.blocking.map((i) => [i.kind, i.count]), [['room_unlinked', 1]]);
+  assert.match(b.pendingLinks.sede.blocking[0].label, /mapeo pausado/);
+  assert.deepEqual(b.pendingLinks.sede.review.map((i) => i.kind), ['sede_mismatch'], 'la incoherencia se ve en las dos sedes implicadas');
+  assert.equal(b.status, a.status);
+  assert.deepEqual(b.pendingLinks.unattributed, a.pendingLinks.unattributed);
+
+  // Sin sede activa no se inventa ninguna: se declara sin información por sede.
+  const none = lh({ logs: lhRows('2026-10-17T12:00:30Z', 5), pending, sede: null });
+  assert.equal(none.pendingLinks.sede.state, 'no_active_sede');
+  assert.ok(none.findings.some((f) => f.code === 'sede_unavailable' && f.scope === 'sede'));
+  assert.equal(none.status, a.status);
+
+  // La sede de la reserva NO se usa: el campo ni se lee.
+  assert.ok(!('sede_id' in reservations[0]));
 }
 {
-  // Reservas sin vincular y sin habitación asignada.
-  const reservations = [
-    { id: '1', room: 'Hab 1', rooms: ['Hab 1'], status: 'confirmed', needs_room_assignment: false },
-    { id: '2', room: 'Hab 2', rooms: ['Hab 2', 'Hab 3'], status: 'confirmed', needs_room_assignment: false },
-    { id: '3', room: '-', rooms: null, status: 'confirmed', needs_room_assignment: true },
-    { id: '4', room: 'Hab 2', rooms: null, status: 'cancelled', needs_room_assignment: false },
-    { id: '5', room: 'Hab 2', rooms: null, status: 'confirmed', needs_room_assignment: false },
-  ];
-  const mappings = [{ lh_room: 'Hab 1', is_active: true }, { lh_room: 'Hab 3', is_active: false }];
-  const h = lh({ logs: lhRows('2026-10-17T12:00:00Z', 5), pending: ok({ reservations, mappings }) });
-  assert.equal(h.pendingLinks.total, 3, 'reservas 2, 3 y 5 (la 4 está cancelada)');
-  assert.ok(h.pendingLinks.items.some((i) => /Hab 2/.test(i.label) && i.count === 2));
-  assert.ok(h.pendingLinks.items.some((i) => /Hab 3/.test(i.label) && i.count === 1), 'un mapeo pausado no vincula');
-  assert.ok(h.pendingLinks.items.some((i) => /sin habitación asignada/.test(i.label) && i.count === 1));
+  // Solo incidencias de sede: el estado global no se ensucia, pero se ven.
+  const pending = ok({
+    reservations: [{ id: '1', room: 'Hab 7', rooms: ['Hab 7'], status: 'confirmed', needs_room_assignment: false }],
+    mappings: [{ lh_room: 'Hab 7', service_kind: 'checkout', is_active: true, sede_id: 'sede-a', propiedad_id: 'p7' }],
+    properties: [{ id: 'p7', sede_id: 'sede-a' }],
+  });
+  const h = lh({ logs: lhRows('2026-10-17T12:00:30Z', 5), pending });
+  assert.equal(h.status, 'up_to_date', 'configuración por revisar no es una advertencia global');
+  assert.ok(h.findings.some((f) => f.code === 'config_review' && f.severity === 'info'));
+  assert.equal(h.pendingLinks.unattributedTotal, 0);
+}
+{
+  // Un fallo al leer la vinculación nunca deja el estado en verde.
+  const h = lh({ logs: lhRows('2026-10-17T12:00:30Z', 5), pending: err });
   assert.equal(h.status, 'warnings');
+  assert.equal(h.pendingLinksUnavailable, true);
 }
 
 // ---------- Resumen de error seguro ----------
@@ -365,9 +467,9 @@ const lh = ({ logs, pending, now = LH_NOW } = {}) => evaluatePmsHealth(buildLhEv
   assert.deepEqual(dedupeSummaries(['a', 'b', 'a', null]), ['a (×2)', 'b']);
 }
 
-// ---------- Lecturas: solo select, sede acotada, sin escrituras ----------
+// ---------- Lecturas: solo select, sin escrituras, sin datos de huéspedes ----------
 function fakeDb(fixtures, calls = []) {
-  const ALLOWED = new Set(['select', 'order', 'limit', 'gte', 'eq']);
+  const ALLOWED = new Set(['select', 'order', 'limit', 'gte', 'in']);
   return {
     calls,
     from(table) {
@@ -377,8 +479,7 @@ function fakeDb(fixtures, calls = []) {
         get(_t, prop) {
           if (prop === 'then') {
             const result = fixtures[table];
-            const filters = entry.ops.filter((o) => o.op === 'eq');
-            const payload = typeof result === 'function' ? result(filters) : result;
+            const payload = typeof result === 'function' ? result(entry.ops) : result;
             return (resolve) => resolve(payload);
           }
           if (!ALLOWED.has(prop)) throw new Error(`Operación no permitida en el panel: ${String(prop)}`);
@@ -391,34 +492,40 @@ function fakeDb(fixtures, calls = []) {
 }
 {
   const calls = [];
-  const bySede = (filters) => {
-    const id = filters.find((f) => f.args[0] === 'sede_id')?.args[1];
-    return { data: id === 'sede-a' ? [{ id: '1', room: 'Hab 9', rooms: ['Hab 9'], status: 'confirmed', needs_room_assignment: false }] : [], error: null };
-  };
   const db = fakeDb({
     lh_sync_logs: { data: lhRows('2026-10-17T12:00:00Z', 3), error: null },
-    lh_reservations: bySede,
-    lh_room_mapping: { data: [], error: null },
+    lh_reservations: { data: [{ id: '1', room: 'Hab 9', rooms: ['Hab 9'], status: 'confirmed', needs_room_assignment: false }], error: null },
+    lh_room_mapping: { data: [{ lh_room: 'Hab 1', service_kind: 'checkout', is_active: true, sede_id: 'sede-a', propiedad_id: 'p1' }], error: null },
+    properties: { data: [{ id: 'p1', sede_id: 'sede-a' }], error: null },
   }, calls);
 
-  const a = await readLhRaw(db, '2026-10-17', 'sede-a');
-  assert.equal(a.pending.state, 'ok');
-  assert.equal(a.pending.data.reservations.length, 1);
-  const b = await readLhRaw(db, '2026-10-17', 'sede-b');
-  assert.equal(b.pending.data.reservations.length, 0, 'otra sede, otras incidencias');
-  const sedeFilters = calls.filter((c) => c.table === 'lh_reservations' || c.table === 'lh_room_mapping').map((c) => c.ops.find((o) => o.op === 'eq').args[1]);
-  assert.deepEqual(sedeFilters, ['sede-a', 'sede-a', 'sede-b', 'sede-b']);
-  assert.ok(calls.filter((c) => c.table === 'lh_reservations').every((c) => c.ops.some((o) => o.op === 'gte' && o.args[1] === '2026-10-17')));
-
-  const callsNoSede = [];
-  const none = await readLhRaw(fakeDb({ lh_sync_logs: { data: [], error: null } }, callsNoSede), '2026-10-17', null);
-  assert.deepEqual(none.pending, { state: 'unavailable' }, 'sin sede no se mezclan sedes');
-  assert.ok(!callsNoSede.some((c) => c.table === 'lh_reservations'), 'sin sede no se consulta nada de otras sedes');
-  const noSedeHealth = lh({ logs: lhRows('2026-10-17T12:00:00Z', 3), pending: none.pending });
-  assert.equal(noSedeHealth.pendingLinksUnavailable, true);
-  assert.notEqual(noSedeHealth.status, 'up_to_date');
-  assert.ok(calls.every((c) => c.ops.every((o) => ['select', 'order', 'limit', 'gte', 'eq'].includes(o.op))));
+  const raw = await readLhRaw(db, '2026-10-17');
+  assert.equal(raw.pending.state, 'ok');
+  assert.deepEqual(raw.pending.data.properties, [{ id: 'p1', sede_id: 'sede-a' }]);
+  const reservationsCall = calls.find((c) => c.table === 'lh_reservations');
+  assert.ok(reservationsCall.ops.some((o) => o.op === 'gte' && o.args[1] === '2026-10-17'), 'solo reservas vigentes');
+  assert.equal(reservationsCall.ops.find((o) => o.op === 'select').args[0], 'id, room, rooms, status, needs_room_assignment',
+    'no se lee sede_id de la reserva ni ningún dato de huésped');
+  assert.deepEqual(calls.find((c) => c.table === 'properties').ops.find((o) => o.op === 'in').args, ['id', ['p1']]);
+  assert.ok(calls.every((c) => c.ops.every((o) => ['select', 'order', 'limit', 'gte', 'in'].includes(o.op))));
   assert.ok(calls.every((c) => !/payload|guest_name/.test(JSON.stringify(c.ops))), 'no se leen datos de huéspedes ni cargas');
+
+  // Sin mapeos no hay propiedades que consultar.
+  const emptyCalls = [];
+  const empty = await readLhRaw(fakeDb({
+    lh_sync_logs: { data: [], error: null }, lh_reservations: { data: [], error: null }, lh_room_mapping: { data: [], error: null },
+  }, emptyCalls), '2026-10-17');
+  assert.equal(empty.pending.state, 'ok');
+  assert.ok(!emptyCalls.some((c) => c.table === 'properties'));
+
+  // Si falla la lectura de propiedades, la vinculación queda como error, no como «sin incidencias».
+  const failProps = await readLhRaw(fakeDb({
+    lh_sync_logs: { data: [], error: null },
+    lh_reservations: { data: [], error: null },
+    lh_room_mapping: { data: [{ lh_room: 'Hab 1', service_kind: 'checkout', is_active: true, sede_id: 'a', propiedad_id: 'p1' }], error: null },
+    properties: { data: null, error: { message: 'boom' } },
+  }), '2026-10-17');
+  assert.equal(failProps.pending.state, 'error');
 }
 {
   // Un error de Supabase o una excepción nunca se convierte en lista vacía.
@@ -472,7 +579,8 @@ function fakeDb(fixtures, calls = []) {
   assert.match(panel, /to=\{meta\.route\}/);
   const hook = readFileSync('src/features/pmsHealth/usePmsHealth.ts', 'utf8');
   assert.match(hook, /refetchSmoobu\(\), refetchLh\(\)/);
-  assert.match(hook, /sedeId\]/, 'la consulta de Little Hotelier cambia con la sede');
+  assert.match(hook, /queryKey: \['pms-health', 'little-hotelier'\]/, 'la lectura no depende de la sede');
+  assert.match(hook, /sedeId, sedeNombre\]/, 'la sede solo filtra lo que se muestra');
 }
 
 // ---------- Navegación y permisos ----------

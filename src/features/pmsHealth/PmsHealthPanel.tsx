@@ -22,6 +22,7 @@ import {
   formatAge,
   formatMadridStamp,
   type AttemptView,
+  type LinkIssue,
   type PmsHealth,
   type PmsHealthStatus,
   type PmsHealthTone,
@@ -75,7 +76,7 @@ const PMS_META: Record<PmsId, PmsMeta> = {
   },
   little_hotelier: {
     name: 'Little Hotelier',
-    subtitle: 'After Surf',
+    subtitle: 'Integración local con Little Hotelier',
     route: '/little-hotelier',
     historyHint: 'pestaña Historial',
     linksHint: 'pestaña Habitaciones',
@@ -86,6 +87,7 @@ const PMS_META: Record<PmsId, PmsMeta> = {
 const KIND_LABEL: Record<AttemptView['kind'], string> = {
   scheduled: 'automática',
   manual: 'manual',
+  off_schedule: 'fuera de horario (posible manual)',
   unknown: '',
 };
 
@@ -113,6 +115,21 @@ function attemptText(view: AttemptView | null, empty: string) {
   );
 }
 
+function IssueList({ issues, tone }: { issues: LinkIssue[]; tone: 'warning' | 'neutral' }) {
+  const style = tone === 'warning' ? 'border-amber-200 bg-amber-50/60' : 'border-slate-200 bg-slate-50';
+  return (
+    <ul className={`space-y-1 rounded-lg border p-3 text-sm ${style}`}>
+      {issues.slice(0, 6).map((issue) => (
+        <li key={`${issue.kind}-${issue.label}`} className="flex justify-between gap-3">
+          <span className="min-w-0 break-words">{issue.label}</span>
+          <span className="shrink-0 font-medium">{issue.count}</span>
+        </li>
+      ))}
+      {issues.length > 6 && <li className="text-xs text-muted-foreground">y {issues.length - 6} más</li>}
+    </ul>
+  );
+}
+
 function IntegrationCard({ health }: { health: PmsHealth }) {
   const meta = PMS_META[health.integration];
   const [showError, setShowError] = useState(false);
@@ -120,6 +137,10 @@ function IntegrationCard({ health }: { health: PmsHealth }) {
   const pending = health.pendingLinks;
   const canShowError = health.lastErrorAt !== null;
   const unavailable = 'Sin información disponible';
+  const receivedDataOnly = health.scheduleBasis === 'received_data';
+  const sedeScope = pending?.sede.state === 'ok' ? pending.sede : null;
+  const hasLinkDetail =
+    (pending?.unattributed.length ?? 0) > 0 || (sedeScope && (sedeScope.blocking.length > 0 || sedeScope.review.length > 0));
   // El titular ya cuenta estos hallazgos: no se repiten debajo.
   const visibleFindings = health.findings.filter(
     (finding) =>
@@ -164,26 +185,53 @@ function IntegrationCard({ health }: { health: PmsHealth }) {
       <CardContent className="space-y-4 p-4 sm:p-5">
         {!health.diagnosticReadFailed && (
           <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-            <Fact label="Último intento registrado">{attemptText(health.lastAttempt, 'Ninguno registrado')}</Fact>
-            <Fact label="Última importación correcta">
-              {attemptText(health.lastSuccess, 'Ninguna registrada')}
-            </Fact>
-            <Fact label="Resultado del último intento">
-              {health.lastAttempt ? describeAttemptResult(health.lastAttempt) : unavailable}
-            </Fact>
+            {receivedDataOnly ? (
+              <>
+                <Fact label="Programación esperada">
+                  {health.scheduleTimes ? (
+                    <>
+                      {health.scheduleTimes.join(', ')} (Madrid)
+                      <span className="font-normal text-muted-foreground"> · declarada; la app no puede comprobarla</span>
+                    </>
+                  ) : (
+                    <span className="font-normal text-muted-foreground">Sin frecuencia registrada</span>
+                  )}
+                </Fact>
+                <Fact label="Ejecución">
+                  <span className="font-normal text-muted-foreground">Sin información de ejecución</span>
+                </Fact>
+                <Fact label="Última recepción de datos">{attemptText(health.lastAttempt, 'Ninguna registrada')}</Fact>
+                <Fact label="Última importación confirmada">
+                  {attemptText(health.lastSuccess, 'Ninguna registrada')}
+                </Fact>
+                <Fact label="Resultado de la última recepción">
+                  {health.lastAttempt ? describeAttemptResult(health.lastAttempt) : unavailable}
+                </Fact>
+              </>
+            ) : (
+              <>
+                <Fact label="Último intento registrado">{attemptText(health.lastAttempt, 'Ninguno registrado')}</Fact>
+                <Fact label="Última importación correcta">
+                  {attemptText(health.lastSuccess, 'Ninguna registrada')}
+                </Fact>
+                <Fact label="Resultado del último intento">
+                  {health.lastAttempt ? describeAttemptResult(health.lastAttempt) : unavailable}
+                </Fact>
+                <Fact label="Pasadas esperadas">
+                  {health.scheduleTimes ? (
+                    `${health.scheduleTimes.join(', ')} (Madrid)`
+                  ) : (
+                    <span className="font-normal text-muted-foreground">Sin frecuencia registrada</span>
+                  )}
+                </Fact>
+              </>
+            )}
             <Fact label={meta.readLabel}>
               {health.lastAttempt && health.lastAttempt.outcome !== 'failed' ? health.lastAttempt.read : '—'}
             </Fact>
-            <Fact label="Pasadas esperadas">
-              {health.scheduleTimes ? (
-                `${health.scheduleTimes.join(', ')} (Madrid)`
-              ) : (
-                <span className="font-normal text-muted-foreground">Sin frecuencia registrada</span>
-              )}
-            </Fact>
-            <Fact label="Reservas sin vincular">
+            <Fact label="Sin vincular ni sede atribuible">
               {pending ? (
-                pending.total
+                pending.unattributedTotal
               ) : (
                 <span className="font-normal text-muted-foreground">{unavailable}</span>
               )}
@@ -191,18 +239,26 @@ function IntegrationCard({ health }: { health: PmsHealth }) {
           </dl>
         )}
 
-        {pending && pending.items.length > 0 && (
-          <ul className="space-y-1 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-sm">
-            {pending.items.slice(0, 4).map((item) => (
-              <li key={item.label} className="flex justify-between gap-3">
-                <span className="min-w-0 break-words">{item.label}</span>
-                <span className="shrink-0 font-medium">{item.count}</span>
-              </li>
-            ))}
-            {pending.items.length > 4 && (
-              <li className="text-xs text-muted-foreground">y {pending.items.length - 4} más</li>
+        {pending && pending.unattributed.length > 0 && (
+          <section data-testid={`pms-links-global-${health.integration}`}>
+            <h3 className="mb-1 text-xs font-medium text-muted-foreground">Sin propiedad vinculada ni sede atribuible</h3>
+            <IssueList issues={pending.unattributed} tone="warning" />
+          </section>
+        )}
+
+        {sedeScope && (sedeScope.blocking.length > 0 || sedeScope.review.length > 0) && (
+          <section className="space-y-3" data-testid={`pms-links-sede-${health.integration}`}>
+            <h3 className="text-xs font-medium text-muted-foreground">
+              Asociado a la sede {sedeScope.sedeName ?? 'activa'} por su mapeo
+            </h3>
+            {sedeScope.blocking.length > 0 && <IssueList issues={sedeScope.blocking} tone="warning" />}
+            {sedeScope.review.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-medium">Configuración por revisar</p>
+                <IssueList issues={sedeScope.review} tone="neutral" />
+              </div>
             )}
-          </ul>
+          </section>
         )}
 
         {visibleFindings.length > 0 && (
@@ -252,7 +308,7 @@ function IntegrationCard({ health }: { health: PmsHealth }) {
           <Button asChild variant="outline" size="sm" className="justify-center">
             <Link to={meta.route}>Abrir historial ({meta.historyHint})</Link>
           </Button>
-          {pending && pending.total > 0 && (
+          {hasLinkDetail && (
             <Button asChild variant="outline" size="sm" className="justify-center">
               <Link to={meta.route}>Resolver sin vincular ({meta.linksHint})</Link>
             </Button>
@@ -330,9 +386,9 @@ export function PmsHealthPanel() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Las pasadas de Smoobu y Little Hotelier no se registran por sede, así que su estado es el mismo en todas las sedes.
-        Las reservas de Little Hotelier sin vincular se acotan a la sede activa
-        {view.sedeName ? ` (${view.sedeName})` : ''}.
+        El estado de cada integración es global: los registros de las pasadas no llevan sede y no se atribuyen a ninguna.
+        Solo las incidencias de vinculación se asocian a una sede, a través del mapeo de cada habitación
+        {view.sedeName ? ` (sede activa: ${view.sedeName})` : ''}.
       </p>
 
       <details className="rounded-xl border bg-card p-4 text-sm">

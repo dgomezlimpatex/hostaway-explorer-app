@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 // Renderiza la página REAL con un cliente de datos falso que solo admite lecturas y lo registra todo.
 
 const supabaseFake = `
-  const ALLOWED = new Set(['select', 'order', 'limit', 'gte', 'eq']);
+  const ALLOWED = new Set(['select', 'order', 'limit', 'gte', 'in']);
   window.__calls = [];
   window.__violations = [];
   export const supabase = {
@@ -23,8 +23,7 @@ const supabaseFake = `
         get(_t, prop) {
           if (prop === 'then') {
             const fixture = window.__db[table];
-            const eq = entry.ops.filter((o) => o.op === 'eq');
-            return (resolve) => resolve(typeof fixture === 'function' ? fixture(eq) : fixture);
+            return (resolve) => resolve(fixture);
           }
           if (!ALLOWED.has(prop)) { window.__violations.push(table + '.' + String(prop)); throw new Error('Operación no permitida: ' + String(prop)); }
           return (...args) => { entry.ops.push({ op: prop, args }); return chain; };
@@ -90,7 +89,6 @@ const ok = (data) => ({ data, error: null });
 const bad = { data: null, error: { message: 'permission denied for table lh_sync_logs, user ana@example.com' } };
 const run = (over = {}) => ({ id: 'r' + (over.cuando ?? 'x'), cuando: '2026-10-17T13:02:00Z', disparo: 'programada', modo: 'real', reservas: 11, altas: 0, actualizaciones: 0, sin_cambios: 11, canceladas: 0, errores: 0, sin_mapear: 0, detalle: [], ...over });
 const lhLogs = (start, count, over = {}) => Array.from({ length: count }, (_, i) => ({ id: start + i, success: true, status_code: 200, error_message: null, created_at: new Date(new Date(start).getTime() + i * 2000).toISOString(), result: {}, ...over }));
-const sedeRes = (map) => (eq) => ok(map[eq.find((o) => o.args[0] === 'sede_id')?.args[1]] ?? []);
 
 const SCENARIOS = {
   sano: {
@@ -98,9 +96,20 @@ const SCENARIOS = {
     smoobu_sync_requests: ok([]),
     smoobu_reservations: ok([{ property_name: 'Houmi 3', status: 'confirmed' }]),
     smoobu_property_mappings: ok([{ smoobu_property_name: 'Houmi 3', is_active: true }]),
-    lh_sync_logs: ok(lhLogs('2026-10-17T12:30:00Z', 28)),
-    lh_reservations: sedeRes({ 'sede-a': [{ id: '1', room: 'Hab 9', rooms: ['Hab 9'], status: 'confirmed', needs_room_assignment: false }], 'sede-b': [] }),
-    lh_room_mapping: ok([]),
+    lh_sync_logs: ok(lhLogs('2026-10-17T12:00:30Z', 28)),
+    lh_reservations: ok([
+      { id: '1', room: 'Hab 9', rooms: ['Hab 9'], status: 'confirmed', needs_room_assignment: false },
+      { id: '2', room: 'Hab 1', rooms: ['Hab 1'], status: 'confirmed', needs_room_assignment: false },
+      { id: '3', room: 'Hab 3', rooms: ['Hab 3'], status: 'confirmed', needs_room_assignment: false },
+      { id: '4', room: 'Hab 4', rooms: ['Hab 4'], status: 'confirmed', needs_room_assignment: false },
+    ]),
+    lh_room_mapping: ok([
+      { lh_room: 'Hab 1', service_kind: 'checkout', is_active: true, sede_id: 'sede-a', propiedad_id: 'p1' },
+      { lh_room: 'Hab 1', service_kind: 'stay', is_active: true, sede_id: 'sede-a', propiedad_id: 'p1' },
+      { lh_room: 'Hab 3', service_kind: 'stay', is_active: true, sede_id: 'sede-a', propiedad_id: 'p3' },
+      { lh_room: 'Hab 4', service_kind: 'checkout', is_active: false, sede_id: 'sede-b', propiedad_id: 'p4' },
+    ]),
+    properties: ok([{ id: 'p1', sede_id: 'sede-a' }, { id: 'p3', sede_id: 'sede-a' }, { id: 'p4', sede_id: 'sede-b' }]),
   },
   fallo: {
     smoobu_sync_runs: ok([run({ cuando: '2026-10-17T13:03:00Z', reservas: 11, errores: 11, detalle: [{ ok: false, respuesta: 'Sesión caducada para ana@example.com https://secreto.example/x?token=abc' }] }), run({ cuando: '2026-10-17T06:02:00Z' })]),
@@ -111,7 +120,7 @@ const SCENARIOS = {
     lh_reservations: ok([]),
     lh_room_mapping: ok([]),
   },
-  lectura: Object.fromEntries(['smoobu_sync_runs', 'smoobu_sync_requests', 'smoobu_reservations', 'smoobu_property_mappings', 'lh_sync_logs', 'lh_reservations', 'lh_room_mapping'].map((t) => [t, bad])),
+  lectura: Object.fromEntries(['smoobu_sync_runs', 'smoobu_sync_requests', 'smoobu_reservations', 'smoobu_property_mappings', 'lh_sync_logs', 'lh_reservations', 'lh_room_mapping', 'properties'].map((t) => [t, bad])),
   vacio: {
     smoobu_sync_runs: ok([]), smoobu_sync_requests: ok([]), smoobu_reservations: ok([]), smoobu_property_mappings: ok([]),
     lh_sync_logs: ok([]), lh_reservations: ok([]), lh_room_mapping: ok([]),
@@ -147,13 +156,7 @@ async function open(viewport, scenario) {
     blocked.push(route.request().url());
     return route.abort();
   });
-  // Los fixtures con funciones (por sede) se reconstruyen dentro de la página.
-  const serialised = Object.fromEntries(Object.entries(SCENARIOS[scenario]).map(([k, v]) => [k, typeof v === 'function' ? { __bySede: Object.fromEntries(['sede-a', 'sede-b'].map((s) => [s, v([{ op: 'eq', args: ['sede_id', s] }]).data])) } : v]));
-  await page.addInitScript((data) => {
-    window.__db = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v && v.__bySede
-      ? (eq) => ({ data: v.__bySede[eq.find((o) => o.args[0] === 'sede_id')?.args[1]] ?? [], error: null })
-      : v]));
-  }, serialised);
+  await page.addInitScript((data) => { window.__db = data; }, SCENARIOS[scenario]);
   await page.goto(URL_);
   await expect(page.getByRole('heading', { name: 'Estado de los PMS' })).toBeVisible();
   return { page, context, errors, blocked };
@@ -167,10 +170,22 @@ try {
     {
       const { page, context, errors, blocked } = await open(viewport, 'sano');
       await expect(status(page, 'smoobu')).toHaveText('Al día');
-      await expect(page.getByTestId('pms-headline-smoobu')).toContainText('1 nuevas');
+      await expect(page.getByTestId('pms-headline-smoobu')).toContainText('1 nueva');
       await expect(status(page, 'little_hotelier')).toHaveText('Con advertencias');
-      await expect(page.getByTestId('pms-card-little_hotelier')).toContainText('Sin frecuencia registrada');
-      await expect(page.getByTestId('pms-card-little_hotelier')).toContainText('Habitación «Hab 9» sin propiedad');
+      const lhCard = page.getByTestId('pms-card-little_hotelier');
+      await expect(lhCard).toContainText('Programación esperada');
+      await expect(lhCard).toContainText('09:00, 14:00, 20:00 (Madrid)');
+      await expect(lhCard).toContainText('Sin información de ejecución');
+      await expect(lhCard).toContainText('Última importación confirmada');
+      await expect(lhCard).toContainText('Habitación «Hab 9» sin propiedad vinculada');
+      await expect(page.getByTestId('pms-links-global-little_hotelier')).toContainText('Sin propiedad vinculada ni sede atribuible');
+      const sedeBlock = page.getByTestId('pms-links-sede-little_hotelier');
+      await expect(sedeBlock).toContainText('A Coruña');
+      await expect(sedeBlock).toContainText('Configuración por revisar');
+      await expect(sedeBlock).toContainText('Habitación «Hab 3»: mapeo de salida pendiente');
+      await expect(sedeBlock).not.toContainText('Hab 4');
+      await page.screenshot({ path: join(tmpdir(), `pms-health-vinculacion-${name}.png`), fullPage: true });
+      shots.push(join(tmpdir(), `pms-health-vinculacion-${name}.png`));
       assert.equal(await page.getByTestId('pms-card-little_hotelier').getAttribute('data-status'), 'warnings');
 
       // Actualizar vuelve a leer, nada más.
@@ -179,19 +194,25 @@ try {
       await expect.poll(() => page.evaluate(() => window.__calls.length)).toBeGreaterThan(before);
       assert.deepEqual(await page.evaluate(() => window.__violations), [], 'ninguna operación que no sea lectura');
       const tables = await page.evaluate(() => [...new Set(window.__calls.map((c) => c.table))].sort());
-      assert.deepEqual(tables, ['lh_reservations', 'lh_room_mapping', 'lh_sync_logs', 'smoobu_property_mappings', 'smoobu_reservations', 'smoobu_sync_requests', 'smoobu_sync_runs']);
-      assert.ok(await page.evaluate(() => window.__calls.every((c) => c.ops.every((o) => ['select', 'order', 'limit', 'gte', 'eq'].includes(o.op)))));
+      assert.deepEqual(tables, ['lh_reservations', 'lh_room_mapping', 'lh_sync_logs', 'properties', 'smoobu_property_mappings', 'smoobu_reservations', 'smoobu_sync_requests', 'smoobu_sync_runs']);
+      assert.ok(await page.evaluate(() => window.__calls.every((c) => c.ops.every((o) => ['select', 'order', 'limit', 'gte', 'in'].includes(o.op)))));
 
-      // Cambio de sede: Little Hotelier se relee acotado a la nueva sede; Smoobu no.
-      const smoobuReads = await page.evaluate(() => window.__calls.filter((c) => c.table === 'smoobu_sync_runs').length);
+      // Cambio de sede: no se vuelve a leer nada; cambia lo asociado a la sede y el estado global no.
+      const lhReadsBefore = await page.evaluate(() => window.__calls.filter((c) => c.table.startsWith('lh_')).length);
       await page.evaluate(() => window.__setSede({ id: 'sede-b', nombre: 'Vigo' }));
-      await expect(page.getByTestId('pms-card-little_hotelier')).not.toContainText('Hab 9');
-      await expect(page.getByText('(Vigo)')).toBeVisible();
-      assert.equal(await page.evaluate(() => window.__calls.filter((c) => c.table === 'smoobu_sync_runs').length), smoobuReads, 'Smoobu no depende de la sede');
-      const sedeIds = await page.evaluate(() => window.__calls.filter((c) => c.table === 'lh_reservations').map((c) => c.ops.find((o) => o.op === 'eq').args[1]));
-      assert.ok(sedeIds.includes('sede-a') && sedeIds.includes('sede-b'));
+      await expect(sedeBlock).toContainText('Vigo');
+      await expect(sedeBlock).toContainText('Habitación «Hab 4» sin propiedad vinculada (mapeo pausado)');
+      await expect(sedeBlock).not.toContainText('Hab 3');
+      await expect(lhCard).toContainText('Habitación «Hab 9» sin propiedad vinculada');
+      await expect(status(page, 'little_hotelier')).toHaveText('Con advertencias');
+      assert.equal(await page.evaluate(() => window.__calls.filter((c) => c.table.startsWith('lh_')).length), lhReadsBefore, 'cambiar de sede no vuelve a leer');
+      await expect(page.getByText('sede activa: Vigo')).toBeVisible();
+      await page.evaluate(() => window.__setSede(null));
+      await expect(page.getByTestId('pms-findings-little_hotelier')).toContainText('Sin información disponible por sede');
+      await expect(sedeBlock).toHaveCount(0);
+      await expect(status(page, 'little_hotelier')).toHaveText('Con advertencias');
       await page.evaluate(() => window.__setSede({ id: 'sede-a', nombre: 'A Coruña' }));
-      await expect(page.getByTestId('pms-card-little_hotelier')).toContainText('Hab 9');
+      await expect(sedeBlock).toContainText('Hab 3');
 
       // Navegar a los destinos existentes no escribe nada.
       await page.getByTestId('pms-card-smoobu').getByRole('link', { name: /Abrir historial/ }).click();
@@ -253,7 +274,8 @@ try {
       const { page, context } = await open(viewport, 'antigua');
       await expect(status(page, 'smoobu')).toHaveText('Datos desactualizados');
       await expect(page.getByTestId('pms-headline-smoobu')).toContainText('No se ha ejecutado la pasada de las 08:00');
-      await expect(status(page, 'little_hotelier')).toHaveText('Sin información suficiente');
+      await expect(status(page, 'little_hotelier')).toHaveText('Datos desactualizados');
+      await expect(page.getByTestId('pms-headline-little_hotelier')).toContainText('No constan reservas recibidas de la pasada de las');
       await expect(page.getByTestId('pms-card-little_hotelier')).toContainText('hace 46 días');
       await page.screenshot({ path: join(tmpdir(), `pms-health-antigua-${name}.png`), fullPage: true });
       shots.push(join(tmpdir(), `pms-health-antigua-${name}.png`));

@@ -1,0 +1,21 @@
+{
+  "request": "Afinar el panel de salud de PMS para Little Hotelier: horario esperado 09:00/14:00/20:00 sin límites fijos, distinguir programación, ejecución e importación confirmada, separar los casos de vinculación (reserva sin habitación, habitación sin propiedad, mapeo de salida y de estancia como configuración por revisar) y asociar las incidencias a la sede por mapeo en vez de mostrar el mismo estado en todas las sedes.",
+  "reason": "Cambio de solo lectura sobre la pantalla /sincronizaciones ya publicada: más lecturas select (lh_room_mapping completo, properties por id y reservas vigentes de lh_reservations) con los permisos de lectura que ya usan las pantallas de Little Hotelier. No añade escrituras, funciones, tablas, permisos ni cambios en el ejecutor. La propuesta de registro por ejecución es solo un documento y no se aplica.",
+  "verification": "scripts/pmsHealthDomainTest.mjs compila el código real y comprueba con datos ficticios: horario con margen y noche sin avisos, pasada fuera de horario inferida, texto que no afirma que no se ejecutó, importación confirmada, error de lectura nunca verde, vinculación separada por casos, atribución a sede por mapeo e incoherencia sede mapeo propiedad, cambio de sede sin cambiar el estado global, sin sede activa, y que las lecturas solo usan select/in sin leer sede_id de la reserva ni datos de huéspedes. Navegador local (Chromium, escritorio y móvil, cliente falso que rechaza cualquier operación que no sea lectura): actualizar, cambiar de sede y navegar no escriben ni hacen red y el cambio de sede no vuelve a leer. Limitaciones documentadas en docs/PANEL-SALUD-PMS.md: no hay registro por pasada, el receptor desplegado no escribe lh_sync_logs por sí mismo y la función SQL que lo haga no está en el repositorio, la activación no es consultable.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/pmsHealthDomainTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "e54ceefed1ed63721b0f6d169366239c5f180b2c9e456620eacd219a1f7cb7dd"
+}
