@@ -231,8 +231,21 @@ try {
     console.log('   read-only RPCs observed:', state.rpcs.join(', ') || 'none');
   });
 
+  const openWithCustomButton = async (target, testId) => {
+    const input = target.getByPlaceholder('Buscar tareas, propiedades, trabajadores, clientes...');
+    await open(target, '/triggers');
+    await target.getByTestId(testId).getByRole('button', { name: 'Buscar en la aplicación' }).click();
+    await input.waitFor();
+    await input.fill('Hostal');
+    await target.locator('[cmdk-item][data-value^="client-c-dup-2"]').click();
+    await expectWhere(target, '/clients?clientId=c-dup-2');
+    await target.getByText('B-SEGUNDO').first().waitFor();
+  };
+  await step('the icon search button opens the search and its result', () => openWithCustomButton(page, 'icon-trigger'));
+
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   mobile.on('pageerror', (e) => errors.push(e.message));
+  await step('mobile: the header search button opens the search and its result', () => openWithCustomButton(mobile, 'mobile-header'));
   await step('mobile: search from the menu closes it and opens the client sheet; closing returns focus and clears the link', async () => {
     await open(mobile, '/clients');
     await mobile.getByRole('button', { name: 'Menú' }).tap();
