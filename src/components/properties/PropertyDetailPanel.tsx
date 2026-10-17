@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CalendarDays, CheckSquare, Copy, Save, Home, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CrmDetailFrame } from '@/components/directory/CrmDetailFrame';
@@ -23,6 +24,11 @@ import { AssignChecklistModal } from './AssignChecklistModal';
 import { PropertyChecklistInfo } from './PropertyChecklistInfo';
 import { duplicatePropertyData } from './duplicatePropertyData';
 import { propertyDuration } from './propertyPresentation';
+import { PropertyActivityPanel } from '@/features/property-activity/PropertyActivityPanel';
+
+/** Pestaña de la ficha en la URL (?seccion=actividad) para volver al mismo sitio tras abrir un detalle. */
+const PROPERTY_SECTION_PARAM = 'seccion';
+const SECTION_IDS: Record<string, string> = { actividad: 'activity', limpiezas: 'cleaning', consumos: 'consumption', checklist: 'checklist' };
 
 function cleaningDate(item?: PropertyCleaningScheduleItem | null) {
   if (!item?.date) return 'Sin registro';
@@ -41,6 +47,15 @@ export function PropertyDetailPanel({ property, clientName, active, editor }: { 
   const { toast } = useToast();
   const schedule = usePropertyCleaningSchedule([property.id]);
   const cleaning = schedule.data?.[property.id];
+  const [params, setParams] = useSearchParams();
+  const sectionTab = SECTION_IDS[params.get(PROPERTY_SECTION_PARAM) || ''];
+  const changeTab = (id: string) => setParams(current => {
+    const next = new URLSearchParams();
+    current.forEach((value, key) => { if (key !== PROPERTY_SECTION_PARAM) next.append(key, value); });
+    const section = Object.keys(SECTION_IDS).find(key => SECTION_IDS[key] === id);
+    if (section) next.set(PROPERTY_SECTION_PARAM, section);
+    return next;
+  }, { replace: true });
   const duplicate = async () => {
     try {
       await createProperty.mutateAsync(duplicatePropertyData(property));
@@ -64,6 +79,8 @@ export function PropertyDetailPanel({ property, clientName, active, editor }: { 
       footer={<><div className="flex justify-end">
           <Button variant="ghost" disabled={editor.dirty || editor.saving} onClick={() => setDeleting(true)} className="rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"><Trash2 className="mr-2 h-4 w-4" />Eliminar propiedad</Button>
         </div></>}
+      activeTab={sectionTab || 'profile'}
+      onTabChange={changeTab}
       tabs={[
         { id: 'profile', label: 'Ficha', content: section(<><BasicInfoSection control={editor.form.control} /><CharacteristicsSection control={editor.form.control} /><ServiceSection control={editor.form.control} /><ClientSelectionSection control={editor.form.control} /></>) },
         { id: 'consumption', label: 'Consumos', content: section(<><p className="text-sm text-slate-600">Las cantidades se guardarán al pulsar «Guardar cambios».</p><Button variant="outline" onClick={() => applyDefaultPropertyConsumptionsToForm(editor.form.setValue, products.data || [], { ...property, ...editor.form.getValues() })}>Recalcular consumos</Button><StockConsumptionSection control={editor.form.control} setValue={editor.form.setValue} property={property} initialize={false} /></>) },
@@ -76,6 +93,7 @@ export function PropertyDetailPanel({ property, clientName, active, editor }: { 
             </dl>
           )}
         </section></> },
+        { id: 'activity', label: 'Actividad', content: <PropertyActivityPanel propertyId={property.id} propertyName={property.nombre} /> },
         { id: 'checklist', label: 'Checklist', content: <><section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
           <h3 className="flex items-center gap-2 text-sm font-semibold"><CheckSquare aria-hidden="true" className="h-4 w-4 text-[#310984]" />Checklist e indicaciones</h3>
           <div className="overflow-hidden  [&_div]:flex-wrap [&_span]:break-words"><PropertyChecklistInfo propertyId={property.id} /></div>

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import { useLocation, useNavigationType, useSearchParams } from 'react-router-dom';
-import { withoutSearchParam } from './entityLinks';
+import { useLocation, useSearchParams } from 'react-router-dom';
 
 export const ENTITY_DETAIL_TITLE_ATTR = 'data-entity-detail-title';
 
@@ -48,11 +47,13 @@ export const restoreFocusAfterLinkedDetail = () => {
 };
 
 /**
- * Bridge between an id in the URL (`?param=id`) and a listing's local selection.
- * - A new navigation with the param selects that id (also on reload and Back/Forward).
- * - Once shown, choosing another record or closing removes the param (replace),
- *   so the detail does not reopen from a stale URL.
- * - Going Back to an entry without the param closes the linked detail.
+ * Keeps a listing's selection and `?param=id` in step.
+ * - A navigation (global search, link, reload, Back/Forward) selects the id in
+ *   the URL, or closes the detail when the param is absent.
+ * - A selection made on the page is written to the URL with replace, and closing
+ *   removes the param, so a closed detail never reopens from a stale URL.
+ * `select` may return false to decline (e.g. unsaved changes); the URL then
+ * keeps the current selection.
  */
 export function useLinkedSelection(
   param: string,
@@ -60,47 +61,49 @@ export function useLinkedSelection(
   select: (id: string | null) => boolean | void,
   /** True once the detail (or its "not available" notice) for selectedId is rendered. */
   resolved: boolean,
+  /** Params that belong to the previous record and are dropped when the selection changes. */
+  resetOnChange: readonly string[] = [],
 ) {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
-  const navigationType = useNavigationType();
   const linkedId = params.get(param);
-  const shown = useRef<string | null>(null);
-  const lastLinked = useRef<string | null>(null);
-  const pendingFocus = useRef<string | null>(null);
+  const linkedRef = useRef(linkedId);
+  linkedRef.current = linkedId;
   const selectedRef = useRef(selectedId);
   selectedRef.current = selectedId;
   const selectRef = useRef(select);
   selectRef.current = select;
+  const resetRef = useRef(resetOnChange);
+  resetRef.current = resetOnChange;
+  const previousSelected = useRef(selectedId);
+  const pendingFocus = useRef<string | null>(null);
 
-  const clearLink = useCallback(() => {
-    setParams((current) => withoutSearchParam(current, param), { replace: true });
+  const writeSelection = useCallback((id: string | null) => {
+    setParams((current) => {
+      const next = new URLSearchParams([...current].filter(([key]) => key !== param && !resetRef.current.includes(key)));
+      if (id) next.set(param, id);
+      return next;
+    }, { replace: true });
   }, [param, setParams]);
 
-  // Layout effect: apply the linked selection before paint, so the previous
-  // record is never shown for a frame.
+  // Layout effect: apply a navigation before paint, so the previous record is
+  // never shown for a frame. Each navigation has a new key, even for the same id.
   useLayoutEffect(() => {
-    if (linkedId) {
-      shown.current = selectedRef.current === linkedId ? linkedId : null;
-      if (selectRef.current(linkedId) === false) clearLink();
-      else pendingFocus.current = linkedId;
-    } else if (navigationType === 'POP' && lastLinked.current && selectedRef.current === lastLinked.current) {
-      selectRef.current(null);
-    }
-    lastLinked.current = linkedId;
-    // Each navigation (new key) is a new request, even for the same id.
+    if (linkedId === selectedRef.current) return;
+    if (selectRef.current(linkedId) === false) writeSelection(selectedRef.current);
+    else if (linkedId) pendingFocus.current = linkedId;
+    else restoreFocusAfterLinkedDetail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
 
+  // A selection changed on the page (list, close, filters) is mirrored to the URL.
   useEffect(() => {
-    if (!linkedId) { shown.current = null; return; }
-    if (selectedId === linkedId) shown.current = linkedId;
-    else if (shown.current === linkedId) {
-      shown.current = null;
-      clearLink();
-      restoreFocusAfterLinkedDetail();
-    }
-  }, [selectedId, linkedId, clearLink]);
+    if (previousSelected.current === selectedId) return;
+    previousSelected.current = selectedId;
+    if (selectedId === linkedRef.current) return;
+    writeSelection(selectedId);
+    if (!selectedId) restoreFocusAfterLinkedDetail();
+  }, [selectedId, writeSelection]);
 
   useEffect(() => {
     if (!resolved || !linkedId || selectedId !== linkedId || pendingFocus.current !== linkedId) return;
@@ -108,5 +111,5 @@ export function useLinkedSelection(
     focusEntityDetailTitle();
   }, [resolved, selectedId, linkedId]);
 
-  return { linkedId, clearLink };
+  return { linkedId };
 }

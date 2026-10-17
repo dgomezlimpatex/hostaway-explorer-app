@@ -14,9 +14,13 @@ import { CreatePropertyModal } from './CreatePropertyModal';
 import { PropertyList } from './PropertyList';
 import { PropertyEditorSession, type PropertyEditorStatus } from './PropertyEditorSession';
 import { isPropertyActive } from './propertyPresentation';
+import { ACTIVITY_PARAMS } from '@/features/property-activity/propertyActivityModel';
 import { ENTITY_LINK_PARAM, resolveLinkedEntity } from '@/components/navigation/entityLinks';
 import { ENTITY_DETAIL_TITLE_ATTR, useLinkedSelection } from '@/components/navigation/useLinkedSelection';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+
+// Al cambiar de propiedad se vuelve al tramo inicial de su actividad.
+const PROPERTY_SCOPED_PARAMS = [ACTIVITY_PARAMS.windows];
 
 export const PropertiesPage = () => {
   const { activeSede } = useSede();
@@ -65,6 +69,7 @@ function PropertiesWorkspace() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('active');
   const [clientFilter, setClientFilter] = useState('all');
+  // Propiedad abierta en la URL (?propertyId=), contrato que también usan la ficha de edificio y el buscador.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const properties = useMemo(() => propertiesQuery.data || [], [propertiesQuery.data]);
   const clients = useMemo(() => new Map((clientsQuery.data || []).map(client => [client.id, client])), [clientsQuery.data]);
@@ -85,7 +90,7 @@ function PropertiesWorkspace() {
   const { linkedId } = useLinkedSelection(ENTITY_LINK_PARAM.property, selectedId, useCallback((id: string | null) => {
     if (id && id !== visibleId.current && !canLeave(true)) return false;
     setSelectedId(id);
-  }, [canLeave]), !unavailable);
+  }, [canLeave]), !unavailable, PROPERTY_SCOPED_PARAMS);
   const linked = resolveLinkedEntity(selectedId && selectedId === linkedId ? linkedId : null, properties, { ready: !unavailable });
   const linkUnavailable = linked.status === 'unavailable';
   const selected = properties.find(property => property.id === selectedId);

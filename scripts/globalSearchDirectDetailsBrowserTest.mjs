@@ -140,14 +140,18 @@ try {
     assert.equal(await page.getByText('B-SEGUNDO').count(), 0);
   });
 
-  await step('clicking another client clears the link; Back reopens the linked one', async () => {
+  await step('choosing another client replaces the link (no extra history); Back returns to the listing', async () => {
     await open(page, '/clients');
     await searchAndPick(page, 'Hostal', 'client-c-dup-1');
     await expectWhere(page, '/clients?clientId=c-dup-1');
     await page.getByText('Cliente Corriente').first().click();
-    await expectWhere(page, '/clients');
+    await expectWhere(page, '/clients?clientId=c-other');
+    await page.reload();
+    await page.getByText('BC-OTHER').first().waitFor();
+    assert.equal(await page.getByText('BC-DUP-1').count(), 0, 'the previously linked client does not come back');
     await page.goBack();
     await expectWhere(page, '/clients');
+    assert.equal(await page.getByText('BC-OTHER').count(), 0, 'Back closes the selection made after the link');
   });
 
   await step('worker opens their profile by id (not the task list), including an inactive homonym', async () => {
