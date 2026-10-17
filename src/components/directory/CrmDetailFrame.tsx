@@ -13,11 +13,16 @@ interface CrmDetailFrameProps {
   footer?: ReactNode;
   children?: ReactNode;
   variant?: 'default' | 'properties';
+  /** Pestaña controlada desde fuera (por ejemplo, la URL); sin ella el marco la gestiona solo. */
+  activeTab?: string;
+  onTabChange?: (id: string) => void;
 }
 
 /** Shared profile layout, following the workers CRM detail panel. */
-export function CrmDetailFrame({ title, subtitle, avatar, status, metricLabel, metricValue, actions, tabs, footer, children, variant = 'default' }: CrmDetailFrameProps) {
-  const [activeTab, setActiveTab] = useState(tabs[0].id);
+export function CrmDetailFrame({ title, subtitle, avatar, status, metricLabel, metricValue, actions, tabs, footer, children, variant = 'default', activeTab: controlledTab, onTabChange }: CrmDetailFrameProps) {
+  const [ownTab, setOwnTab] = useState(tabs[0].id);
+  const activeTab = controlledTab && tabs.some(tab => tab.id === controlledTab) ? controlledTab : ownTab;
+  const setActiveTab = (id: string) => { setOwnTab(id); onTabChange?.(id); };
   const isProperties = variant === 'properties';
   return (
     <div className={isProperties ? 'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-180px)] lg:min-h-0' : 'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-270px)] lg:min-h-[640px]'}>

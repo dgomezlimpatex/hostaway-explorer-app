@@ -1,0 +1,21 @@
+{
+  "request": "Dani pide una cronología unificada por propiedad en la ficha: limpiezas y estado, personal, reportes y finalizaciones, incidencias, supervisiones, lavandería e inventario atribuible, con filtros, carga progresiva, enlaces al registro original y sin inventar eventos.",
+  "reason": "Es una pantalla de consulta y navegación: solo hace SELECT con el cliente del usuario (RLS vigente), filtra por id de propiedad y sede activa, comprueba el permiso de módulo de cada fuente y cada enlace, y no crea, edita ni corrige registros. Enlaza a rutas internas protegidas existentes (/calendar?task, /cleaning-reports?incidencia nuevo parámetro de solo apertura, /inventory/movements); nunca a rutas públicas con token. No toca SQL, funciones, autenticación, comunicaciones ni PMS.",
+  "verification": "scripts/propertyActivityTest.mjs (Node, cliente simulado sin red): tramos y periodos, fechas Madrid y cambio de hora, propiedad con varios módulos, sin actividad, ids frente a nombres repetidos, solo fecha frente a hora prevista/registrada, reaperturas y preparaciones deshechas, fusión de duplicados reporte/tarea y bolsa/reparto, límite y truncado, error parcial, cancelación por signal, sede en todos los filtros, solo lectura, permisos y enlaces. Prueba local de navegador (scripts/propertyActivityBrowserTest.mjs con Edge, no incluida aquí porque la cola no tiene Chromium): página real de propiedades, escritorio, móvil y teclado, filtros, cargar 30 días anteriores, abrir detalle y volver con contexto, error parcial y reintento, fuente lenta, cambio de propiedad durante la carga, otra sede y acceso restringido. Build, tsc de app sin errores en archivos tocados, tsconfig.node sin errores y eslint focalizado limpio. Limitación: no se probó contra Supabase real ni con sesión; lavandería solo guarda la última hora de cada paso.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/propertyActivityTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "1ce0fd253ab175a90ff77e919e39448f1ec22f3591e6c355c8bf3970c1725fb6"
+}
