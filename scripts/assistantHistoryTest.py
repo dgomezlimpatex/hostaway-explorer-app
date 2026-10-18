@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'automation/hermes-history'))
@@ -159,6 +160,20 @@ class HistoryTests(unittest.TestCase):
             def read(self, *args, **kwargs):
                 return {'resource': 'tareas', 'read_only': True, 'total': 1, 'rows': [], 'has_more': False}
         with self.assertRaises(ValueError): runtime.all_pages(Fake(), 'tareas')
+
+    def test_memory_retry_same_key_same_content(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(runtime, 'capture', return_value=self.data):
+            store = Path(temp)
+            runtime.refresh(force=True, store=store, client=object())
+            response = SimpleNamespace(returncode=0, stdout=json.dumps({'ok': True, 'ruta': 'prueba.md'}))
+            with patch.object(runtime.subprocess, 'run', return_value=response) as writer:
+                self.assertTrue(runtime.record_memory(store)['ok'])
+                first = (store / 'memory-request.json').read_bytes()
+                self.assertEqual(runtime.record_memory(store)['estado'], 'memoria_ya_registrada')
+                self.assertEqual(writer.call_count, 1)
+                runtime.refresh(force=True, store=store, client=object())
+                self.assertTrue(runtime.record_memory(store)['ok'])
+                self.assertEqual(first, (store / 'memory-request.json').read_bytes())
 
 
 if __name__ == '__main__': unittest.main(verbosity=2)
