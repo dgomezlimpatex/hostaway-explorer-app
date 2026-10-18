@@ -161,7 +161,7 @@ def record_memory(store=STORE):
             'titulo': 'Historico del reparto actualizado hasta ' + status['hasta'],
             'contenido': 'Captura de lectura desde 01/06/2026 hasta ' + status['hasta'] + '. Dos lecturas completas coincidentes. Resumen: ' + json.dumps(stats, ensure_ascii=False) + '. La base estructurada conserva fichas de trabajador, propiedad y edificio. No se han escrito asignaciones. Consultar historial_equipo en Hermes o run.ps1 -Action query antes de sacar conclusiones sobre patrones.',
             'fuente': 'Colector determinista de APP GESTION LIMPATEX. Huella ' + status['source_digest'] + '. Fecha de captura ' + status['attempt_day'] + '. Peticion directa de Dani: desde junio de 2026 y una actualizacion diaria.',
-            'autor': 'Colector de historico (sin modelo)', 'marca': 'Limpatex', 'tipo': 'hecho',
+            'autor': 'limpatexconsultor', 'marca': 'Limpatex', 'tipo': 'hecho',
             'analisis': {
                 'problemas': 'La captura tecnica no acredita mejoras operativas. Hay que distinguir tareas completadas con asignacion de pendientes, ejecucion individual y disponibilidad actual. Las incidencias de cobertura se consultan en calidad.',
                 'relaciones': 'Fuente compartida de Operaciones y consultor. Complementa el equipo configurado de cada edificio; no modifica titularidades ni exclusiones. Rentabilidad recibe un resumen agregado.',

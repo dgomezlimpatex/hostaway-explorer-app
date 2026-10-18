@@ -169,6 +169,9 @@ class HistoryTests(unittest.TestCase):
             with patch.object(runtime.subprocess, 'run', return_value=response) as writer:
                 self.assertTrue(runtime.record_memory(store)['ok'])
                 first = (store / 'memory-request.json').read_bytes()
+                # The memory service accepts profile IDs, Codex or Claude Code;
+                # the deterministic collector records on behalf of its profile.
+                self.assertEqual(json.loads(first)['autor'], 'limpatexconsultor')
                 self.assertEqual(runtime.record_memory(store)['estado'], 'memoria_ya_registrada')
                 self.assertEqual(writer.call_count, 1)
                 runtime.refresh(force=True, store=store, client=object())
