@@ -15,3 +15,16 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+// Public link lookup must not inherit the worker's saved app session: the
+// authenticated route-management policy intentionally excludes worker roles.
+// This client neither reads nor changes that session. Route PIN checks remain
+// enforced by the existing route access/workflow endpoints.
+export const publicSupabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    storageKey: 'limpatex-public-links',
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  },
+});

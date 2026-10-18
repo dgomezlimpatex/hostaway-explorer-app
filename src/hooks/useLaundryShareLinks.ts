@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchPublicLaundryLink } from '@/services/publicLaundryLink';
 import { useToast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
 import { getDateDayOfWeek, orderClassicLaundryTaskIds } from '@/services/laundryRouteOrderService';
@@ -334,19 +335,7 @@ export const useLaundryShareLinkByToken = (token: string | undefined) => {
     queryFn: async () => {
       if (!token) throw new Error('Token requerido');
 
-      const { data, error } = await supabase
-        .from('laundry_share_links')
-        .select('*')
-        .eq('token', token)
-        .eq('is_active', true)
-        .single();
-
-      if (error) throw error;
-      
-      // Check if link has expired
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
-        throw new Error('Este enlace ha expirado');
-      }
+      const data = await fetchPublicLaundryLink(token);
 
       const mappedLink = mapToShareLink(data);
 
