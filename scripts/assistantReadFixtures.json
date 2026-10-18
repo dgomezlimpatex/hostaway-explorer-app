@@ -1,0 +1,494 @@
+{
+  "schema": [
+    {
+      "table_name": "cleaner_availability",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaner_availability",
+      "column_name": "cleaner_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaner_availability",
+      "column_name": "day_of_week",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "cleaner_availability",
+      "column_name": "is_available",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "cleaner_availability",
+      "column_name": "start_time",
+      "data_type": "time without time zone"
+    },
+    {
+      "table_name": "cleaner_availability",
+      "column_name": "end_time",
+      "data_type": "time without time zone"
+    },
+    {
+      "table_name": "cleaners",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaners",
+      "column_name": "name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cleaners",
+      "column_name": "is_active",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "cleaners",
+      "column_name": "contract_hours_per_week",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "cleaners",
+      "column_name": "hourly_rate",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "cleaners",
+      "column_name": "sede_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaning_incidents",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaning_incidents",
+      "column_name": "task_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaning_incidents",
+      "column_name": "property_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaning_incidents",
+      "column_name": "sede_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaning_incidents",
+      "column_name": "description",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cleaning_incidents",
+      "column_name": "status",
+      "data_type": "USER-DEFINED"
+    },
+    {
+      "table_name": "cleaning_incidents",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "cleaning_incidents",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "nombre",
+      "data_type": "text"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "ciudad",
+      "data_type": "text"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "tipo_servicio",
+      "data_type": "text"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "sede_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "clients",
+      "column_name": "is_active",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "financial_settings",
+      "column_name": "sede_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "financial_settings",
+      "column_name": "document",
+      "data_type": "jsonb"
+    },
+    {
+      "table_name": "financial_settings",
+      "column_name": "revision",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "financial_settings",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "laundry_receipts",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "laundry_receipts",
+      "column_name": "receipt_date",
+      "data_type": "date"
+    },
+    {
+      "table_name": "laundry_receipts",
+      "column_name": "counts",
+      "data_type": "jsonb"
+    },
+    {
+      "table_name": "laundry_receipts",
+      "column_name": "revision",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "laundry_receipts",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "laundry_receipts",
+      "column_name": "discarded_counts",
+      "data_type": "jsonb"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "codigo",
+      "data_type": "text"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "nombre",
+      "data_type": "text"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "direccion",
+      "data_type": "text"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "numero_camas",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "numero_banos",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "duracion_servicio",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "coste_servicio",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "cliente_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "sede_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "properties",
+      "column_name": "is_active",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "stock_levels",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "stock_levels",
+      "column_name": "product_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "stock_levels",
+      "column_name": "warehouse_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "stock_levels",
+      "column_name": "current_quantity",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "stock_levels",
+      "column_name": "minimum_quantity",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "stock_levels",
+      "column_name": "target_quantity",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "stock_levels",
+      "column_name": "last_updated",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "stock_levels",
+      "column_name": "quantity_basis",
+      "data_type": "text"
+    },
+    {
+      "table_name": "stock_levels",
+      "column_name": "counted_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "stock_products",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "stock_products",
+      "column_name": "name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "stock_products",
+      "column_name": "unit_of_measure",
+      "data_type": "text"
+    },
+    {
+      "table_name": "stock_warehouses",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "stock_warehouses",
+      "column_name": "sede_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "stock_warehouses",
+      "column_name": "name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "stock_warehouses",
+      "column_name": "location_type",
+      "data_type": "text"
+    },
+    {
+      "table_name": "task_assignments",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "task_assignments",
+      "column_name": "task_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "task_assignments",
+      "column_name": "cleaner_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "task_assignments",
+      "column_name": "cleaner_name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "property",
+      "data_type": "text"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "start_time",
+      "data_type": "time without time zone"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "end_time",
+      "data_type": "time without time zone"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "type",
+      "data_type": "text"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "status",
+      "data_type": "text"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "cleaner",
+      "data_type": "text"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "date",
+      "data_type": "date"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "cliente_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "propiedad_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "cleaner_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "duracion",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "coste",
+      "data_type": "numeric"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "tasks",
+      "column_name": "sede_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "worker_absences",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "worker_absences",
+      "column_name": "cleaner_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "worker_absences",
+      "column_name": "start_date",
+      "data_type": "date"
+    },
+    {
+      "table_name": "worker_absences",
+      "column_name": "end_date",
+      "data_type": "date"
+    },
+    {
+      "table_name": "worker_absences",
+      "column_name": "start_time",
+      "data_type": "time without time zone"
+    },
+    {
+      "table_name": "worker_absences",
+      "column_name": "end_time",
+      "data_type": "time without time zone"
+    }
+  ],
+  "permissions": {
+    "limpatexconsultor": [
+      "clientes",
+      "propiedades",
+      "tareas",
+      "equipo",
+      "ausencias",
+      "inventario",
+      "lavanderia",
+      "incidencias",
+      "tarifas",
+      "importes_servicios",
+      "costes_personal",
+      "ajustes_financieros"
+    ],
+    "limpatexoperaciones": [
+      "clientes",
+      "propiedades",
+      "tareas",
+      "equipo",
+      "ausencias",
+      "inventario",
+      "lavanderia",
+      "incidencias"
+    ],
+    "limpatexrentabilidad": [
+      "clientes",
+      "propiedades",
+      "tareas",
+      "tarifas",
+      "importes_servicios",
+      "costes_personal",
+      "ajustes_financieros"
+    ],
+    "limpatexcomercial": [
+      "clientes",
+      "propiedades",
+      "tarifas"
+    ]
+  }
+}
