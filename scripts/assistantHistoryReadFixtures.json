@@ -1,0 +1,189 @@
+{
+  "schema": [
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "property_group_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "cleaner_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "priority",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "max_tasks_per_day",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "estimated_travel_time_minutes",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "is_active",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "role_type",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "knowledge_level",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "notes",
+      "data_type": "text"
+    },
+    {
+      "table_name": "cleaner_group_assignments",
+      "column_name": "max_daily_minutes_override",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "property_group_assignments",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "property_group_assignments",
+      "column_name": "property_group_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "property_group_assignments",
+      "column_name": "property_id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "property_group_assignments",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "description",
+      "data_type": "text"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "check_out_time",
+      "data_type": "time without time zone"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "check_in_time",
+      "data_type": "time without time zone"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "is_active",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "auto_assign_enabled",
+      "data_type": "boolean"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "internal_code",
+      "data_type": "text"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "display_name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "zone",
+      "data_type": "text"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "client_name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "supervisor_name",
+      "data_type": "text"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "general_instructions",
+      "data_type": "text"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "difficulty_level",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "recommended_capacity",
+      "data_type": "integer"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "planning_notes",
+      "data_type": "text"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "retired_at",
+      "data_type": "timestamp with time zone"
+    },
+    {
+      "table_name": "property_groups",
+      "column_name": "retirement_snapshot",
+      "data_type": "jsonb"
+    }
+  ]
+}
