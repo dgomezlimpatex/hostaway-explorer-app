@@ -1,4 +1,5 @@
 
+import { memo } from "react";
 import { Cleaner } from "@/types/calendar";
 import { cn } from "@/lib/utils";
 import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
@@ -18,7 +19,7 @@ interface WorkersColumnProps {
   workloadMap?: Record<string, WorkloadSummary>;
 }
 
-export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isDragging, preferredCleanerIds, workloadMap }: WorkersColumnProps) => {
+export const WorkersColumn = memo(function WorkersColumn({ cleaners, onDragOver, onDrop, absenceStatus, isDragging, preferredCleanerIds, workloadMap }: WorkersColumnProps) {
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -233,4 +234,4 @@ export const WorkersColumn = ({ cleaners, onDragOver, onDrop, absenceStatus, isD
       })}
     </div>
   );
-};
+});

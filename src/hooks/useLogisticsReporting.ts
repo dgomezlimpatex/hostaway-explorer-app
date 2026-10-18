@@ -2,8 +2,6 @@ import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useSede } from '@/contexts/SedeContext';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
 
 interface ReportFilters {
   startDate?: string;
@@ -150,6 +148,7 @@ export const useLogisticsReporting = () => {
 
   const exportToExcel = useCallback(async (reportData: PicklistReportData[], filename: string = 'reporte-picklists') => {
     try {
+      const XLSX = await import('xlsx');
       const workbook = XLSX.utils.book_new();
       
       // Main data sheet
@@ -199,6 +198,7 @@ export const useLogisticsReporting = () => {
 
   const exportToPDF = useCallback(async (reportData: PicklistReportData[], kpis: KPIData, filename: string = 'reporte-picklists') => {
     try {
+      const { default: jsPDF } = await import('jspdf');
       const pdf = new jsPDF();
       
       // Title

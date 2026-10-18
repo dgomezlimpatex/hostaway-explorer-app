@@ -1,8 +1,6 @@
 import { useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -82,6 +80,7 @@ export const usePicklistExport = () => {
         return;
       }
 
+      const XLSX = await import('xlsx');
       const workbook = XLSX.utils.book_new();
 
       // Hoja principal con información del picklist
@@ -189,6 +188,7 @@ export const usePicklistExport = () => {
         return;
       }
 
+      const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF();
       const pageHeight = doc.internal.pageSize.height;
       let y = 20;
