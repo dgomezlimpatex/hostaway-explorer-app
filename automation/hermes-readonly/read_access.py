@@ -59,6 +59,7 @@ else:
 print(json.dumps({"profile":PROFILE,"read_only":True,"url":APP,"title":js("document.querySelector('h1')?.innerText")}))
 '''.replace('INTEGRATION',repr(str(Path(__file__).parent))).replace('PROFILE',repr(self.profile)).replace('APP',repr(APP))
   with contextlib.redirect_stdout(sys.stderr):result=browser_exec(code,session=session,timeout_s=65,task_id=session)
+  if isinstance(result,str):result=json.loads(result)
   if not result.get('success'):raise RuntimeError('No se pudo abrir o verificar la vista de consulta. Revisar el navegador de Hermes.')
   return {'profile':self.profile,'read_only':True,'url':APP,'browser_session':session,
     'instruction':'Usa browser_exec con esta misma session para revisar secciones, filtros y pantallas. No contiene permisos de edición.'}
