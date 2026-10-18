@@ -137,11 +137,11 @@ class HistoryTests(unittest.TestCase):
     def test_failed_refresh_keeps_last_good_and_marks_stale(self):
         with tempfile.TemporaryDirectory() as temp:
             store = Path(temp)
-            with patch.object(runtime, 'capture', return_value=self.data):
+            with patch.object(runtime, 'synchronize', return_value=({'packages':{t['id']:{'contenido':t} for t in self.data['tareas']}}, {})), patch.object(runtime, 'all_pages', side_effect=lambda c,r:self.data[r]):
                 result = runtime.refresh(force=True, store=store, client=object())
             self.assertTrue(result['ok'])
             original = (store/'history.dpapi').read_bytes()
-            with patch.object(runtime, 'capture', side_effect=ValueError('private detail')):
+            with patch.object(runtime, 'synchronize', side_effect=ValueError('private detail')):
                 result = runtime.refresh(force=True, store=store, client=object())
             self.assertFalse(result['ok'])
             self.assertNotIn('private detail', json.dumps(result))
@@ -150,7 +150,7 @@ class HistoryTests(unittest.TestCase):
 
     def test_inconsistent_captures_not_published(self):
         second = copy.deepcopy(self.data); second['tareas'][0]['estado'] = 'pending'
-        with tempfile.TemporaryDirectory() as temp, patch.object(runtime, 'capture', side_effect=[self.data, second]):
+        with tempfile.TemporaryDirectory() as temp, patch.object(runtime, 'synchronize', side_effect=ValueError('Source changed')):
             result = runtime.refresh(force=True, store=Path(temp), client=object())
             self.assertFalse(result['ok'])
             self.assertFalse((Path(temp)/'history.dpapi').exists())
@@ -162,7 +162,7 @@ class HistoryTests(unittest.TestCase):
         with self.assertRaises(ValueError): runtime.all_pages(Fake(), 'tareas')
 
     def test_memory_retry_same_key_same_content(self):
-        with tempfile.TemporaryDirectory() as temp, patch.object(runtime, 'capture', return_value=self.data):
+        with tempfile.TemporaryDirectory() as temp, patch.object(runtime, 'synchronize', return_value=({'packages':{t['id']:{'contenido':t} for t in self.data['tareas']}}, {})), patch.object(runtime, 'all_pages', side_effect=lambda c,r:self.data[r]):
             store = Path(temp)
             runtime.refresh(force=True, store=store, client=object())
             response = SimpleNamespace(returncode=0, stdout=json.dumps({'ok': True, 'ruta': 'prueba.md'}))

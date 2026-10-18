@@ -2,6 +2,7 @@ param(
   [ValidateSet('refresh','status','mcp','query','record')][string]$Action = 'status',
   [ValidateSet('limpatexconsultor','limpatexoperaciones','limpatexrentabilidad')][string]$Profile = 'limpatexoperaciones',
   [switch]$Force,
+  [switch]$CheckWeekly,
   [ValidateSet('resumen','trabajador','edificio','propiedad')][string]$Query = 'resumen',
   [string]$Id = '',
   [string]$Search = '',
@@ -18,6 +19,7 @@ if ($Action -eq 'mcp') {
 } else {
   $historyArgs = @((Join-Path $PSScriptRoot 'history_runtime.py'), $Action)
   if ($Force) { $historyArgs += '--force' }
+  if ($CheckWeekly) { $historyArgs += '--check-weekly' }
   if ($Action -eq 'query') {
     $historyArgs += @('--profile',$Profile,'--query',$Query,'--limit',[string]$Limit,'--offset',[string]$Offset)
     if ($Id) { $historyArgs += @('--id',$Id) }

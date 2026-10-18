@@ -17,6 +17,8 @@ for sibling in ('limpatex-readonly', 'hermes-readonly'):
         break
 from read_access import Client, ROOT, protect
 from history_core import START, VERSION, digest, learn, query
+from history_feed import synchronize
+from history_reports import enrich
 sys.path.insert(0, str(ROOT / 'hermes-agent'))
 import hermes_bootstrap  # Current Hermes environment supplies tzdata on Windows.
 
@@ -98,7 +100,7 @@ def due(status, now):
     return now.hour >= 6 and status.get('attempt_day') != now.date().isoformat()
 
 
-def refresh(force=False, store=STORE, client=None, now=None):
+def refresh(force=False, store=STORE, client=None, now=None, check_weekly=False):
     now = now or datetime.now(MADRID)
     with lock(store):
         old_status = read_status(store)
@@ -108,18 +110,22 @@ def refresh(force=False, store=STORE, client=None, now=None):
         atomic(store / 'status.json', json.dumps(started).encode())
         try:
             client = client or Client('limpatexoperaciones')
-            end = now.date() - timedelta(days=1)
-            # Two equal complete reads detect edits and shifting pagination. No
-            # database snapshot is claimed; the two observed versions must agree.
-            first = capture(client, end)
-            second = capture(client, end)
-            if digest(first) != digest(second):
-                raise ValueError('Las fuentes cambiaron durante la captura. Se conserva la version anterior.')
-            snapshot = learn(second, end)
+            prior_path = store / 'history.dpapi'
+            previous = json.loads(protect(prior_path.read_bytes(), True).decode()).get('_cache') if prior_path.exists() else None
+            cache, transfer = synchronize(client, previous, now.date(), check_weekly)
+            catalogs = {r: all_pages(client,r) for r in RESOURCES[1:]}
+            second_catalogs = {r: all_pages(client,r) for r in RESOURCES[1:]}
+            if digest(catalogs) != digest(second_catalogs):
+                raise ValueError('Los catalogos cambiaron durante la lectura.')
+            data = {**catalogs, 'tareas':[p['contenido'] for p in cache['packages'].values()]}
+            snapshot = enrich(data, now.date())
             snapshot['actualizado'] = datetime.now(timezone.utc).isoformat()
-            snapshot['captura'] = 'dos_lecturas_completas_coincidentes_no_transaccion_sql'
+            snapshot['captura'] = 'manifiestos_y_versiones_coincidentes_no_transaccion_sql'
+            snapshot['_cache'] = cache
+            snapshot['sincronizacion'] = transfer
+            # Snapshot and incremental watermark are one atomic encrypted object.
             atomic(store / 'history.dpapi', protect(json.dumps(snapshot, ensure_ascii=False).encode()))
-            status = {**started, 'ok': True, 'estado': 'actualizado', 'hasta': end.isoformat(), 'source_digest': snapshot['fuentes_huella'], 'version': VERSION, 'resumen': snapshot['resumen'], 'actualizado': snapshot['actualizado']}
+            status = {**started, 'ok': True, 'estado': 'actualizado', 'hasta': snapshot['hasta'], 'source_digest': snapshot['fuentes_huella'], 'version': 2, 'resumen': snapshot['resumen'], 'reportes': snapshot['reportes_resumen'], 'sincronizacion': transfer, 'actualizado': snapshot['actualizado']}
             atomic(store / 'status.json', json.dumps(status, ensure_ascii=False).encode())
             return status
         except Exception as exc:
@@ -157,9 +163,9 @@ def record_memory(store=STORE):
             return {'ok': True, 'estado': 'memoria_ya_registrada'}
         stats = status['resumen']
         request = {
-            'accion': 'registrar', 'clave': 'historico-reparto:' + status['attempt_day'] + ':' + status['source_digest'],
+            'accion': 'registrar', 'clave': 'historico-reparto-v2:' + status['attempt_day'] + ':' + status['source_digest'],
             'titulo': 'Historico del reparto actualizado hasta ' + status['hasta'],
-            'contenido': 'Captura de lectura desde 01/06/2026 hasta ' + status['hasta'] + '. Dos lecturas completas coincidentes. Resumen: ' + json.dumps(stats, ensure_ascii=False) + '. La base estructurada conserva fichas de trabajador, propiedad y edificio. No se han escrito asignaciones. Consultar historial_equipo en Hermes o run.ps1 -Action query antes de sacar conclusiones sobre patrones.',
+            'contenido': 'Historico desde 01/06/2026 hasta ' + status['hasta'] + ', con reparto previsto de hoy y 14 dias. Actualizacion incremental validada por versiones, comprobacion semanal y catalogos coincidentes. Resumen: ' + json.dumps(stats, ensure_ascii=False) + '. Reportes: ' + json.dumps(status.get('reportes',{}), ensure_ascii=False) + '. Consultar historial_equipo para fichas, asignaciones pendientes y reportes por trabajador. No se han escrito tareas ni reportes. Las cifras son evidencia registrada, no calidad del trabajo. Sin reporte puede ser envio offline pendiente; casos no evaluables no se imputan como incumplimiento.',
             'fuente': 'Colector determinista de APP GESTION LIMPATEX. Huella ' + status['source_digest'] + '. Fecha de captura ' + status['attempt_day'] + '. Peticion directa de Dani: desde junio de 2026 y una actualizacion diaria.',
             'autor': 'limpatexconsultor', 'marca': 'Limpatex', 'tipo': 'hecho',
             'analisis': {
@@ -188,6 +194,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('command', choices=('refresh', 'status', 'record', 'query'))
     parser.add_argument('--force', action='store_true', help='Reintento manual explicito, no usar en la programacion normal.')
+    parser.add_argument('--check-weekly', action='store_true', help='Comprobacion manual de versiones; automatica cada siete dias.')
     parser.add_argument('--profile', default='limpatexconsultor', choices=('limpatexconsultor', 'limpatexoperaciones', 'limpatexrentabilidad'))
     parser.add_argument('--query', default='resumen', choices=('resumen', 'trabajador', 'edificio', 'propiedad'))
     parser.add_argument('--id', default='')
@@ -195,7 +202,7 @@ if __name__ == '__main__':
     parser.add_argument('--limit', type=int, default=20)
     parser.add_argument('--offset', type=int, default=0)
     args = parser.parse_args()
-    if args.command == 'refresh': result = refresh(args.force)
+    if args.command == 'refresh': result = refresh(args.force, check_weekly=args.check_weekly)
     elif args.command == 'record': result = record_memory()
     elif args.command == 'query':
         Client(args.profile).read()  # Also honor current credential revocation.
