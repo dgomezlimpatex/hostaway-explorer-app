@@ -3,8 +3,15 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { build } from 'esbuild';
 import { chromium } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { relative } from 'node:path';
 
 const measuring = process.argv.includes('--measure');
+const baseline = process.argv.includes('--baseline');
+// Identical harness and conditions for the verified production baseline.
+const sourceAtRevision = path => baseline
+  ? execFileSync('git', ['show', '95568fdc683f9cd5b7fa06fc33709f102417708d:' + relative(process.cwd(), path).replaceAll('\\', '/')], { encoding: 'utf8' })
+  : readFileSync(path, 'utf8');
 const count = 60;
 const fixture = {
   reports: Array.from({ length: count }, (_, i) => ({ id: `r${i}`, task_id: `t${i}`, cleaner_id: 'w', created_at: '2026-10-19T10:00:00Z', overall_status: 'completed' })),
@@ -34,11 +41,12 @@ const mode=new URL(location.href).searchParams.get('mode');createRoot(document.g
 const built = await build({ stdin: { contents: entry, resolveDir: process.cwd(), loader: 'tsx' }, bundle: true, write: false, platform: 'browser', format: 'iife', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' }, plugins: [{ name: 'offline-fixtures', setup(p) {
   p.onResolve({ filter: /.*/ }, args => Object.hasOwn(modules, args.path) ? { path: args.path, namespace: 'fixture' } : null);
   p.onLoad({ filter: /.*/, namespace: 'fixture' }, args => ({ contents: modules[args.path], loader: 'js' }));
-  p.onLoad({ filter: /WorkersColumn\.tsx$/ }, args => ({ contents: readFileSync(args.path, 'utf8').replace('const handleDragOver =', 'window.workerRenders = (window.workerRenders || 0) + 1; const handleDragOver ='), loader: 'tsx' }));
+  p.onLoad({ filter: /WorkersColumn\.tsx$/ }, args => ({ contents: sourceAtRevision(args.path).replace('const handleDragOver =', 'window.workerRenders = (window.workerRenders || 0) + 1; const handleDragOver ='), loader: 'tsx' }));
+  p.onLoad({ filter: /(?:useWorkersAbsenceStatus\.ts|CleaningReportsGallery\.tsx)$/ }, args => ({ contents: sourceAtRevision(args.path), loader: 'tsx' }));
 } }] });
 const html = `<html><style>body{margin:0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.grid>div{height:340px}img{width:240px;height:200px;object-fit:cover}</style><div id="root"></div><script>window.reads=[];window.workerRenders=0;</script><script>${built.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></html>`;
 const executablePath = process.platform === 'linux' && existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined;
-const browser = await chromium.launch({ headless: true, executablePath });
+const browser = await chromium.launch({ headless: true, executablePath, args: ['--force-effective-connection-type=4G'] });
 const metrics = {};
 try {
   const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
@@ -51,6 +59,7 @@ try {
     unexpected.push(url); return route.abort();
   });
   await page.goto('https://performance.local/?mode=renders');
+  assert.equal(await page.evaluate(()=>navigator.connection.effectiveType),'4g','Fix the connection profile for comparable native image prefetch');
   await page.waitForFunction(() => window.workerRenders > 0);
   for (let i = 1; i <= 20; i++) { await page.evaluate(() => window.tick());await page.waitForFunction(n => document.querySelector('#tick').textContent === String(n), i); }
   metrics.workerColumnRenders = await page.evaluate(() => window.workerRenders);

@@ -19,7 +19,10 @@ El índice y los archivos pendientes del checkout principal se conservaron.
 
 Las medidas de renders, lecturas e imágenes se obtuvieron en Chromium 149 con
 componentes y hooks reales y fixtures sintéticos; todos los accesos externos se
-interceptaron. Las cantidades de imágenes dependen de la distancia de precarga
+interceptaron. Se fija el perfil efectivo 4G del navegador y se comprueba antes
+de medir. Se repitieron base y resultado con ese mismo perfil. En el ejecutor
+Linux aislado, el perfil sin normalizar descargó las 60 imágenes: no es comparable
+con el perfil local. Las cantidades de imágenes dependen de la distancia de precarga
 del navegador: no representan bytes ahorrados en toda una sesión ni una mejora
 de LCP. Se comprobó que la última imagen se carga al hacer scroll.
 
@@ -86,6 +89,7 @@ de Chrome DevTools no están conectados en esta sesión; se utilizó Playwright.
 
 ```powershell
 node scripts/performanceBrowserTest.mjs
+node scripts/performanceBrowserTest.mjs --baseline --measure
 node scripts/performanceStockTest.mjs
 node scripts/performanceExportsTest.mjs
 node scripts/supervisionBuildingAgendaTest.mjs
@@ -93,8 +97,10 @@ node scripts/supervisionOccupancyTest.mjs
 node scripts/performanceBundleMeasure.mjs resultado-bundle.json
 ```
 
-Para obtener las cantidades de una base anterior sin exigir los resultados
-optimizados, los dos primeros arneses admiten `--measure`. Para comparar, usar
+El modo `--baseline` del arnés de navegador carga los tres módulos originales
+desde el commit de base verificado, con los mismos mocks y perfil de conexión.
+Para obtener cantidades sin exigir resultados optimizados, los dos primeros
+arneses admiten `--measure`. Para comparar otras revisiones, usar
 el mismo arnés sobre cada revisión aislada. `PERFORMANCE_RESULT` permite guardar
 las medidas en un archivo externo al repositorio. Las pruebas locales no equivalen
 a medir una sesión autenticada de producción ni permiten afirmar una mejora de INP/LCP.
