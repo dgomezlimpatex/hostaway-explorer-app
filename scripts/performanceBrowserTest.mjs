@@ -1,6 +1,6 @@
 // Real components and React Query; synthetic data, all external traffic blocked.
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { build } from 'esbuild';
 import { chromium } from '@playwright/test';
 
@@ -37,7 +37,8 @@ const built = await build({ stdin: { contents: entry, resolveDir: process.cwd(),
   p.onLoad({ filter: /WorkersColumn\.tsx$/ }, args => ({ contents: readFileSync(args.path, 'utf8').replace('const handleDragOver =', 'window.workerRenders = (window.workerRenders || 0) + 1; const handleDragOver ='), loader: 'tsx' }));
 } }] });
 const html = `<html><style>body{margin:0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.grid>div{height:340px}img{width:240px;height:200px;object-fit:cover}</style><div id="root"></div><script>window.reads=[];window.workerRenders=0;</script><script>${built.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></html>`;
-const browser = await chromium.launch({ headless: true });
+const executablePath = process.platform === 'linux' && existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined;
+const browser = await chromium.launch({ headless: true, executablePath });
 const metrics = {};
 try {
   const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });

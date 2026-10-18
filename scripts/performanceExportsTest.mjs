@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { chromium } from '@playwright/test';
 import { basename } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import * as XLSX from 'xlsx';
 
 // Serve split modules from memory. This exercises the real dynamic imports and downloads.
@@ -18,7 +18,8 @@ function App(){const r=useLogisticsReporting(),p=usePicklistExport();const rows=
 } }] });
 const files = new Map(built.outputFiles.map(file => [basename(file.path), file.text]));
 const requested = [], unexpected = [], errors = [];
-const browser = await chromium.launch({headless:true});
+const executablePath = process.platform === 'linux' && existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined;
+const browser = await chromium.launch({headless:true,executablePath});
 try {
   const context = await browser.newContext({acceptDownloads:true}), page=await context.newPage();
   await page.route('**/*',route=>{
