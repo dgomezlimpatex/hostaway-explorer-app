@@ -52,5 +52,7 @@ try {
  assert.equal((await db.query('select count(*)::int n from tasks')).rows[0].n,1);
  const fn=(await db.query("select p.provolatile,r.rolname,r.rolcanlogin,r.rolbypassrls from pg_proc p join pg_roles r on r.oid=p.proowner where p.proname='limpatex_assistant_read'")).rows[0];
  assert.equal(fn.provolatile,'s');assert.equal(fn.rolname,'limpatex_bot_reader');assert.equal(fn.rolcanlogin,false);assert.equal(fn.rolbypassrls,false);checks++;
+ const membership=(await db.query("select m.set_option,m.inherit_option from pg_auth_members m join pg_roles r on r.oid=m.roleid join pg_roles u on u.oid=m.member where r.rolname='limpatex_bot_reader' and u.rolname='postgres'")).rows[0];
+ assert.equal(membership.set_option,false);assert.equal(membership.inherit_option,false);checks++;
  console.log(JSON.stringify({ok:true,checks,scope:'isolated PostgreSQL fixtures; no production writes'}));
 } finally {await db.close();}

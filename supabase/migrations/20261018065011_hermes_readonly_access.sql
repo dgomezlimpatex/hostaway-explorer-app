@@ -114,10 +114,15 @@ begin
  execute v_query into v_rows,v_total using p_id,p_search,v_start,v_end,p_limit,p_offset;
  return jsonb_build_object('profile',v_profile,'read_only',true,'resource',p_resource,'as_of',now(),'timezone','Europe/Madrid','from',v_start,'to',v_end,'total',v_total,'offset',p_offset,'has_more',p_offset+jsonb_array_length(v_rows)<v_total,'rows',v_rows,'source','APP GESTIÓN LIMPATEX / '||p_resource,'notice','Datos de consulta. Importes registrados no equivalen a margen ni contabilidad cerrada. Stock conserva su base de cálculo y fecha de recuento.');
 end $$;
-grant create on schema public to limpatex_bot_reader;
-alter function public.limpatex_assistant_read(text,text,date,date,text,uuid,integer,integer) owner to limpatex_bot_reader;
-revoke create on schema public from limpatex_bot_reader;
 revoke all on function public.limpatex_assistant_read(text,text,date,date,text,uuid,integer,integer) from public;
 grant execute on function public.limpatex_assistant_read(text,text,date,date,text,uuid,integer,integer) to anon,authenticated;
 comment on function public.limpatex_assistant_read(text,text,date,date,text,uuid,integer,integer) is 'Authenticated by dedicated revocable assistant secret, not a Supabase user session. Read-only scoped interface; no write counterpart.';
+-- Supabase's postgres role is not a superuser. Ownership transfer needs SET ROLE.
+-- Only the migration administrator receives this temporary option; bots never do.
+grant limpatex_bot_reader to postgres with set true;
+grant limpatex_bot_reader to postgres with inherit false;
+grant create on schema public to limpatex_bot_reader;
+alter function public.limpatex_assistant_read(text,text,date,date,text,uuid,integer,integer) owner to limpatex_bot_reader;
+revoke create on schema public from limpatex_bot_reader;
+grant limpatex_bot_reader to postgres with set false;
 notify pgrst,'reload schema';
