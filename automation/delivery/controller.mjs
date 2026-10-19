@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {fingerprint} from './guard.mjs';
-import {waitForProduction,waitForMergeability,assertManualPr,assertReadyRelease,reservationSignal} from './coordination.mjs';
+import {waitForProduction,waitForMergeability,assertManualPr,assertReadyRelease,reservationSignal,readReservedState,assertReviewedRecovery} from './coordination.mjs';
 
 const config = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
 const command = process.argv[2];
@@ -71,10 +71,11 @@ const git = (repo, args) => execFileSync('git', ['-C', repo, ...args], {encoding
 function output(key, value) { fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`); }
 async function live() { return Promise.all(config.domains.map(d => vc(`/v13/deployments/${d}`))); }
 async function currentMain() { return (await gh(`/git/ref/heads/${config.baseBranch}`)).object.sha; }
-async function assertManualReleasesClosed() {
+async function assertManualReleasesClosed(except) {
   for(let page=1;page<=10;page++) {
     const markers=await gh(`/deployments?environment=limpatex-release-reservation&per_page=100&page=${page}`);
     for(const marker of markers.filter(m=>m.payload?.kind==='limpatex-manual-v1')) {
+      if(marker.id===except) continue; // Only the explicitly audited recovery may claim this failed turn.
       const latest=(await gh(`/deployments/${marker.id}/statuses`))[0];
       assert(['success','inactive'].includes(latest?.state),`Reserva manual ${marker.id} sin cerrar correctamente; revisar backend, GitHub y Vercel antes de nuevas entregas`);
     }
@@ -146,18 +147,43 @@ async function manualHold() {
   const number=Number(input.pr_number),pr=await gh(`/pulls/${number}`);
   assertManualPr(pr,config.owner,config.repository,input.head_sha);
   assert(!pr.merged,'Reservar antes de incorporar o tocar producción');
-  await assertManualReleasesClosed();
+  const recoveryId=input.recovery_reservation ? Number(input.recovery_reservation) : undefined;
+  if(input.recovery_reservation) assert(Number.isSafeInteger(recoveryId) && recoveryId>0);
+  await assertManualReleasesClosed(recoveryId);
   const repo=path.join(workspace,'control'),main=await currentMain();
-  git(repo,['fetch','origin',main]);git(repo,['checkout','--detach',main]);await awaitProduction(repo,main);
+  const controlSource=fingerprint(repo);
+  if(recoveryId) assert.equal(git(repo,['rev-parse','HEAD']),input.head_sha,'Control de recuperación debe ser el head exacto revisado');
+  git(repo,['fetch','origin',main]);git(repo,['checkout','--detach',main]);
+  let source=fingerprint(repo);
+  if(recoveryId) {
+    assert.equal(process.env.GITHUB_SHA,input.head_sha,'Ejecutar el workflow del head revisado');
+    assert.match(input.recovery_audit,/^[a-f0-9]{64}$/);
+    assert.equal(controlSource,source,'La reparación del coordinador no puede modificar la aplicación pendiente');
+    const repairPaths=git(repo,['diff','--name-only',main,input.head_sha]).split('\n').filter(Boolean);
+    assert(repairPaths.length && repairPaths.every(file=>/^(automation\/delivery\/|\.github\/workflows\/limpatex-reviewed-release\.yml$|docs\/ENTREGA-AUTOMATICA\.md$)/.test(file)),
+      'La recuperación solo admite la reparación revisada del coordinador');
+    const marker=await gh(`/deployments/${recoveryId}`),p=marker.payload;
+    const previous=await gh(`/pulls/${p.number}`);
+    const commit=await gh(`/git/commits/${previous.merge_commit_sha}`);
+    assertReviewedRecovery({reservation:marker,status:(await gh(`/deployments/${recoveryId}/statuses`))[0],run:await gh(`/actions/runs/${p.runId}`),pr:previous,
+      statuses:(await gh(`/commits/${p.head}/status`)).statuses,checks:(await gh(`/commits/${p.head}/check-runs`)).check_runs,
+      parents:commit.parents.map(parent=>parent.sha),owner:config.owner,repository:config.repository,context:config.statusContext});
+    git(repo,['merge-base','--is-ancestor',previous.merge_commit_sha,main]);
+    try {git(repo,['checkout','--detach',previous.merge_commit_sha]);assert.equal(fingerprint(repo),source,'La aplicación avanzó desde la entrega interrumpida');}
+    finally {git(repo,['checkout','--detach',main]);}
+    source=p.source;
+    assertProduction(await live(),source);
+  } else await awaitProduction(repo,main);
   git(repo,['fetch','origin',input.head_sha]);
   git(repo,['merge-base','--is-ancestor',main,input.head_sha]);
   const reviewedStatuses=(await gh(`/commits/${input.head_sha}/status`)).statuses;
   assert.equal(reviewedStatuses.find(s=>s.context===config.statusContext)?.state,'success','Revisar y validar el commit exacto antes de reservar');
   const reviewedChecks=(await gh(`/commits/${input.head_sha}/check-runs`)).check_runs;
   assert.equal(reviewedChecks.find(c=>c.name==='delivery-checks')?.conclusion,'success','Faltan comprobaciones vigentes de la propuesta revisada');
-  const source=fingerprint(repo),expiresAt=Date.now()+30*60*1000;
-  const reservation=await gh('/deployments','POST',{ref:main,auto_merge:false,required_contexts:[],environment:'limpatex-release-reservation',transient_environment:true,production_environment:false,payload:{kind:'limpatex-manual-v1',claim:input.claim,number,head:input.head_sha,base:main,source,expiresAt,runId:process.env.GITHUB_RUN_ID,authorization:input.authorization}});
+  const expiresAt=Date.now()+30*60*1000;
+  const reservation=await gh('/deployments','POST',{ref:main,auto_merge:false,required_contexts:[],environment:'limpatex-release-reservation',transient_environment:true,production_environment:false,payload:{kind:'limpatex-manual-v1',claim:input.claim,number,head:input.head_sha,base:main,source,expiresAt,runId:process.env.GITHUB_RUN_ID,authorization:input.authorization,...(recoveryId?{recoveryOf:recoveryId,recoveryAudit:input.recovery_audit}:{})}});
   output('reservation',reservation.id);
+  if(recoveryId) output('recoveryReservation',recoveryId);
   const url=`https://github.com/${config.repository}/actions/runs/${process.env.GITHUB_RUN_ID}`;
   await gh(`/deployments/${reservation.id}/statuses`,'POST',{state:'in_progress',description:'Limpatex reservation active',log_url:url,auto_inactive:false});
   console.log(`Turno manual ${reservation.id} disponible durante treinta minutos. No concede permisos adicionales.`);
@@ -166,9 +192,8 @@ async function manualHold() {
     const signal=reservationSignal(statuses[0],config.owner);
     if(signal?.cancel) throw new Error('La conversación canceló la reserva manual');
     if(signal?.commit) {
-      const current=await gh(`/pulls/${number}`),head=current.head.sha;
-      assertManualPr(current,config.owner,config.repository,input.head_sha);
-      const currentMainSha=await currentMain();
+      const {pr:current,main:currentMainSha}=await readReservedState({readMain:currentMain,readPr:()=>gh(`/pulls/${number}`),base:main,head:input.head_sha,owner:config.owner,repository:config.repository});
+      const head=current.head.sha;
       const checks=(await gh(`/commits/${head}/status`)).statuses;
       assertReadyRelease(current,input.head_sha,currentMainSha,checks,config.statusContext);
       assert.equal(currentMainSha,signal.commit);
@@ -176,14 +201,12 @@ async function manualHold() {
       // Inspect source without replacing the trusted control scripts for later steps.
       let targetSource;
       try {git(repo,['checkout','--detach',currentMainSha]);targetSource=fingerprint(repo);}
-      finally {git(repo,['checkout','--detach',main]);}
+      finally {git(repo,['checkout','--detach',recoveryId ? input.head_sha : main]);}
       assertProduction(await live(),source);
       output('commit',currentMainSha);output('fingerprint',targetSource);output('productionFingerprint',source);
       return;
     }
-    const current=await gh(`/pulls/${number}`);assertManualPr(current,config.owner,config.repository,input.head_sha);
-    const actualMain=await currentMain();
-    assert(actualMain===main || current.merged && actualMain===current.merge_commit_sha,'Otra entrega cambió main durante la reserva');
+    await readReservedState({readMain:currentMain,readPr:()=>gh(`/pulls/${number}`),base:main,head:input.head_sha,owner:config.owner,repository:config.repository});
     assertProduction(await live(),source);
     await new Promise(r=>setTimeout(r,10000));
   }
@@ -191,6 +214,12 @@ async function manualHold() {
 }
 async function manualClose() {
   const id=Number(process.env.RESERVATION_ID);if(!id) return;
+  const recoveryId=Number(process.env.RECOVERY_RESERVATION_ID);
+  if(process.env.RELEASE_RESULT==='success' && recoveryId) {
+    const marker=await gh(`/deployments/${id}`);
+    assert.equal(marker.payload.recoveryOf,recoveryId);
+    await gh(`/deployments/${recoveryId}/statuses`,'POST',{state:'success',description:`Recuperada por reserva ${id}; ambos dominios y assets verificados`,auto_inactive:false});
+  }
   await gh(`/deployments/${id}/statuses`,'POST',{state:process.env.RELEASE_RESULT==='success'?'success':'failure',description:process.env.RELEASE_RESULT==='success'?'Publicación revisada y dominios comprobados':'Reserva interrumpida: revisar GitHub, Vercel y backend antes de continuar',auto_inactive:false});
 }
 async function merge() {

@@ -75,6 +75,26 @@ También usan la cola `limpatex-production-delivery`, mediante `limpatex-reviewe
 
 Los cambios realizados por herramientas ajenas a este protocolo no pueden bloquearse físicamente desde GitHub. Las instrucciones obligan a los chats a reservar turno; si alguien publica por fuera, se mantiene la comprobación de deriva y el bloqueo. No ampliar credenciales para intentar impedirlo.
 
+### Reparación y recuperación de una reserva revisada interrumpida
+
+Autorizada específicamente por Dani el 19/10/2026 para reparar el coordinador y publicar el arreglo de Escape de la PR 168, conservando el trabajo sin cobertura. No concede permisos sobre datos ni Supabase.
+
+El coordinador consulta primero main y después la PR y repite de forma acotada las lecturas si GitHub todavía no refleja nuestra propia incorporación. Conserva el rechazo de cambios ajenos y de un head distinto.
+
+Si la reserva falló después de incorporar la aplicación, no marcarla resuelta ni forzar etiquetas automáticas. Preparar una PR de reparación del coordinador sobre main vigente, con autorización específica, revisión del head exacto, CI correcto y pruebas locales de recuperación y de la aplicación pendiente. La reparación solo puede cambiar automation/delivery/, el workflow revisado y este documento; la aplicación debe conservar la huella exacta de la entrega interrumpida.
+
+Guardar una auditoría local de GitHub, Vercel y backend y ejecutar:
+
+```text
+node automation/delivery/reserve.mjs recover nueva-reserva.json PR_REPARACION autorizacion.txt RESERVA_FALLIDA auditoria.md
+```
+
+La nueva reserva conserva el bloqueo de la anterior y registra su identificador y el SHA256 de la auditoría. Solo esta recuperación puede reclamar ese turno: comprueba propietario, head original, CI y revisión vigentes, los dos padres de la incorporación, workflow original terminado y ambos dominios READY con la fuente productiva reservada. Cualquier otra reserva pendiente bloquea la operación.
+
+Para reparar un coordinador roto sin incorporarlo antes de reservar, el workflow se ejecuta desde el head exacto de la PR de reparación, únicamente por el propietario y mediante la entrada explícita de recuperación. La ruta ordinaria sigue ejecutando el control desde main. La recuperación exige la revisión y CI de ese mismo head y rechaza cambios de aplicación o archivos ajenos al control.
+
+Esperar active, repetir check, incorporar la PR de reparación con protección y head exacto, comprobar check y ejecutar ready. La cola construye, publica y verifica ambos dominios y assets. Solo después del éxito cierra la reserva nueva y la fallida original. Si falla, ambas conservan el estado pendiente y la auditoría; nunca se repiten operaciones de backend ni se declara resuelto un efecto pendiente.
+
 ## Espera automática por una publicación identificada
 
 Antes de validar, se fija main. Si los dos dominios aún no coinciden con su fuente, solo se espera cuando su fuente actual corresponde a commits antecesores verificados y Vercel contiene un deployment del proyecto con ese main y su huella exacta, en estado QUEUED/INITIALIZING/BUILDING/READY. Reconsulta cada diez segundos hasta diez minutos y continúa sola cuando ambos dominios coinciden. No crea, promueve ni sustituye deployments durante esa espera.

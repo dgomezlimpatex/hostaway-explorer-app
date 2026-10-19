@@ -55,6 +55,38 @@ export function assertReadyRelease(pr,head,main,statuses,context) {
   assert.equal(statuses.find(s=>s.context===context)?.state,'success','Falta validación vigente del código revisado');
   return main;
 }
+
+// GitHub's PR and ref endpoints are separate snapshots. Retry a bounded number
+// of reads so our own merge is not mistaken for a foreign change in between.
+export async function readReservedState({readMain,readPr,base,head,owner,repository,sleep=ms=>new Promise(r=>setTimeout(r,ms)),attempts=4}) {
+  for(let i=0;i<attempts;i++) {
+    const main=await readMain(),pr=await readPr();
+    assertManualPr(pr,owner,repository,head);
+    if(main===base || pr.merged && main===pr.merge_commit_sha) return {main,pr};
+    if(i+1<attempts) await sleep(500);
+  }
+  throw new Error('Otra entrega cambió main durante la reserva');
+}
+
+export function assertReviewedRecovery({reservation,status,run,pr,statuses,checks,parents,owner,repository,context}) {
+  const p=reservation.payload;
+  assert.equal(reservation.environment,'limpatex-release-reservation');
+  assert.equal(p?.kind,'limpatex-manual-v1');
+  assert.match(p.source,/^[a-f0-9]{64}$/);
+  assert(typeof p.authorization==='string' && p.authorization.length>=20);
+  assert(['failure','error'].includes(status?.state),'Solo recuperar una reserva fallida pendiente de resolución');
+  assert.equal(run.id,Number(p.runId));
+  assert.equal(run.status,'completed');
+  assert.equal(run.event,'workflow_dispatch');
+  assert.equal(run.actor?.login,owner);
+  assert.equal(run.path,'.github/workflows/limpatex-reviewed-release.yml');
+  assertManualPr(pr,owner,repository,p.head);
+  assert.equal(pr.number,p.number);
+  assert(pr.merged,'La entrega anterior debe estar incorporada');
+  assert.deepEqual(parents,[p.base,p.head],'La incorporación debe corresponder a base y head reservados');
+  assert.equal(statuses.find(s=>s.context===context)?.state,'success','Falta revisión vigente del head original');
+  assert.equal(checks.find(c=>c.name==='delivery-checks')?.conclusion,'success');
+}
 export function reservationSignal(status,owner) {
   if(!status || status.creator?.login!==owner) return null;
   if(status.state==='inactive') return {cancel:true};
