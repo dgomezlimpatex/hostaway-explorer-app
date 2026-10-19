@@ -45,10 +45,10 @@ export function PropertyDetailPanel({ property, clientName, active, editor }: { 
   const createProperty = useCreateProperty();
   const deleteProperty = useDeleteProperty();
   const { toast } = useToast();
-  const schedule = usePropertyCleaningSchedule([property.id]);
-  const cleaning = schedule.data?.[property.id];
   const [params, setParams] = useSearchParams();
   const sectionTab = SECTION_IDS[params.get(PROPERTY_SECTION_PARAM) || ''];
+  const schedule = usePropertyCleaningSchedule(sectionTab === 'cleaning' ? [property.id] : []);
+  const cleaning = schedule.data?.[property.id];
   const changeTab = (id: string) => setParams(current => {
     const next = new URLSearchParams();
     current.forEach((value, key) => { if (key !== PROPERTY_SECTION_PARAM) next.append(key, value); });
