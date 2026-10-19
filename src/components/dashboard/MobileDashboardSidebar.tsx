@@ -6,6 +6,7 @@ import {
   Bot,
   Building2,
   Calendar,
+  CalendarRange,
   CheckCircle2,
   Home,
   Hotel,
@@ -68,6 +69,7 @@ const managementItems: NavigationItem[] = [
     icon: Users,
     permission: 'admin-only',
   },
+  { title: 'Calendario global', href: '/calendario-global', icon: CalendarRange, permission: 'tasks-edit' },
   {
     title: 'Planificación diaria',
     href: '/planning',

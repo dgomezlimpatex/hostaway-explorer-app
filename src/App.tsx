@@ -77,6 +77,7 @@ const SmoobuAdmin = React.lazy(() => import("./pages/SmoobuAdmin"));
 const PmsHealth = React.lazy(() => import("./pages/PmsHealth"));
 const AviratoAdmin = React.lazy(() => import("./pages/AviratoAdmin"));
 const CleaningPlanning = React.lazy(() => import("./pages/CleaningPlanning"));
+const GlobalCalendar = React.lazy(() => import("./pages/GlobalCalendar"));
 const StaffingForecastPage = React.lazy(() => import("./pages/StaffingForecastPage"));
 const StaffingOperationalPage = React.lazy(() => import("./pages/StaffingOperationalPage"));
 const PlanningPage = React.lazy(() => import("./pages/PlanningPage"));
@@ -262,6 +263,9 @@ function App() {
 
                     <Route path="/planning" element={
                       <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><CleaningPlanning /></RoleProtectedRoute>
+                    } />
+                    <Route path="/calendario-global" element={
+                      <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><GlobalCalendar /></RoleProtectedRoute>
                     } />
                     <Route path="/planning/buildings" element={
                       <RoleProtectedRoute requiredModule="tasks" requiredAction="canEdit"><PlanningBuildingsIndex /></RoleProtectedRoute>

@@ -35,7 +35,7 @@ for (const variant of ['desktop','mobile']) {
   assert(!html.includes('href="/control-mudas"'), `${variant}: Control de Mudas hidden`);
   assert(!html.includes('href="/lavanderia/gestion"'), `${variant}: Lavandería hidden`);
   assert(!html.includes('Control de Mudas') && !html.includes('Lavandería'));
-  for (const href of ['/inventory','/planning','/planning/buildings','/lavanderia/nuevo-sistema','/workers']) {
+  for (const href of ['/inventory','/calendario-global','/planning','/planning/buildings','/lavanderia/nuevo-sistema','/workers']) {
     assert(html.includes(`href="${href}"`), `${variant}: preserve ${href}`);
   }
 }
