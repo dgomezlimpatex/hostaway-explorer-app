@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {assertManualPr,assertReadyRelease} from './coordination.mjs';
+import {assertManualPr,assertReadyRelease,readReservedState} from './coordination.mjs';
 const cfg=JSON.parse(fs.readFileSync(new URL('./config.json',import.meta.url)));
 const creds=execFileSync('git',['credential','fill'],{input:'protocol=https\nhost=github.com\n\n',encoding:'utf8'});
 const token=creds.split('\n').find(x=>x.startsWith('password='))?.slice(9);
@@ -11,17 +11,24 @@ async function gh(endpoint,method='GET',body) {
   const text=await response.text();if(!response.ok) throw new Error(`GitHub ${response.status} ${endpoint}`);
   return text?JSON.parse(text):null;
 }
-const [action,file,arg,authorizationFile]=process.argv.slice(2);
-if(!['start','check','ready','cancel','reconcile'].includes(action) || !file) throw new Error('Uso: reserve.mjs start fichero-reserva.json PR autorización.txt | check/ready/cancel fichero-reserva.json | reconcile fichero-reserva.json informe.md');
-if(action==='start') {
+const [action,file,arg,authorizationFile,recoveryId,auditFile]=process.argv.slice(2);
+if(!['start','recover','check','ready','cancel','reconcile'].includes(action) || !file) throw new Error('Uso: reserve.mjs start fichero PR autorización.txt | recover fichero PR autorización.txt RESERVA_FALLIDA auditoría.md | check/ready/cancel fichero | reconcile fichero informe.md');
+if(action==='start' || action==='recover') {
   if(fs.existsSync(file)) throw new Error('No sobrescribir una reserva existente');
   const number=Number(arg),pr=await gh(`/pulls/${number}`),authorization=fs.readFileSync(authorizationFile,'utf8').trim();
   assertManualPr(pr,cfg.owner,cfg.repository,pr.head.sha);
   if(pr.merged || authorization.length<20 || authorization.length>500) throw new Error('Reservar PR abierta con autorización específica de Dani');
   const claim=crypto.randomUUID();
+  let recovery;
+  if(action==='recover') {
+    if(!/^[1-9]\d*$/.test(recoveryId) || !Number.isSafeInteger(Number(recoveryId))) throw new Error('Indicar reserva fallida exacta');
+    const audit=fs.readFileSync(auditFile,'utf8').trim();
+    if(audit.length<80) throw new Error('Auditar GitHub, Vercel y backend antes de recuperar');
+    recovery={recovery_reservation:recoveryId,recovery_audit:crypto.createHash('sha256').update(audit).digest('hex')};
+  }
   // Save before dispatch so an uncertain response can be reconciled without duplicate runs.
-  const record={claim,number,head:pr.head.sha};fs.writeFileSync(file,JSON.stringify(record,null,2));
-  await gh('/actions/workflows/limpatex-reviewed-release.yml/dispatches','POST',{ref:'main',inputs:{pr_number:String(number),head_sha:pr.head.sha,claim,authorization}});
+  const record={claim,number,head:pr.head.sha,...(recovery?{recoveryOf:Number(recoveryId),auditFile,auditDigest:recovery.recovery_audit}:{})};fs.writeFileSync(file,JSON.stringify(record,null,2));
+  await gh('/actions/workflows/limpatex-reviewed-release.yml/dispatches','POST',{ref:recovery?pr.head.ref:'main',inputs:{pr_number:String(number),head_sha:pr.head.sha,claim,authorization,...recovery}});
   console.log('Reserva solicitada. Usar check hasta que indique active; no tocar producción antes.');
 } else {
   const record=JSON.parse(fs.readFileSync(file,'utf8'));
@@ -59,9 +66,8 @@ if(action==='start') {
   }
   const run=await gh(`/actions/runs/${p.runId}`);
   if(p.head!==record.head || p.number!==record.number || p.expiresAt<=Date.now() || run.status!=='in_progress' || latest?.state!=='in_progress' || latest.description!=='Limpatex reservation active') throw new Error('Reserva no activa o vencida; detener operaciones y revisar estado');
-  const pr=await gh(`/pulls/${record.number}`);assertManualPr(pr,cfg.owner,cfg.repository,record.head);
-  const main=(await gh('/git/ref/heads/main')).object.sha;
-  if(main!==p.base && !(pr.merged && main===pr.merge_commit_sha)) throw new Error('Main cambió por otra entrega');
+  const {pr,main}=await readReservedState({readMain:async()=>(await gh('/git/ref/heads/main')).object.sha,
+    readPr:()=>gh(`/pulls/${record.number}`),base:p.base,head:record.head,owner:cfg.owner,repository:cfg.repository,requireMerged:action==='ready'});
   if(action==='ready') {
     const checked=(await gh(`/commits/${record.head}/status`)).statuses;
     assertReadyRelease(pr,record.head,main,checked,cfg.statusContext);

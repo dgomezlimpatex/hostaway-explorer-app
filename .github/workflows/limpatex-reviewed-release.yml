@@ -15,6 +15,12 @@ on:
       authorization:
         description: 'Autorización específica de Dani, sin secretos ni datos personales'
         required: true
+      recovery_reservation:
+        description: 'Solo recuperación autorizada: reserva fallida exacta'
+        required: false
+      recovery_audit:
+        description: 'SHA256 de la auditoría previa de GitHub, Vercel y backend'
+        required: false
 permissions:
   contents: read
   deployments: write
@@ -24,14 +30,17 @@ concurrency:
   cancel-in-progress: false
 jobs:
   reviewed-release:
-    if: vars.LIMPATEX_DELIVERY_ENABLED == 'true'
+    if: vars.LIMPATEX_DELIVERY_ENABLED == 'true' && github.actor == github.repository_owner
     runs-on: ubuntu-latest
     timeout-minutes: 65
     environment: production
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          # A broken coordinator can be repaired from its exact reviewed head.
+          # manual-hold requires green CI/review, control-only changes, unchanged
+          # pending application and production, and the recorded failed turn.
+          ref: ${{ inputs.recovery_reservation && github.sha || 'main' }}
           fetch-depth: 0
           path: control
           persist-credentials: false
@@ -92,5 +101,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RESERVATION_ID: ${{ steps.hold.outputs.reservation }}
+          RECOVERY_RESERVATION_ID: ${{ steps.hold.outputs.recoveryReservation }}
           RELEASE_RESULT: ${{ job.status }}
         run: node control/automation/delivery/controller.mjs manual-close

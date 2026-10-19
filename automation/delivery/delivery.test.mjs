@@ -8,7 +8,35 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {validateReview, reservedEffects, changeDigest, verifyDelivery} from './scope.mjs';
 import {runOffline} from './offline.mjs';
-import {productionDecision,waitForProduction,waitForMergeability,assertManualPr,assertReadyRelease,reservationSignal} from './coordination.mjs';
+import './reviewedRecovery.test.mjs';
+import {productionDecision,waitForProduction,waitForMergeability,assertManualPr,assertReadyRelease,reservationSignal,readReservedState,assertReviewedRecovery} from './coordination.mjs';
+
+test('reserva tolera PR retrasada respecto a main sin aceptar cambios ajenos',async()=>{
+  const pr={number:168,state:'open',draft:false,user:{login:'dani'},head:{sha:'head',ref:'codex/escape',repo:{full_name:'dani/app'}},base:{ref:'main'}};
+  let reads=0,waits=0;
+  const options={base:'base',head:'head',owner:'dani',repository:'dani/app',sleep:async()=>{waits++;},readMain:async()=> 'merged'};
+  const result=await readReservedState({...options,readPr:async()=>++reads===1?pr:{...pr,merged:true,merge_commit_sha:'merged'}});
+  assert.equal(result.main,'merged');assert.equal(reads,2);assert.equal(waits,1);
+  const order=[];
+  await readReservedState({...options,readMain:async()=>{order.push('main');return 'base';},readPr:async()=>{order.push('pr');return pr;}});
+  assert.deepEqual(order,['main','pr']);
+  let mainReads=0;
+  await readReservedState({...options,requireMerged:true,readMain:async()=>++mainReads===1?'base':'merged',readPr:async()=>({...pr,merged:true,merge_commit_sha:'merged'})});
+  assert.equal(mainReads,2,'Ready waits for both endpoints to reflect the reviewed merge');
+  await assert.rejects(readReservedState({...options,readPr:async()=>({...pr,merged:true,merge_commit_sha:'another'}),attempts:2}),/Otra entrega/);
+  await assert.rejects(readReservedState({...options,readPr:async()=>({...pr,head:{...pr.head,sha:'changed'}})}),/propuesta cambió/);
+});
+
+test('recuperación exige reserva fallida, incorporación original y revisión vigente',()=>{
+  const fixture={reservation:{environment:'limpatex-release-reservation',payload:{kind:'limpatex-manual-v1',source:'a'.repeat(64),authorization:'Dani autoriza esta publicación revisada',number:168,runId:10,base:'base',head:'head'}},
+    status:{state:'failure'},run:{id:10,status:'completed',event:'workflow_dispatch',actor:{login:'dani'},path:'.github/workflows/limpatex-reviewed-release.yml'},
+    pr:{number:168,merged:true,state:'closed',draft:false,user:{login:'dani'},head:{sha:'head',ref:'codex/escape',repo:{full_name:'dani/app'}},base:{ref:'main'}},
+    statuses:[{context:'verified',state:'success'}],checks:[{name:'delivery-checks',conclusion:'success'}],parents:['base','head'],owner:'dani',repository:'dani/app',context:'verified'};
+  assertReviewedRecovery(fixture);
+  for(const change of [{status:{state:'in_progress'}},{status:{state:'inactive'}},{parents:['foreign','head']},{parents:['base','changed']},
+    {run:{...fixture.run,actor:{login:'outsider'}}},{run:{...fixture.run,status:'in_progress'}},{checks:[]},
+    {statuses:[{context:'verified',state:'failure'},...fixture.statuses]},{pr:{...fixture.pr,merged:false}}]) assert.throws(()=>assertReviewedRecovery({...fixture,...change}));
+});
 
 test('espera el cálculo de fusión sin aceptar cambios ni validaciones antiguas',async()=>{
   const ready={pr:{head:{sha:'head'},mergeable:true,mergeable_state:'clean'},branchHead:'head',main:'base',status:'success'};
