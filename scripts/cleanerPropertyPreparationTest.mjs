@@ -50,7 +50,10 @@ if(!baseline){
   for(const table of ['task_reports','property_checklist_assignments']){state.failure=table;await assert.rejects(createCleanerPreparationLoader('owner','sede','cleaner')(tasks[0]),/read failed/);}
   const load=createCleanerPreparationLoader('owner','sede','cleaner');await load({...tasks[0],id:'alias_assignment_1',originalTaskId:'canonical'});
   const reportRead=state.reads.filter(r=>r.table==='task_reports').at(-1);assert.equal(reportRead.filters.task_id,'canonical');assert.equal(reportRead.filters.cleaner_id,'cleaner');
+  load.finish();state.revision=4;
+  assert.equal((await load(tasks[0])).property.notas,'sede:p0:v4','A query function retained after the cycle must read fresh property data');
+  load.finish();
   assert.ok(state.reads.filter(r=>r.table==='properties').every(r=>r.filters.sede_id&&r.selection.includes('cantidad_rollos_papel_cocina')),'Site filter and complete existing property fields are preserved');
-  console.log('PASS: per-cycle cache, independent reports/checklists, account/site isolation, fresh direct reads, refresh, zero/null/missing property, error eviction, retry, canonical task identity');
+  console.log('PASS: per-cycle cache, independent reports/checklists, account/site isolation, fresh direct and post-cycle reads, refresh, zero/null/missing property, error eviction, retry, canonical task identity');
 }
 delete globalThis.propertyPreparationFixture;

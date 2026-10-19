@@ -79,8 +79,9 @@ async function readCleanerProperty(sedeId: string, propertyId?: string): Promise
 /** A fresh loader per preparation; property results never outlive that cycle. */
 export function createCleanerPreparationLoader(ownerId: string, sedeId: string, cleanerId: string) {
   const properties = new Map<string, Promise<CleanerPropertyResult>>();
+  let active = true;
   const readProperty = (propertyId?: string): Promise<CleanerPropertyResult> => {
-    if (!propertyId) return readCleanerProperty(sedeId, propertyId);
+    if (!active || !propertyId) return readCleanerProperty(sedeId, propertyId);
     let request = properties.get(propertyId);
     if (!request) {
       request = readCleanerProperty(sedeId, propertyId).then(result => {
@@ -95,7 +96,8 @@ export function createCleanerPreparationLoader(ownerId: string, sedeId: string, 
     }
     return request;
   };
-  return (task: Task) => loadCleanerBundle(ownerId, sedeId, task, cleanerId, readProperty);
+  const load = (task: Task) => loadCleanerBundle(ownerId, sedeId, task, cleanerId, readProperty);
+  return Object.assign(load, { finish: () => { active = false; properties.clear(); } });
 }
 
 export async function loadCleanerBundle(ownerId: string, sedeId: string, task: Task, cleanerId: string,
@@ -156,8 +158,8 @@ export function useCleanerTasks(currentDate: Date) {
     void Promise.all([warm(), warm()]).then(async () => {
       const downloaded = await Promise.all(tasks.map(task => readCleanerCache(cleanerBundleKey(identity.ownerId, identity.sedeId, task.originalTaskId || task.id.split('_assignment_')[0])).catch(() => undefined)));
       if (!cancelled) setPrepared(downloaded.every(Boolean));
-    }).catch(() => undefined);
-    return () => { cancelled = true; };
+    }).catch(() => undefined).finally(() => loadPreparedBundle.finish());
+    return () => { cancelled = true; loadPreparedBundle.finish(); };
   }, [query.data, identity.ownerId, identity.sedeId, cleanerId, client]);
   const tasks = useMemo(() => {
     const drafts = new Map((offline?.drafts || []).filter(draft => draft.sedeId === identity.sedeId).map(draft => [draft.report.task_id, draft]));

@@ -10,6 +10,8 @@ canónicos, deployment READY `dpl_5nCRGKV7ckAY7Je787m17XvPafYy`.
 Cada ejecución de la preparación crea un lector propio, ligado a usuario, sede
 y trabajadora. Sus dos trabajadores asíncronos comparten la promesa/resultado de
 cada propiedad durante ese ciclo. Una nueva preparación crea un lector nuevo.
+Al terminar o cancelar el ciclo se vacía el mapa y se desactiva la reutilización;
+si React Query conserva su función y la invoca más tarde, vuelve a leer en fresco.
 
 No hay caché global ni una nueva duración de frescura. La lectura conserva la
 misma selección de campos, el filtro de sede, los nulos y los ceros. Los fallos
