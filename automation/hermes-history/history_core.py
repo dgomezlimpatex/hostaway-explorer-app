@@ -146,6 +146,10 @@ def query(snapshot, profile, kind='resumen', identifier='', search='', limit=20,
         raise ValueError('Consulta o paginacion no valida.')
     result = {k: snapshot[k] for k in ('version', 'desde', 'hasta', 'actualizado', 'fuentes_huella', 'resumen', 'calidad', 'estados', 'limites')}
     result['solo_lectura'] = True
+    if snapshot.get('version',1) >= 2:
+        result['reportes_resumen'] = snapshot['reportes_resumen']
+        result['planificacion_hasta'] = snapshot['planificacion_hasta']
+        result['sincronizacion'] = snapshot['sincronizacion']
     if kind == 'resumen':
         return result
     catalogs = {'trabajador': 'trabajadores', 'edificio': 'edificios', 'propiedad': 'propiedades'}
@@ -168,4 +172,17 @@ def query(snapshot, profile, kind='resumen', identifier='', search='', limit=20,
     rules = [r for r in snapshot['equipos_configurados'] if r.get('cleaner_id') == selected] if kind == 'trabajador' else [r for r in snapshot['equipos_configurados'] if r.get('edificio_id') in related_buildings]
     result['edificios_relacionados_actuales'] = related_buildings
     result.update({'encontrado': True, 'id': selected, 'ficha': matches[selected], 'relaciones': relations[offset:offset+limit], 'total': len(relations), 'hay_mas': offset+limit < len(relations), 'equipos_configurados_actuales': rules})
+    if snapshot.get('version',1) >= 2:
+        assignments = [r for r in snapshot['asignaciones_habituales'] if (r['trabajador_id']==selected if kind=='trabajador' else r['ambito']==kind and r['lugar_id']==selected)]
+        assignments = [{**r,'trabajador':snapshot['trabajadores'][r['trabajador_id']],
+                        'lugar':snapshot['edificios' if r['ambito']=='edificio' else 'propiedades'][r['lugar_id']]} for r in assignments]
+        assignments.sort(key=lambda r:(-r['dias_distintos_asignado'],-r['previstas_hoy_y_14_dias'],r['lugar_id'],r['trabajador_id']))
+        places = {p for p,bs in snapshot['vinculos_actuales'].items() if selected in bs} if kind=='edificio' else {selected}
+        reports = [{**r,'trabajador':snapshot['trabajadores'].get(r['trabajador_id']),
+                    'propiedad':snapshot['propiedades'].get(r['propiedad_id'])} for r in snapshot['reportes_individuales'] if (r['trabajador_id']==selected if kind=='trabajador' else r['propiedad_id'] in places)]
+        result.update(asignaciones=assignments[offset:offset+limit], asignaciones_total=len(assignments),
+                      reportes=reports[offset:offset+limit], reportes_total=len(reports),
+                      hay_mas=offset+limit<max(len(relations),len(assignments),len(reports)))
+        if kind=='trabajador':
+            result['cumplimentacion_reportes'] = snapshot['reportes_por_trabajador'].get(selected,{})
     return result
