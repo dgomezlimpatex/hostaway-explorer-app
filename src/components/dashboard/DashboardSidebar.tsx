@@ -4,6 +4,7 @@ import { GlobalSearch } from '@/components/navigation/GlobalSearch';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   Calendar, 
+  CalendarRange,
   Users, 
   MapPin, 
   UserPlus,
@@ -117,6 +118,12 @@ const managementItems: NavigationItem[] = [
     href: '/staffing-forecast',
     icon: Users,
     permission: 'admin-only'
+  },
+  {
+    title: 'Calendario global',
+    href: '/calendario-global',
+    icon: CalendarRange,
+    permission: 'tasks-edit'
   },
   {
     title: 'Planificación diaria',
