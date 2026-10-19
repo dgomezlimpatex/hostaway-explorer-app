@@ -87,9 +87,13 @@ try {
   await expect(rowButton(page, 'Antiguo Ático')).toHaveCount(0);
   await expect(page.getByText(/Reservas activas sin propiedad vinculada en su fuente/)).toBeVisible();
   await expect(page.getByRole('link', { name: 'Smoobu: 1' })).toHaveAttribute('href', '/smoobu');
-  await expect(page.getByText(/1 cambio de huésped el mismo día/)).toBeVisible();
-  await expect(page.getByText('Leyenda').first()).toBeVisible();
-  await expect(page.getByText('(no significa libre)')).toBeVisible();
+  // Sin tarjeta de leyenda ni resumen numérico de la semana.
+  await expect(page.getByText('Leyenda')).toHaveCount(0);
+  await expect(page.getByText('(no significa libre)')).toHaveCount(0);
+  await expect(page.getByText('Cada día')).toHaveCount(0);
+  await expect(page.getByText(/cambio de huésped el mismo día/)).toHaveCount(0);
+  await expect(page.getByText(/\d+ propiedades? · /)).toHaveCount(0);
+  await expect(page.getByText(/salidas? sin limpieza registrada$/)).toHaveCount(0);
   await shot(page, 'escritorio-semana');
   await shot(page, 'escritorio-completo', { fullPage: true });
 
@@ -283,10 +287,7 @@ try {
   await open(mobile);
   await expect(mobile.getByRole('heading', { name: 'Calendario global', level: 1 })).toBeVisible();
   await expect(mobile.getByText('(no significa libre)')).toHaveCount(0);
-  await mobile.getByRole('button', { name: 'Leyenda' }).click();
-  await expect(mobile.getByText('(no significa libre)')).toBeVisible();
-  await shot(mobile, 'movil-leyenda', { fullPage: true });
-  await mobile.getByRole('button', { name: 'Leyenda' }).click();
+  await expect(mobile.getByRole('button', { name: 'Leyenda' })).toHaveCount(0);
   const scroller = mobile.locator('[aria-busy]').filter({ has: mobile.getByRole('table') });
   const metrics = await scroller.evaluate(el => ({ scrollLeft: el.scrollLeft, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
   assert.ok(metrics.scrollWidth > metrics.clientWidth, 'la semana se desplaza en horizontal');
