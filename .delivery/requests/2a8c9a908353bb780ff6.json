@@ -1,0 +1,22 @@
+{
+  "request": "Dani pide un Calendario global en el sidebar de gestión: vista semanal tipo channel manager con todas las propiedades de la sede, agrupables por edificio o cliente, con estancias, entradas/salidas, ocupación y bloqueos con fuente fiable, limpiezas previstas, horarios, personal asignado y estado real registrado, panel de detalle, leyenda, diseño moderno con transiciones cuidadas y adaptación móvil. Primera entrega de consulta, sin edición.",
+  "reason": "Página nueva de solo lectura. Usa select sobre tablas que la app ya lee (tasks con asignaciones y partes, client_reservations, avantio/hostaway/smoobu/lh/avirato reservations y sus mapeos, property_group_assignments) bajo las RLS vigentes, más los hooks existentes de sede y propiedades. No escribe datos, no llama funciones ni RPC, no contacta con PMS, no envía comunicaciones, no cambia permisos: la ruta usa el mismo RoleProtectedRoute (tasks canEdit) y el permiso de menú tasks-edit del planificador. No se piden nombres ni contactos de huéspedes.",
+  "verification": "globalCalendarModelTest (Node, sin red, en 4 zonas horarias del equipo): semanas lunes-domingo con cambio de hora de marzo y octubre y cambio de año, fechas imposibles, instantes convertidos a Madrid; canceladas/no-show/UNAVAILABLE no ocupan; bloqueos Avirato; duplicados de varias fuentes fusionados solo con misma propiedad y fechas; solapes y misma limpieza señalados; estancias que cruzan la semana; salida y entrada el mismo día en el mismo carril; sin reservas = «sin reserva registrada»; fuente caída = «dato no disponible» solo en sus propiedades; limpiezas múltiples y equipos de varias personas con estado de partes; limpiezas sin propiedad visibles; paginación y truncado; cliente simulado sin escrituras; rutas y menús. sidebarHiddenModulesTest ampliado con el nuevo enlace. Local además: globalCalendarBrowserTest con Playwright sobre la página real y Supabase simulado (escritorio, móvil 390 px, teclado y foco, movimiento reducido, errores, carga, vacío, 413 propiedades en ~0,5 s, contraste ≥ 6:1, cero escrituras), regresiones de portal de cliente, búsqueda global y menús, build y tsc sin errores nuevos (102 previos). Limitaciones: no se prueba con sesión real; no consta en el repo si un manager puede leer Smoobu (si no, se muestra «dato no disponible»); Avantio UNAVAILABLE se trata como cancelada igual que su sincronización.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/globalCalendarModelTest.mjs",
+    "scripts/sidebarHiddenModulesTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "c2fca14f82b695ad655fc68b43a052cf34653d5cdeb6f0e4739f96bad0d714ee"
+}
