@@ -1,6 +1,6 @@
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ChevronLeft, ChevronRight, Info, ListFilter, Loader2, RefreshCw, Search, X } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, Info, Loader2, RefreshCw, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { getMadridToday, shiftCivilDate } from '@/utils/madridCalendar';
 import { GlobalCalendarBoard, type CalendarSelection } from './GlobalCalendarBoard';
 import { GlobalCalendarDetail } from './GlobalCalendarDetail';
-import { GlobalCalendarLegend } from './GlobalCalendarLegend';
 import {
   SOURCE_LABEL,
   filterRows,
@@ -22,7 +21,6 @@ import {
   weekDaysFrom,
   type GroupMode,
   type ReservationSource,
-  type WeekSummary,
 } from './globalCalendarModel';
 import { useGlobalCalendar, type GlobalCalendarData } from './useGlobalCalendar';
 
@@ -38,39 +36,6 @@ const SOURCE_ADMIN_PATH: Partial<Record<ReservationSource, string>> = {
 };
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
-
-function SummaryLine({ summary }: { summary: WeekSummary }) {
-  const { cleanings } = summary;
-  const totalCleanings = cleanings.pending + cleanings['in-progress'] + cleanings.completed + cleanings.unknown;
-  const items = [
-    plural(summary.properties, 'propiedad', 'propiedades'),
-    plural(summary.arrivals, 'entrada', 'entradas'),
-    plural(summary.departures, 'salida', 'salidas'),
-    summary.turnovers > 0 && plural(summary.turnovers, 'cambio de huésped el mismo día', 'cambios de huésped el mismo día'),
-  ].filter(Boolean) as string[];
-  return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-sm text-ink-2">
-      <span>{items.join(' · ')}</span>
-      <span aria-hidden className="hidden h-3 w-px bg-line sm:inline-block" />
-      <span>
-        {plural(totalCleanings, 'limpieza', 'limpiezas')}
-        {totalCleanings > 0 && (
-          <span className="text-ink-3">
-            {' '}
-            ({cleanings.completed} hechas · {cleanings['in-progress']} en curso · {cleanings.pending} previstas
-            {cleanings.unknown > 0 ? ` · ${cleanings.unknown} sin estado reconocido` : ''})
-          </span>
-        )}
-      </span>
-      {summary.departuresWithoutCleaning > 0 && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-tint-warning px-2 py-0.5 text-xs font-medium text-warning">
-          <AlertTriangle aria-hidden className="h-3 w-3" />
-          {plural(summary.departuresWithoutCleaning, 'salida sin limpieza registrada', 'salidas sin limpieza registrada')}
-        </span>
-      )}
-    </p>
-  );
-}
 
 function DataNotices({ data, groupMode }: { data: GlobalCalendarData; groupMode: GroupMode }) {
   const failing = data.coverage.filter((item) => item.state !== 'ok');
@@ -203,12 +168,10 @@ export function GlobalCalendarPage() {
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   const [direction, setDirection] = useState<'forward' | 'backward' | 'none'>('none');
-  const [legendOpen, setLegendOpen] = useState<boolean | null>(null);
   const [selection, setSelection] = useState<CalendarSelection | null>(null);
   const detailOpen = useRef(false);
   const returnFocus = useRef<HTMLElement | null>(null);
   const calendar = useGlobalCalendar(weekStart);
-  const showLegend = legendOpen ?? !isMobile;
 
   const setParam = useCallback(
     (name: string, value: string | null) => {
@@ -328,24 +291,8 @@ export function GlobalCalendarPage() {
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
-          <Button
-            variant="ghost"
-            className="ml-auto h-9 rounded-xl px-3 text-sm text-ink-2 hover:bg-paper hover:text-ink aria-expanded:bg-secondary aria-expanded:text-primary lg:ml-0"
-            aria-expanded={showLegend}
-            aria-controls="gc-legend"
-            onClick={() => setLegendOpen(!showLegend)}
-          >
-            <ListFilter aria-hidden className="mr-1.5 h-4 w-4" />
-            Leyenda
-          </Button>
         </div>
       </div>
-
-      {showLegend && (
-        <div id="gc-legend" className="rounded-2xl border border-line bg-surface px-4 py-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1">
-          <GlobalCalendarLegend />
-        </div>
-      )}
 
       {calendar.status === 'error' && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-danger/30 bg-tint-danger px-4 py-3 text-sm text-danger">
@@ -364,7 +311,6 @@ export function GlobalCalendarPage() {
 
       {calendar.status === 'ready' && data && (
         <>
-          <SummaryLine summary={data.week.summary} />
           <DataNotices data={data} groupMode={groupMode} />
           {data.week.rows.length === 0 && data.week.unplacedCleanings.length === 0 ? (
             <EmptyState title="No hay propiedades activas en esta sede" body="Cuando la sede tenga propiedades activas, aparecerán aquí con sus estancias y limpiezas." />

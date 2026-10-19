@@ -1,0 +1,21 @@
+{
+  "request": "Quitar del Calendario global la tarjeta de leyenda (Estancias/Limpiezas/Cada día) y el resumen numérico inferior (propiedades, entradas, salidas, cambios de huésped, limpiezas por estado y aviso de salidas sin limpieza), sin dejar hueco en escritorio ni móvil.",
+  "reason": "Cambio puramente visual en la pantalla de solo consulta: se retiran dos bloques de presentación y el botón que abría la leyenda. El modelo de cálculo, la cuadrícula, detalles, filtros, estados e indicadores internos no se tocan.",
+  "verification": "Página real con fixtures locales y Edge sin red (scripts/globalCalendarBrowserTest.mjs adaptado: comprueba que no existen leyenda ni resumen en escritorio y móvil, y que reservas, limpiezas, filtros, detalle y teclado siguen funcionando); capturas de escritorio y móvil revisadas; prueba del modelo globalCalendarModelTest.mjs correcta (los cálculos de resumen siguen existiendo); tsc de aplicación sin errores en global-calendar; eslint focalizado limpio. La prueba de navegador no se ejecuta en la cola (sin Chromium).",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/globalCalendarModelTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "c6aed6ce88e360dd581d70691c59ffc8fb43b9df0c3b5b3debb9508c9cf3476a"
+}
