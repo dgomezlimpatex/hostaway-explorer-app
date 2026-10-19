@@ -32,16 +32,25 @@ export function getCleanerTaskStatus(status: WorkStatus) {
     color: 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-700', Icon: Cloud };
 }
 
-export function CleanerTaskHeaderActions({ property, taskNotes, propertyName, loading, status, showNotes }: {
+export function CleanerTaskHeaderActions({ property, taskNotes, propertyName, loading, status, showNotes, onPanelOpenChange }: {
   property?: CleanerPropertyDetailsData | null;
   taskNotes?: string;
   propertyName: string;
   loading: boolean;
   status: WorkStatus | null;
   showNotes: boolean;
+  onPanelOpenChange: (open: boolean) => void;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const changeNotesOpen = (open: boolean) => {
+    setNotesOpen(open);
+    onPanelOpenChange(open || statusOpen);
+  };
+  const changeStatusOpen = (open: boolean) => {
+    setStatusOpen(open);
+    onPanelOpenChange(open || notesOpen);
+  };
   const view = status ? getCleanerTaskStatus(status) : null;
   return <div className="flex shrink-0 items-start gap-1.5" onKeyDownCapture={event => {
     if (event.key === 'Escape' && (notesOpen || statusOpen)) {
@@ -49,9 +58,10 @@ export function CleanerTaskHeaderActions({ property, taskNotes, propertyName, lo
       event.stopPropagation();
       setNotesOpen(false);
       setStatusOpen(false);
+      onPanelOpenChange(false);
     }
   }}>
-    {showNotes && <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
+    {showNotes && <Dialog open={notesOpen} onOpenChange={changeNotesOpen}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline" className="min-h-11 gap-1.5 px-2.5 text-xs font-semibold">
           <FileText className="h-4 w-4" aria-hidden="true" />NOTAS
@@ -70,7 +80,7 @@ export function CleanerTaskHeaderActions({ property, taskNotes, propertyName, lo
         <DialogClose asChild><Button type="button" variant="outline" className="min-h-11 shrink-0">Volver a la tarea</Button></DialogClose>
       </DialogContent>
     </Dialog>}
-    {status && view && <Popover open={statusOpen} onOpenChange={setStatusOpen} modal>
+    {status && view && <Popover open={statusOpen} onOpenChange={changeStatusOpen} modal>
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="icon" className={`h-11 w-11 shrink-0 rounded-full ${view.color}`}
           data-work-state={view.state} aria-label={`Sincronización: ${view.label}`} title={view.label}>

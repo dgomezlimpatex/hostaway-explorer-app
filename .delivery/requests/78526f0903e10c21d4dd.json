@@ -1,0 +1,24 @@
+{
+  "request": "Corregir Escape en el panel de sincronización y comprobar que conserva el trabajo sin cobertura.",
+  "reason": "Cambio local de estado de interfaz que impide cerrar la tarea al cerrar un panel anidado; no modifica el guardado ni el envío.",
+  "verification": "Reproducción antes del arreglo; después pasan el navegador con componentes reales y el flujo completo con backend interceptado. Borradores, notas, checklist, revisiones y bytes de fotos idénticos tras Escape offline; persistencia tras recarga y reintentos sin duplicados. Build y lint correctos, tipos raíz y Node correctos; aplicación conserva los mismos 130 errores heredados sin nuevos. Sin datos ni conexiones productivas. Chromium con tamaño móvil, sin prueba física de todos los teléfonos.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerSyncEscapeBrowserTest.mjs",
+    "scripts/cleanerReportPreparationTest.mjs",
+    "scripts/cleanerFinishTest.mjs",
+    "scripts/cleanerPhotoFileTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "fec8e55cc78dbba0b68d4078b0bc4670d6f5fe9cabeb21fabf8872f320adb856"
+}

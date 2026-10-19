@@ -317,6 +317,20 @@ try {
   assert.equal(await page.getByLabel('Notas de la limpieza').count(),0);
   assert.equal(await page.getByText('Avance guardado en este móvil',{exact:true}).count(),0);
   if (process.env.CLEANER_SCREENSHOT_DIR) await page.screenshot({path:join(process.env.CLEANER_SCREENSHOT_DIR,'mobile-report-no-notes.png'),fullPage:true,animations:'disabled'});
+  // Escape from synchronization must preserve the actual pending report and photo.
+  const snapshotWork = () => page.evaluate(async owner => ({
+    drafts: await window.cleanerTest.listLocal('drafts',owner),
+    photos: await Promise.all((await window.cleanerTest.listLocal('photos',owner)).map(async photo => ({
+      ...photo, file: Array.from(new Uint8Array(await photo.file.arrayBuffer())),
+    }))),
+  }),userId);
+  const beforeStatusEscape = await snapshotWork();
+  await page.getByRole('button',{name:'Sincronización: Sin sincronizar',exact:true}).click();
+  await page.getByRole('dialog',{name:'Estado de sincronización',exact:true}).waitFor();
+  await page.keyboard.press('Escape');
+  await page.getByRole('dialog',{name:'Estado de sincronización',exact:true}).waitFor({state:'hidden'});
+  await page.getByRole('button',{name:'Revisar y finalizar',exact:true}).waitFor();
+  assert.deepEqual(await snapshotWork(),beforeStatusEscape,'Closing status offline preserves notes, checklist, pending revisions and exact photo bytes');
   await page.getByRole('button',{name:'Revisar y finalizar'}).click();
   await page.getByText('Tiempo Real del Servicio',{exact:true}).waitFor();
   await page.getByText('Hora de Finalización',{exact:true}).waitFor();

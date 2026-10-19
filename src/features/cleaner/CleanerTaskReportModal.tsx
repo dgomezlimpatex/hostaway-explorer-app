@@ -67,6 +67,7 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   const fieldsInitialized = useRef(false);
   const saveChain = useRef<Promise<unknown>>(Promise.resolve());
   const closingRef = useRef(false);
+  const [headerPanelOpen, setHeaderPanelOpen] = useState(false);
   const saveErrorRef = useRef<string | null>(null);
   const version = useSyncExternalStore(subscribeCleanerStore, getCleanerStoreVersion, () => 0);
   const [restartedDuringPhoto, setRestartedDuringPhoto] = useState(() => consumePhotoPickingRestart());
@@ -241,7 +242,8 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
   const loading = !preparationError && (!loadedLocal || identity.isLoading || (!virtual && bundle.isLoading && !bundle.data));
   return <CleanerWorkContext.Provider value={{ uploadPhoto, isPreparingPhoto: preparingPhotos > 0, changePhotoPreparation: delta => setPreparingPhotos(count => Math.max(0, count + delta)) }}>
     <Dialog open onOpenChange={open => { if (!open) void close(); }}>
-      <DialogContent translate="no" lang="es" className="notranslate flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col gap-0 rounded-none p-0 sm:h-[90dvh] sm:max-w-2xl sm:rounded-2xl" onEscapeKeyDown={event => { if (busy) event.preventDefault(); }} aria-describedby="cleaner-work-description">
+      {/* Radix handles Escape on document before the nested panel's React capture handler. */}
+      <DialogContent translate="no" lang="es" className="notranslate flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col gap-0 rounded-none p-0 sm:h-[90dvh] sm:max-w-2xl sm:rounded-2xl" onEscapeKeyDown={event => { if (busy || headerPanelOpen) event.preventDefault(); }} aria-describedby="cleaner-work-description">
         <DialogHeader className="shrink-0 border-b px-4 py-4 pr-12 text-left">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-1.5">
@@ -249,7 +251,7 @@ function CleanerTaskWork({ task, onClose, recovery }: { task: Task; onClose: () 
               <DialogDescription id="cleaner-work-description">{task.propertyName || task.property} · {task.startTime.slice(0, 5)}</DialogDescription>
             </div>
             <CleanerTaskHeaderActions property={bundle.data?.property} taskNotes={task.notes} propertyName={task.propertyName || task.property}
-              loading={loading} status={offlineStatus} showNotes={started || Boolean(completed)} />
+              loading={loading} status={offlineStatus} showNotes={started || Boolean(completed)} onPanelOpenChange={setHeaderPanelOpen} />
           </div>
           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(task.address)}`} target="_blank" rel="noopener noreferrer" className="mt-1 flex min-h-8 items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3 shrink-0" />{task.address}</a>
         </DialogHeader>
