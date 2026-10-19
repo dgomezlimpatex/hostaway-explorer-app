@@ -28,11 +28,14 @@ const executablePath=process.platform==='linux'&&existsSync('/usr/bin/google-chr
 const browser=await chromium.launch({headless:true,executablePath});
 try{
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();const errors=[],unexpected=[];
+  // The CI network namespace has no interfaces. Model fixture coverage explicitly;
+  // the intercepted backend stays isolated and the offline reload must use IndexedDB.
+  await context.addInitScript(()=>Object.defineProperty(navigator,'onLine',{get:()=>sessionStorage.getItem('fixture-offline')!=='true',configurable:true}));
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',route=>route.request().url()==='https://property-preparation.local/'?route.fulfill({contentType:'text/html',body:html}):(unexpected.push(route.request().url()),route.abort()));
   const ready=(scope)=>page.waitForFunction(scope=>document.querySelector('#scope')?.textContent===scope&&document.querySelector('#count')?.textContent==='20'&&document.querySelector('#prepared')?.textContent==='true',scope);
   const count=table=>page.evaluate(table=>window.fixtureReads.filter(r=>r.table===table).length,table);
-  await page.goto('https://property-preparation.local/');await ready('owner-a:sede-a');
+  await page.goto('https://property-preparation.local/');assert.equal(await page.evaluate(()=>navigator.onLine),true);await ready('owner-a:sede-a');
   assert.equal(await count('properties'),1);assert.equal(await count('task_reports'),20);assert.equal(await count('property_checklist_assignments'),20);
   await page.getByRole('button',{name:'Abrir limpieza'}).click();await page.waitForFunction(()=>document.querySelector('#property')?.textContent==='sede-a:p0');
   await page.evaluate(()=>window.changeFixtureScope('owner-b','sede-a'));await ready('owner-b:sede-a');
@@ -44,7 +47,8 @@ try{
   })));
   saved.forEach((property,i)=>{assert.equal(property.notas,'sede-b:p'+Math.floor(i/4));assert.equal(property.numero_camas,0);assert.equal(Object.hasOwn(property,'id'),false);});
   await page.getByRole('button',{name:'Abrir limpieza'}).click();await page.waitForFunction(()=>document.querySelector('#property')?.textContent==='sede-b:p0');
-  await context.setOffline(true);await page.reload();await ready('owner-b:sede-b');
+  await page.evaluate(()=>sessionStorage.setItem('fixture-offline','true'));
+  await context.setOffline(true);await page.reload();assert.equal(await page.evaluate(()=>navigator.onLine),false);await ready('owner-b:sede-b');
   assert.equal(await count('properties'),0);assert.equal(await count('task_reports'),0);
   await page.getByRole('button',{name:'Abrir limpieza'}).click();await page.waitForFunction(()=>document.querySelector('#property')?.textContent==='sede-b:p0');
   assert.equal(await count('properties'),0,'Opening offline must read its saved per-task bundle');
