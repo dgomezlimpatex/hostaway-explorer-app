@@ -192,7 +192,7 @@ async function manualHold() {
     const signal=reservationSignal(statuses[0],config.owner);
     if(signal?.cancel) throw new Error('La conversación canceló la reserva manual');
     if(signal?.commit) {
-      const {pr:current,main:currentMainSha}=await readReservedState({readMain:currentMain,readPr:()=>gh(`/pulls/${number}`),base:main,head:input.head_sha,owner:config.owner,repository:config.repository});
+      const {pr:current,main:currentMainSha}=await readReservedState({readMain:currentMain,readPr:()=>gh(`/pulls/${number}`),base:main,head:input.head_sha,owner:config.owner,repository:config.repository,requireMerged:true});
       const head=current.head.sha;
       const checks=(await gh(`/commits/${head}/status`)).statuses;
       assertReadyRelease(current,input.head_sha,currentMainSha,checks,config.statusContext);

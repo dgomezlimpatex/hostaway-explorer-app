@@ -20,6 +20,9 @@ test('reserva tolera PR retrasada respecto a main sin aceptar cambios ajenos',as
   const order=[];
   await readReservedState({...options,readMain:async()=>{order.push('main');return 'base';},readPr:async()=>{order.push('pr');return pr;}});
   assert.deepEqual(order,['main','pr']);
+  let mainReads=0;
+  await readReservedState({...options,requireMerged:true,readMain:async()=>++mainReads===1?'base':'merged',readPr:async()=>({...pr,merged:true,merge_commit_sha:'merged'})});
+  assert.equal(mainReads,2,'Ready waits for both endpoints to reflect the reviewed merge');
   await assert.rejects(readReservedState({...options,readPr:async()=>({...pr,merged:true,merge_commit_sha:'another'}),attempts:2}),/Otra entrega/);
   await assert.rejects(readReservedState({...options,readPr:async()=>({...pr,head:{...pr.head,sha:'changed'}})}),/propuesta cambió/);
 });

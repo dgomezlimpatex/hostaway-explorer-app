@@ -58,11 +58,11 @@ export function assertReadyRelease(pr,head,main,statuses,context) {
 
 // GitHub's PR and ref endpoints are separate snapshots. Retry a bounded number
 // of reads so our own merge is not mistaken for a foreign change in between.
-export async function readReservedState({readMain,readPr,base,head,owner,repository,sleep=ms=>new Promise(r=>setTimeout(r,ms)),attempts=4}) {
+export async function readReservedState({readMain,readPr,base,head,owner,repository,requireMerged=false,sleep=ms=>new Promise(r=>setTimeout(r,ms)),attempts=4}) {
   for(let i=0;i<attempts;i++) {
     const main=await readMain(),pr=await readPr();
     assertManualPr(pr,owner,repository,head);
-    if(main===base || pr.merged && main===pr.merge_commit_sha) return {main,pr};
+    if(!requireMerged && main===base || pr.merged && main===pr.merge_commit_sha) return {main,pr};
     if(i+1<attempts) await sleep(500);
   }
   throw new Error('Otra entrega cambió main durante la reserva');

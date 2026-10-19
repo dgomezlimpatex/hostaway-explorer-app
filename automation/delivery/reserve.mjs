@@ -67,7 +67,7 @@ if(action==='start' || action==='recover') {
   const run=await gh(`/actions/runs/${p.runId}`);
   if(p.head!==record.head || p.number!==record.number || p.expiresAt<=Date.now() || run.status!=='in_progress' || latest?.state!=='in_progress' || latest.description!=='Limpatex reservation active') throw new Error('Reserva no activa o vencida; detener operaciones y revisar estado');
   const {pr,main}=await readReservedState({readMain:async()=>(await gh('/git/ref/heads/main')).object.sha,
-    readPr:()=>gh(`/pulls/${record.number}`),base:p.base,head:record.head,owner:cfg.owner,repository:cfg.repository});
+    readPr:()=>gh(`/pulls/${record.number}`),base:p.base,head:record.head,owner:cfg.owner,repository:cfg.repository,requireMerged:action==='ready'});
   if(action==='ready') {
     const checked=(await gh(`/commits/${record.head}/status`)).statuses;
     assertReadyRelease(pr,record.head,main,checked,cfg.statusContext);
