@@ -25,7 +25,7 @@ const bundle = await build({stdin:{contents:`import React from 'react';import {c
   b.onResolve({filter:/hooks\/use(Properties|Stock|Clients)$/},args=>({path:args.path.split('/').pop(),namespace:'mock'}));
   b.onResolve({filter:/contexts\/SedeContext$/},()=>({path:'useSede',namespace:'mock'}));
   b.onResolve({filter:/hooks\/use-mobile$/},()=>({path:'useMobile',namespace:'mock'}));
-  b.onResolve({filter:/(CreatePropertyModal|AssignChecklistModal|PropertyChecklistInfo|PropertyPreferredCleaners)$/},args=>({path:args.path.split('/').pop(),namespace:'stub'}));
+  b.onResolve({filter:/(CreatePropertyModal|AssignChecklistModal|PropertyChecklistInfo|PropertyPreferredCleaners|PropertyActivityPanel)$/},args=>({path:args.path.split('/').pop(),namespace:'stub'}));
   b.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:mocks[args.path],loader:'js',resolveDir:process.cwd()}));
   b.onLoad({filter:/.*/,namespace:'stub'},args=>({contents:`export const ${args.path}=()=>null;`,loader:'js'}));
   b.onResolve({filter:/integrations\/supabase\/client$/},()=>{throw Error('Test attempted to import production client')});

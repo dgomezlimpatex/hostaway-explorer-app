@@ -14,6 +14,8 @@ const open = async (page, path, setup = {}) => {
 };
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  // This fixture and its expected 30-day windows are anchored to 17 October.
+  await page.clock.setFixedTime(new Date('2026-10-17T12:00:00Z'));
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', route => route.request().url() === 'https://activity.local.test/' ? route.fulfill({ contentType: 'text/html', body: html }) : route.abort());
