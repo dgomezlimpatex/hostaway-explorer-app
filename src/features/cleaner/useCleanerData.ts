@@ -69,14 +69,46 @@ async function loadTemplates(ownerId: string, sedeId: string): Promise<TaskCheck
   return templateRequests.get(key)!;
 }
 
-export async function loadCleanerBundle(ownerId: string, sedeId: string, task: Task, cleanerId: string): Promise<CleanerTaskBundle> {
+type CleanerPropertyResult = { data: CleanerPropertyDetailsData | null; error: unknown };
+
+async function readCleanerProperty(sedeId: string, propertyId?: string): Promise<CleanerPropertyResult> {
+  return propertyId ? supabase.from('properties').select('notas,numero_camas,numero_camas_pequenas,numero_camas_suite,numero_sofas_cama,numero_banos,duracion_servicio,numero_sabanas,numero_sabanas_pequenas,numero_sabanas_suite,numero_toallas_grandes,numero_toallas_pequenas,numero_alfombrines,numero_fundas_almohada,kit_alimentario,cantidad_rollos_papel_higienico,cantidad_rollos_papel_cocina')
+    .eq('id', propertyId).eq('sede_id', sedeId).maybeSingle() : { data: null, error: null };
+}
+
+/** A fresh loader per preparation; property results never outlive that cycle. */
+export function createCleanerPreparationLoader(ownerId: string, sedeId: string, cleanerId: string) {
+  const properties = new Map<string, Promise<CleanerPropertyResult>>();
+  let active = true;
+  const readProperty = (propertyId?: string): Promise<CleanerPropertyResult> => {
+    if (!active || !propertyId) return readCleanerProperty(sedeId, propertyId);
+    let request = properties.get(propertyId);
+    if (!request) {
+      request = readCleanerProperty(sedeId, propertyId).then(result => {
+        // A failed read must not prevent a later task from retrying this property.
+        if (result.error) properties.delete(propertyId);
+        return result;
+      }, error => {
+        properties.delete(propertyId);
+        throw error;
+      });
+      properties.set(propertyId, request);
+    }
+    return request;
+  };
+  const load = (task: Task) => loadCleanerBundle(ownerId, sedeId, task, cleanerId, readProperty);
+  return Object.assign(load, { finish: () => { active = false; properties.clear(); } });
+}
+
+export async function loadCleanerBundle(ownerId: string, sedeId: string, task: Task, cleanerId: string,
+  readProperty = (propertyId?: string) => readCleanerProperty(sedeId, propertyId),
+): Promise<CleanerTaskBundle> {
   const taskId = task.originalTaskId || task.id.split('_assignment_')[0];
   const [report, templates, assignment, propertyResult] = await Promise.all([
     supabase.from('task_reports').select('*').eq('task_id', taskId).eq('cleaner_id', cleanerId).maybeSingle(),
     loadTemplates(ownerId, sedeId),
     task.propertyId ? supabase.from('property_checklist_assignments').select('checklist_template_id').eq('property_id', task.propertyId).eq('is_active', true).maybeSingle() : Promise.resolve({ data: null, error: null }),
-    task.propertyId ? supabase.from('properties').select('notas,numero_camas,numero_camas_pequenas,numero_camas_suite,numero_sofas_cama,numero_banos,duracion_servicio,numero_sabanas,numero_sabanas_pequenas,numero_sabanas_suite,numero_toallas_grandes,numero_toallas_pequenas,numero_alfombrines,numero_fundas_almohada,kit_alimentario,cantidad_rollos_papel_higienico,cantidad_rollos_papel_cocina')
-      .eq('id', task.propertyId).eq('sede_id', sedeId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    readProperty(task.propertyId),
   ]);
   if (report.error) throw report.error;
   if (assignment.error) throw assignment.error;
@@ -110,6 +142,7 @@ export function useCleanerTasks(currentDate: Date) {
     if (!cleanerId || !query.data) return;
     let cancelled = false;
     const tasks = query.data.filter(task => !task.id.startsWith('recurring_'));
+    const loadPreparedBundle = createCleanerPreparationLoader(identity.ownerId, identity.sedeId, cleanerId);
     // Two workers prepare the week without opening a report or starting a task.
     let next = 0;
     const warm = async () => {
@@ -118,15 +151,15 @@ export function useCleanerTasks(currentDate: Date) {
         const key = cleanerBundleKey(identity.ownerId, identity.sedeId, task.originalTaskId || task.id.split('_assignment_')[0]);
         if (navigator.onLine) await client.prefetchQuery({
             queryKey: ['cleaner-bundle', key], staleTime: 60_000,
-            queryFn: () => readWithCleanerCache(key, () => loadCleanerBundle(identity.ownerId, identity.sedeId, task, cleanerId)),
+            queryFn: () => readWithCleanerCache(key, () => loadPreparedBundle(task)),
           });
       }
     };
     void Promise.all([warm(), warm()]).then(async () => {
       const downloaded = await Promise.all(tasks.map(task => readCleanerCache(cleanerBundleKey(identity.ownerId, identity.sedeId, task.originalTaskId || task.id.split('_assignment_')[0])).catch(() => undefined)));
       if (!cancelled) setPrepared(downloaded.every(Boolean));
-    }).catch(() => undefined);
-    return () => { cancelled = true; };
+    }).catch(() => undefined).finally(() => loadPreparedBundle.finish());
+    return () => { cancelled = true; loadPreparedBundle.finish(); };
   }, [query.data, identity.ownerId, identity.sedeId, cleanerId, client]);
   const tasks = useMemo(() => {
     const drafts = new Map((offline?.drafts || []).filter(draft => draft.sedeId === identity.sedeId).map(draft => [draft.report.task_id, draft]));

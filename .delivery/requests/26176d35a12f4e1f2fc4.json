@@ -1,0 +1,24 @@
+{
+  "request": "Dani pide aplicar la mejora 1 del analisis: propiedades, conservando todas las funciones y evitando errores nuevos.",
+  "reason": "Reutiliza exclusivamente lecturas de propiedad en memoria dentro de una preparacion. Cada ciclo captura usuario, sede y trabajadora. Conserva paquetes por tarea, apertura directa, campos, filtros y frescura. No modifica operaciones remotas ni efectos reservados.",
+  "verification": "Base verificada en ambos dominios. Mismo cargador real, 20 tareas de 5 propiedades: lecturas de propiedades 20 a 5 y totales 61 a 46, partes y checklist permanecen 20. Pruebas Node y navegador con IndexedDB, cambio de cuenta/sede, nueva preparacion, apertura directa, recarga y apertura sin cobertura, null/ceros, errores y reintentos pasan sin trafico productivo. Build, tipos raiz y Node, lint correctos; tipos app 130 heredados sin nuevos. La bateria antigua cleanerOfflineBrowserTest falla al cerrar con Escape el popover offline, linea 227, identico en base original reconstruida; se documenta y no se declara aprobada.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerPropertyPreparationTest.mjs",
+    "scripts/cleanerPropertyPreparationBrowserTest.mjs",
+    "scripts/cleanerReportPreparationTest.mjs",
+    "scripts/cleanerFinishTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "f0fff364ccd642da512ccc29a530d631f62e984e0391313aacb45220806e2e3e"
+}
