@@ -1,0 +1,28 @@
+{
+  "reason": "Reduce columnas de una lectura existente conservando exactamente el objeto mapeado y difiere otra lectura hasta abrir Limpiezas. No modifica escrituras, SQL, permisos, autenticación ni sincronización.",
+  "tests": [
+    "scripts/propertyDirectoryProjectionTest.mjs",
+    "scripts/propertyDirectoryBrowserTest.mjs",
+    "scripts/propertyActivityTest.mjs",
+    "scripts/propertyActivityBrowserTest.mjs",
+    "scripts/cleanerPropertyBatchTest.mjs",
+    "scripts/cleanerPropertyPreparationBrowserTest.mjs",
+    "scripts/cleanerFinishTest.mjs",
+    "scripts/cleanerPhotoFileTest.mjs"
+  ],
+  "verification": "Comparación antes/después: 66 a 47 columnas y 400435 a 312827 bytes JSON agregado sobre 187 propiedades (21,88%, no latencia ni HTTP comprimido); historial inicial 1 a 0 en Chromium escritorio/móvil. Servicio y mapper reales equivalentes, filtros, sedes, errores, caché, enlace directo y reintento comprobados. Edición con estilos, guardados independientes, Actividad y flujo completo offline con fotos y reintentos pasaron localmente; build y lint correctos; 130 errores heredados de tipos sin diagnósticos nuevos. Pruebas de cola usan datos sintéticos y red interceptada. Informe docs/LISTADO-PROPIEDADES-20261019.md.",
+  "effects": {
+    "infrastructure": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "costs": false,
+    "productionData": false,
+    "integrations": false,
+    "communications": false
+  },
+  "request": "Optimizar el listado general de propiedades midiendo antes y después y conservando todas las funciones y el trabajo sin cobertura",
+  "version": 1,
+  "scope": "application",
+  "digest": "4420fa3022536794999ba78cef47cfc2dfe0689e10725ce521cf4fd4676bf2c3"
+}
