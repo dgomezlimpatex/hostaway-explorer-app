@@ -1,0 +1,25 @@
+{
+  "request": "Detectar renders innecesarios, reducir JavaScript con lazy loading, optimizar peticiones y cache, identificar consultas lentas y N+1 y optimizar recursos midiendo antes y despues.",
+  "reason": "Cambios acotados a presentacion y lecturas cliente existentes: memo de columna, clave canonica de ausencias con la misma frescura, stock en lotes paginados, miniaturas diferidas e importacion bajo demanda de exportadores. No se alteran escrituras, calculos, autorizacion ni servicios remotos.",
+  "verification": "Base comprobada contra ambos dominios y fuente Vercel. Antes/despues con codigo real y fixtures sin trafico productivo: renders 21 a 1, ausencias 9 a 3, stock de 20 edificios 40 a 2, imagenes iniciales 60 a 33. Build y entrada navegador correctos, 130 errores app y 9 lint heredados sin nuevos, Node sin errores. Cuatro descargas verificadas, paginacion 1201 filas, errores, cambio de props, invalidacion y cambio de dia. JS gzip de dependencias estaticas de informes -44.8%, detalle -55.4%. No representa LCP/INP ni sesion autenticada real. Consultas lentas diagnosticadas solo mediante estadisticas agregadas, sin cambios SQL.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/performanceBrowserTest.mjs",
+    "scripts/performanceStockTest.mjs",
+    "scripts/performanceExportsTest.mjs",
+    "scripts/supervisionBuildingAgendaTest.mjs",
+    "scripts/supervisionOccupancyTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "c87381507a79c879b274197efd08613567c284f238dc710673f6577c8660c4cd"
+}

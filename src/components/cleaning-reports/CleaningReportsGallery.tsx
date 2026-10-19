@@ -307,6 +307,8 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
                   {report.previewImage ? (
                     <img
                       src={report.previewImage}
+                      loading="lazy"
+                      decoding="async"
                       alt={`Reporte ${report.propertyName}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -385,6 +387,8 @@ export const CleaningReportsGallery: React.FC<CleaningReportsGalleryProps> = ({
                     {report.previewImage ? (
                       <img
                         src={report.previewImage}
+                        loading="lazy"
+                        decoding="async"
                         alt={`Reporte ${report.propertyName}`}
                         className="w-full h-full object-cover rounded-lg"
                         onError={(e) => {

@@ -23,7 +23,10 @@ export interface WorkerAbsenceStatus {
   }[];
 }
 
-export const useWorkersAbsenceStatus = (cleanerIds: string[], date: Date) => {
+export const useWorkersAbsenceStatus = (requestedCleanerIds: string[], date: Date) => {
+  // The result is a map: order and repeated IDs do not change its contents.
+  // Keep the existing freshness and invalidation behavior while sharing the key.
+  const cleanerIds = [...new Set(requestedCleanerIds)].sort();
   const dateStr = format(date, 'yyyy-MM-dd');
   const dayOfWeek = date.getDay();
 

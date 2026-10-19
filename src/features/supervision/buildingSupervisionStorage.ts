@@ -72,12 +72,43 @@ export interface SupervisionStockCheckLine {
 }
 
 export async function getBuildingStockLevels(propertyGroupId: string): Promise<BuildingStockLevel[]> {
-  const { data: warehouse, error: warehouseError } = await db.from('stock_warehouses').select('id,name,property_group_id,location_type').eq('property_group_id', propertyGroupId).eq('location_type', 'building_storage').eq('is_active', true).maybeSingle();
-  if (warehouseError) throw warehouseError;
-  if (!warehouse) return [];
-  const { data, error } = await db.from('stock_levels').select('id,product_id,warehouse_id,current_quantity,minimum_quantity,target_quantity,product:stock_products!inner(id,name,unit_of_measure,category:stock_categories(name)),warehouse:stock_warehouses!inner(id,name,property_group_id,location_type)').eq('warehouse_id', warehouse.id).eq('product.is_active', true).order('product_id');
-  if (error) throw error;
-  return (data || []) as BuildingStockLevel[];
+  return (await getBuildingsStockLevels([propertyGroupId]))[propertyGroupId];
+}
+
+/** Read stock in bounded batches, rather than issuing two requests per building. */
+export async function getBuildingsStockLevels(propertyGroupIds: string[]): Promise<Record<string, BuildingStockLevel[]>> {
+  const ids = [...new Set(propertyGroupIds)];
+  const result: Record<string, BuildingStockLevel[]> = Object.fromEntries(ids.map(id => [id, []]));
+  const pageSize = 500;
+  for (let start = 0; start < ids.length; start += 100) {
+    const batch = ids.slice(start, start + 100);
+    const warehouseBuildings = new Map<string, string>();
+    const buildingsWithWarehouse = new Set<string>();
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await db.from('stock_warehouses').select('id,name,property_group_id,location_type').in('property_group_id', batch).eq('location_type', 'building_storage').eq('is_active', true).order('id').range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      const warehouses = (data || []) as Array<{ id: string; property_group_id: string }>;
+      for (const warehouse of warehouses) {
+        // Preserve maybeSingle's error instead of silently combining duplicate stores.
+        if (buildingsWithWarehouse.has(warehouse.property_group_id)) throw new Error('El edificio tiene más de un trastero activo. Revisa su configuración.');
+        buildingsWithWarehouse.add(warehouse.property_group_id);
+        warehouseBuildings.set(warehouse.id, warehouse.property_group_id);
+      }
+      if (warehouses.length < pageSize) break;
+    }
+    if (warehouseBuildings.size === 0) continue;
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await db.from('stock_levels').select('id,product_id,warehouse_id,current_quantity,minimum_quantity,target_quantity,product:stock_products!inner(id,name,unit_of_measure,category:stock_categories(name)),warehouse:stock_warehouses!inner(id,name,property_group_id,location_type)').in('warehouse_id', [...warehouseBuildings.keys()]).eq('product.is_active', true).order('product_id').order('id').range(offset, offset + pageSize - 1);
+      if (error) throw error;
+      const levels = (data || []) as BuildingStockLevel[];
+      for (const level of levels) {
+        const buildingId = warehouseBuildings.get(level.warehouse_id);
+        if (buildingId) result[buildingId].push(level);
+      }
+      if (levels.length < pageSize) break;
+    }
+  }
+  return result;
 }
 
 export async function beginBuildingStockCheck(propertyGroupId: string, date: string, checkType: 'restock' | 'inventory' = 'inventory'): Promise<{ id: string; lines: SupervisionStockCheckLine[] }> {
@@ -354,7 +385,7 @@ export async function fetchBuildingSupervisionWorkspace(
     reservations,
     policies,
     workItems: allWorkItems,
-    stockLevels: Object.fromEntries(await Promise.all(buildingIds.map(async (buildingId) => [buildingId, await getBuildingStockLevels(buildingId)]))),
+    stockLevels: await getBuildingsStockLevels(buildingIds),
     storageMode: 'remote',
   };
 }
