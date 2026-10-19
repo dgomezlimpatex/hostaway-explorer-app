@@ -1,0 +1,25 @@
+{
+  "request": "Seguir optimizando consultas de propiedades con medición antes y después y sin afectar funciones ni trabajo sin cobertura.",
+  "reason": "Agrupa lecturas existentes de la preparación semanal en lotes de hasta 25 propiedades; mantiene datos, campos, filtro de sede y paquetes por tarea. No modifica esquema, permisos, escrituras ni sincronización.",
+  "verification": "Cargador real de base 871bdeef comparado con cambio: 20 tareas y 5 propiedades, lecturas de propiedades 5 a 1 y totales 46 a 42. Lotes 1/25/26/73, datos invertidos por ID, errores, reintento, cancelación y funciones retenidas. Hook real con IndexedDB verifica los 20 paquetes y nueva cuenta/sede, recarga y apertura offline. Flujo completo con fotos, notas, checklist, Escape, finalización offline y envío idempotente pasa con backend interceptado. Build/lint y tipos raíz/Node correctos; 130 errores heredados de aplicación iguales. Consultas remotas solo de estadísticas/metadatos. Sin benchmark de SQL autenticado después ni garantía de velocidad global; medias históricas y pendientes documentados.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/cleanerPropertyBatchTest.mjs",
+    "scripts/cleanerPropertyPreparationBrowserTest.mjs",
+    "scripts/cleanerReportPreparationTest.mjs",
+    "scripts/cleanerFinishTest.mjs",
+    "scripts/cleanerPhotoFileTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "b0e620941fc577efc3f5b357ab8406e5707cfda5350b12f9d87c15643ebcbf64"
+}

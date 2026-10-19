@@ -70,19 +70,43 @@ async function loadTemplates(ownerId: string, sedeId: string): Promise<TaskCheck
 }
 
 type CleanerPropertyResult = { data: CleanerPropertyDetailsData | null; error: unknown };
+const CLEANER_PROPERTY_FIELDS = 'notas,numero_camas,numero_camas_pequenas,numero_camas_suite,numero_sofas_cama,numero_banos,duracion_servicio,numero_sabanas,numero_sabanas_pequenas,numero_sabanas_suite,numero_toallas_grandes,numero_toallas_pequenas,numero_alfombrines,numero_fundas_almohada,kit_alimentario,cantidad_rollos_papel_higienico,cantidad_rollos_papel_cocina';
 
 async function readCleanerProperty(sedeId: string, propertyId?: string): Promise<CleanerPropertyResult> {
-  return propertyId ? supabase.from('properties').select('notas,numero_camas,numero_camas_pequenas,numero_camas_suite,numero_sofas_cama,numero_banos,duracion_servicio,numero_sabanas,numero_sabanas_pequenas,numero_sabanas_suite,numero_toallas_grandes,numero_toallas_pequenas,numero_alfombrines,numero_fundas_almohada,kit_alimentario,cantidad_rollos_papel_higienico,cantidad_rollos_papel_cocina')
+  return propertyId ? supabase.from('properties').select(CLEANER_PROPERTY_FIELDS)
     .eq('id', propertyId).eq('sede_id', sedeId).maybeSingle() : { data: null, error: null };
 }
 
 /** A fresh loader per preparation; property results never outlive that cycle. */
-export function createCleanerPreparationLoader(ownerId: string, sedeId: string, cleanerId: string) {
+export function createCleanerPreparationLoader(ownerId: string, sedeId: string, cleanerId: string, tasks: readonly Pick<Task, 'propertyId'>[] = []) {
   const properties = new Map<string, Promise<CleanerPropertyResult>>();
+  const propertyIds = [...new Set(tasks.map(task => task.propertyId).filter((id): id is string => Boolean(id)))];
   let active = true;
   const readProperty = (propertyId?: string): Promise<CleanerPropertyResult> => {
     if (!active || !propertyId) return readCleanerProperty(sedeId, propertyId);
     let request = properties.get(propertyId);
+    const index = propertyIds.indexOf(propertyId);
+    if (!request && index >= 0) {
+      // Small, lazy batches bound URL size and keep the existing two task workers.
+      const ids = propertyIds.slice(Math.floor(index / 25) * 25, Math.floor(index / 25) * 25 + 25);
+      const batch = (async () => {
+        try {
+          return await supabase.from('properties').select(`id,${CLEANER_PROPERTY_FIELDS}`)
+            .in('id', ids).eq('sede_id', sedeId);
+        } catch (error) { return { data: null, error }; }
+      })();
+      for (const id of ids) {
+        if (properties.has(id)) continue;
+        properties.set(id, batch.then(result => {
+          if (result.error) properties.delete(id);
+          const row = result.data?.find(property => property.id === id);
+          if (!row) return { data: null, error: result.error };
+          const { id: _id, ...data } = row;
+          return { data, error: result.error };
+        }));
+      }
+      request = properties.get(propertyId);
+    }
     if (!request) {
       request = readCleanerProperty(sedeId, propertyId).then(result => {
         // A failed read must not prevent a later task from retrying this property.
@@ -142,7 +166,7 @@ export function useCleanerTasks(currentDate: Date) {
     if (!cleanerId || !query.data) return;
     let cancelled = false;
     const tasks = query.data.filter(task => !task.id.startsWith('recurring_'));
-    const loadPreparedBundle = createCleanerPreparationLoader(identity.ownerId, identity.sedeId, cleanerId);
+    const loadPreparedBundle = createCleanerPreparationLoader(identity.ownerId, identity.sedeId, cleanerId, tasks);
     // Two workers prepare the week without opening a report or starting a task.
     let next = 0;
     const warm = async () => {

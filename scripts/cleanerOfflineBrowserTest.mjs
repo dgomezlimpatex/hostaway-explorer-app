@@ -111,7 +111,7 @@ const mockBackend = async route => {
   if (endpoint === 'sedes') data=[{id:sedeId,nombre:'A Coruña',is_active:true}];
   if (endpoint === 'cleaners') data=[{id:cleanerId,name:'Prueba',user_id:userId,is_active:true,email:'prueba@example.invalid'}];
   if (endpoint === 'task_checklists_templates') data=[template];
-  if (endpoint === 'properties') data=[{notas:'Indicaciones del piso de prueba',numero_camas:2,numero_camas_pequenas:1,numero_camas_suite:0,numero_sofas_cama:1,numero_banos:2,duracion_servicio:60,numero_sabanas:2,numero_sabanas_pequenas:1,numero_sabanas_suite:0,numero_toallas_grandes:4,numero_toallas_pequenas:4,numero_alfombrines:2,numero_fundas_almohada:4,kit_alimentario:1,cantidad_rollos_papel_higienico:3,cantidad_rollos_papel_cocina:1}];
+  if (endpoint === 'properties') data=[{id:propertyId,notas:'Indicaciones del piso de prueba',numero_camas:2,numero_camas_pequenas:1,numero_camas_suite:0,numero_sofas_cama:1,numero_banos:2,duracion_servicio:60,numero_sabanas:2,numero_sabanas_pequenas:1,numero_sabanas_suite:0,numero_toallas_grandes:4,numero_toallas_pequenas:4,numero_alfombrines:2,numero_fundas_almohada:4,kit_alimentario:1,cantidad_rollos_papel_higienico:3,cantidad_rollos_papel_cocina:1}];
   if (endpoint === 'tasks') data=[{...task, task_assignments:reassigned ? [{cleaner_id:'another-cleaner'}] : [], task_reports:remoteReport ? [remoteReport] : []}];
   if (endpoint === 'task_reports') data=remoteReport ? [remoteReport] : [];
   if (endpoint === 'task_media') data=media.filter(item => !url.searchParams.has('id') || `eq.${item.id}` === url.searchParams.get('id'));
