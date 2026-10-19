@@ -13,7 +13,7 @@ test('controlador real recupera el turno auditado; cierra ambas reservas solo tr
   fs.mkdirSync(repo);fs.cpSync(new URL('./',import.meta.url),path.join(repo,'automation/delivery'),{recursive:true});
   const git=args=>execFileSync('git',['-C',repo,...args],{encoding:'utf8',stdio:['pipe','pipe','pipe']}).trim();
   const write=(file,contents)=>{fs.mkdirSync(path.dirname(path.join(repo,file)),{recursive:true});fs.writeFileSync(path.join(repo,file),contents);};
-  git(['init']);git(['config','user.name','Local Test']);git(['config','user.email','test@example.invalid']);
+  git(['init','-b','fixture-base']);git(['config','user.name','Local Test']);git(['config','user.email','test@example.invalid']);
   write('package.json','{}');write('src/app.tsx','export const App=()=>"previous";');git(['add','.']);git(['commit','-m','previous production']);
   const base=git(['rev-parse','HEAD']),source=fingerprint(repo);
   git(['checkout','-b','codex/original']);write('src/app.tsx','export const App=()=>"escape fixed";');git(['add','.']);git(['commit','-m','app fix']);const head=git(['rev-parse','HEAD']);
