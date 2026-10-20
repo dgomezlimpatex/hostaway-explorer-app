@@ -265,10 +265,12 @@ export default function WhatsAppNotifications() {
           <AttentionChip label="Fallidos" value={statsValue(breakdown?.failed)} onClick={() => applyStatus('failed')} />
           <AttentionChip label="Inciertos" hint="intento 1/2" value={statsValue(breakdown?.uncertain)} onClick={() => applyStatus('queued')} />
           <AttentionChip label={`Sin confirmar +${UNCONFIRMED_MINUTES} min`} value={statsValue(breakdown?.unconfirmed)} onClick={() => applyStatus('sent')} tone="warning" />
-          <AttentionChip label="No enviados" hint="incluye modo preparación y falta de teléfono" value={statsValue(breakdown?.skipped)} onClick={() => applyStatus('skipped')} tone="warning" />
+          <AttentionChip label="No enviados" hint={breakdown?.excludesPreparation ? 'sin teléfono u otro motivo' : 'incluye modo preparación y falta de teléfono'} value={statsValue(breakdown?.skipped)} onClick={() => applyStatus('skipped')} tone="warning" />
         </div>
         <p className="text-xs text-muted-foreground">
-          Estas cifras son las que suma el contador del menú. «No enviados» aún incluye avisos esperados (modo preparación); la causa de cada uno se ve en el historial.
+          {breakdown?.excludesPreparation
+            ? `Estas cifras son las que suma el contador del menú. Además hubo ${breakdown.preparation} avisos en modo preparación (estado esperado, no cuentan).`
+            : 'Estas cifras son las que suma el contador del menú. «No enviados» aún incluye avisos esperados (modo preparación); la causa de cada uno se ve en el historial.'}
         </p>
         {isAdmin ? (
           <div className="flex flex-wrap items-center gap-2 border-t pt-3 text-sm">

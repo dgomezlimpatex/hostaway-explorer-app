@@ -375,6 +375,13 @@ export interface DeliveryStats {
   unconfirmed: number;
   /** Tal como lo calcula el servidor (fallos, no enviados, sin confirmar, inciertos). */
   unresolved: number;
+  /**
+   * Claves de la versión 2 del resumen (propuesta de backend pendiente). Si el
+   * servidor no las devuelve quedan sin definir y se usa el cálculo anterior.
+   */
+  uncertain?: number;
+  skippedPreparation?: number;
+  attentionVersion?: number;
 }
 
 export function parseStats(raw: unknown): DeliveryStats {
@@ -391,6 +398,11 @@ export function parseStats(raw: unknown): DeliveryStats {
     skipped: number('skipped'),
     unconfirmed: number('unconfirmed'),
     unresolved: number('unresolved'),
+    ...(source.attention_version === 2 ? {
+      uncertain: number('uncertain'),
+      skippedPreparation: number('skipped_preparation'),
+      attentionVersion: 2,
+    } : {}),
   };
 }
 
@@ -400,8 +412,13 @@ export function parseStats(raw: unknown): DeliveryStats {
  * resto, porque la RPC actual no los devuelve aparte.
  */
 export function attentionBreakdown(stats: DeliveryStats) {
+  if (stats.attentionVersion === 2) {
+    // v2: el servidor ya excluye el modo preparación de `unresolved`.
+    const skipped = Math.max(0, stats.skipped - (stats.skippedPreparation ?? 0));
+    return { failed: stats.failed, uncertain: stats.uncertain ?? 0, unconfirmed: stats.unconfirmed, skipped, total: stats.unresolved, preparation: stats.skippedPreparation ?? 0, excludesPreparation: true };
+  }
   const uncertain = Math.max(0, stats.unresolved - stats.failed - stats.skipped - stats.unconfirmed);
-  return { failed: stats.failed, uncertain, unconfirmed: stats.unconfirmed, skipped: stats.skipped, total: stats.unresolved };
+  return { failed: stats.failed, uncertain, unconfirmed: stats.unconfirmed, skipped: stats.skipped, total: stats.unresolved, preparation: null as number | null, excludesPreparation: false };
 }
 
 /**

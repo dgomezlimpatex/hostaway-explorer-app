@@ -108,7 +108,12 @@ test('WA-12: comodines escapados para ILIKE', () => {
 test('WA-05/18: desglose disjunto y contador del menú sin doble conteo', () => {
   const stats = m.parseStats({ sent: 1, delivered: 2, read: 1, failed: 2, skipped: 2, unconfirmed: 1, unresolved: 6, extra: 'x' });
   const b = m.attentionBreakdown(stats);
-  assert.deepEqual(b, { failed: 2, uncertain: 1, unconfirmed: 1, skipped: 2, total: 6 });
+  assert.deepEqual(b, { failed: 2, uncertain: 1, unconfirmed: 1, skipped: 2, total: 6, preparation: null, excludesPreparation: false });
+  // Resumen v2 (propuesta de backend): el modo preparación no cuenta y el desglose sigue cuadrando.
+  const v2 = m.attentionBreakdown(m.parseStats({ failed: 2, skipped: 3, skipped_preparation: 2, uncertain: 1, unconfirmed: 1, unresolved: 5, attention_version: 2 }));
+  assert.deepEqual(v2, { failed: 2, uncertain: 1, unconfirmed: 1, skipped: 1, total: 5, preparation: 2, excludesPreparation: true });
+  assert.equal(v2.failed + v2.uncertain + v2.unconfirmed + v2.skipped, v2.total);
+  assert.equal(m.parseStats({ uncertain: 4 }).uncertain, undefined, 'sin versión 2 no se leen claves nuevas');
   assert.equal(b.failed + b.uncertain + b.unconfirmed + b.skipped, b.total);
   // Un incierto (ya en unresolved) y su callback sin correlacionar: el menú cuenta 1, no 2.
   assert.equal(m.menuAttentionCount(1, 1), 1);
