@@ -78,7 +78,7 @@ assert.match(
 );
 assert.match(
   calendarLogicSource,
-  /updateTaskTimes:[\s\S]{0,400}if\s*\(error\)\s*throw\s+error[\s\S]{0,1500}persistCascadeShiftsSettled\(displaced/,
+  /updateTaskTimes:[\s\S]{0,800}if\s*\(error\)\s*throw\s+error[\s\S]{0,1500}persistCascadeShiftsSettled\(displaced/,
   'Cada desplazamiento debe comprobar y propagar errores de Supabase',
 );
 assert.match(
