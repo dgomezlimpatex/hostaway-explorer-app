@@ -135,7 +135,7 @@ const syncItems: NavigationItem[] = [
 const adminItems: NavigationItem[] = [
   { title: 'Gestión de Usuarios', href: '/user-management', icon: UserPlus },
   { title: 'Gestión de Sedes', href: '/sede-management', icon: Building2 },
-  { title: 'Portales de clientes', href: '/admin/client-portals', icon: Layers },
+  { title: 'Portales de clientes', href: '/admin/client-portals', icon: Layers, permission: 'admin-only' },
   {
     title: 'Integraciones · REGISTRO',
     href: '/integraciones',
