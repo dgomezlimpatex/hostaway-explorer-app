@@ -86,19 +86,20 @@ const recurring = task('recurring_tpl_2026-10-06', '10:30', '11:00', { isRecurri
 const real = task('real', '10:45', '11:15');
 const calls = [];
 const persistence = (rows = 1) => ({
-  updateTaskTimes: async (...args) => { calls.push(['update', ...args]); return rows; },
+  updateTaskTimes: async (id, start, end, expected) => { calls.push(['update', id, start, end, expected]); return rows; },
   materializeRecurring: async (t, ...args) => { calls.push(['materialize', t.id, ...args]); },
 });
 const result = m.computeCascadeShifts([recurring, real], drop('10:00', '11:00'));
 const saved = await m.persistCascadeShifts(result.shifts, [recurring, real], persistence());
 assert.deepEqual(calls, [
   ['materialize', 'recurring_tpl_2026-10-06', '11:00', '11:30'],
-  ['update', 'real', '11:30', '12:00'],
+  // The write is conditioned on the times seen in the preview.
+  ['update', 'real', '11:30', '12:00', { startTime: '10:45', endTime: '11:15' }],
 ]);
 assert.equal(saved.length, 2);
 // An update that changes no row is not reported as saved (no phantom email).
 calls.length = 0;
-await assert.rejects(m.persistCascadeShifts([result.shifts[1]], [real], persistence(0)), /No se pudo mover "Piso real"/);
+await assert.rejects(m.persistCascadeShifts([result.shifts[1]], [real], persistence(0)), /No se pudo mover "Piso real": ha cambiado mientras tanto/);
 await assert.rejects(m.persistCascadeShifts([result.shifts[0]], [recurring], {
   ...persistence(), materializeRecurring: async () => { throw new Error('fallo local'); },
 }), /fallo local/);
@@ -109,15 +110,21 @@ calls.length = 0;
 const twoReal = [task('r1', '10:30', '11:00'), task('r2', '11:00', '11:30')];
 const twoShifts = m.computeCascadeShifts(twoReal, drop('10:00', '11:00')).shifts;
 const settled = await m.persistCascadeShiftsSettled(twoShifts, twoReal, {
-  updateTaskTimes: async (id, ...args) => { calls.push(['update', id, ...args]); if (id === 'r2') throw new Error('red caída'); return 1; },
+  updateTaskTimes: async (id, start, end, expected) => { calls.push(['update', id, start, end, expected]); if (id === 'r2') throw new Error('red caída'); return 1; },
   materializeRecurring: async () => {},
 });
 assert.deepEqual(settled.saved.map((s) => s.taskId), ['r1']);
 assert.deepEqual(settled.failed.map((f) => [f.shift.taskId, f.error.message]), [['r2', 'red caída']]);
 calls.length = 0;
 const reverted = await m.revertCascadeShifts([...settled.saved, result.shifts[0]], [...twoReal, recurring], persistence());
-assert.deepEqual(calls, [['update', 'r1', '10:30', '11:00']], 'only the stored task goes back to its old time');
+assert.deepEqual(calls, [['update', 'r1', '10:30', '11:00', { startTime: '11:00', endTime: '11:30' }]],
+  'only the stored task goes back, and only if it still has the times this cascade wrote');
 assert.deepEqual([reverted.reverted.map((s) => s.taskId), reverted.notReverted.map((s) => s.taskId)], [['r1'], ['recurring_tpl_2026-10-06']]);
+
+// Someone changed (or started) the task in between: the compensation changes
+// 0 rows, never overwrites it, and reports it for manual review.
+const concurrent = await m.revertCascadeShifts(settled.saved, twoReal, { updateTaskTimes: async () => 0 });
+assert.deepEqual([concurrent.reverted, concurrent.notReverted.map((s) => s.taskId)], [[], ['r1']]);
 
 assert.equal(m.fromMinutes(m.toMinutes('09:05')), '09:05');
 console.log('calendar-cascade: OK (contained/earlier/later overlaps, chain, cleaners, shared tasks keep their window, started/finished fixed, cancelled ignored, 23:59 limit, recurring persistence, zero-row updates, partial failure revert; no network)');

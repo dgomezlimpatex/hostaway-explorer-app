@@ -280,11 +280,17 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
     // 2) Cascade shifts, with a visible result per task.
     if (displaced.length > 0) {
       const persistence = {
-        updateTaskTimes: async (id: string, newStartTime: string, newEndTime: string) => {
+        // Conditional write: only while the task keeps the expected times and
+        // is still pending, so a concurrent change or a started task is never
+        // overwritten (0 rows changed is reported as a failure).
+        updateTaskTimes: async (id: string, newStartTime: string, newEndTime: string, expected: { startTime: string; endTime: string }) => {
           const { data, error } = await supabase
               .from('tasks')
               .update({ start_time: newStartTime, end_time: newEndTime })
               .eq('id', id)
+              .eq('start_time', expected.startTime)
+              .eq('end_time', expected.endTime)
+              .eq('status', 'pending')
               .select('id');
           if (error) throw error;
           return data?.length ?? 0;
@@ -316,7 +322,7 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
           `La tarea se asignó, pero no se pudieron mover: ${result.failed.map(f => f.shift.property).join(', ')}.`,
           reverted.length ? `Se han devuelto a su hora: ${reverted.map(s => s.property).join(', ')}.` : '',
           notReverted.length ? `Revisa a mano: ${notReverted.map(s => s.property).join(', ')}.` : '',
-          'No se ha enviado el aviso de cambios.',
+          'No se ha enviado el aviso de cambios. Revisa el día antes de volver a intentarlo.',
         ].filter(Boolean);
         toast({ title: "Reorganización incompleta", description: parts.join(' '), variant: "destructive" });
         return;

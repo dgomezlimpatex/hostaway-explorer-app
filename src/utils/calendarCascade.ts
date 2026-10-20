@@ -133,8 +133,18 @@ export const computeCascadeShifts = (tasks: Task[], input: CascadeInput): Cascad
 };
 
 export interface CascadePersistence {
-  /** Updates a stored task and resolves to the number of rows changed. */
-  updateTaskTimes: (taskId: string, startTime: string, endTime: string) => Promise<number>;
+  /**
+   * Updates a stored task and resolves to the number of rows changed. It must
+   * only change the row while it still has the `expected` times and is not
+   * started (pending): a concurrent change or a started task is never
+   * overwritten, the update simply changes 0 rows.
+   */
+  updateTaskTimes: (
+    taskId: string,
+    startTime: string,
+    endTime: string,
+    expected: { startTime: string; endTime: string },
+  ) => Promise<number>;
   /** Creates the real task for a virtual recurring occurrence. */
   materializeRecurring: (task: Task, startTime: string, endTime: string) => Promise<unknown>;
 }
@@ -149,8 +159,12 @@ const persistOne = async (shift: CascadeShift, task: Task | undefined, persisten
     await persistence.materializeRecurring(task, shift.newStartTime, shift.newEndTime);
     return;
   }
-  const changed = await persistence.updateTaskTimes(shift.taskId, shift.newStartTime, shift.newEndTime);
-  if (changed < 1) throw new Error(`No se pudo mover "${shift.property}"`);
+  const changed = await persistence.updateTaskTimes(shift.taskId, shift.newStartTime, shift.newEndTime, {
+    startTime: shift.oldStartTime,
+    endTime: shift.oldEndTime,
+  });
+  // 0 rows: it changed meanwhile (other person, started...) and was left as is.
+  if (changed < 1) throw new Error(`No se pudo mover "${shift.property}": ha cambiado mientras tanto`);
 };
 
 /**
@@ -190,8 +204,11 @@ export const persistCascadeShiftsSettled = async (
 
 /**
  * Puts back the stored tasks that were already shifted when the rest of the
- * cascade failed. Recurring occurrences already materialized are not
- * deleted: they are reported so the person can review them.
+ * cascade failed, only while they still have the times this cascade wrote
+ * (and are still pending): a change made by someone else in between, or a
+ * task already started, is never overwritten and is reported instead.
+ * Recurring occurrences already materialized are not deleted either.
+ * This is a compensation, not an atomic transaction.
  */
 export const revertCascadeShifts = async (
   saved: CascadeShift[],
@@ -207,7 +224,10 @@ export const revertCascadeShifts = async (
       continue;
     }
     try {
-      const changed = await persistence.updateTaskTimes(shift.taskId, shift.oldStartTime, shift.oldEndTime);
+      const changed = await persistence.updateTaskTimes(shift.taskId, shift.oldStartTime, shift.oldEndTime, {
+        startTime: shift.newStartTime,
+        endTime: shift.newEndTime,
+      });
       (changed > 0 ? reverted : notReverted).push(shift);
     } catch {
       notReverted.push(shift);

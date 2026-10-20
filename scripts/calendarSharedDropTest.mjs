@@ -38,7 +38,7 @@ const query = (table) => {
   q.update = (patch) => { S.calls.push(['update', table, patch]); return q; };
   q.then = (resolve) => {
     S.reads.push([table, q.filters]);
-    if (table === 'tasks') return resolve({ data: [{ id: 'x' }], error: null });
+    if (table === 'tasks') return resolve({ data: S.tasksRows ?? [{ id: 'x' }], error: null });
     if (table === 'worker_absences') return resolve({ data: S.absences || [] });
     return resolve({ data: table === 'worker_fixed_days_off' ? null : [] });
   };
@@ -88,7 +88,7 @@ const availability = cleaners.map(c => ({ cleaner_id: c.id, day_of_week: 1, is_a
 const base = { date: '2026-10-05', address: '', type: 'limpieza', checkIn: '', checkOut: '', status: 'pending' };
 const shared = { ...base, id: 'A', property: 'Piso compartido', startTime: '09:00', endTime: '11:00', cleanerId: 'ana', cleaner: 'Ana, Carmen',
   assignments: [{ cleaner_id: 'ana', cleaner_name: 'Ana' }, { cleaner_id: 'carmen', cleaner_name: 'Carmen' }], assignmentCount: 2 };
-const reset = (tasks, extra = {}) => { Object.assign(S, { calls: [], reads: [], tasks, cleaners, availability, absences: [], options: undefined }, extra); render(); };
+const reset = (tasks, extra = {}) => { Object.assign(S, { calls: [], reads: [], tasks, cleaners, availability, absences: [], options: undefined, tasksRows: undefined }, extra); render(); };
 
 // CAL-01: same row, other time → the whole team keeps the task.
 reset([shared]);
@@ -149,6 +149,20 @@ assert.deepEqual(writes(), [
   ['update', 'tasks', { start_time: '11:00', end_time: '12:00' }],
   ['invoke', 'send-task-reschedule-batch-email', 1],
 ], 'confirmed: shift saved, then one notice (stubbed)');
+// The shift is conditioned on the previewed times and on the task still pending.
+const shiftWrite = S.reads.find(([table, filters]) => table === 'tasks' && filters.some(f => f[0] === 'eq' && f[1] === 'start_time'));
+assert.deepEqual(shiftWrite[1].filter(f => f[0] === 'eq'), [['eq', 'id', 'B'], ['eq', 'start_time', '10:30'], ['eq', 'end_time', '11:30'], ['eq', 'status', 'pending']]);
+
+// A concurrent change makes the shift write 0 rows: the dropped task stays
+// assigned, the failure is reported and no notice is sent.
+reset([dropped, occupied, running], { tasksRows: [] });
+pending = m.dropHandler('D', 'ana', cleaners, '10:00');
+await tick();
+press('AlertDialogAction', 1);
+await pending;
+assert.deepEqual(writes().map(w => w[0]), ['assignWithSchedule', 'update'], 'no notice after a partial failure');
+const partial = S.calls.find(c => c[0] === 'toast' && c[1] === 'Reorganización incompleta');
+assert.match(partial[2], /no se pudieron mover: Piso ocupado.*No se ha enviado el aviso/);
 
 // CAL-13: no availability configured = unknown: allowed, with a warning.
 reset([dropped], { availability: [] });
