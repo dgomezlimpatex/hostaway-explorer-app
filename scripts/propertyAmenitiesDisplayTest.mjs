@@ -95,7 +95,7 @@ try{
   await expect(inputs.first()).toBeDisabled();await expect(inputs.first()).toHaveValue('2');
   await page.evaluate(()=>window.changeQuery({isLoading:false,isError:true}));await expect(inputs.first()).toHaveValue('2');
   await page.evaluate(()=>window.changeQuery({data:[{id:'off',amenitiesControlEnabled:false,linenControlEnabled:true}],isLoading:false,isError:false}));await checkZero();
-  await page.locator('#client').getByRole('checkbox',{name:'🧴 Gestión de amenities'}).check();await expect(page.locator('#client').getByRole('checkbox')).toBeChecked();
+  await page.locator('#client').getByRole('checkbox',{name:'Gestión de amenities'}).check();await expect(page.locator('#client').getByRole('checkbox')).toBeChecked();
   await page.setViewportSize({width:390,height:844});await checkZero();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:join(tmpdir(),'property-amenities-disabled-mobile.png'),fullPage:true});
   assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);

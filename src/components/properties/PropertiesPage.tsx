@@ -1,6 +1,7 @@
 import { normalizeDirectorySearch } from '@/components/directory/directorySearch';
 import { useCallback, useEffect, useMemo, useRef, useState, type ElementType } from 'react';
 import { Home, SearchX } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 
 // Al cambiar de propiedad se vuelve al tramo inicial de su actividad.
 const PROPERTY_SCOPED_PARAMS = [ACTIVITY_PARAMS.windows];
+const CLIENT_FILTER_PARAM = 'cliente';
 
 export const PropertiesPage = () => {
   const { activeSede } = useSede();
@@ -67,8 +69,11 @@ function PropertiesWorkspace() {
     return () => document.removeEventListener('click', guard, true);
   }, [canLeave]);
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('active');
-  const [clientFilter, setClientFilter] = useState('all');
+  // ?cliente=<id> llega desde la ficha de Clientes: abre el directorio filtrado por ese cliente, en cualquier estado.
+  const [searchParams] = useSearchParams();
+  const [initialClientFilter] = useState(() => searchParams.get(CLIENT_FILTER_PARAM));
+  const [status, setStatus] = useState(initialClientFilter ? 'all' : 'active');
+  const [clientFilter, setClientFilter] = useState(initialClientFilter || 'all');
   // Propiedad abierta en la URL (?propertyId=), contrato que también usan la ficha de edificio y el buscador.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const properties = useMemo(() => propertiesQuery.data || [], [propertiesQuery.data]);

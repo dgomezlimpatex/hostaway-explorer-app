@@ -1,66 +1,80 @@
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { clientSchema, ClientFormData } from './forms/ClientFormSchema';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { useUpdateClient } from '@/hooks/useClients';
-import { CreateClientData, Client } from '@/types/client';
-import { Edit } from 'lucide-react';
-import { ClientPortalSection } from '@/components/client-portal/ClientPortalSection';
-import { AmenitiesManagementField } from './forms/AmenitiesManagementField';
+import { Form } from '@/components/ui/form';
+import { useClients, useUpdateClient } from '@/hooks/useClients';
+import { toast } from '@/hooks/use-toast';
+import { Client } from '@/types/client';
+import { AlertTriangle, Edit } from 'lucide-react';
+import { ClientFormFields } from './ClientFormFields';
+import { buildClientSchema, buildClientUpdate, clientToFormValues, type ClientFormValues } from './clientRules';
 
 interface EditClientModalProps {
   client: Client;
   trigger: React.ReactNode;
+  canEditFiscal: boolean;
+  inheritingProperties?: number;
+  ownStateProperties?: number;
 }
 
-export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
+const sameValues = (a: ClientFormValues, b: ClientFormValues) => JSON.stringify(a) === JSON.stringify(b);
+
+export const EditClientModal = ({ client, trigger, canEditFiscal, inheritingProperties, ownStateProperties }: EditClientModalProps) => {
   const [open, setOpen] = useState(false);
   const updateClient = useUpdateClient();
+  const { data: clients = [] } = useClients();
+  // Valores de referencia: los que había al abrir (o al cargar los datos actuales).
+  const [baseline, setBaseline] = useState(() => clientToFormValues(client));
+  const baselineRef = useRef(baseline);
+  baselineRef.current = baseline;
+  const [conflict, setConflict] = useState(false);
 
-  const form = useForm<ClientFormData>({
-    resolver: zodResolver(clientSchema),
-    defaultValues: {
-      nombre: client.nombre,
-      cifNif: client.cifNif,
-      telefono: client.telefono,
-      email: client.email,
-      direccionFacturacion: client.direccionFacturacion,
-      codigoPostal: client.codigoPostal,
-      ciudad: client.ciudad,
-      tipoServicio: client.tipoServicio,
-      metodoPago: client.metodoPago,
-      supervisor: client.supervisor,
-      factura: client.factura,
-      linenControlEnabled: client.linenControlEnabled || false,
-      amenitiesControlEnabled: client.amenitiesControlEnabled ?? true,
-      photosVisibleToClient: client.photosVisibleToClient || false,
-      isActive: client.isActive !== false,
-    },
+  const form = useForm<ClientFormValues>({
+    resolver: (values, context, options) => zodResolver(buildClientSchema('edit', baselineRef.current))(values, context, options),
+    defaultValues: baseline,
   });
 
-  const onSubmit = (data: ClientFormData) => {
-    updateClient.mutate({ id: client.id, updates: data }, {
+  const loadCurrent = () => {
+    const current = clientToFormValues(client);
+    setBaseline(current);
+    form.reset(current);
+    setConflict(false);
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    if (next) loadCurrent();
+    setOpen(next);
+  };
+
+  // Si los datos del cliente se refrescan con el diálogo abierto, no se cierra ni se pierde lo escrito.
+  const incoming = clientToFormValues(client);
+  const incomingKey = JSON.stringify(incoming);
+  useEffect(() => {
+    if (!open || sameValues(incoming, baselineRef.current)) return;
+    const edited = Object.keys(buildClientUpdate(form.getValues(), baselineRef.current, { canEditFiscal: true })).length > 0;
+    if (edited) setConflict(true);
+    else loadCurrent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingKey, open]);
+
+  const onSubmit = (data: ClientFormValues) => {
+    const updates = buildClientUpdate(data, baseline, { canEditFiscal });
+    if (!Object.keys(updates).length) {
+      toast({ title: 'Sin cambios', description: 'No has modificado ningún dato.' });
+      setOpen(false);
+      return;
+    }
+    updateClient.mutate({ id: client.id, updates }, {
       onSuccess: () => {
         setOpen(false);
       },
@@ -68,376 +82,39 @@ export const EditClientModal = ({ client, trigger }: EditClientModalProps) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <div onClick={() => setOpen(true)}>
-        {trigger}
-      </div>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto overflow-x-hidden rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-blue-700 flex items-center gap-2">
-            <Edit className="h-5 w-5" />
-            Editar Cliente: {client.nombre}
+          <DialogTitle className="flex min-w-0 items-center gap-2 break-words text-xl font-black text-slate-950">
+            <Edit className="h-5 w-5 shrink-0 text-[#310984]" />
+            Editar {client.nombre}
           </DialogTitle>
+          <DialogDescription>Solo se guardan los datos que cambies. El acceso al portal se gestiona en la pestaña «Portal» de la ficha.</DialogDescription>
         </DialogHeader>
 
+        {conflict && (
+          <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+            <p className="flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4 shrink-0" />Este cliente ha cambiado mientras lo editabas</p>
+            <p className="mt-1 text-xs">Se conserva lo que has escrito. Al guardar solo se envían los campos que has cambiado; revisa que no sustituyan datos nuevos.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="outline" className="rounded-lg bg-white" onClick={loadCurrent}>Descartar mis cambios y ver los datos actuales</Button>
+              <Button type="button" size="sm" variant="ghost" className="rounded-lg" onClick={() => setConflict(false)}>Seguir editando</Button>
+            </div>
+          </div>
+        )}
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Información Personal */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-blue-600 flex items-center gap-2">
-                📝 Información Personal
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="nombre"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        👤 Nombre
-                      </FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="cifNif"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        🆔 CIF/NIF
-                      </FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="min-w-0 space-y-5" noValidate>
+            <ClientFormFields form={form} mode="edit" initial={baseline} clients={clients} clientId={client.id} canEditFiscal={canEditFiscal}
+              inheritingProperties={inheritingProperties} ownStateProperties={ownStateProperties} onOpenClient={() => setOpen(false)} />
 
-            {/* Información de Contacto */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-blue-600 flex items-center gap-2">
-                📞 Información de Contacto
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="telefono"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        📱 Teléfono
-                      </FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        ✉️ Email
-                      </FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Dirección */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-blue-600 flex items-center gap-2">
-                🏠 Dirección
-              </h3>
-              <FormField
-                control={form.control}
-                name="direccionFacturacion"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      🏠 Dirección facturación
-                    </FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={3} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="codigoPostal"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        📮 Código postal
-                      </FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="ciudad"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        🏙️ Ciudad
-                      </FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Información de Servicio */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-blue-600 flex items-center gap-2">
-                ⚙️ Información de Servicio
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="tipoServicio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        🛠️ Tipo servicio
-                      </FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="limpieza-mantenimiento" id="edit-limpieza-mantenimiento" />
-                            <Label htmlFor="edit-limpieza-mantenimiento">Limpieza y Mantenimiento</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="mantenimiento-cristaleria" id="edit-mantenimiento-cristaleria" />
-                            <Label htmlFor="edit-mantenimiento-cristaleria">Mantenimiento Cristalería</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="limpieza-turistica" id="edit-limpieza-turistica" />
-                            <Label htmlFor="edit-limpieza-turistica"><Label htmlFor="edit-limpieza-turistica">Limpieza turística</Label></Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="limpieza-puesta-punto" id="edit-limpieza-puesta-punto" />
-                            <Label htmlFor="edit-limpieza-puesta-punto">Limpieza Puesta a Punto</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="limpieza-final-obra" id="edit-limpieza-final-obra" />
-                            <Label htmlFor="edit-limpieza-final-obra">Limpieza Final de Obra</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="check-in" id="edit-check-in" />
-                            <Label htmlFor="edit-check-in">Check-in</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="desplazamiento" id="edit-desplazamiento" />
-                            <Label htmlFor="edit-desplazamiento">Desplazamiento</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="limpieza-especial" id="edit-limpieza-especial" />
-                            <Label htmlFor="edit-limpieza-especial">Limpieza Especial</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="trabajo-extraordinario" id="edit-trabajo-extraordinario" />
-                            <Label htmlFor="edit-trabajo-extraordinario">Trabajo Extraordinario</Label>
-                          </div>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="metodoPago"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        💳 Método pago
-                      </FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col space-y-1"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="transferencia" id="edit-transferencia" />
-                            <Label htmlFor="edit-transferencia">Transferencia</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="efectivo" id="edit-efectivo" />
-                            <Label htmlFor="edit-efectivo">Efectivo</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="bizum" id="edit-bizum" />
-                            <Label htmlFor="edit-bizum">Bizum</Label>
-                          </div>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="supervisor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        👥 Supervisor
-                      </FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="factura"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="flex items-center gap-2">
-                          📄 Factura
-                        </FormLabel>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="linenControlEnabled"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="flex items-center gap-2">
-                          🛏️ Control de Mudas
-                        </FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Activar seguimiento de ropa limpia
-                        </p>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                <AmenitiesManagementField control={form.control} />
-
-                <FormField
-                  control={form.control}
-                  name="isActive"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value !== false}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="flex items-center gap-2">
-                          ✅ Cliente Activo
-                        </FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Si está desactivado, no aparecerá en selectores
-                        </p>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="photosVisibleToClient"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 md:col-span-2 p-3 rounded-lg border bg-muted/30">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="flex items-center gap-2">
-                          📸 Permitir al cliente ver fotos del reporte
-                        </FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Si está desactivado, el cliente verá los detalles de la limpieza pero no las fotografías
-                        </p>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Portal de Reservas */}
-            <ClientPortalSection clientId={client.id} clientName={client.nombre} />
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                disabled={updateClient.isPending}
-              >
-                {updateClient.isPending ? 'Guardando...' : 'Guardar Cambios'}
+              <Button type="submit" className="rounded-xl" disabled={updateClient.isPending}>
+                {updateClient.isPending ? 'Guardando…' : 'Guardar cambios'}
               </Button>
             </div>
           </form>
