@@ -134,6 +134,7 @@ assert.equal(m.availability.civilDayOfWeek('2026-10-04'), 0);
 assert.equal(m.privacy.maskAbsenceType('sick', false), 'unspecified');
 assert.equal(m.privacy.maskAbsenceType('sick', true), 'sick');
 assert.equal(m.privacy.maskAbsenceType('vacation', false), 'vacation');
+assert.equal(m.privacy.maskAbsenceType('personal', false), 'unspecified', 'same sensitive types as Trabajadores (lib/roleCapabilities)');
 assert.equal(m.privacy.getAbsenceLabel('unspecified'), 'Ausencia');
 assert.equal(m.privacy.getAbsenceLabel('sick'), 'Baja médica');
 assert.equal(m.privacy.ABSENCE_COLUMNS.includes('notes'), false);

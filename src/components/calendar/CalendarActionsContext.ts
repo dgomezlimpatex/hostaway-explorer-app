@@ -12,7 +12,7 @@ export interface CalendarPermissions {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
-  /** Medical leave type and absence notes (admin/manager only, Dani 20/10/2026). */
+  /** Reason of sensitive absences and absence notes (management only, lib/roleCapabilities). */
   canSeeAbsenceDetails: boolean;
 }
 
