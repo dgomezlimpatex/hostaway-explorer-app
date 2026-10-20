@@ -154,7 +154,7 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
   const { user } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
   const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
-  const { data: whatsappHealth } = useWhatsAppDeliveryHealth(shouldShowIncidentBadge);
+  const whatsappHealth = useWhatsAppDeliveryHealth(shouldShowIncidentBadge);
 
   const isActive = (href: string) => {
     const path = href.split('?')[0];
@@ -206,9 +206,13 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
 
   const getBadgeCount = (item: NavigationItem) => {
     if (item.badge === 'pending-incidents') return incidentStats?.pending_limpatex ?? 0;
-    if (item.badge === 'whatsapp-delivery-errors') return whatsappHealth?.unresolved ?? 0;
+    if (item.badge === 'whatsapp-delivery-errors') return whatsappHealth.menuCount;
     return 0;
   };
+
+  const isBadgeUnavailable = (item: NavigationItem) => (
+    item.badge === 'whatsapp-delivery-errors' && whatsappHealth.unavailable
+  );
 
   const renderNavigationSection = (title: string, items: NavigationItem[]) => {
     const filteredItems = filterItemsByPermission(items);
@@ -242,6 +246,15 @@ export const MobileDashboardSidebar = ({ onNavigate }: MobileDashboardSidebarPro
               {getBadgeCount(item) > 0 && (
                 <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold leading-none text-white shadow-sm">
                   {getBadgeCount(item) > 99 ? '99+' : getBadgeCount(item)}
+                </span>
+              )}
+              {getBadgeCount(item) === 0 && isBadgeUnavailable(item) && (
+                <span
+                  title="No se pudo comprobar el estado de WhatsApp"
+                  aria-label="No se pudo comprobar el estado de WhatsApp"
+                  className="flex h-5 min-w-5 items-center justify-center rounded-full border border-brand px-1.5 text-[11px] font-bold leading-none text-brand"
+                >
+                  !
                 </span>
               )}
             </NavLink>

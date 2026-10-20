@@ -5,16 +5,29 @@ import path from 'node:path';
 const read = (filePath) => readFile(path.join(process.cwd(), filePath), 'utf8');
 
 const page = await read('src/pages/WhatsAppNotifications.tsx');
+const model = await read('src/features/whatsapp-monitor/whatsappMonitorModel.ts');
+const pageSources = [
+  page,
+  model,
+  await read('src/features/whatsapp-monitor/WhatsAppDeliveryDetail.tsx'),
+  await read('src/features/whatsapp-monitor/WhatsAppResolutionDialog.tsx'),
+].join('\n');
 assert.match(page, /Notificaciones WhatsApp/);
-assert.match(page, /Enviados/);
-assert.match(page, /Entregados/);
-assert.match(page, /Leídos/);
+// Rediseño (WA-05): «Enviados» pasa a «Aceptados por Meta» y el resumen se divide
+// en «Necesitan acción» y «Progreso». La cobertura de comportamiento está en
+// whatsappMonitorModelTest.mjs y whatsappMonitorBrowserTest.mjs.
+assert.match(model, /Aceptados por Meta/);
+assert.match(page, /entregados, de los cuales/);
+assert.match(page, /leídos/);
 assert.match(page, /Fallidos/);
 assert.match(page, /No enviados/);
 assert.match(page, /Sin confirmar/);
-assert.match(page, /const needsAttention = stats\?\.unresolved \?\? 0/);
-assert.match(page, /provider_message_ref/);
-assert.match(page, /recipient_masked/);
+assert.match(page, /Necesitan acción/);
+// WA-01: sin dato no hay 0.
+assert.match(page, /No disponible/);
+assert.doesNotMatch(page, /stats\?\.\w+ \?\? 0/);
+assert.match(pageSources, /provider_message_ref/);
+assert.match(pageSources, /recipient_masked/);
 assert.match(page, /get_whatsapp_delivery_monitor/);
 assert.match(page, /get_whatsapp_webhook_reconciliation_queue/);
 assert.match(page, /Cola de conciliación de Meta/);
@@ -22,21 +35,27 @@ assert.match(page, /WhatsApp aplica como máximo un reintento automático 2\/2 t
 assert.match(page, /Después del intento 2\/2 no habrá un tercero/);
 assert.doesNotMatch(page, /El sistema nunca reenvía automáticamente un resultado incierto/);
 assert.doesNotMatch(page, /WhatsApp incierto no se reenvía/);
+// No se afirma un modo de canal que la pantalla no comprueba (WA-07).
+assert.doesNotMatch(page, /Estados reales recibidos desde Meta/);
 assert.match(page, /refetchInterval:\s*30_000/);
-assert.doesNotMatch(page, /\.from\('notification_deliveries'\)[\s\S]{0,200}channel[^\n]+email/);
-assert.doesNotMatch(page, /\.from\('notification_deliveries'\)/);
-assert.doesNotMatch(page, /recipient:\s*string/);
+assert.doesNotMatch(pageSources, /\.from\('notification_deliveries'\)[\s\S]{0,200}channel[^\n]+email/);
+assert.doesNotMatch(pageSources, /\.from\('notification_deliveries'\)/);
+assert.doesNotMatch(pageSources, /recipient:\s*string/);
 
 const health = await read('src/hooks/useWhatsAppDeliveryHealth.ts');
 assert.match(health, /failed/);
 assert.match(health, /undeliverable/);
-assert.match(health, /skipped/);
-assert.match(health, /unconfirmed/);
+assert.match(model, /skipped/);
+assert.match(model, /unconfirmed/);
 assert.match(health, /refetchInterval:\s*30_000/);
 assert.match(health, /get_whatsapp_delivery_monitor_stats/);
 assert.match(health, /get_whatsapp_webhook_pending_count/);
 assert.match(health, /callbackPending/);
-assert.match(health, /unresolved:\s*baseUnresolved \+ callbackPending/);
+// WA-18: un callback sin correlacionar suele pertenecer a un incierto ya contado;
+// el menú usa una cota sin duplicados en lugar de la suma anterior.
+assert.doesNotMatch(health, /baseUnresolved \+ callbackPending/);
+assert.match(health, /menuAttentionCount\(/);
+assert.match(model, /Math\.max\(deliveryAttention, callbackPending\)/);
 assert.doesNotMatch(health, /\.from\('notification_deliveries'\)/);
 
 const app = await read('src/App.tsx');
@@ -52,6 +71,8 @@ for (const sidebarPath of [
   assert.match(sidebar, /WhatsApp/);
   assert.match(sidebar, /whatsapp-delivery-errors/);
   assert.match(sidebar, /useWhatsAppDeliveryHealth/);
+  assert.match(sidebar, /whatsappHealth\.menuCount/);
+  assert.match(sidebar, /No se pudo comprobar el estado de WhatsApp/);
 }
 
 const migration = await read('supabase/migrations/20260720191000_secure_whatsapp_delivery_monitor.sql');
@@ -181,8 +202,12 @@ assert.ok(
 assert.match(page, /get_notification_send_reconciliation_queue/);
 assert.match(page, /request_notification_send_reconciliation/);
 assert.match(page, /Confirmar enviado/);
-assert.match(page, /row\.channel === 'whatsapp' && resolution === 'confirmed_not_sent'/);
-assert.match(page, /row\.channel === 'email'[\s\S]{0,260}Confirmar no enviado y reintentar/);
+// Doble barrera en interfaz: el WhatsApp incierto nunca se reabre y el reintento
+// solo se ofrece para email (además del bloqueo SQL comprobado arriba).
+assert.match(page, /row\.channel === 'whatsapp' && mode === 'confirmed_not_sent'/);
+assert.match(page, /row\.channel === 'email' && !safeWindow\.expired[\s\S]{0,260}Confirmar no enviado/);
+const dialog = await read('src/features/whatsapp-monitor/WhatsAppResolutionDialog.tsx');
+assert.match(dialog, /mode === 'confirmed_not_sent' && \(isWhatsApp \|\| safeWindow\.expired\)/);
 
 const webhook = await read('supabase/functions/whatsapp-webhook/index.ts');
 const featureFlags = await read('supabase/functions/_shared/featureFlags.ts');
@@ -385,7 +410,11 @@ assert.match(
   'un worker obsoleto no puede degradar un callback reclamado por otra generación',
 );
 assert.match(webhookStateMigration, /get_whatsapp_webhook_reconciliation_queue/);
-const monitorPage = await read('src/pages/WhatsAppNotifications.tsx');
+// El aviso sobre el límite de intentos vive ahora en el diálogo de resolución.
+const monitorPage = [
+  await read('src/pages/WhatsAppNotifications.tsx'),
+  await read('src/features/whatsapp-monitor/WhatsAppResolutionDialog.tsx'),
+].join('\n');
 assert.match(
   monitorPage,
   /row\.channel === 'email'[\s\S]{0,260}confirmed_not_sent/,
