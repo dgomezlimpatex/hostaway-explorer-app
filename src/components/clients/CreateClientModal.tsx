@@ -1,61 +1,45 @@
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
   DialogTitle,
-  DialogTrigger 
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useCreateClient } from '@/hooks/useClients';
+import { useClients, useCreateClient } from '@/hooks/useClients';
 import { useSede } from '@/contexts/SedeContext';
-import { CreateClientData } from '@/types/client';
-import { Plus, AlertTriangle } from 'lucide-react';
-import { clientSchema, ClientFormData } from './forms/ClientFormSchema';
-import { PersonalInfoSection } from './forms/PersonalInfoSection';
-import { ContactInfoSection } from './forms/ContactInfoSection';
-import { AddressSection } from './forms/AddressSection';
-import { ServiceInfoSection } from './forms/ServiceInfoSection';
+import { Plus, AlertTriangle, MapPin } from 'lucide-react';
+import { ClientFormFields } from './ClientFormFields';
+import { buildClientSchema, clientToFormValues, formValuesToCreateData, type ClientFormValues } from './clientRules';
 
 export const CreateClientModal = () => {
   const [open, setOpen] = useState(false);
   const { activeSede, isActiveSedeSet } = useSede();
   const createClient = useCreateClient();
+  const { data: clients = [] } = useClients();
+  const initial = useMemo(() => clientToFormValues(null), []);
 
-  const form = useForm<ClientFormData>({
-    resolver: zodResolver(clientSchema),
-    defaultValues: {
-      nombre: '',
-      cifNif: '',
-      telefono: '',
-      email: '',
-      direccionFacturacion: '',
-      codigoPostal: '',
-      ciudad: '',
-      tipoServicio: 'limpieza-turistica',
-      metodoPago: 'transferencia',
-      supervisor: '',
-      factura: false,
-      linenControlEnabled: false,
-      amenitiesControlEnabled: true,
-      isActive: true,
-    },
+  const form = useForm<ClientFormValues>({
+    resolver: zodResolver(buildClientSchema('create')),
+    defaultValues: initial,
   });
 
-  const onSubmit = (data: CreateClientData) => {
+  const onSubmit = (data: ClientFormValues) => {
     if (!isActiveSedeSet()) {
       return;
     }
 
-    createClient.mutate(data, {
+    createClient.mutate(formValuesToCreateData(data), {
       onSuccess: () => {
         setOpen(false);
-        form.reset();
+        form.reset(initial);
       },
     });
   };
@@ -68,12 +52,13 @@ export const CreateClientModal = () => {
           Nuevo cliente
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto overflow-x-hidden rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-blue-700 flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Crear Nuevo Cliente
+          <DialogTitle className="flex items-center gap-2 text-xl font-black text-slate-950">
+            <Plus className="h-5 w-5 text-[#310984]" />
+            Nuevo cliente
           </DialogTitle>
+          <DialogDescription>Todos los datos son obligatorios al crear un cliente.</DialogDescription>
         </DialogHeader>
 
         {!isActiveSedeSet() ? (
@@ -85,31 +70,20 @@ export const CreateClientModal = () => {
           </Alert>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-700">
-                  📍 Creando cliente en: <strong>{activeSede?.nombre}</strong>
-                </p>
-              </div>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="min-w-0 space-y-5" noValidate>
+              <p className="flex items-center gap-2 rounded-xl bg-violet-50 p-3 text-sm text-violet-950">
+                <MapPin className="h-4 w-4 shrink-0 text-[#310984]" />
+                Se creará en la sede <strong>{activeSede?.nombre}</strong>
+              </p>
 
-              <PersonalInfoSection control={form.control} />
-              <ContactInfoSection control={form.control} />
-              <AddressSection control={form.control} />
-              <ServiceInfoSection control={form.control} />
+              <ClientFormFields form={form} mode="create" initial={initial} clients={clients} canEditFiscal onOpenClient={() => setOpen(false)} />
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                >
+              <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" className="rounded-xl" onClick={() => setOpen(false)}>
                   Cancelar
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={createClient.isPending || !isActiveSedeSet()}
-                >
-                  {createClient.isPending ? 'Creando...' : 'Crear Cliente'}
+                <Button type="submit" className="rounded-xl" disabled={createClient.isPending || !isActiveSedeSet()}>
+                  {createClient.isPending ? 'Creando…' : 'Crear cliente'}
                 </Button>
               </div>
             </form>

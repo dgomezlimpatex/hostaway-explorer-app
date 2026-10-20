@@ -249,10 +249,10 @@ function App() {
                       <RoleProtectedRoute requiredModule="properties"><Properties /></RoleProtectedRoute>
                     } />
                     <Route path="/client-reservations" element={
-                      <RoleProtectedRoute requiredModule="clients"><ClientReservationsAdmin /></RoleProtectedRoute>
+                      <RoleProtectedRoute requiredModule="clients" excludedRoles={['supervisor']}><ClientReservationsAdmin /></RoleProtectedRoute>
                     } />
                     <Route path="/admin/client-portals" element={
-                      <RoleProtectedRoute requiredModule="clients"><ClientPortalsAdmin /></RoleProtectedRoute>
+                      <RoleProtectedRoute requiredModule="clients" excludedRoles={['supervisor']}><ClientPortalsAdmin /></RoleProtectedRoute>
                     } />
                     <Route path="/workers" element={
                       <RoleProtectedRoute requiredModule="workers"><Workers /></RoleProtectedRoute>
