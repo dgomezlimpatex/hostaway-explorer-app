@@ -115,7 +115,8 @@ export const useUpdateCleaner = () => {
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateCleanerData> }) => {
       const result = await cleanerStorage.update(id, updates);
-      if (!result) throw new Error('Trabajador no encontrado');
+      // Sin fila devuelta: RLS no permitió el cambio o la ficha no está en la sede activa.
+      if (!result) throw new Error('No se guardó: no tienes permiso para modificar esta ficha o ya no está en la sede seleccionada.');
       return result;
     },
     onSuccess: () => {

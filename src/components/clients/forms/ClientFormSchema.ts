@@ -1,32 +1,24 @@
 
 import * as z from 'zod';
 
+// Forma de los valores del formulario de cliente. Los requisitos (obligatorios,
+// formato, datos fiscales) dependen de alta/edición y están en clientRules.buildClientSchema.
 export const clientSchema = z.object({
-  nombre: z.string().min(1, 'El nombre es obligatorio'),
-  cifNif: z.string().min(1, 'El CIF/NIF es obligatorio'),
-  telefono: z.string().min(1, 'El teléfono es obligatorio'),
-  email: z.string().email('Email inválido'),
-  direccionFacturacion: z.string().min(1, 'La dirección es obligatoria'),
-  codigoPostal: z.string().min(1, 'El código postal es obligatorio'),
-  ciudad: z.string().min(1, 'La ciudad es obligatoria'),
-  tipoServicio: z.enum([
-    'limpieza-mantenimiento',
-    'mantenimiento-cristaleria', 
-    'limpieza-turistica',
-    'limpieza-puesta-punto',
-    'limpieza-final-obra',
-    'check-in',
-    'desplazamiento',
-    'limpieza-especial',
-    'trabajo-extraordinario'
-  ]),
-  metodoPago: z.enum(['transferencia', 'efectivo', 'bizum']),
-  supervisor: z.string().min(1, 'El supervisor es obligatorio'),
+  nombre: z.string(),
+  cifNif: z.string(),
+  telefono: z.string(),
+  email: z.string(),
+  direccionFacturacion: z.string(),
+  codigoPostal: z.string(),
+  ciudad: z.string(),
+  tipoServicio: z.string(),
+  metodoPago: z.string(),
+  supervisor: z.string(),
   factura: z.boolean(),
-  linenControlEnabled: z.boolean().optional(),
-  amenitiesControlEnabled: z.boolean().optional(),
-  photosVisibleToClient: z.boolean().optional(),
-  isActive: z.boolean().optional(),
+  linenControlEnabled: z.boolean(),
+  amenitiesControlEnabled: z.boolean(),
+  photosVisibleToClient: z.boolean(),
+  isActive: z.boolean(),
 });
 
 export type ClientFormData = z.infer<typeof clientSchema>;

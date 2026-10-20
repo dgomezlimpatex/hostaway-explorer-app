@@ -250,14 +250,29 @@ export class BaseStorageService<T extends BaseEntity, CreateData = Omit<T, keyof
       }
     }
 
-    const { error, count } = await query;
+    // Pedir las filas borradas: sin error y sin filas (RLS, otra sede o ya borrado) no es un éxito.
+    const { data, error } = await query.select('id');
 
     if (error) {
       console.error(`❌ Error deleting from ${this.config.tableName}:`, error);
       throw error;
     }
 
-    console.log(`✅ BaseStorage - Delete successful from ${this.config.tableName}, count:`, count);
+    const deleted = Array.isArray(data) ? data.length : 0;
+    if (deleted === 0) {
+      console.warn(`⚠️ BaseStorage - No rows deleted from ${this.config.tableName} for id:`, id);
+      throw new DeleteNotAppliedError(this.config.tableName);
+    }
+
+    console.log(`✅ BaseStorage - Delete successful from ${this.config.tableName}, rows:`, deleted);
     return true;
+  }
+}
+
+/** El borrado no afectó a ninguna fila: sin permiso, fuera de la sede activa o ya eliminado. */
+export class DeleteNotAppliedError extends Error {
+  constructor(public readonly tableName: string) {
+    super('No se ha eliminado ningún registro: puede que no tengas permiso o que ya no exista.');
+    this.name = 'DeleteNotAppliedError';
   }
 }
