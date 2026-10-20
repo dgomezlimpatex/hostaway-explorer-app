@@ -7,7 +7,6 @@ import {
   RECENT_QUEUE_DAYS,
   dateRangeLabel,
   isForbidden,
-  maskedPhone,
   momentWithAge,
   queueAttempt,
   queueIdentity,
@@ -15,6 +14,7 @@ import {
   splitQueueByAge,
   type DeliveryRow,
   type QueueStateKey,
+  type RecipientLookup,
   type SendReconciliationRow,
 } from './whatsappMonitorModel';
 
@@ -23,8 +23,11 @@ interface Props {
   isError: boolean;
   error: unknown;
   onRetry: () => void;
-  /** Filas del historial cargado, solo para poner nombre si coinciden. */
+  /** Filas del historial cargado, solo para asunto y tarea si coinciden. */
   historyById: Map<string, DeliveryRow>;
+  /** Nombres resueltos por evento, independientes del historial cargado. */
+  names: RecipientLookup;
+  onRetryNames: () => void;
   selectedId: string | null;
   onReview: (deliveryId: string) => void;
 }
@@ -36,14 +39,14 @@ const STATE_STYLE: Record<QueueStateKey, string> = {
   unknown: 'bg-slate-100 text-slate-800 ring-slate-300',
 };
 
-function QueueItem({ row, history, selected, onReview }: { row: SendReconciliationRow; history?: DeliveryRow; selected: boolean; onReview: () => void }) {
-  const id = queueIdentity(row, history);
+function QueueItem({ row, history, names, selected, onReview }: { row: SendReconciliationRow; history?: DeliveryRow; names: RecipientLookup; selected: boolean; onReview: () => void }) {
+  const id = queueIdentity(row, history, names);
   const state = queueState(row);
   const attempt = queueAttempt(row);
   return (
     <li className={cn('flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-4', selected && 'bg-muted/50')}>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">
+        <p className={cn('truncate font-medium', !id.nameKnown && 'text-muted-foreground')}>
           {id.title}
           {id.phone && <span className="ml-2 font-normal text-muted-foreground">{id.phone}</span>}
           {row.channel === 'email' && <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700">Email alternativo</span>}
@@ -67,9 +70,9 @@ function QueueItem({ row, history, selected, onReview }: { row: SendReconciliati
   );
 }
 
-function Group({ title, rows, defaultOpen, historyById, selectedId, onReview }: {
+function Group({ title, rows, defaultOpen, historyById, names, selectedId, onReview }: {
   title: string; rows: SendReconciliationRow[]; defaultOpen: boolean;
-  historyById: Map<string, DeliveryRow>; selectedId: string | null; onReview: (id: string) => void;
+  historyById: Map<string, DeliveryRow>; names: RecipientLookup; selectedId: string | null; onReview: (id: string) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const listId = useId();
@@ -91,7 +94,7 @@ function Group({ title, rows, defaultOpen, historyById, selectedId, onReview }: 
       </button>
       <ul id={listId} aria-label={`${title}: envíos por comprobar`} className={cn('divide-y border-t', !open && 'hidden')}>
         {rows.map((row) => (
-          <QueueItem key={row.delivery_id} row={row} history={historyById.get(row.delivery_id)} selected={selectedId === row.delivery_id} onReview={() => onReview(row.delivery_id)} />
+          <QueueItem key={row.delivery_id} row={row} history={historyById.get(row.delivery_id)} names={names} selected={selectedId === row.delivery_id} onReview={() => onReview(row.delivery_id)} />
         ))}
       </ul>
     </div>
@@ -99,7 +102,7 @@ function Group({ title, rows, defaultOpen, historyById, selectedId, onReview }: 
 }
 
 /** Lista compacta de envíos cuyo resultado hay que comprobar a mano (solo administración). */
-export function WhatsAppManualQueue({ rows, isError, error, onRetry, historyById, selectedId, onReview }: Props) {
+export function WhatsAppManualQueue({ rows, isError, error, onRetry, historyById, names, onRetryNames, selectedId, onReview }: Props) {
   const { recent, older } = splitQueueByAge(rows);
   const anyRetryPending = rows.some((row) => queueAttempt(row).retryPending);
   const providers = new Set(rows.map((row) => row.channel));
@@ -119,10 +122,13 @@ export function WhatsAppManualQueue({ rows, isError, error, onRetry, historyById
         <p role="alert" className="text-sm text-red-700">No se pudo comprobar la cola. <button type="button" className="underline" onClick={onRetry}>Reintentar</button></p>
       )}
       {isError && isForbidden(error) && <p className="text-sm text-muted-foreground">Esta cola es solo de administración.</p>}
+      {rows.length > 0 && names.status === 'error' && (
+        <p role="alert" className="text-sm text-red-700">No se pudieron consultar los nombres de las destinatarias. <button type="button" className="underline" onClick={onRetryNames}>Reintentar</button></p>
+      )}
       {rows.length > 0 && (
         <div className="space-y-2">
-          <Group title={`Últimos ${RECENT_QUEUE_DAYS} días`} rows={recent} defaultOpen historyById={historyById} selectedId={selectedId} onReview={onReview} />
-          <Group title="Anteriores" rows={older} defaultOpen={recent.length === 0} historyById={historyById} selectedId={selectedId} onReview={onReview} />
+          <Group title={`Últimos ${RECENT_QUEUE_DAYS} días`} rows={recent} defaultOpen historyById={historyById} names={names} selectedId={selectedId} onReview={onReview} />
+          <Group title="Anteriores" rows={older} defaultOpen={recent.length === 0} historyById={historyById} names={names} selectedId={selectedId} onReview={onReview} />
         </div>
       )}
       {rows.length >= MANUAL_QUEUE_LIMIT && (

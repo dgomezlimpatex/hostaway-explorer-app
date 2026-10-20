@@ -42,6 +42,7 @@ const mixedQueue=()=>[
   Q('d6',{created_at:ago(18),recipient_masked:'•••• 1234',template_name:'task_approval_reminder_es',detail:'Resultado de Meta incierto (network_error): tras 15 minutos se permitirá un único reintento 2/2 para priorizar entrega; existe riesgo excepcional de duplicado'}),
   Q('r2',{created_at:ago(3*1440),recipient_masked:'•••• 5678',template_name:'task_modified_es',open_action_status:'pending'}),
   Q('r3',{created_at:ago(2),recipient_masked:'•••• 9012',uncertainty_state:'meta_contacting',detail:'Contactando con Meta'}),
+  Q('d3',{created_at:ago(46),recipient_masked:'•••• 9012',template_name:'task_assigned_v1'}),
   {delivery_id:'e1',notification_event_id:'ev-e1',channel:'email',provider:'resend',recipient_masked:'•••• 4321',template_name:'task_rejected_admin_fallback_email',uncertainty_state:'resend_uncertain',detail:'Resultado incierto: comprobar el proveedor antes de resolver',created_at:ago(60),open_action_status:null},
 ];
 const fiftyQueue=()=>Array.from({length:50},(_,i)=>Q('f'+i,{created_at:ago((60-i)*1440)}));
@@ -96,7 +97,34 @@ export function rpcUntyped(fn,args){
     }
   },delay));
 }
-export function fromUntypedTable(t){throw new Error('tabla no prevista '+t);}
+// Lecturas mínimas de nombres: notification_events (vínculo exacto) y cleaners (id,name).
+// ev-p5 simula un evento de otra sede que las políticas no devuelven.
+const EVENTS={
+  'ev-p1':{cleaner_id:'c-carmen',recipient_worker_id:null,recipient_name_snapshot:'Carmen Vidal'},
+  'ev-p2':{cleaner_id:'c-rosa',recipient_worker_id:null,recipient_name_snapshot:null},
+  'ev-p3':{cleaner_id:'c-borrada',recipient_worker_id:null,recipient_name_snapshot:null},
+  'ev-p4':{cleaner_id:'c-rosa',recipient_worker_id:'c-carmen',recipient_name_snapshot:null},
+  'ev-p6':{cleaner_id:'c-ines',recipient_worker_id:null,recipient_name_snapshot:null},
+  'ev-d6':{cleaner_id:'c-ana',recipient_worker_id:null,recipient_name_snapshot:'Ana Pérez'},
+  'ev-r2':{cleaner_id:'c-luis',recipient_worker_id:null,recipient_name_snapshot:null},
+  'ev-r3':{cleaner_id:'c-bego',recipient_worker_id:null,recipient_name_snapshot:'Begoña Ruiz'},
+  'ev-d3':{cleaner_id:'c-bego',recipient_worker_id:null,recipient_name_snapshot:'Marta Sanz'},
+  'ev-e1':{cleaner_id:null,recipient_worker_id:null,recipient_name_snapshot:null},
+  'ev-e2':{cleaner_id:'c-luis',recipient_worker_id:null,recipient_name_snapshot:null},
+};
+const CLEANERS={'c-carmen':'Carmen Vidal Ortega','c-rosa':'Rosa Díaz','c-ines':'Inés Mora','c-ana':'Ana Pérez','c-luis':'Luis Gómez','c-bego':'Begoña Ruiz'};
+export function fromUntypedTable(table){
+  return {select(columns){return {in(column,ids){
+    const s=window.fx||{};
+    (window.tableCalls=window.tableCalls||[]).push({table,columns,column,ids:[...ids]});
+    return new Promise(res=>setTimeout(()=>{
+      if((s.failTables||[]).includes(table)) return res({data:null,error:{code:'42501',message:'permission denied for table '+table}});
+      if(table==='notification_events') return res({data:ids.filter(id=>EVENTS[id]&&!(s.role==='manager')).map(id=>Object.assign({id},EVENTS[id])),error:null});
+      if(table==='cleaners') return res({data:ids.filter(id=>CLEANERS[id]).map(id=>({id,name:CLEANERS[id]})),error:null});
+      res({data:null,error:{message:'tabla no prevista '+table}});
+    },s.namesDelay||0));
+  }};}};
+}
 `;
 
 const auth = String.raw`

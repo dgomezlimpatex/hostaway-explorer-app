@@ -237,17 +237,77 @@ test('Recientes y anteriores: ninguna fila se pierde y las fechas son de Madrid'
   assert.deepEqual(m.splitQueueByAge([], NOW), { recent: [], older: [] });
 });
 
-test('Identificación: nombre del historial si coincide; si no, teléfono y ausencias honestas', () => {
-  const withHistory = m.queueIdentity(q({ recipient_masked: 'â€¢â€¢â€¢â€¢ 1234' }), row({ cleaner_name: 'Ana Pérez', event_type: 'task_approval_reminder' }));
-  assert.equal(withHistory.title, 'Ana Pérez');
-  assert.equal(withHistory.phone, '•••• 1234');
-  assert.equal(withHistory.subject, 'Recordatorio de aprobación');
-  assert.equal(withHistory.task, 'Orzán 1º A · mié 21 oct');
-  const alone = m.queueIdentity(q({ template_name: null }), undefined);
-  assert.equal(alone.title, 'Teléfono acabado en 7093');
-  assert.equal(alone.phone, null);
-  assert.equal(alone.subject, null);
-  assert.equal(alone.nameKnown, false);
+const ev = o => ({ id: 'e', cleaner_id: null, recipient_worker_id: null, recipient_name_snapshot: null, ...o });
+const ready = (events, cleaners) => ({ status: 'ready', byEvent: m.resolveRecipientNames(events, cleaners) });
+
+test('Nombres: solo por vínculo exacto del evento (snapshot primero, después la ficha por ID)', () => {
+  const events = [
+    ev({ id: 'e-snap', cleaner_id: 'c-ana', recipient_name_snapshot: ' Ana Pérez ' }),
+    // La ficha de Ana cambió de nombre: el aviso histórico conserva el guardado.
+    ev({ id: 'e-renamed', cleaner_id: 'c-ana', recipient_name_snapshot: 'Ana Pérez López' }),
+    ev({ id: 'e-record', cleaner_id: 'c-luis' }),
+    ev({ id: 'e-worker', recipient_worker_id: 'c-luis' }),
+    ev({ id: 'e-same', cleaner_id: 'c-luis', recipient_worker_id: 'c-luis' }),
+    ev({ id: 'e-deleted', cleaner_id: 'c-borrada' }),
+    ev({ id: 'e-ambiguous', cleaner_id: 'c-ana', recipient_worker_id: 'c-luis' }),
+    ev({ id: 'e-ambiguous-snap', cleaner_id: 'c-ana', recipient_worker_id: 'c-luis', recipient_name_snapshot: 'Luis Gómez' }),
+    ev({ id: 'e-none' }),
+    ev({ id: 'e-blank', cleaner_id: 'c-blank', recipient_name_snapshot: '   ' }),
+  ];
+  const cleaners = [{ id: 'c-ana', name: 'Ana Ruiz' }, { id: 'c-luis', name: 'Luis Gómez' }, { id: 'c-blank', name: '  ' }];
+  // Solo se piden fichas de eventos sin nombre guardado y con un único ID.
+  assert.deepEqual(m.workerIdsToLookup(events).sort(), ['c-blank', 'c-borrada', 'c-luis']);
+  const r = m.resolveRecipientNames(events, cleaners);
+  assert.deepEqual(r.get('e-snap'), { state: 'known', name: 'Ana Pérez', source: 'snapshot' });
+  assert.deepEqual(r.get('e-renamed'), { state: 'known', name: 'Ana Pérez López', source: 'snapshot' });
+  assert.deepEqual(r.get('e-record'), { state: 'known', name: 'Luis Gómez', source: 'record' });
+  assert.deepEqual(r.get('e-worker'), { state: 'known', name: 'Luis Gómez', source: 'record' });
+  assert.deepEqual(r.get('e-same'), { state: 'known', name: 'Luis Gómez', source: 'record' });
+  assert.equal(r.get('e-deleted').state, 'missing');
+  assert.equal(r.get('e-ambiguous').state, 'ambiguous');
+  assert.deepEqual(r.get('e-ambiguous-snap'), { state: 'known', name: 'Luis Gómez', source: 'snapshot' });
+  assert.equal(r.get('e-none').state, 'missing');
+  assert.equal(r.get('e-blank').state, 'missing');
+  assert.deepEqual(m.workerIdsToLookup([]), []);
+});
+
+test('Identificación: nombre como título, últimos 4 como referencia y ausencias honestas', () => {
+  const moji = 'â€¢â€¢â€¢â€¢ 7093';
+  // Dos trabajadoras con la misma terminación: cada envío lleva el nombre de su evento.
+  const lookup = ready([ev({ id: 'e1', recipient_name_snapshot: 'Ana Pérez' }), ev({ id: 'e2', cleaner_id: 'c-rosa' })], [{ id: 'c-rosa', name: 'Rosa Díaz' }]);
+  const a = m.queueIdentity(q({ notification_event_id: 'e1', recipient_masked: moji }), undefined, lookup);
+  const b = m.queueIdentity(q({ notification_event_id: 'e2', recipient_masked: moji }), undefined, lookup);
+  assert.equal(a.title, 'Ana Pérez');
+  assert.equal(b.title, 'Rosa Díaz');
+  assert.equal(a.phone, '•••• 7093');
+  assert.equal(a.nameSource, 'snapshot');
+  assert.equal(b.nameSource, 'record');
+  // El nombre del historial (ficha actual por la tarea) nunca sustituye al vínculo exacto.
+  const otherName = m.queueIdentity(q({ notification_event_id: 'e1' }), row({ cleaner_name: 'Otra Persona', event_type: 'task_approval_reminder' }), lookup);
+  assert.equal(otherName.title, 'Ana Pérez');
+  assert.equal(otherName.subject, 'Recordatorio de aprobación');
+  assert.equal(otherName.task, 'Orzán 1º A · mié 21 oct');
+  const notReturned = m.queueIdentity(q({ notification_event_id: 'e-otra-sede', template_name: null }), row({ cleaner_name: 'Ana Pérez' }), lookup);
+  assert.equal(notReturned.title, 'Nombre no disponible');
+  assert.equal(notReturned.nameKnown, false);
+  assert.equal(notReturned.phone, '•••• 7093');
+  assert.match(notReturned.nameNote, /no guardó el nombre/);
+  const ambiguous = m.queueIdentity(q({ notification_event_id: 'x' }), undefined, ready([ev({ id: 'x', cleaner_id: 'a', recipient_worker_id: 'b' })], [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }]));
+  assert.equal(ambiguous.title, 'Nombre no disponible');
+  assert.match(ambiguous.nameNote, /dos fichas/);
+  const loading = m.queueIdentity(q({}), row({ cleaner_name: 'Ana Pérez' }), { status: 'loading' });
+  assert.equal(loading.title, 'Buscando nombre…');
+  assert.equal(loading.nameNote, null);
+  const failed = m.queueIdentity(q({}), row({ cleaner_name: 'Ana Pérez' }), { status: 'error' });
+  assert.equal(failed.title, 'Nombre no disponible');
+  assert.equal(failed.nameNote, 'No se pudo consultar el nombre.');
+  const hidden = m.queueIdentity(q({ recipient_masked: 'Oculto', template_name: null }), undefined, { status: 'error' });
+  assert.equal(hidden.phone, null);
+  assert.equal(hidden.subject, null);
+  // Nunca se muestran más de 4 dígitos.
+  const long = m.queueIdentity(q({ notification_event_id: 'e1', recipient_masked: '+34 600 111 222' }), undefined, lookup);
+  assert.equal(long.phone, '•••• 1222');
+  for (const value of [a, b, notReturned, failed, long]) assert.ok(!/\d{5,}/.test(JSON.stringify(value)));
 });
 
 console.log(`whatsappMonitorModelTest: ${passed} grupos correctos`);

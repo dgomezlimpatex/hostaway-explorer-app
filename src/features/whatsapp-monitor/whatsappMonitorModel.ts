@@ -634,16 +634,99 @@ export const momentWithAge = (value: string, now = Date.now()) => `${formatMomen
 /** Límite de filas que pide la página a la RPC de la cola (ordenada de más antigua a más reciente). */
 export const MANUAL_QUEUE_LIMIT = 50;
 
+// ---------------------------------------------------------------------------
+// Nombre de la destinataria de un envío por comprobar
+// ---------------------------------------------------------------------------
+
+/** Campos mínimos de notification_events: sin teléfonos ni snapshot JSON. */
+export interface RecipientEventRow {
+  id: string;
+  cleaner_id: string | null;
+  recipient_worker_id: string | null;
+  recipient_name_snapshot: string | null;
+}
+
+export interface CleanerNameRow {
+  id: string;
+  name: string | null;
+}
+
+export type RecipientName =
+  /** snapshot = nombre guardado al crear el aviso; record = nombre actual de la ficha enlazada por ID. */
+  | { state: 'known'; name: string; source: 'snapshot' | 'record' }
+  /** Ficha borrada, fuera del alcance o evento no legible. */
+  | { state: 'missing'; name: null }
+  /** El evento apunta a dos fichas distintas y no guardó nombre: no se elige ninguna. */
+  | { state: 'ambiguous'; name: null };
+
+export type RecipientLookup =
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'ready'; byEvent: Map<string, RecipientName> };
+
+const trimmed = (value: string | null | undefined) => (value ?? '').trim() || null;
+
+/** IDs de ficha enlazados al evento, sin repetir (recipient_worker_id primero). */
+function linkedWorkerIds(event: RecipientEventRow) {
+  return [...new Set([event.recipient_worker_id, event.cleaner_id].filter((id): id is string => Boolean(id)))];
+}
+
+/** Fichas que hay que consultar: solo eventos sin nombre guardado y con un único ID. */
+export function workerIdsToLookup(events: RecipientEventRow[]) {
+  const ids = new Set<string>();
+  for (const event of events) {
+    if (trimmed(event.recipient_name_snapshot)) continue;
+    const linked = linkedWorkerIds(event);
+    if (linked.length === 1) ids.add(linked[0]);
+  }
+  return [...ids];
+}
+
+/**
+ * Nombre por evento usando solo vínculos exactos: primero el nombre guardado en
+ * el aviso; si no existe, el de la ficha enlazada por su ID. Nunca por teléfono
+ * ni por la asignación actual de la tarea.
+ */
+export function resolveRecipientNames(events: RecipientEventRow[], cleaners: CleanerNameRow[]) {
+  const names = new Map(cleaners.map((cleaner) => [cleaner.id, trimmed(cleaner.name)]));
+  const result = new Map<string, RecipientName>();
+  for (const event of events) {
+    const snapshot = trimmed(event.recipient_name_snapshot);
+    if (snapshot) { result.set(event.id, { state: 'known', name: snapshot, source: 'snapshot' }); continue; }
+    const linked = linkedWorkerIds(event);
+    if (linked.length > 1) { result.set(event.id, { state: 'ambiguous', name: null }); continue; }
+    const name = linked.length === 1 ? names.get(linked[0]) ?? null : null;
+    result.set(event.id, name ? { state: 'known', name, source: 'record' } : { state: 'missing', name: null });
+  }
+  return result;
+}
+
 /** Identificación operativa de una fila de la cola, sin inventar datos ausentes. */
-export function queueIdentity(row: SendReconciliationRow, history: DeliveryRow | undefined) {
+export function queueIdentity(row: SendReconciliationRow, history: DeliveryRow | undefined, lookup: RecipientLookup) {
   const subject = history ? eventLabel(history) : templateSubject(row.template_name);
-  const name = history?.cleaner_name || null;
   const task = history ? [history.property, formatTaskDate(history.task_date)].filter(Boolean).join(' · ') : '';
+  const resolved: RecipientName = lookup.status === 'ready'
+    ? lookup.byEvent.get(row.notification_event_id) ?? { state: 'missing', name: null }
+    : { state: 'missing', name: null };
+  const tail = phoneTail(row.recipient_masked);
+  const phone = tail ? maskedPhone(row.recipient_masked) : null;
+  if (resolved.state === 'known') {
+    return { title: resolved.name, nameKnown: true, nameSource: resolved.source, nameNote: null, phone, subject, task };
+  }
+  const nameNote = lookup.status === 'loading'
+    ? null
+    : lookup.status === 'error'
+      ? 'No se pudo consultar el nombre.'
+      : resolved.state === 'ambiguous'
+        ? 'El aviso enlaza a dos fichas distintas y no guardó el nombre; no se atribuye a ninguna.'
+        : 'El aviso no guardó el nombre y su ficha ya no existe o no es visible.';
   return {
-    title: name ?? recipientLabel(row.recipient_masked, row.channel),
-    phone: name ? maskedPhone(row.recipient_masked) : null,
+    title: lookup.status === 'loading' ? 'Buscando nombre…' : 'Nombre no disponible',
+    nameKnown: false,
+    nameSource: null,
+    nameNote,
+    phone,
     subject,
     task,
-    nameKnown: Boolean(name),
   };
 }
