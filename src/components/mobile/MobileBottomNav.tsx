@@ -16,6 +16,8 @@ import { MobileCreateActions } from './MobileCreateActions';
 interface MobileBottomNavProps {
   onNewTask?: () => void;
   onNewBatchTask?: () => void;
+  /** Roles that cannot create tasks: no "Crear" button at all (it would lead nowhere). */
+  hideCreate?: boolean;
 }
 
 const navItemClass = ({ isActive }: { isActive: boolean }) =>
@@ -27,6 +29,7 @@ const navItemClass = ({ isActive }: { isActive: boolean }) =>
 export function MobileBottomNav({
   onNewTask,
   onNewBatchTask,
+  hideCreate = false,
 }: MobileBottomNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
@@ -45,7 +48,9 @@ export function MobileBottomNav({
           <span>Calendario</span>
         </NavLink>
 
-        {hasCreateActions ? (
+        {hideCreate ? (
+          <div aria-hidden="true" />
+        ) : hasCreateActions ? (
           <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium text-blue-700">
             <MobileCreateActions
               onNewTask={onNewTask}

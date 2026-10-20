@@ -5,11 +5,12 @@ import { EnhancedTaskCard } from "./EnhancedTaskCard";
 import { Task, Cleaner } from "@/types/calendar";
 import type { DragState } from "@/hooks/useDragAndDrop";
 import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
-import { getCleanerAvailabilityForDay, timeToMinutes, isCleanerAvailableAtTime } from "@/utils/availabilityUtils";
+import { getCleanerAvailabilityState } from "@/utils/availabilityUtils";
 import { getTaskPositionWithOverlap, getEffectiveTaskEndTime } from "@/utils/taskPositioning";
 import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
-import { ABSENCE_TYPE_COLORS, MAINTENANCE_COLOR } from "@/types/workerAbsence";
+import { ABSENCE_TYPE_COLORS, ABSENCE_TYPE_LABELS, MAINTENANCE_COLOR } from "@/types/workerAbsence";
 import { isTaskAssignedToCleaner } from "@/utils/taskAssignments";
+import { COMPACT_CARD_PX, DEFAULT_SCALE, minutesToLeftPx, timelineWidthPx, type TimelineScale } from "./utils/timelineScale";
 
 interface CalendarGridProps {
   cleaners: Cleaner[];
@@ -31,6 +32,11 @@ interface CalendarGridProps {
   absenceStatus?: Record<string, WorkerAbsenceStatus>;
   isDragging?: boolean;
   preferredCleanerIds?: Set<string>;
+  /** Visible range and column width of the timeline (zoom). */
+  scale?: TimelineScale;
+  /** Minutes since 00:00 (Madrid) when the day shown is today: draws the "now" line. */
+  nowMinutes?: number | null;
+  onBlockedDrop?: (reason: string) => void;
 }
 
 // Shared style objects keep EnhancedTaskCard's memo effective between renders.
@@ -70,7 +76,9 @@ const CleanerRow = memo(({
   absenceStatus,
   isPreferred,
   isDimmed,
-  cleanerAssignmentsMap
+  cleanerAssignmentsMap,
+  scale,
+  onBlockedDrop
 }: {
   cleaner: Cleaner;
   index: number;
@@ -91,26 +99,19 @@ const CleanerRow = memo(({
   isPreferred?: boolean;
   isDimmed?: boolean;
   cleanerAssignmentsMap?: Record<string, string[]>;
+  scale: TimelineScale;
+  onBlockedDrop?: (reason: string) => void;
 }) => {
-  // Removed excessive availability logging
+  // Stable per row so the cards' memo keeps working.
+  const rowCleaner = useMemo(() => ({ id: cleaner.id, name: cleaner.name }), [cleaner.id, cleaner.name]);
 
-  // Function to check if a time slot is within available hours
-  const isTimeSlotAvailable = useMemo(() => {
+  // Availability of each slot: available, unavailable (configured) or unknown
+  // (nothing configured, shown neutral and never as free capacity).
+  const getSlotAvailability = useMemo(() => {
     return (hour: number, minute: number) => {
       const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      
-      // Check if cleaner is available at this specific time using the utility function
-      const availabilityCheck = isCleanerAvailableAtTime(
-        cleaner.id,
-        currentDate,
-        timeString,
-        timeString, // For slot check, start and end are the same
-        availability
-      );
-      
-      // Removed excessive timeslot logging
-      
-      return availabilityCheck.available;
+      // For slot check, start and end are the same
+      return getCleanerAvailabilityState(cleaner.id, currentDate, timeString, timeString, availability);
     };
   }, [cleaner.id, currentDate, availability]);
 
@@ -167,7 +168,7 @@ const CleanerRow = memo(({
     return timeSlots.map((time) => {
       const [hour, minute] = time.split(':').map(Number);
       const isOccupied = isTimeSlotOccupied(cleaner.id, hour, minute);
-      const isAvailable = isTimeSlotAvailable(hour, minute);
+      const slotAvailability = getSlotAvailability(hour, minute);
       const hourlyAbsence = getHourlyAbsenceForSlot(hour, minute);
       
       return (
@@ -177,7 +178,11 @@ const CleanerRow = memo(({
           minute={minute}
           cleanerId={cleaner.id}
           isOccupied={isOccupied}
-          isAvailable={isAvailable}
+          isAvailable={slotAvailability.state !== 'unavailable'}
+          availabilityUnknown={slotAvailability.state === 'unknown'}
+          unavailableReason={slotAvailability.reason}
+          onBlockedDrop={onBlockedDrop}
+          width={scale.slotWidth}
           hourlyAbsence={hourlyAbsence}
           draggedTaskId={dragState.draggedTask?.id}
           onDragOver={onDragOver}
@@ -185,7 +190,7 @@ const CleanerRow = memo(({
         />
       );
     });
-  }, [timeSlots, cleaner.id, cleaner.name, isTimeSlotOccupied, isTimeSlotAvailable, getHourlyAbsenceForSlot, dragState.draggedTask?.id, onDragOver, onDrop, cleaners]);
+  }, [timeSlots, cleaner.id, isTimeSlotOccupied, getSlotAvailability, getHourlyAbsenceForSlot, dragState.draggedTask?.id, onDragOver, onDrop, cleaners, scale.slotWidth, onBlockedDrop]);
 
   // Memoize task elements for this cleaner with overlap detection
   const taskElements = useMemo(() => {
@@ -219,7 +224,8 @@ const CleanerRow = memo(({
         displayTasksOnly,
         cleaner.id,
         [cleaner],
-        cleanerAssignmentsMap
+        cleanerAssignmentsMap,
+        scale
       );
       const isBeingDragged = dragState.draggedTask?.id === original.id;
       const isSplit = count > 1;
@@ -260,6 +266,9 @@ const CleanerRow = memo(({
             onDragEnd={onDragEnd}
             disableResize={isSplit}
             style={position.hasOverlap ? OVERLAP_CARD_STYLE : CARD_STYLE}
+            rowCleaner={rowCleaner}
+            assignedCount={count}
+            compact={position.widthPx < COMPACT_CARD_PX}
           />
           {isSplit && (
             <div
@@ -272,7 +281,7 @@ const CleanerRow = memo(({
         </div>
       );
     });
-  }, [cleanerTasks, cleaner.id, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd, cleanerAssignmentsMap]);
+  }, [cleanerTasks, cleaner, rowCleaner, dragState.draggedTask?.id, onTaskClick, onDragStart, onDragEnd, cleanerAssignmentsMap, scale]);
 
    // Maintenance & hourly absence continuous overlay blocks (one per period, not per slot)
    const absenceBlocks = useMemo(() => {
@@ -305,23 +314,20 @@ const CleanerRow = memo(({
          startTime: a.startTime,
          endTime: a.endTime,
          color,
-         label: a.type,
+         // Same Spanish labels as the team column (e.g. "Baja médica", never "sick").
+         label: ABSENCE_TYPE_LABELS[a.type as keyof typeof ABSENCE_TYPE_LABELS] || 'Ausencia',
          icon: '⏰',
          type: 'absence',
        });
      });
-
-     const slotWidth = 50;
-     const minutesPerSlot = 30;
-     const dayStartMinutes = 6 * 60;
 
      return blocks.map(b => {
        const [sh, sm] = b.startTime.split(':').map(Number);
        const [eh, em] = b.endTime.split(':').map(Number);
        const startMin = sh * 60 + sm;
        const endMin = eh * 60 + em;
-       const left = ((startMin - dayStartMinutes) / minutesPerSlot) * slotWidth;
-       const width = ((endMin - startMin) / minutesPerSlot) * slotWidth;
+       const left = minutesToLeftPx(startMin, scale);
+       const width = minutesToLeftPx(endMin, scale) - left;
 
        return (
          <div
@@ -354,7 +360,7 @@ const CleanerRow = memo(({
          </div>
        );
      });
-   }, [absenceStatus?.maintenanceCleanings, absenceStatus?.hourlyAbsences]);
+   }, [absenceStatus?.maintenanceCleanings, absenceStatus?.hourlyAbsences, scale]);
 
    const isAbsent = absenceStatus?.isAbsent;
    const absenceColor = absenceStatus?.absenceColor || '#6B7280';
@@ -402,7 +408,10 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
     assignmentsMap,
     absenceStatus,
     isDragging,
-    preferredCleanerIds
+    preferredCleanerIds,
+    scale = DEFAULT_SCALE,
+    nowMinutes,
+    onBlockedDrop
    }, ref) => {
 
     // Memoize cleaner rows with tasks
@@ -438,20 +447,32 @@ export const CalendarGrid = memo(forwardRef<HTMLDivElement, CalendarGridProps>(
             isPreferred={isDragging && preferredCleanerIds && preferredCleanerIds.size > 0 && preferredCleanerIds.has(cleaner.id)}
             isDimmed={isDragging && preferredCleanerIds && preferredCleanerIds.size > 0 && !preferredCleanerIds.has(cleaner.id)}
             cleanerAssignmentsMap={assignmentsMap}
+            scale={scale}
+            onBlockedDrop={onBlockedDrop}
           />
         );
       });
-    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied, assignmentsMap, absenceStatus, isDragging, preferredCleanerIds]);
+    }, [cleaners, timeSlots, assignedTasks, availability, currentDate, dragState, onDragOver, onDrop, onDragStart, onDragEnd, onTaskClick, getTaskPosition, isTimeSlotOccupied, assignmentsMap, absenceStatus, isDragging, preferredCleanerIds, scale, onBlockedDrop]);
+
+     const showNow = typeof nowMinutes === 'number' && nowMinutes >= scale.startMinutes && nowMinutes <= scale.endMinutes;
 
      return (
        <div className="flex-1 relative">
          {/* Content sin scroll propio */}
-         <div 
+         <div
            ref={ref}
            className="relative z-10"
-           style={{ minWidth: '1000px' }}
+           style={{ minWidth: `${timelineWidthPx(scale)}px` }}
          >
            {cleanerRows}
+           {showNow && (
+             <div
+               className="absolute top-0 bottom-0 z-30 w-0.5 bg-danger/80 pointer-events-none"
+               style={{ left: `${minutesToLeftPx(nowMinutes as number, scale)}px` }}
+               data-testid="calendar-now-line"
+               aria-hidden="true"
+             />
+           )}
          </div>
        </div>
      );

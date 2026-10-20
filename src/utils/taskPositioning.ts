@@ -107,7 +107,8 @@ export const getTaskPositionWithOverlap = (
   allTasks: any[],
   cleanerId: string,
   cleaners: any[],
-  assignmentsMap?: Record<string, string[]>
+  assignmentsMap?: Record<string, string[]>,
+  scale: { startMinutes: number; slotWidth: number } = { startMinutes: 6 * 60, slotWidth: 50 }
 ) => {
   const timeToMinutes = (time: string) => {
     const [hours, minutes] = time.split(':').map(Number);
@@ -115,12 +116,15 @@ export const getTaskPositionWithOverlap = (
   };
 
   const startMinutes = timeToMinutes(startTime);
-  const endMinutes = timeToMinutes(endTime);
-  
-  // Each time slot is now 50px wide and represents 30 minutes
-  const slotWidth = 50;
+  let endMinutes = timeToMinutes(endTime);
+  // A window that crosses midnight is drawn up to 24:00.
+  if (endMinutes <= startMinutes) endMinutes = 24 * 60;
+
+  // Each time slot is `slotWidth` px wide and represents 30 minutes, starting
+  // at the first visible minute of the timeline.
+  const slotWidth = scale.slotWidth;
   const minutesPerSlot = 30;
-  const dayStartMinutes = 6 * 60; // 6:00 AM
+  const dayStartMinutes = scale.startMinutes;
   
   // Calculate position based on slots from day start
   const slotsFromStart = (startMinutes - dayStartMinutes) / minutesPerSlot;
@@ -161,9 +165,15 @@ export const getTaskPositionWithOverlap = (
     topOffset = (taskIndex * 100) / totalOverlapping;
   }
   
+  // Real width (a minimum of 15 minutes so the block stays visible): a wider
+  // minimum used to cover the next task and look like an overlap.
+  const minWidth = (15 / minutesPerSlot) * slotWidth;
+  const finalWidth = Math.max(widthPixels, minWidth);
+
   return { 
     left: `${leftPixels}px`, 
-    width: `${Math.max(widthPixels, 80)}px`,
+    width: `${finalWidth}px`,
+    widthPx: finalWidth,
     top: `${topOffset}%`,
     height: `${heightAdjustment * 100}%`,
     hasOverlap: overlappingTasks.length > 0,

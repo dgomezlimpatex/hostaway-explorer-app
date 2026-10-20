@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { WorkersColumn } from "./WorkersColumn";
 import { TimelineHeader } from "./TimelineHeader";
@@ -10,6 +11,18 @@ import { CleanerAvailability } from "@/hooks/useCleanerAvailability";
 import { useDeviceType } from '@/hooks/use-mobile';
 import { cn } from "@/lib/utils";
 import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
+import { formatMadridDate } from "@/utils/date";
+import { getMadridToday } from "@/utils/madridCalendar";
+import { DEFAULT_SCALE, getInitialScrollLeft, timeToMinutes, timelineWidthPx, type TimelineScale } from "./utils/timelineScale";
+
+// Minutes since 00:00 in Europe/Madrid, whatever the device timezone.
+const getMadridNowMinutes = () => {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value || 0);
+  return get('hour') * 60 + get('minute');
+};
 
 interface CalendarLayoutProps {
   cleaners: Cleaner[];
@@ -34,6 +47,11 @@ interface CalendarLayoutProps {
   isDragging?: boolean;
   preferredCleanerIds?: Set<string>;
   workloadMap?: Record<string, WorkloadSummary>;
+  /** Visible range and column width (zoom). */
+  scale?: TimelineScale;
+  onBlockedDrop?: (reason: string) => void;
+  /** Cleaners without availability configured for the day shown. */
+  unconfiguredCleanerIds?: Set<string>;
 }
 
 export const CalendarLayout = ({
@@ -58,9 +76,45 @@ export const CalendarLayout = ({
   absenceStatus,
   isDragging,
   preferredCleanerIds,
-  workloadMap
+  workloadMap,
+  scale = DEFAULT_SCALE,
+  onBlockedDrop,
+  unconfiguredCleanerIds
 }: CalendarLayoutProps) => {
   const { isMobile, isTablet } = useDeviceType();
+  const dayStr = formatMadridDate(currentDate);
+  const isToday = dayStr === getMadridToday();
+
+  // "Now" line, refreshed every minute while today is shown.
+  const [nowMinutes, setNowMinutes] = useState<number | null>(() => (isToday ? getMadridNowMinutes() : null));
+  useEffect(() => {
+    if (!isToday) {
+      setNowMinutes(null);
+      return;
+    }
+    setNowMinutes(getMadridNowMinutes());
+    const timer = window.setInterval(() => setNowMinutes(getMadridNowMinutes()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [isToday]);
+
+  // When the day (or zoom) changes, open on the current time for today, or
+  // on the first task of the day; never stay stuck at the left edge.
+  const firstTaskStart = assignedTasks
+    .filter((task) => task.date === dayStr)
+    .reduce<number | null>((min, task) => {
+      const start = timeToMinutes(task.startTime);
+      return min === null || start < min ? start : min;
+    }, null);
+  useEffect(() => {
+    const body = bodyScrollRef.current;
+    if (!body) return;
+    const target = isToday ? getMadridNowMinutes() : firstTaskStart;
+    if (target === null) return;
+    body.scrollLeft = getInitialScrollLeft(target, scale);
+    if (headerScrollRef.current) headerScrollRef.current.scrollLeft = body.scrollLeft;
+    // Only on day/zoom changes: later refetches keep the person's scroll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayStr, scale.slotWidth, scale.startMinutes]);
 
   return (
     <Card className="border-0 shadow-xl overflow-hidden bg-card animate-fade-in flex-1 flex flex-col min-h-0">
@@ -76,11 +130,12 @@ export const CalendarLayout = ({
               ref={headerScrollRef}
               className="flex-1 h-12 bg-white border-b border-gray-200 overflow-hidden"
             >
-              <div className="flex h-full" style={{ minWidth: '1000px' }}>
+              <div className="flex h-full" style={{ minWidth: `${timelineWidthPx(scale)}px` }}>
                 {timeSlots.map((time) => (
-                  <div 
-                    key={time} 
-                    className={`min-w-[50px] h-12 flex items-center justify-center text-[11px] font-medium text-gray-600 border-r border-gray-100 ${
+                  <div
+                    key={time}
+                    style={{ width: scale.slotWidth, minWidth: scale.slotWidth }}
+                    className={`h-12 flex-shrink-0 flex items-center justify-center text-[11px] font-medium text-gray-600 border-r border-gray-100 ${
                       time.endsWith(':00') ? 'bg-gray-50' : 'bg-white'
                     }`}
                   >
@@ -113,6 +168,7 @@ export const CalendarLayout = ({
                   isDragging={isDragging}
                   preferredCleanerIds={preferredCleanerIds}
                   workloadMap={workloadMap}
+                  unconfiguredCleanerIds={unconfiguredCleanerIds}
                 />
               </div>
 
@@ -136,6 +192,9 @@ export const CalendarLayout = ({
                 absenceStatus={absenceStatus}
                 isDragging={isDragging}
                 preferredCleanerIds={preferredCleanerIds}
+                scale={scale}
+                nowMinutes={nowMinutes}
+                onBlockedDrop={onBlockedDrop}
               />
             </div>
           </div>

@@ -10,6 +10,8 @@ interface OverlapAlertsBannerProps {
   showDate?: boolean;
   /** Visible period. Hiding the banner only applies to the period where it was hidden. */
   resetKey?: string;
+  /** Opens the detail of a task from its chip. */
+  onTaskSelect?: (taskId: string) => void;
 }
 
 export const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
@@ -17,6 +19,7 @@ export const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
   cleaners,
   showDate = false,
   resetKey = '',
+  onTaskSelect,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
@@ -25,7 +28,8 @@ export const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
   const entries = Object.entries(overlapsByCleanerMap);
   if (entries.length === 0 || dismissed) return null;
 
-  const totalOverlaps = entries.reduce((acc, [, arr]) => acc + arr.length, 0);
+  // Distinct tasks: a shared task overlapping in two rows counts once.
+  const totalOverlaps = new Set(entries.flatMap(([, arr]) => arr.map((task) => task.id))).size;
 
   return (
     <div className="mb-2 flex-shrink-0 border border-line bg-paper dark:bg-red-950/20 dark:border-red-900/50 rounded-md text-sm">
@@ -42,8 +46,8 @@ export const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
           )}
           <AlertTriangle className="h-4 w-4 flex-shrink-0" />
           <span className="font-semibold truncate">
-            {entries.length} {entries.length === 1 ? 'conflicto' : 'conflictos'} de horario
-            {' '}({totalOverlaps} tareas)
+            {entries.length} {entries.length === 1 ? 'trabajadora con solapes' : 'trabajadoras con solapes'}
+            {' '}({totalOverlaps} {totalOverlaps === 1 ? 'tarea' : 'tareas'})
           </span>
         </button>
         <button
@@ -65,6 +69,7 @@ export const OverlapAlertsBanner: React.FC<OverlapAlertsBannerProps> = ({
                 overlappingTasks={overlaps}
                 cleanerName={cleaner.name}
                 showDate={showDate}
+                onTaskSelect={onTaskSelect}
               />
             ) : null;
           })}

@@ -10,11 +10,18 @@ import {
   Clock,
   Home,
   MapPin,
+  Search,
   UserRound,
+  X,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as DatePicker } from '@/components/ui/calendar';
+import { getDisplayStatus } from '@/utils/calendarTaskStatus';
+import { cleanerNameMatches, filterCalendarTasks } from './utils/calendarSearch';
 import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { cn } from '@/lib/utils';
 import { formatMadridDate } from '@/utils/date';
@@ -30,8 +37,18 @@ interface ManagerMobileAgendaCalendarProps {
   onNavigateDate: (direction: 'prev' | 'next') => void;
   onGoToToday: () => void;
   onTaskClick: (task: Task) => void;
-  onNewTask: () => void;
-  onNewBatchTask: () => void;
+  /** Hidden when the role cannot create tasks. */
+  onNewTask?: () => void;
+  onNewBatchTask?: () => void;
+  /** Jump to any date (same civil-date picker as desktop). */
+  onSelectDate?: (date: Date) => void;
+  /** Search and client filter shared with desktop (kept in the URL). */
+  searchTerm?: string;
+  onSearchChange?: (term: string) => void;
+  clientOptions?: Array<{ id: string; name: string }>;
+  selectedClientIds?: string[];
+  onClientFilterChange?: (ids: string[]) => void;
+  clientNameById?: Map<string, string>;
 }
 
 type AgendaFilter = 'all' | 'unassigned' | string;
@@ -47,7 +64,7 @@ function AgendaTaskCard({ task, onTaskClick }: { task: Task; onTaskClick: (task:
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-start justify-between gap-2">
             <h3 className="line-clamp-2 text-sm font-semibold text-ink">{task.property}</h3>
-            <TaskStatusBadge status={task.calendarStatus ?? task.status} showLabel />
+            <TaskStatusBadge status={getDisplayStatus(task)} showLabel />
           </div>
           <div className="space-y-1 text-xs text-muted-foreground">
             <p className="flex items-center gap-1.5">
@@ -80,22 +97,41 @@ export function ManagerMobileAgendaCalendar({
   onTaskClick,
   onNewTask,
   onNewBatchTask,
+  onSelectDate,
+  searchTerm = '',
+  onSearchChange,
+  clientOptions = [],
+  selectedClientIds = [],
+  onClientFilterChange,
+  clientNameById,
 }: ManagerMobileAgendaCalendarProps) {
   const navigate = useNavigate();
   const [selectedFilter, setSelectedFilter] = useState<AgendaFilter>('all');
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const currentDateStr = formatMadridDate(currentDate);
+  const selectedClientSet = useMemo(() => new Set(selectedClientIds), [selectedClientIds]);
+  const hasSearchOrClient = !!searchTerm.trim() || selectedClientSet.size > 0;
 
+  // Day tasks after the search and client filter (same rules as desktop).
   const dayTasks = useMemo(
-    () => tasks.filter((task) => task.date === currentDateStr),
-    [tasks, currentDateStr]
+    () => filterCalendarTasks(tasks.filter((task) => task.date === currentDateStr), {
+      term: searchTerm,
+      clientIds: selectedClientSet,
+      clientNameById,
+      matchingCleanerIds: searchTerm.trim()
+        ? new Set(cleaners.filter((c) => cleanerNameMatches(c.name, searchTerm.trim())).map((c) => c.id))
+        : null,
+    }),
+    [tasks, currentDateStr, searchTerm, selectedClientSet, clientNameById, cleaners]
   );
 
+  // Counters use the displayed status (reports first), like the cards.
   const summary = useMemo(() => {
     return {
       total: dayTasks.length,
       unassigned: dayTasks.filter((task) => !isTaskAssigned(task)).length,
-      inProgress: dayTasks.filter((task) => task.status === 'in-progress').length,
-      completed: dayTasks.filter((task) => task.status === 'completed').length,
+      inProgress: dayTasks.filter((task) => getDisplayStatus(task) === 'in-progress').length,
+      completed: dayTasks.filter((task) => getDisplayStatus(task) === 'completed').length,
     };
   }, [dayTasks]);
 
@@ -142,9 +178,38 @@ export function ManagerMobileAgendaCalendar({
           </Button>
           <div className="text-center">
             <p className="text-xs font-medium uppercase tracking-wide text-ink-2">Agenda diaria</p>
-            <h1 className="text-lg font-bold capitalize">
-              {format(civilDateToDisplayDate(currentDateStr), 'EEEE d MMM', { locale: es })}
-            </h1>
+            {onSelectDate ? (
+              <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-md px-1 text-lg font-bold capitalize focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Elegir fecha. Fecha mostrada: ${format(civilDateToDisplayDate(currentDateStr), 'EEEE d MMMM', { locale: es })}`}
+                  >
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    {format(civilDateToDisplayDate(currentDateStr), 'EEEE d MMM', { locale: es })}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="center">
+                  <DatePicker
+                    mode="single"
+                    selected={currentDate}
+                    defaultMonth={currentDate}
+                    weekStartsOn={1}
+                    onSelect={(date) => {
+                      if (!date) return;
+                      onSelectDate(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12));
+                      setIsDatePickerOpen(false);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <h1 className="text-lg font-bold capitalize">
+                {format(civilDateToDisplayDate(currentDateStr), 'EEEE d MMM', { locale: es })}
+              </h1>
+            )}
           </div>
           <Button variant="outline" size="sm" onClick={onGoToToday}>
             Hoy
@@ -185,6 +250,50 @@ export function ManagerMobileAgendaCalendar({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        {onSearchChange && (
+          <div className="mb-2 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Input
+                type="search"
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Buscar…"
+                aria-label="Buscar tareas del día"
+                className="h-9 pl-8 pr-8 text-sm"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange('')}
+                  className="absolute right-1.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {onClientFilterChange && clientOptions.length > 0 && (
+              <select
+                aria-label="Filtrar por cliente"
+                className="h-9 w-[42%] rounded-md border border-input bg-background px-2 text-xs"
+                value={selectedClientIds[0] ?? ''}
+                onChange={(e) => onClientFilterChange(e.target.value ? [e.target.value] : [])}
+              >
+                <option value="">Todos los clientes</option>
+                {clientOptions.map((client) => (
+                  <option key={client.id} value={client.id}>{client.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+        {hasSearchOrClient && (
+          <p className="mb-2 text-xs text-muted-foreground" role="status">
+            Mostrando {summary.total} {summary.total === 1 ? 'tarea' : 'tareas'} que coinciden con la búsqueda o el cliente.
+          </p>
+        )}
 
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           <Button
@@ -244,11 +353,13 @@ export function ManagerMobileAgendaCalendar({
                 {selectedCleanerName ? `${selectedCleanerName} no tiene tareas este día` : 'No hay tareas para este filtro'}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Cambia el filtro o crea una tarea para este dia.
+                {onNewTask ? 'Cambia el filtro o crea una tarea para este día.' : 'Cambia el filtro o el día.'}
               </p>
-              <Button className="mt-4" onClick={onNewTask}>
-                Crear tarea
-              </Button>
+              {onNewTask && (
+                <Button className="mt-4" onClick={onNewTask}>
+                  Crear tarea
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}
@@ -257,6 +368,7 @@ export function ManagerMobileAgendaCalendar({
       <MobileBottomNav
         onNewTask={onNewTask}
         onNewBatchTask={onNewBatchTask}
+        hideCreate={!onNewTask && !onNewBatchTask}
       />
     </div>
   );

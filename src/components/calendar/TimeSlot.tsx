@@ -16,6 +16,13 @@ interface TimeSlotProps {
   cleanerId: string;
   isOccupied: boolean;
   isAvailable?: boolean;
+  /** No availability configured: shown neutral and droppable (never as free capacity). */
+  availabilityUnknown?: boolean;
+  /** Why the slot is blocked; told to the person when they drop there. */
+  unavailableReason?: string;
+  onBlockedDrop?: (reason: string) => void;
+  /** Column width in px (zoom); 50 by default. */
+  width?: number;
   draggedTaskId?: string | null;
   hourlyAbsence?: HourlyAbsence | null;
   onDragOver: (e: React.DragEvent) => void;
@@ -29,6 +36,10 @@ export const TimeSlot = memo(({
   cleanerId, 
   isOccupied, 
   isAvailable = true,
+  availabilityUnknown = false,
+  unavailableReason,
+  onBlockedDrop,
+  width = 50,
   draggedTaskId,
   hourlyAbsence,
   onDragOver, 
@@ -61,11 +72,14 @@ export const TimeSlot = memo(({
     e.stopPropagation();
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
     
-    // Only allow drop if the slot is available and there's a dragged task
+    // Only allow drop if the slot is available and there's a dragged task.
+    // A blocked slot says why instead of ignoring the drop silently.
     if (draggedTaskId && isAvailable) {
       onDrop(e, cleanerId, timeString);
+    } else if (draggedTaskId) {
+      onBlockedDrop?.(unavailableReason || 'La trabajadora no está disponible en esta franja.');
     }
-  }, [onDrop, cleanerId, timeString, draggedTaskId, isAvailable]);
+  }, [onDrop, onBlockedDrop, unavailableReason, cleanerId, timeString, draggedTaskId, isAvailable]);
 
   // Allow drop only if there's a dragged task AND the slot is available.
   // draggedTaskId is undefined (not null) when nothing is being dragged.
@@ -76,7 +90,7 @@ export const TimeSlot = memo(({
   return (
     <div
       className={cn(
-        "relative min-w-[50px] w-[50px] h-16 border-r border-gray-200 transition-colors flex-shrink-0",
+        "relative h-16 border-r border-gray-200 transition-colors flex-shrink-0",
         // Available slots
         isAvailable && !hourlyAbsence && allowDrop && "hover:bg-surface cursor-pointer",
         // Unavailable slots - show with different styling
@@ -84,11 +98,14 @@ export const TimeSlot = memo(({
         // Occupied slots
         showAsOccupied && !hourlyAbsence && "bg-gray-100"
       )}
+      style={{ width, minWidth: width }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       data-time={timeString}
       data-cleaner-id={cleanerId}
+      data-availability={isAvailable ? (availabilityUnknown ? 'unknown' : 'available') : 'unavailable'}
+      title={!isAvailable ? unavailableReason : undefined}
     >
       {children}
 

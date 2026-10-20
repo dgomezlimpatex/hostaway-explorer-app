@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Users, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Users, Search, X, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { civilDateToLocalDate, getVisibleDays } from "./utils/multiDayCalendar";
@@ -9,6 +9,10 @@ import { ViewType } from "@/types/calendar";
 import { Link } from "react-router-dom";
 import { useDeviceType } from "@/hooks/use-mobile";
 import { MultiSelectFilter } from "./MultiSelectFilter";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as DatePicker } from "@/components/ui/calendar";
+import { useState } from "react";
+import { ZOOM_LABELS, type TimelineZoom } from "./utils/timelineScale";
 
 interface ResponsiveCalendarHeaderProps {
   currentDate: Date;
@@ -16,8 +20,13 @@ interface ResponsiveCalendarHeaderProps {
   onNavigateDate: (direction: 'prev' | 'next') => void;
   onGoToToday: () => void;
   onViewChange: (view: ViewType) => void;
-  onNewTask: () => void;
+  /** Hidden when the role cannot create tasks. */
+  onNewTask?: () => void;
   onNewBatchTask?: () => void;
+  /** Jump to any date (civil date picker). */
+  onSelectDate?: (date: Date) => void;
+  zoom?: TimelineZoom;
+  onZoomChange?: (zoom: TimelineZoom) => void;
   searchTerm?: string;
   onSearchChange?: (term: string) => void;
   showSearch?: boolean;
@@ -38,6 +47,9 @@ export const ResponsiveCalendarHeader = ({
   onViewChange,
   onNewTask,
   onNewBatchTask,
+  onSelectDate,
+  zoom = 'normal',
+  onZoomChange,
   searchTerm = '',
   onSearchChange,
   showSearch = false,
@@ -50,6 +62,7 @@ export const ResponsiveCalendarHeader = ({
   onCleanerFiltersChange,
 }: ResponsiveCalendarHeaderProps) => {
   const { isMobile } = useDeviceType();
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const formatDate = () => {
     switch (currentView) {
@@ -115,14 +128,16 @@ export const ResponsiveCalendarHeader = ({
                 {!isMobile && <span>Múltiples</span>}
               </Button>
             )}
-            <Button
-              onClick={onNewTask}
-              size={isMobile ? "sm" : "default"}
-              className="gap-1.5 h-9 bg-white text-[hsl(262,60%,30%)] hover:bg-white/90 hover:text-[hsl(262,60%,30%)] font-semibold rounded-lg shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
-              {!isMobile && <span>Nueva Tarea</span>}
-            </Button>
+            {onNewTask && (
+              <Button
+                onClick={onNewTask}
+                size={isMobile ? "sm" : "default"}
+                className="gap-1.5 h-9 bg-white text-[hsl(262,60%,30%)] hover:bg-white/90 hover:text-[hsl(262,60%,30%)] font-semibold rounded-lg shadow-sm"
+              >
+                <Plus className="h-4 w-4" />
+                {!isMobile && <span>Nueva Tarea</span>}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -162,16 +177,69 @@ export const ResponsiveCalendarHeader = ({
               </Button>
             </div>
 
-            <span className="min-w-0 truncate text-sm md:text-[15px] font-semibold text-foreground">
-              {capitalizeFirst(formatDate())}
-            </span>
+            {onSelectDate ? (
+              <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="min-w-0 flex items-center gap-1.5 truncate rounded-md px-1.5 py-1 text-sm md:text-[15px] font-semibold text-foreground hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Elegir fecha. Fecha mostrada: ${formatDate()}`}
+                  >
+                    <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                    <span className="truncate">{capitalizeFirst(formatDate())}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <DatePicker
+                    mode="single"
+                    selected={currentDate}
+                    defaultMonth={currentDate}
+                    weekStartsOn={1}
+                    onSelect={(date) => {
+                      if (!date) return;
+                      // Local noon: the civil date never moves with the timezone.
+                      onSelectDate(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12));
+                      setIsDatePickerOpen(false);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <span className="min-w-0 truncate text-sm md:text-[15px] font-semibold text-foreground">
+                {capitalizeFirst(formatDate())}
+              </span>
+            )}
           </div>
 
+          <div className="flex items-center gap-2 shrink-0">
+          {/* Densidad de la línea temporal (solo vista Día) */}
+          {currentView === 'day' && onZoomChange && !isMobile && (
+            <div className="flex items-center bg-muted rounded-lg p-1" role="group" aria-label="Densidad de la línea temporal">
+              {(['compact', 'normal', 'wide'] as const).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => onZoomChange(level)}
+                  aria-pressed={zoom === level}
+                  className={cn(
+                    "px-2 py-1.5 text-xs font-medium rounded-md transition-all",
+                    zoom === level ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {ZOOM_LABELS[level]}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Selector de vista (segmented control) */}
-          <div className="flex items-center bg-muted rounded-lg p-1 shrink-0">
+          <div className="flex items-center bg-muted rounded-lg p-1 shrink-0" role="group" aria-label="Vista del calendario">
             {(['day', 'three-day', 'week'] as const).map((view) => (
               <button
                 key={view}
+                type="button"
+                aria-pressed={currentView === view}
                 onClick={() => onViewChange(view)}
                 className={cn(
                   "px-2.5 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md transition-all",
@@ -183,6 +251,7 @@ export const ResponsiveCalendarHeader = ({
                 {view === 'day' ? 'Día' : view === 'three-day' ? (isMobile ? '3D' : '3 Días') : 'Semana'}
               </button>
             ))}
+          </div>
           </div>
         </div>
 
@@ -217,6 +286,8 @@ export const ResponsiveCalendarHeader = ({
                 value={searchTerm}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Buscar..."
+                aria-label="Buscar tareas por propiedad, dirección, cliente o trabajadora"
+                type="search"
                 className="pl-8 pr-8 h-9 rounded-lg text-sm"
               />
               {searchTerm && (
@@ -232,7 +303,7 @@ export const ResponsiveCalendarHeader = ({
             </div>
 
             {searchResultsLabel && (
-              <span className="text-xs text-muted-foreground whitespace-nowrap hidden md:inline">
+              <span className="text-xs text-muted-foreground whitespace-nowrap hidden md:inline" role="status">
                 {searchResultsLabel}
               </span>
             )}

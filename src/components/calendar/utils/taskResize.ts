@@ -20,12 +20,12 @@ export const snapToQuarter = (mins: number) => Math.round(mins / 15) * 15;
  * End time after dragging the right edge of a task `deltaX` pixels, snapped
  * to quarter hours and never shorter than 15 minutes.
  */
-export const getResizedEndTime = (startTime: string, initialEndTime: string, deltaX: number) => {
+export const getResizedEndTime = (startTime: string, initialEndTime: string, deltaX: number, pixelsPerMinute = PIXELS_PER_MINUTE) => {
   const startMin = toMinutes(startTime);
-  const snapped = snapToQuarter(toMinutes(initialEndTime) + deltaX / PIXELS_PER_MINUTE);
+  const snapped = snapToQuarter(toMinutes(initialEndTime) + deltaX / pixelsPerMinute);
   return fromMinutes(Math.max(startMin + MIN_TASK_MINUTES, snapped));
 };
 
 /** Card width (px) for a task window on the horizontal timeline. */
-export const getTaskWidthPx = (startTime: string, endTime: string) =>
-  Math.max((toMinutes(endTime) - toMinutes(startTime)) * PIXELS_PER_MINUTE, MIN_TASK_MINUTES * PIXELS_PER_MINUTE);
+export const getTaskWidthPx = (startTime: string, endTime: string, pixelsPerMinute = PIXELS_PER_MINUTE) =>
+  Math.max((toMinutes(endTime) - toMinutes(startTime)) * pixelsPerMinute, MIN_TASK_MINUTES * pixelsPerMinute);

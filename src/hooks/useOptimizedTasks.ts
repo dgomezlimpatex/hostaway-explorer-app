@@ -161,6 +161,10 @@ export const useOptimizedTasks = ({
     isLoading,
     isInitialLoading: isLoading && query.fetchStatus !== 'idle',
     error,
+    // A failed load must not look like an empty day (callers show it + retry).
+    isError: query.isError,
+    refetch: query.refetch,
+    dataUpdatedAt: query.dataUpdatedAt,
     queryKey,
     debugInfo: {
       rawTasksCount: tasks?.length || 0,

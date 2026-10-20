@@ -1,11 +1,23 @@
 
 import { useState, useCallback } from 'react';
 import { ViewType } from '@/types/calendar';
-import { getTodayMadrid, formatMadridDate } from '@/utils/date';
+import { getTodayMadrid } from '@/utils/date';
+import { parseCalendarUrlState } from '@/components/calendar/utils/calendarUrlState';
+import { civilDateToLocalDate } from '@/components/calendar/utils/multiDayCalendar';
+
+// The first render already uses the date and view of the URL, so a reload or
+// a link opens the right period without loading today first.
+const readInitialUrlState = () => {
+  if (typeof window === 'undefined' || !window.location) return parseCalendarUrlState(new URLSearchParams());
+  return parseCalendarUrlState(new URLSearchParams(window.location.search));
+};
 
 export const useCalendarNavigation = () => {
-  const [currentDate, setCurrentDate] = useState<Date>(() => getTodayMadrid());
-  const [currentView, setCurrentView] = useState<ViewType>('day');
+  const [currentDate, setCurrentDate] = useState<Date>(() => {
+    const { date } = readInitialUrlState();
+    return date ? civilDateToLocalDate(date) : getTodayMadrid();
+  });
+  const [currentView, setCurrentView] = useState<ViewType>(() => readInitialUrlState().view ?? 'day');
 
   const navigateDate = useCallback((direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);

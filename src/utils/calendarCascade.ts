@@ -1,5 +1,6 @@
 import { Task } from '@/types/calendar';
 import { isTaskAssignedToCleaner } from '@/utils/taskAssignments';
+import { getDisplayStatus } from '@/utils/calendarTaskStatus';
 
 export interface CascadeShift {
   taskId: string;
@@ -21,9 +22,20 @@ export interface CascadeInput {
   cleanerName: string;
 }
 
+/** A task that overlaps the drop but is never moved (already started or finished). */
+export interface CascadeFixedTask {
+  taskId: string;
+  property: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+}
+
 export interface CascadeResult {
   ok: boolean;
   shifts: CascadeShift[];
+  /** Started or finished tasks that stay where they are (the overlap remains). */
+  fixed: CascadeFixedTask[];
   /** Property that would end after 23:59 when ok is false. */
   blockedBy?: string;
 }
@@ -50,9 +62,19 @@ const getAssignedCount = (task: Task): number => {
   return 1;
 };
 
+// Started or finished work keeps its real times: the cascade never moves it.
+const FIXED_STATUSES = new Set(['in-progress', 'completed']);
+
 /**
  * Shifts forward every task of the same cleaner and day that overlaps the
  * dropped task, or the chain of tasks already shifted after it.
+ *
+ * Shared tasks: the overlap is measured with this cleaner's share (start →
+ * start + total/N), but a shifted task keeps its whole service window, so the
+ * planned hours of every assigned person stay the same. Tasks in progress or
+ * finished are never moved; they are reported in `fixed` and the chain
+ * continues after them so no shifted task lands on top of them. Cancelled
+ * tasks are ignored.
  */
 export const computeCascadeShifts = (tasks: Task[], input: CascadeInput): CascadeResult => {
   const droppedStart = toMinutes(input.startTime);
@@ -62,28 +84,37 @@ export const computeCascadeShifts = (tasks: Task[], input: CascadeInput): Cascad
     .filter((t) =>
       t.id !== input.taskId &&
       t.date === input.date &&
+      getDisplayStatus(t) !== 'cancelled' &&
       isTaskAssignedToCleaner(t, input.cleanerId, input.cleanerName)
     )
     .sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
 
   const shifts: CascadeShift[] = [];
+  const fixed: CascadeFixedTask[] = [];
 
   for (const b of sameDayCleanerTasks) {
     const bStart = toMinutes(b.startTime);
     const bEnd = toMinutes(b.endTime);
     const assigned = getAssignedCount(b);
     const fullDuration = Math.max(bEnd - bStart, 0);
-    const duration = assigned > 1 ? Math.max(15, Math.round(fullDuration / assigned)) : fullDuration;
-    const bEffectiveEnd = bStart + duration;
+    const share = assigned > 1 ? Math.max(15, Math.round(fullDuration / assigned)) : fullDuration;
+    const bEffectiveEnd = bStart + share;
 
     if (bStart >= cursorEnd) break; // no further overlap, stop cascade
     // Finished before the dropped task starts (for multi-worker tasks, the
     // unused part of the block does not count): no conflict.
     if (bEffectiveEnd <= droppedStart) continue;
 
+    const status = getDisplayStatus(b);
+    if (FIXED_STATUSES.has(status)) {
+      fixed.push({ taskId: b.id, property: b.property, startTime: b.startTime, endTime: b.endTime, status });
+      cursorEnd = Math.max(cursorEnd, bEffectiveEnd);
+      continue;
+    }
+
     const newStart = cursorEnd;
-    const newEnd = newStart + duration;
-    if (newEnd > MAX_END) return { ok: false, shifts: [], blockedBy: b.property };
+    const newEnd = newStart + fullDuration;
+    if (newEnd > MAX_END) return { ok: false, shifts: [], fixed: [], blockedBy: b.property };
 
     shifts.push({
       taskId: b.id,
@@ -95,10 +126,10 @@ export const computeCascadeShifts = (tasks: Task[], input: CascadeInput): Cascad
       newStartTime: fromMinutes(newStart),
       newEndTime: fromMinutes(newEnd),
     });
-    cursorEnd = newEnd;
+    cursorEnd = newStart + share;
   }
 
-  return { ok: true, shifts };
+  return { ok: true, shifts, fixed };
 };
 
 export interface CascadePersistence {
@@ -108,25 +139,79 @@ export interface CascadePersistence {
   materializeRecurring: (task: Task, startTime: string, endTime: string) => Promise<unknown>;
 }
 
+export interface CascadePersistResult {
+  saved: CascadeShift[];
+  failed: Array<{ shift: CascadeShift; error: unknown }>;
+}
+
+const persistOne = async (shift: CascadeShift, task: Task | undefined, persistence: CascadePersistence) => {
+  if (task?.isRecurringInstance) {
+    await persistence.materializeRecurring(task, shift.newStartTime, shift.newEndTime);
+    return;
+  }
+  const changed = await persistence.updateTaskTimes(shift.taskId, shift.newStartTime, shift.newEndTime);
+  if (changed < 1) throw new Error(`No se pudo mover "${shift.property}"`);
+};
+
 /**
  * Saves every shift. Virtual recurring occurrences have no row to update, so
  * they are materialized; an update that changes no row is an error, so the
- * caller never reports (or emails) a shift that was not saved.
+ * caller never reports (or emails) a shift that was not saved. Rejects with
+ * the first error when any shift fails.
  */
 export const persistCascadeShifts = async (
   shifts: CascadeShift[],
   tasks: Task[],
   persistence: CascadePersistence,
 ): Promise<CascadeShift[]> => {
+  const result = await persistCascadeShiftsSettled(shifts, tasks, persistence);
+  if (result.failed.length > 0) throw result.failed[0].error;
+  return result.saved;
+};
+
+/** Same as persistCascadeShifts but reports which shifts were saved and which failed. */
+export const persistCascadeShiftsSettled = async (
+  shifts: CascadeShift[],
+  tasks: Task[],
+  persistence: CascadePersistence,
+): Promise<CascadePersistResult> => {
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
-  await Promise.all(shifts.map(async (shift) => {
-    const task = tasksById.get(shift.taskId);
-    if (task?.isRecurringInstance) {
-      await persistence.materializeRecurring(task, shift.newStartTime, shift.newEndTime);
-      return;
+  const results = await Promise.allSettled(
+    shifts.map((shift) => persistOne(shift, tasksById.get(shift.taskId), persistence)),
+  );
+  const saved: CascadeShift[] = [];
+  const failed: CascadePersistResult['failed'] = [];
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') saved.push(shifts[index]);
+    else failed.push({ shift: shifts[index], error: result.reason });
+  });
+  return { saved, failed };
+};
+
+/**
+ * Puts back the stored tasks that were already shifted when the rest of the
+ * cascade failed. Recurring occurrences already materialized are not
+ * deleted: they are reported so the person can review them.
+ */
+export const revertCascadeShifts = async (
+  saved: CascadeShift[],
+  tasks: Task[],
+  persistence: Pick<CascadePersistence, 'updateTaskTimes'>,
+): Promise<{ reverted: CascadeShift[]; notReverted: CascadeShift[] }> => {
+  const tasksById = new Map(tasks.map((task) => [task.id, task]));
+  const reverted: CascadeShift[] = [];
+  const notReverted: CascadeShift[] = [];
+  for (const shift of saved) {
+    if (tasksById.get(shift.taskId)?.isRecurringInstance) {
+      notReverted.push(shift);
+      continue;
     }
-    const changed = await persistence.updateTaskTimes(shift.taskId, shift.newStartTime, shift.newEndTime);
-    if (changed < 1) throw new Error(`No se pudo mover "${shift.property}"`);
-  }));
-  return shifts;
+    try {
+      const changed = await persistence.updateTaskTimes(shift.taskId, shift.oldStartTime, shift.oldEndTime);
+      (changed > 0 ? reverted : notReverted).push(shift);
+    } catch {
+      notReverted.push(shift);
+    }
+  }
+  return { reverted, notReverted };
 };

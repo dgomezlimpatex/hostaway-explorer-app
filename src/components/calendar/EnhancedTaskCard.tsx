@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Task } from "@/types/calendar";
-import { Clock, ListTodo, GripVertical, Pencil, Copy, Trash2, UserMinus, CalendarDays, Timer } from "lucide-react";
+import { Clock, ListTodo, GripVertical, Pencil, Copy, Trash2, UserMinus, CalendarDays, Timer, Users, Eye } from "lucide-react";
 import { TaskStatusBadge } from './TaskStatusBadge';
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -18,6 +18,26 @@ import { useClientData } from "@/hooks/useClientData";
 import { getClientColor } from "@/utils/clientColors";
 import { useTaskQuickActions } from "@/hooks/useTaskQuickActions";
 import { getResizedEndTime, getTaskWidthPx, toMinutes } from "./utils/taskResize";
+import { getDisplayStatus } from "@/utils/calendarTaskStatus";
+import { shiftCivilDate } from "@/utils/madridCalendar";
+import { useCalendarActions } from "./CalendarActionsContext";
+import { pixelsPerMinute } from "./utils/timelineScale";
+
+const STATUS_TEXT: Record<string, string> = {
+  pending: 'sin iniciar',
+  'in-progress': 'en proceso',
+  completed: 'finalizada',
+  cancelled: 'cancelada',
+};
+
+const shortDate = (day: string) => `${day.slice(8, 10)}/${day.slice(5, 7)}`;
+
+const initials = (name: string) =>
+  name.split(' ').filter(Boolean).map((part) => part[0]).join('').slice(0, 3).toUpperCase();
+
+const dispatchTaskEvent = (name: string, detail: Record<string, unknown>) => {
+  window.dispatchEvent(new CustomEvent(name, { detail }));
+};
 
 // Subtask badge component
 const SubtaskBadge = ({ task }: { task: Task }) => {
@@ -47,7 +67,7 @@ interface EnhancedTaskCardProps {
   /** Receives the task to act on (originalTask when given). */
   onClick?: (task: Task) => void;
   isDragging?: boolean;
-  onDragStart?: (e: React.DragEvent, task: Task) => void;
+  onDragStart?: (e: React.DragEvent, task: Task, originCleanerId?: string) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   style?: React.CSSProperties;
   /** Disable resize handle and context menu (e.g. unassigned panel). Defaults to false. */
@@ -62,6 +82,15 @@ interface EnhancedTaskCardProps {
    * per-person block of a shared task). Lets the grid pass stable callbacks.
    */
   originalTask?: Task;
+  /**
+   * Cleaner row where this block is drawn. A shared task appears in every
+   * assigned row: dragging or removing from a row only affects that person.
+   */
+  rowCleaner?: { id: string; name: string };
+  /** Number of people assigned (shared tasks offer actions per person). */
+  assignedCount?: number;
+  /** Narrow block: only start time and initials (the tooltip keeps the details). */
+  compact?: boolean;
 }
 
 const formatDuration = (mins: number) => {
@@ -81,22 +110,29 @@ export const EnhancedTaskCard = React.memo(({
   style,
   disableQuickActions,
   disableResize,
-  originalTask
+  originalTask,
+  rowCleaner,
+  assignedCount = 1,
+  compact = false
 }: EnhancedTaskCardProps) => {
   const actionTask = originalTask ?? task;
   const { getClientName } = useClientData();
   const clientColor = getClientColor(task.clienteId);
-  const { resizeTask, moveTaskToDate, addTaskDuration } = useTaskQuickActions();
+  const { permissions, validateScheduleChange, scale } = useCalendarActions();
+  const { resizeTask, moveTaskToDate, addTaskDuration } = useTaskQuickActions({ validate: validateScheduleChange });
+  const ppm = pixelsPerMinute(scale);
 
   // Resize state
   const [resizing, setResizing] = useState(false);
   const [previewEndTime, setPreviewEndTime] = useState<string | null>(null);
   const resizeStartX = useRef(0);
 
-  // El estado se muestra aparte del color del cliente.
-  const isCompleted = task.status === 'completed';
-  const isInProgress = task.status === 'in-progress';
-  const isCancelled = (task.status as string) === 'cancelled';
+  // El estado se muestra aparte del color del cliente, con una sola fuente:
+  // el derivado de los partes si existe, si no el estado guardado.
+  const displayStatus = getDisplayStatus(task);
+  const isCompleted = displayStatus === 'completed';
+  const isInProgress = displayStatus === 'in-progress';
+  const isCancelled = displayStatus === 'cancelled';
   // Virtual recurring occurrences have no task row yet: quick edits would find
   // nothing to change. They are edited from the details modal instead.
   const isRecurringInstance = Boolean(task.isRecurringInstance);
@@ -110,12 +146,12 @@ export const EnhancedTaskCard = React.memo(({
   };
 
   const handleDragStart = (e: React.DragEvent) => {
-    if (resizing) {
+    if (resizing || !permissions.canEdit) {
       e.preventDefault();
       return;
     }
     if (onDragStart) {
-      onDragStart(e, actionTask);
+      onDragStart(e, actionTask, rowCleaner?.id);
     }
   };
 
@@ -134,7 +170,7 @@ export const EnhancedTaskCard = React.memo(({
 
     // The timeline is horizontal: the right edge sets the end time.
     const handleMove = (e: PointerEvent) => {
-      setPreviewEndTime(getResizedEndTime(task.startTime, task.endTime, e.clientX - resizeStartX.current));
+      setPreviewEndTime(getResizedEndTime(task.startTime, task.endTime, e.clientX - resizeStartX.current, ppm));
     };
 
     const handleUp = () => {
@@ -168,7 +204,7 @@ export const EnhancedTaskCard = React.memo(({
       window.removeEventListener('blur', handleCancel);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [resizing, previewEndTime, task.id, task.startTime, task.endTime, resizeTask]);
+  }, [resizing, previewEndTime, task.id, task.startTime, task.endTime, resizeTask, ppm]);
 
   const clientName = getClientName(task.clienteId || '');
   const displayPropertyName = () => task.property;
@@ -186,15 +222,27 @@ export const EnhancedTaskCard = React.memo(({
 
   // If resizing, we override the visual width to match the preview
   if (resizing && previewEndTime) {
-    cardStyle.width = `${getTaskWidthPx(task.startTime, previewEndTime)}px`;
+    cardStyle.width = `${getTaskWidthPx(task.startTime, previewEndTime, ppm)}px`;
   }
+
+  const isShared = assignedCount > 1;
+  const canResize = permissions.canEdit && !disableQuickActions && !disableResize && !isCancelled && !isRecurringInstance;
+  const hasQuickActions = permissions.canEdit || permissions.canCreate || permissions.canDelete;
+  const statusText = STATUS_TEXT[displayStatus] ?? 'estado desconocido';
+  const ariaLabel = [
+    `${task.property}, ${formatTime(task.startTime)} a ${formatTime(task.endTime)}`,
+    statusText,
+    isShared ? `compartida entre ${assignedCount} personas` : '',
+    !disableQuickActions ? 'más acciones con la tecla Menú o Mayúsculas+F10' : '',
+  ].filter(Boolean).join(', ');
 
   const cardElement = (
     <div
-      draggable={!resizing}
+      draggable={!resizing && permissions.canEdit}
       role="button"
       tabIndex={0}
-      aria-label={`${task.property}, ${formatTime(task.startTime)} a ${formatTime(task.endTime)}`}
+      aria-label={ariaLabel}
+      data-task-id={task.id}
       onClick={resizing || !onClick ? undefined : () => onClick(actionTask)}
       onKeyDown={(e) => {
         if (!resizing && onClick && (e.key === 'Enter' || e.key === ' ')) {
@@ -206,7 +254,8 @@ export const EnhancedTaskCard = React.memo(({
       onDragEnd={onDragEnd}
       style={cardStyle}
       className={cn(
-        "relative px-2 py-1.5 rounded-lg border-l-[5px] cursor-pointer transition-all duration-200",
+        "relative rounded-lg cursor-pointer transition-all duration-200",
+        compact ? "px-1 py-1 border-l-[3px]" : "px-2 py-1.5 border-l-[5px]",
         "hover:shadow-md",
         !resizing && "hover:-translate-y-0.5",
         "focus:outline-none focus:ring-2 focus:ring-primary/40",
@@ -218,30 +267,40 @@ export const EnhancedTaskCard = React.memo(({
         resizing && "ring-2 ring-primary shadow-2xl"
       )}
     >
-      {/* Icono de estado destacado (esquina superior derecha) */}
-      <TaskStatusBadge status={task.calendarStatus ?? task.status} className="absolute top-1 right-1 z-20" />
+      {compact ? (
+        <>
+          {/* Bloque estrecho: hora de inicio e iniciales; el detalle va en el tooltip */}
+          <span className="block text-[10px] font-semibold tabular-nums leading-tight">{formatTime(task.startTime)}</span>
+          <span className="block text-[10px] font-bold leading-tight truncate" aria-hidden="true">{initials(displayPropertyName())}</span>
+        </>
+      ) : (
+        <>
+          {/* Icono de estado destacado (esquina superior derecha) */}
+          <TaskStatusBadge status={displayStatus} className="absolute top-1 right-1 z-20" />
 
-      {/* Header con horas */}
-      <div className="flex items-center gap-1 mb-0.5 opacity-80 pr-8">
-        <Clock className="w-3 h-3 flex-shrink-0" />
-        <span className="text-[10px] font-medium whitespace-nowrap tabular-nums">
-          {formatTime(task.startTime)} – {formatTime(displayedEndTime)}
-        </span>
-      </div>
+          {/* Header con horas */}
+          <div className="flex items-center gap-1 mb-0.5 opacity-80 pr-8">
+            <Clock className="w-3 h-3 flex-shrink-0" />
+            <span className="text-[10px] font-medium whitespace-nowrap tabular-nums">
+              {formatTime(task.startTime)} – {formatTime(displayedEndTime)}
+            </span>
+          </div>
 
-      {/* Contenido principal */}
-      <h3 className="font-bold text-[13px] leading-tight truncate text-left pr-8">
-        {displayPropertyName()}
-      </h3>
+          {/* Contenido principal */}
+          <h3 className="font-bold text-[13px] leading-tight truncate text-left pr-8">
+            {displayPropertyName()}
+          </h3>
 
-      {clientName && (
-        <p className="text-[11px] leading-tight truncate text-left opacity-75 mt-0.5">
-          {clientName}
-        </p>
+          {clientName && (
+            <p className="text-[11px] leading-tight truncate text-left opacity-75 mt-0.5">
+              {clientName}
+            </p>
+          )}
+
+          {/* Subtask badge */}
+          <SubtaskBadge task={task} />
+        </>
       )}
-
-      {/* Subtask badge */}
-      <SubtaskBadge task={task} />
 
       {/* Resize overlay durante drag */}
       {resizing && (
@@ -253,7 +312,7 @@ export const EnhancedTaskCard = React.memo(({
       )}
 
       {/* Resize handle (right edge) */}
-      {!disableQuickActions && !disableResize && !isCancelled && !isRecurringInstance && (
+      {canResize && (
         <div
           onPointerDown={handleResizePointerDown}
           onClick={(e) => e.stopPropagation()}
@@ -272,33 +331,50 @@ export const EnhancedTaskCard = React.memo(({
     </div>
   );
 
+  const tooltipBody = (
+    <div className="space-y-1">
+      <p className="font-medium">{displayPropertyName()}</p>
+      <p className="text-xs text-muted-foreground">
+        {formatTime(task.startTime)} - {formatTime(task.endTime)}
+      </p>
+      <p className="text-xs">
+        <TaskStatusBadge status={displayStatus} showLabel />
+      </p>
+      {isShared && (
+        <p className="text-xs">
+          Compartida entre {assignedCount} personas · total {formatTime(actionTask.startTime)}–{formatTime(actionTask.endTime)}
+        </p>
+      )}
+      {clientName && <p className="text-xs">{clientName}</p>}
+      {task.address && (
+        <p className="text-xs">
+          <span className="font-medium">Dirección:</span> {task.address}
+        </p>
+      )}
+      {!disableQuickActions && (
+        <p className="text-[10px] text-muted-foreground italic mt-1">
+          {hasQuickActions
+            ? 'Clic derecho o tecla Menú para acciones rápidas'
+            : 'Clic derecho o tecla Menú para ver el detalle'}
+        </p>
+      )}
+    </div>
+  );
+
   // If quick actions disabled, return the card with tooltip only (legacy behavior)
   if (disableQuickActions) {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>{cardElement}</TooltipTrigger>
-          <TooltipContent side="top" className="max-w-xs">
-            <div className="space-y-1">
-              <p className="font-medium">{displayPropertyName()}</p>
-              <p className="text-xs text-muted-foreground">
-                {formatTime(task.startTime)} - {formatTime(task.endTime)}
-              </p>
-              <p className="text-xs">
-                <TaskStatusBadge status={task.calendarStatus ?? task.status} showLabel />
-              </p>
-              {clientName && <p className="text-xs">{clientName}</p>}
-              {task.address && (
-                <p className="text-xs">
-                  <span className="font-medium">Dirección:</span> {task.address}
-                </p>
-              )}
-            </div>
-          </TooltipContent>
+          <TooltipContent side="top" className="max-w-xs">{tooltipBody}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
   }
+
+  const canMoveOrResize = permissions.canEdit && !isRecurringInstance;
+  const canUnassign = permissions.canEdit && (assignedCount > 1 || Boolean(task.cleanerId) || (task.assignments?.length ?? 0) > 0);
 
   return (
     <ContextMenu>
@@ -307,57 +383,49 @@ export const EnhancedTaskCard = React.memo(({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>{cardElement}</TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs">
-                <div className="space-y-1">
-                  <p className="font-medium">{displayPropertyName()}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatTime(task.startTime)} - {formatTime(task.endTime)}
-                  </p>
-                  <p className="text-xs">
-                    <TaskStatusBadge status={task.calendarStatus ?? task.status} showLabel />
-                  </p>
-                  {clientName && <p className="text-xs">{clientName}</p>}
-                  {task.address && (
-                    <p className="text-xs">
-                      <span className="font-medium">Dirección:</span> {task.address}
-                    </p>
-                  )}
-                  <p className="text-[10px] text-muted-foreground italic mt-1">
-                    Clic derecho para acciones rápidas
-                  </p>
-                </div>
-              </TooltipContent>
+              <TooltipContent side="top" className="max-w-xs">{tooltipBody}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-56">
+      <ContextMenuContent className="w-60">
         <ContextMenuItem onClick={() => onClick?.(actionTask)}>
-          <Pencil className="mr-2 h-4 w-4" />
-          Editar detalles
+          {permissions.canEdit ? <Pencil className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+          {permissions.canEdit ? 'Editar detalles' : 'Ver detalles'}
         </ContextMenuItem>
-        <ContextMenuSeparator />
-
-        {isRecurringInstance ? (
-          <ContextMenuItem disabled className="text-xs">
-            Ocurrencia recurrente: otras acciones en el detalle
+        {permissions.canEdit && (
+          <ContextMenuItem onClick={() => onClick?.(actionTask)}>
+            <Users className="mr-2 h-4 w-4" />
+            Asignar trabajadoras…
           </ContextMenuItem>
-        ) : (
+        )}
+
+        {isRecurringInstance && hasQuickActions && (
           <>
+            <ContextMenuSeparator />
+            <ContextMenuItem disabled className="text-xs">
+              Ocurrencia recurrente: otras acciones en el detalle
+            </ContextMenuItem>
+          </>
+        )}
+
+        {canMoveOrResize && (
+          <>
+            <ContextMenuSeparator />
             <ContextMenuSub>
               <ContextMenuSubTrigger>
                 <CalendarDays className="mr-2 h-4 w-4" />
                 Mover a
               </ContextMenuSubTrigger>
               <ContextMenuSubContent>
-                <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'today')}>
-                  Hoy
+                <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'previousDay')}>
+                  Día anterior ({shortDate(shiftCivilDate(task.date, -1))})
                 </ContextMenuItem>
-                <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'tomorrow')}>
-                  Mañana
+                <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'nextDay')}>
+                  Día siguiente ({shortDate(shiftCivilDate(task.date, 1))})
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => moveTaskToDate(task.id, 'nextWeek')}>
-                  +1 semana
+                  +1 semana ({shortDate(shiftCivilDate(task.date, 7))})
                 </ContextMenuItem>
               </ContextMenuSubContent>
             </ContextMenuSub>
@@ -381,39 +449,39 @@ export const EnhancedTaskCard = React.memo(({
                 ))}
               </ContextMenuSubContent>
             </ContextMenuSub>
+          </>
+        )}
 
+        {permissions.canCreate && !isRecurringInstance && (
+          <>
             <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={() => {
-                const ev = new CustomEvent('task:duplicate', { detail: { taskId: task.id } });
-                window.dispatchEvent(ev);
-              }}
-            >
+            <ContextMenuItem onClick={() => dispatchTaskEvent('task:duplicate', { taskId: task.id })}>
               <Copy className="mr-2 h-4 w-4" />
-              Duplicar tarea
+              Duplicar sin asignar
             </ContextMenuItem>
           </>
         )}
-        {task.cleanerId && (
+
+        {canUnassign && isShared && rowCleaner && !isRecurringInstance && (
           <ContextMenuItem
-            onClick={() => {
-              const ev = new CustomEvent('task:unassign', { detail: { taskId: task.id } });
-              window.dispatchEvent(ev);
-            }}
+            onClick={() => dispatchTaskEvent('task:unassign', { taskId: task.id, cleanerId: rowCleaner.id, cleanerName: rowCleaner.name })}
           >
             <UserMinus className="mr-2 h-4 w-4" />
-            Desasignar
+            Quitar a {rowCleaner.name}
           </ContextMenuItem>
         )}
-        {!isRecurringInstance && (
+        {canUnassign && (
+          <ContextMenuItem onClick={() => dispatchTaskEvent('task:unassign', { taskId: task.id, all: true })}>
+            <UserMinus className="mr-2 h-4 w-4" />
+            {isShared ? 'Desasignar a todas' : 'Desasignar'}
+          </ContextMenuItem>
+        )}
+        {permissions.canDelete && !isRecurringInstance && (
           <>
             <ContextMenuSeparator />
             <ContextMenuItem
               className="text-destructive focus:text-destructive"
-              onClick={() => {
-                const ev = new CustomEvent('task:delete', { detail: { taskId: task.id } });
-                window.dispatchEvent(ev);
-              }}
+              onClick={() => dispatchTaskEvent('task:delete', { taskId: task.id })}
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Eliminar
