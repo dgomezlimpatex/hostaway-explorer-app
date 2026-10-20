@@ -2,15 +2,17 @@ import React, { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowUpRight, CalendarClock, Mail, Phone } from "lucide-react";
 import { useCleaners } from "@/hooks/useCleaners";
-import { useAuth } from "@/hooks/useAuth";
 import { useSede } from "@/contexts/SedeContext";
 import {
   ENTITY_DETAIL_TITLE_ATTR,
   focusEntityDetailTitle,
 } from "@/components/navigation/useLinkedSelection";
 import { useWorkerMaintenanceCleanings } from "@/hooks/useWorkerMaintenanceCleanings";
+import { useWorkerFixedDaysOff } from "@/hooks/useWorkerFixedDaysOff";
+import { useWorkerCapabilities } from "@/hooks/useWorkerCapabilities";
 import { AbsenceSummary } from "./PersonnelAbsences";
-import { WorkerProfilePanel } from "@/components/workers/WorkerDetailModal";
+import { PersonnelProfileForm } from "./PersonnelProfileForm";
+import { PlanningWindowPanel } from "./PlanningWindowPanel";
 import { AbsencesTab } from "@/components/workers/absences/AbsencesTab";
 import { Cleaner } from "@/types/calendar";
 import {
@@ -28,29 +30,54 @@ import {
 } from "./hours";
 import { usePersonnelData } from "./usePersonnelHours";
 import { BalanceBar, BalanceLabel, HoursWorkspace } from "./HoursControl";
+import { categoryLabel } from "./workerForm";
+import { pastUncompletedTaskCount } from "./profileSummary";
+
+const DAY_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const DAY_LONG = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export default function PersonnelProfile() {
   const { workerId } = useParams();
-  const { cleaners, isLoading: cleanersLoading } = useCleaners();
+  const { cleaners, isLoading: cleanersLoading, error, refetch } = useCleaners();
   const { isInitialized, loading: sedeLoading } = useSede();
   // The cleaners query waits for the sede: do not report "not found" meanwhile.
   const isLoading = cleanersLoading || !isInitialized || sedeLoading;
-  const { params, change } = usePersonnelParams();
-  const { userRole } = useAuth();
+  const { params } = usePersonnelParams();
+  const { canEdit, canViewSensitive, canViewHours } = useWorkerCapabilities();
   const worker = cleaners.find((c) => c.id === workerId),
     tab = params.get("tab") || "summary";
-  const canManage = userRole === "admin" || userRole === "manager";
   const back = params.get("back");
-  const workerFound = !isLoading && !!worker;
+  const safeBack = back?.startsWith("/workers") && !back.startsWith("//") ? back : null;
+  // Los enlaces internos conservan la vuelta al listado con sus filtros.
+  const keep = (query: string) =>
+    `${query}${safeBack ? `${query.includes("?") ? "&" : "?"}back=${encodeURIComponent(safeBack)}` : ""}`;
+  const workerFound = !isLoading && !error && !!worker;
   useEffect(() => {
     // Opening a profile (from the global search, a link or a reload) moves focus to its title.
     if (workerFound) focusEntityDetailTitle();
   }, [workerFound, workerId]);
+  const tabs = [
+    { id: "summary", label: "Resumen" },
+    { id: "profile", label: "Ficha" },
+    ...(canViewHours ? [{ id: "hours", label: "Horas" }] : []),
+    ...(canViewHours ? [{ id: "tasks", label: "Tareas" }] : []),
+    { id: "availability", label: "Disponibilidad y ausencias", short: "Disponibilidad" },
+  ];
   return (
     <PersonnelShell>
-      <PersonnelBack to={back?.startsWith("/workers") ? back : "/workers"} />
-      {isLoading ? (
-        <div className="p-empty">Cargando ficha…</div>
+      <PersonnelBack to={safeBack ?? "/workers"} />
+      {error && !worker ? (
+        <div className="p-empty" role="alert">
+          No se pudo consultar la ficha. Puede ser un problema de conexión o de permisos.{" "}
+          <button className="p-link" onClick={() => refetch()}>
+            Reintentar
+          </button>
+        </div>
+      ) : isLoading ? (
+        <div className="p-empty" role="status">
+          Cargando ficha…
+        </div>
       ) : !worker ? (
         <div className="p-empty">
           No se encuentra este trabajador en la sede seleccionada.
@@ -65,7 +92,7 @@ export default function PersonnelProfile() {
                   {worker.name}
                 </h1>
                 <p>
-                  {worker.category || "Operario de limpieza"} ·{" "}
+                  {categoryLabel(worker.category)} ·{" "}
                   <span className={`p-tag ${worker.isActive ? "active" : ""}`}>
                     {worker.isActive ? "Activo" : "Inactivo"}
                   </span>{" "}
@@ -82,50 +109,46 @@ export default function PersonnelProfile() {
           </div>
           <nav
             className="p-segments p-profile-tabs"
-            aria-label="Ficha del trabajador"
+            aria-label="Secciones de la ficha"
           >
-            <button
-              aria-current={tab === "summary" ? "page" : undefined}
-              onClick={() => change("tab", "summary")}
-            >
-              Resumen
-            </button>
-            <button
-              aria-current={tab === "profile" ? "page" : undefined}
-              onClick={() => change("tab", "profile")}
-            >
-              Ficha
-            </button>
-            {canManage && (
-              <Link to={`/workers/${worker.id}/hours?${params}`}>Horas</Link>
-            )}
-            {canManage && (
-              <button
-                aria-current={tab === "tasks" ? "page" : undefined}
-                onClick={() => change("tab", "tasks")}
+            {tabs.map((t) => (
+              <Link
+                key={t.id}
+                to={keep(t.id === "hours" ? `/workers/${worker.id}/hours` : `/workers/${worker.id}?tab=${t.id}`)}
+                aria-current={tab === t.id ? "page" : undefined}
+                replace={t.id !== "hours"}
               >
-                Tareas
-              </button>
-            )}
-            <button
-              aria-current={tab === "availability" ? "page" : undefined}
-              onClick={() => change("tab", "availability")}
-            >
-              Disponibilidad y ausencias
-            </button>
+                {t.short ? (
+                  <>
+                    <span className="p-desktop-only">{t.label}</span>
+                    <span className="p-mobile-only">{t.short}</span>
+                  </>
+                ) : (
+                  t.label
+                )}
+              </Link>
+            ))}
           </nav>
           {tab === "profile" ? (
-            <div className="p-integrated">
-              <WorkerProfilePanel key={worker.id} worker={worker} />
-            </div>
+            <PersonnelProfileForm key={worker.id} worker={worker} />
           ) : tab === "availability" ? (
             <div className="p-integrated">
-              <AbsencesTab cleanerId={worker.id} cleanerName={worker.name} />
+              <AbsencesTab
+                cleanerId={worker.id}
+                cleanerName={worker.name}
+                canEdit={canEdit}
+                showSensitive={canViewSensitive}
+              />
             </div>
-          ) : tab === "tasks" ? (
+          ) : tab === "tasks" && canViewHours ? (
             <HoursWorkspace workerId={worker.id} tasksOnly compact />
           ) : (
-            <ProfileSummary worker={worker} canManage={canManage} />
+            <ProfileSummary
+              worker={worker}
+              canViewHours={canViewHours}
+              showSensitive={canViewSensitive}
+              keep={keep}
+            />
           )}
         </>
       )}
@@ -134,34 +157,44 @@ export default function PersonnelProfile() {
 }
 function ProfileSummary({
   worker,
-  canManage,
+  canViewHours,
+  showSensitive,
+  keep,
 }: {
   worker: Cleaner;
-  canManage: boolean;
+  canViewHours: boolean;
+  showSensitive: boolean;
+  keep: (query: string) => string;
 }) {
-  const { data: schedules = [] } = useWorkerMaintenanceCleanings(worker.id);
+  const schedules = useWorkerMaintenanceCleanings(worker.id);
+  const fixedDays = useWorkerFixedDaysOff(worker.id);
   const period = getPeriod(madridNow().slice(0, 10), "monthly");
-  const query = usePersonnelData(period, worker.id);
+  const query = usePersonnelData(period, worker.id, { live: false });
   const summary = query.data
     ? calculateHours([worker], query.data, period)[0]
     : null;
-  const unavailable = schedules.filter(
+  const pastPending = summary ? pastUncompletedTaskCount(summary) : 0;
+  const unavailable = (schedules.data ?? []).filter(
     (s) => s.isActive && s.scheduleType === "unavailability",
   );
+  const daysOff = WEEK_ORDER.filter((d) =>
+    (fixedDays.data ?? []).some((f) => f.isActive && f.dayOfWeek === d),
+  );
+  const availabilityError = schedules.error || fixedDays.error;
   return (
     <div className="p-stack">
       <div className="p-detail-grid">
         <section className="p-panel p-content">
-          <div className="flex justify-between items-center">
-            <h2>Este mes</h2>
-            {canManage && (
-              <Link className="p-link" to={`/workers/${worker.id}/hours`}>
+          <div className="flex justify-between items-center gap-3">
+            <h2>Horas asignadas este mes</h2>
+            {canViewHours && (
+              <Link className="p-link" to={keep(`/workers/${worker.id}/hours`)}>
                 Ver control completo{" "}
                 <ArrowUpRight size={14} className="inline" />
               </Link>
             )}
           </div>
-          {!canManage ? (
+          {!canViewHours ? (
             <p className="p-muted mt-4">
               Consulta la ficha y la disponibilidad desde las pestañas.
             </p>
@@ -171,16 +204,16 @@ function ProfileSummary({
               <button onClick={() => query.refetch()}>Reintentar</button>
             </p>
           ) : !summary ? (
-            <p className="p-empty">Consultando horas…</p>
+            <p className="p-empty" role="status">Consultando horas…</p>
           ) : (
             <>
               <div className="p-summary mt-4 mb-0">
                 <div className="py-4">
-                  <span className="p-muted">Transcurridas*</span>
+                  <span className="p-muted">Asignadas ya pasadas*</span>
                   <h2>{hoursText(summary.elapsed)}</h2>
                 </div>
                 <div className="py-4">
-                  <span className="p-muted">Futuras</span>
+                  <span className="p-muted">Asignadas por venir</span>
                   <h2>{hoursText(summary.future)}</h2>
                 </div>
                 <div className="py-4">
@@ -194,8 +227,22 @@ function ProfileSummary({
               </div>
               <BalanceBar summary={summary} />
               <BalanceLabel s={summary} />
+              {pastPending > 0 && (
+                <p className="p-notice mt-4">
+                  {pastPending === 1
+                    ? "1 tarea con horario ya pasado no consta como completada."
+                    : `${pastPending} tareas con horario ya pasado no constan como completadas.`}{" "}
+                  <Link
+                    className="p-link"
+                    to={keep(`/workers/${worker.id}?tab=tasks&phase=elapsed&source=task`)}
+                  >
+                    Revisar tareas
+                  </Link>
+                </p>
+              )}
               <p className="p-footnote">
-                * Según horario asignado.{" "}
+                * Según el horario asignado en las tareas: no son horas trabajadas ni
+                confirmadas.{" "}
                 {summary.reference
                   ? "Objetivo de referencia; el historial comienza este mes."
                   : ""}
@@ -207,7 +254,7 @@ function ProfileSummary({
           <h2>Contacto y acceso</h2>
           <dl className="p-contact">
             <dt>
-              <Mail size={14} className="inline mr-2" />
+              <Mail size={14} className="inline mr-2" aria-hidden="true" />
               Correo
             </dt>
             <dd>
@@ -218,7 +265,7 @@ function ProfileSummary({
               )}
             </dd>
             <dt>
-              <Phone size={14} className="inline mr-2" />
+              <Phone size={14} className="inline mr-2" aria-hidden="true" />
               Teléfono
             </dt>
             <dd>
@@ -243,50 +290,70 @@ function ProfileSummary({
         <section className="p-panel">
           <div className="p-panel-head">
             <h2>
-              <CalendarClock size={18} className="inline mr-2" />
-              Disponibilidad semanal
+              <CalendarClock size={18} className="inline mr-2" aria-hidden="true" />
+              Días libres y franjas no disponibles
             </h2>
             <Link
               className="p-link"
-              to={`/workers/${worker.id}?tab=availability`}
+              to={keep(`/workers/${worker.id}?tab=availability`)}
             >
-              Gestionar
+              Ver disponibilidad
             </Link>
           </div>
           <div className="p-content">
-            {unavailable.length ? (
-              unavailable.map((s) => (
-                <div
-                  className="py-3 border-b last:border-0 flex justify-between gap-4"
-                  key={s.id}
+            {availabilityError ? (
+              <p className="p-notice p-error" role="alert">
+                No se pudieron consultar los días libres o las franjas.{" "}
+                <button
+                  onClick={() => {
+                    schedules.refetch();
+                    fixedDays.refetch();
+                  }}
                 >
-                  <span>
-                    {s.locationName}
-                    <small className="block p-muted">
-                      {[1, 2, 3, 4, 5, 6, 0]
-                        .filter((d) => s.daysOfWeek.includes(d))
-                        .map(
-                          (d) =>
-                            ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"][
-                              d
-                            ],
-                        )
-                        .join(" · ")}
-                    </small>
-                  </span>
-                  <span>
-                    {s.startTime.slice(0, 5)} – {s.endTime.slice(0, 5)}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="p-muted">
-                No hay franjas de no disponibilidad registradas. Consulta
-                también días libres y ausencias.
+                  Reintentar
+                </button>
               </p>
+            ) : schedules.isLoading || fixedDays.isLoading ? (
+              <p className="p-muted" role="status">Cargando…</p>
+            ) : (
+              <>
+                {daysOff.length > 0 && (
+                  <div className="py-3 border-b flex justify-between gap-4">
+                    <span>Día libre fijo</span>
+                    <span>
+                      {daysOff.length === 1
+                        ? `${DAY_LONG[daysOff[0]]} libre`
+                        : daysOff.map((d) => DAY_SHORT[d]).join(" · ")}
+                    </span>
+                  </div>
+                )}
+                {unavailable.map((s) => (
+                  <div
+                    className="py-3 border-b last:border-0 flex justify-between gap-4"
+                    key={s.id}
+                  >
+                    <span>
+                      {s.locationName || "No disponible"}
+                      <small className="block p-muted">
+                        {WEEK_ORDER.filter((d) => s.daysOfWeek.includes(d))
+                          .map((d) => DAY_SHORT[d])
+                          .join(" · ")}
+                      </small>
+                    </span>
+                    <span>
+                      {s.startTime.slice(0, 5)} – {s.endTime.slice(0, 5)}
+                    </span>
+                  </div>
+                ))}
+                {!daysOff.length && !unavailable.length && (
+                  <p className="p-muted">
+                    Sin días libres fijos ni franjas no disponibles registradas.
+                  </p>
+                )}
+              </>
             )}
             <p className="p-footnote">
-              Estas franjas no suman horas de trabajo.
+              Las franjas no disponibles no suman horas de trabajo.
             </p>
           </div>
         </section>
@@ -294,8 +361,11 @@ function ProfileSummary({
           workerId={worker.id}
           from={period.from}
           to={period.to}
+          showSensitive={showSensitive}
+          link={keep(`/workers/${worker.id}?tab=availability`)}
         />
       </div>
+      <PlanningWindowPanel worker={worker} />
     </div>
   );
 }

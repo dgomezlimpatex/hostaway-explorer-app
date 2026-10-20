@@ -47,8 +47,11 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
     notes: absence.notes || '',
   });
 
+  const hourlyRangeInvalid = formData.isHourly && formData.endTime <= formData.startTime;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (hourlyRangeInvalid) return;
     
     updateMutation.mutate({
       id: absence.id,
@@ -107,7 +110,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                 id="locationName"
                 value={formData.locationName}
                 onChange={(e) => setFormData(prev => ({ ...prev, locationName: e.target.value }))}
-                placeholder="Ej: Cita médica, Gestión personal..."
+                placeholder="Ej.: otra empresa o centro de trabajo"
               />
             </div>
           )}
@@ -175,8 +178,14 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
                   type="time"
                   value={formData.endTime}
                   onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                  aria-invalid={hourlyRangeInvalid || undefined}
                 />
               </div>
+              {hourlyRangeInvalid && (
+                <p className="text-sm text-destructive col-span-2" role="alert">
+                  La hora de fin debe ser posterior a la de inicio.
+                </p>
+              )}
             </div>
           )}
 
@@ -196,7 +205,7 @@ export const EditAbsenceModal: React.FC<EditAbsenceModalProps> = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={updateMutation.isPending}>
+            <Button type="submit" disabled={updateMutation.isPending || hourlyRangeInvalid}>
               {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Guardar Cambios
             </Button>

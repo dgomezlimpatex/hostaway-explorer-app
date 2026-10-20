@@ -30,6 +30,8 @@ interface CreateAbsenceModalProps {
   cleanerName: string;
   initialDate?: Date | null;
   initialEndDate?: Date | null;
+  /** Tipos que se pueden registrar (por defecto, todos). */
+  allowedTypes?: AbsenceType[];
 }
 
 export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
@@ -39,8 +41,10 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
   cleanerName,
   initialDate,
   initialEndDate,
+  allowedTypes,
 }) => {
   const createMutation = useCreateWorkerAbsence();
+  const typeOptions = Object.entries(ABSENCE_TYPE_CONFIG).filter(([key]) => !allowedTypes || allowedTypes.includes(key as AbsenceType));
   
   // Helper to format date as YYYY-MM-DD without timezone conversion
   const formatDateLocal = (date: Date): string => {
@@ -85,8 +89,12 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
     }
   }, [open, initialDate, initialEndDate]);
 
+  const hourlyRangeInvalid = formData.isHourly && formData.endTime <= formData.startTime;
+  const typeNotAllowed = !!allowedTypes && !allowedTypes.includes(formData.absenceType);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (hourlyRangeInvalid || typeNotAllowed) return;
     
     createMutation.mutate({
       cleanerId,
@@ -138,7 +146,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(ABSENCE_TYPE_CONFIG).map(([key, config]) => (
+                {typeOptions.map(([key, config]) => (
                   <SelectItem key={key} value={key}>
                     {config.label}
                   </SelectItem>
@@ -155,8 +163,11 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
                 id="locationName"
                 value={formData.locationName}
                 onChange={(e) => setFormData(prev => ({ ...prev, locationName: e.target.value }))}
-                placeholder="Ej: Cita médica, Gestión personal..."
+                placeholder="Ej.: otra empresa o centro de trabajo"
               />
+              <p className="text-xs text-muted-foreground">
+                Como ausencia bloquea estas fechas concretas. Si es un horario fijo cada semana, regístralo como franja no disponible.
+              </p>
             </div>
           )}
 
@@ -223,8 +234,14 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
                   type="time"
                   value={formData.endTime}
                   onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                  aria-invalid={hourlyRangeInvalid || undefined}
                 />
               </div>
+              {hourlyRangeInvalid && (
+                <p className="text-sm text-destructive sm:col-span-2" role="alert">
+                  La hora de fin debe ser posterior a la de inicio.
+                </p>
+              )}
             </div>
           )}
 
@@ -244,7 +261,7 @@ export const CreateAbsenceModal: React.FC<CreateAbsenceModalProps> = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="sm:w-auto">
               Cancelar
             </Button>
-            <Button type="submit" disabled={createMutation.isPending} className="sm:w-auto">
+            <Button type="submit" disabled={createMutation.isPending || hourlyRangeInvalid || typeNotAllowed} className="sm:w-auto">
               {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Crear ausencia
             </Button>

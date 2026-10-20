@@ -140,6 +140,8 @@ export async function loadPersonnelHours(
 export function usePersonnelData(
   period: Pick<Period, "from" | "to">,
   workerId?: string,
+  // live: Control de horas refresca cada 30 s; la ficha solo al volver a la pestaña.
+  { live = true }: { live?: boolean } = {},
 ) {
   const { cleaners, isLoading, error: cleanersError } = useCleaners();
   const { activeSede } = useSede();
@@ -165,8 +167,9 @@ export function usePersonnelData(
         period,
       ),
     enabled: canManage && !!activeSede?.id && !isLoading && people.length > 0,
-    refetchInterval: 30000,
-    staleTime: 10000,
+    refetchInterval: live ? 30000 : false,
+    refetchOnWindowFocus: true,
+    staleTime: live ? 10000 : 60000,
   });
   return {
     ...query,

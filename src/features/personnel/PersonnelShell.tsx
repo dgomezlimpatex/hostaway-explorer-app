@@ -6,7 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { Users, ChartNoAxesCombined, ArrowLeft } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useWorkerCapabilities } from "@/hooks/useWorkerCapabilities";
 import "./personnel.css";
 export function usePersonnelParams() {
   const [params, setParams] = useSearchParams();
@@ -43,10 +43,9 @@ export function PersonnelShell({
   children: React.ReactNode;
   hours?: boolean;
 }) {
-  const { userRole } = useAuth();
+  const { canViewHours } = useWorkerCapabilities();
   const location = useLocation();
   const navigation = useNavigationType();
-  const canManage = userRole === "admin" || userRole === "manager";
   const previousPath = useRef("");
   useEffect(() => {
     const key = `personnel-scroll:${location.pathname}${location.search}`;
@@ -68,36 +67,19 @@ export function PersonnelShell({
   }, [location.pathname, location.search, navigation]);
   return (
     <div className="personnel">
-      <header className="personnel-top">
-        <div className="personnel-top-inner">
-          <Link
-            to="/"
-            className="personnel-brand"
-            aria-label="LIMPATEX, volver al menú"
-          >
-            <span className="personnel-monogram">L</span>
-            <span>
-              <strong>LIMPATEX</strong>
-              <small>Gestión de personal</small>
-            </span>
+      {/* La marca y la navegación principal las da el layout; aquí solo la subnavegación. */}
+      {canViewHours && (
+        <nav className="personnel-subnav" aria-label="Personal">
+          <Link to="/workers" aria-current={!hours ? "page" : undefined}>
+            <Users size={16} aria-hidden="true" />
+            Equipo
           </Link>
-          <nav className="personnel-nav" aria-label="Personal">
-            <Link to="/workers" aria-current={!hours ? "page" : undefined}>
-              <Users size={17} />
-              Equipo
-            </Link>
-            {canManage && (
-              <Link
-                to="/workers/hours"
-                aria-current={hours ? "page" : undefined}
-              >
-                <ChartNoAxesCombined size={17} />
-                Control de horas
-              </Link>
-            )}
-          </nav>
-        </div>
-      </header>
+          <Link to="/workers/hours" aria-current={hours ? "page" : undefined}>
+            <ChartNoAxesCombined size={16} aria-hidden="true" />
+            Control de horas
+          </Link>
+        </nav>
+      )}
       <main className="personnel-main">{children}</main>
     </div>
   );
