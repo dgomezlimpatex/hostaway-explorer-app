@@ -144,14 +144,15 @@ try {
     await open(page, '/clients');
     await searchAndPick(page, 'Hostal', 'client-c-dup-1');
     await expectWhere(page, '/clients?clientId=c-dup-1');
-    await page.getByText('Cliente Corriente').first().click();
-    await expectWhere(page, '/clients?clientId=c-other');
+    // The directory is alphabetical, so pick a client that is not the default first entry (Cliente Corriente).
+    await page.locator('button[aria-pressed]').filter({ hasText: 'Hostal Duplicado' }).nth(1).click();
+    await expectWhere(page, '/clients?clientId=c-dup-2');
     await page.reload();
-    await page.getByText('BC-OTHER').first().waitFor();
+    await page.getByText('B-SEGUNDO').first().waitFor();
     assert.equal(await page.getByText('BC-DUP-1').count(), 0, 'the previously linked client does not come back');
     await page.goBack();
     await expectWhere(page, '/clients');
-    assert.equal(await page.getByText('BC-OTHER').count(), 0, 'Back closes the selection made after the link');
+    assert.equal(await page.getByText('B-SEGUNDO').count(), 0, 'Back closes the selection made after the link');
   });
 
   await step('worker opens their profile by id (not the task list), including an inactive homonym', async () => {

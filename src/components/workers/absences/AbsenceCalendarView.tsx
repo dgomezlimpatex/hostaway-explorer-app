@@ -10,6 +10,7 @@ import {
   DAY_OF_WEEK_SHORT 
 } from '@/types/workerAbsence';
 import { cn } from '@/lib/utils';
+import { isSensitiveAbsenceType } from '@/lib/roleCapabilities';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Popover,
@@ -27,7 +28,13 @@ interface AbsenceCalendarViewProps {
   onDateClick: (date: Date) => void;
   onDateRangeSelect?: (startDate: Date, endDate: Date) => void;
   isLoading?: boolean;
+  /** Sin creación de ausencias desde el calendario. */
+  readOnly?: boolean;
+  /** Muestra tipo médico/personal y notas (solo administración y gerencia). */
+  showSensitive?: boolean;
 }
+
+const GENERIC_ABSENCE = { label: 'Ausencia', color: '#64748B', icon: '•' };
 
 export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
   cleanerId,
@@ -37,7 +44,12 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
   onDateClick,
   onDateRangeSelect,
   isLoading,
+  readOnly = false,
+  showSensitive = true,
 }) => {
+  const absenceConfig = (type: WorkerAbsence['absenceType']) =>
+    !showSensitive && isSensitiveAbsenceType(type) ? GENERIC_ABSENCE : ABSENCE_TYPE_CONFIG[type] ?? GENERIC_ABSENCE;
+  const legendEntries = Object.entries(ABSENCE_TYPE_CONFIG).filter(([key]) => showSensitive || !isSensitiveAbsenceType(key));
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectionRange, setSelectionRange] = useState<{ start: Date; end: Date } | null>(null);
   const isSelectingRef = useRef(false);
@@ -134,7 +146,9 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
     }
     
     if (hasMaintenance) {
-      return { bg: 'bg-yellow-100 dark:bg-yellow-900/30', border: 'border border-yellow-400' };
+      return getMaintenanceCleaningsForDate(date).every(m => m.scheduleType === 'unavailability')
+        ? { bg: 'bg-rose-50', border: 'border border-rose-300' }
+        : { bg: 'bg-yellow-100 dark:bg-yellow-900/30', border: 'border border-yellow-400' };
     }
     
     if (isToday) {
@@ -224,7 +238,22 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
   };
 
   const days = getDaysInMonth(currentMonth);
-  const monthName = currentMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  const rawMonthName = currentMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  // «octubre de 2026» → «Octubre de 2026» (capitalize de CSS ponía «De» en mayúscula).
+  const monthName = rawMonthName.charAt(0).toUpperCase() + rawMonthName.slice(1);
+  const dayLabel = (
+    date: Date,
+    dayAbsences: WorkerAbsence[],
+    fixedOff: boolean,
+    dayMaintenance: WorkerMaintenanceCleaning[],
+  ) => {
+    const parts = [date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })];
+    if (dayAbsences.length) parts.push(dayAbsences.map(a => absenceConfig(a.absenceType).label).join(', '));
+    if (fixedOff) parts.push('día libre fijo');
+    if (dayMaintenance.some(m => m.scheduleType === 'unavailability')) parts.push('franja no disponible');
+    if (dayMaintenance.some(m => m.scheduleType !== 'unavailability')) parts.push('mantenimiento');
+    return parts.length > 1 ? `${parts[0]}: ${parts.slice(1).join(', ')}` : parts[0];
+  };
 
   if (isLoading) {
     return (
@@ -247,11 +276,11 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={() => navigateMonth(-1)}>
+          <Button variant="ghost" size="icon" aria-label="Mes anterior" onClick={() => navigateMonth(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <CardTitle className="text-lg capitalize">{monthName}</CardTitle>
-          <Button variant="ghost" size="icon" onClick={() => navigateMonth(1)}>
+          <CardTitle className="text-lg">{monthName}</CardTitle>
+          <Button variant="ghost" size="icon" aria-label="Mes siguiente" onClick={() => navigateMonth(1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -285,18 +314,23 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
             
             const dayButton = (
               <button
+                type="button"
                 data-calendar-date={formatDateLocal(day.date)}
-                onPointerDown={(event) => handleDayPointerDown(day.date!, event)}
-                onPointerEnter={() => handleDayPointerEnter(day.date!)}
-                onPointerMove={handleDayPointerMove}
-                onPointerUp={(event) => handleDayPointerUp(day.date!, event)}
-                onPointerCancel={clearSelection}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
+                aria-label={dayLabel(day.date, absenceList, isFixedOff, maintenanceList)}
+                {...(readOnly ? {} : {
+                  onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => handleDayPointerDown(day.date!, event),
+                  onPointerEnter: () => handleDayPointerEnter(day.date!),
+                  onPointerMove: handleDayPointerMove,
+                  onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => handleDayPointerUp(day.date!, event),
+                  onPointerCancel: clearSelection,
+                  onClick: (event: React.MouseEvent<HTMLButtonElement>) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  },
+                })}
                 className={cn(
-                  'h-12 w-full touch-none select-none rounded-md flex flex-col items-center justify-center text-sm transition-colors relative cursor-pointer hover:ring-2 hover:ring-[#310984]/25',
+                  'h-12 w-full rounded-md flex flex-col items-center justify-center text-sm transition-colors relative',
+                  readOnly ? (hasDetails ? 'cursor-pointer' : 'cursor-default') : 'touch-none select-none cursor-pointer hover:ring-2 hover:ring-[#310984]/25',
                   style.bg,
                   style.border,
                   isRangeSelected && 'ring-2 ring-[#310984] ring-offset-1',
@@ -307,16 +341,16 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
                     ? { backgroundColor: '#ede9fe', borderColor: '#310984' }
                     : absence
                       ? { 
-                          backgroundColor: `${ABSENCE_TYPE_CONFIG[absence.absenceType].color}30`,
-                          borderColor: ABSENCE_TYPE_CONFIG[absence.absenceType].color,
+                          backgroundColor: `${absenceConfig(absence.absenceType).color}30`,
+                          borderColor: absenceConfig(absence.absenceType).color,
                         }
                       : undefined
                 }
               >
                 <span className="font-medium">{day.date.getDate()}</span>
                 {absence && (
-                  <span className="text-[10px] leading-none">
-                    {ABSENCE_TYPE_CONFIG[absence.absenceType].icon}
+                  <span className="text-[10px] leading-none" aria-hidden="true">
+                    {absenceConfig(absence.absenceType).icon}
                   </span>
                 )}
                 {isFixedOff && !absence && (
@@ -352,7 +386,7 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
                       <div className="space-y-2">
                         <h4 className="text-xs font-semibold text-muted-foreground uppercase">Ausencias</h4>
                         {absenceList.map((abs) => {
-                          const config = ABSENCE_TYPE_CONFIG[abs.absenceType];
+                          const config = absenceConfig(abs.absenceType);
                           return (
                             <div 
                               key={abs.id} 
@@ -368,7 +402,7 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
                                   {abs.startTime} - {abs.endTime}
                                 </div>
                               )}
-                              {abs.notes && (
+                              {showSensitive && abs.notes && (
                                 <div className="text-xs text-muted-foreground mt-0.5">{abs.notes}</div>
                               )}
                               </div>
@@ -387,11 +421,11 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
                             key={maint.id} 
                             className="flex items-start gap-2 p-2 rounded-md bg-yellow-50 dark:bg-yellow-900/20 text-sm"
                           >
-                            <span>{maint.scheduleType === 'unavailability' ? '⛔' : '🧹'}</span>
+                            <span aria-hidden="true">{maint.scheduleType === 'unavailability' ? '⛔' : '🧹'}</span>
                             <div className="flex-1">
                               <div className="font-medium flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
-                                {maint.scheduleType === 'unavailability' ? 'No disponible' : maint.locationName}
+                                {maint.scheduleType === 'unavailability' ? `No disponible${maint.locationName ? ` · ${maint.locationName}` : ''}` : maint.locationName}
                               </div>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                                 <Clock className="h-3 w-3" />
@@ -414,14 +448,16 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
                       </div>
                     )}
                     
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full mt-2"
-                      onClick={() => onDateClick(day.date!)}
-                    >
-                      Añadir nueva ausencia
-                    </Button>
+                    {!readOnly && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={() => onDateClick(day.date!)}
+                      >
+                        Añadir nueva ausencia
+                      </Button>
+                    )}
                   </div>
                 </PopoverContent>
               </Popover>
@@ -433,7 +469,13 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
         <div className="mt-4 pt-4 border-t">
           <h4 className="text-xs font-medium text-muted-foreground mb-2">Leyenda:</h4>
           <div className="flex flex-wrap gap-3 text-xs">
-            {Object.entries(ABSENCE_TYPE_CONFIG).map(([key, config]) => (
+            {!showSensitive && (
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded" style={{ backgroundColor: GENERIC_ABSENCE.color }} />
+                <span>{GENERIC_ABSENCE.icon} Ausencia (motivo reservado)</span>
+              </div>
+            )}
+            {legendEntries.map(([key, config]) => (
               <div key={key} className="flex items-center gap-1">
                 <div 
                   className="w-3 h-3 rounded" 
@@ -448,7 +490,11 @@ export const AbsenceCalendarView: React.FC<AbsenceCalendarViewProps> = ({
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-400" />
-              <span>🧹 Limpieza mant.</span>
+              <span>🧹 Mantenimiento fijo</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded bg-rose-50 border border-rose-300" />
+              <span>⛔ Franja no disponible</span>
             </div>
           </div>
         </div>

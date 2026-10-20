@@ -30,6 +30,8 @@ interface MaintenanceCleaningsSectionProps {
   cleanerName: string;
   maintenanceCleanings: WorkerMaintenanceCleaning[];
   onAddNew: () => void;
+  /** Solo consulta: sin añadir, activar, editar ni eliminar. */
+  readOnly?: boolean;
 }
 
 export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionProps> = ({
@@ -38,6 +40,7 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
   maintenanceCleanings,
   onAddNew,
   availability = false,
+  readOnly = false,
 }) => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<WorkerMaintenanceCleaning | null>(null);
@@ -81,16 +84,18 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
-                {availability ? 'Disponibilidad semanal' : 'Limpiezas de mantenimiento'}
+                {availability ? 'Franjas no disponibles' : 'Limpiezas de mantenimiento'}
               </CardTitle>
               <CardDescription>
                 {availability ? 'Indica las franjas en las que no puede trabajar. No suman horas de trabajo.' : 'Limpiezas semanales que sí suman horas de trabajo.'}
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={onAddNew}>
-              <Plus className="h-4 w-4 mr-1" />
-              Añadir
-            </Button>
+            {!readOnly && (
+              <Button variant="outline" size="sm" onClick={onAddNew}>
+                <Plus className="h-4 w-4 mr-1" />
+                Añadir
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -98,14 +103,16 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
             <div className="text-center py-6 text-muted-foreground">
               <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">{availability ? 'Sin restricciones horarias. Se respetan los días libres y las ausencias.' : 'No hay limpiezas de mantenimiento configuradas'}</p>
-              <Button 
-                variant="link" 
-                size="sm" 
-                onClick={onAddNew}
-                className="mt-1"
-              >
-                {availability ? 'Añadir horario no disponible' : 'Añadir primera limpieza'}
-              </Button>
+              {!readOnly && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={onAddNew}
+                  className="mt-1"
+                >
+                  {availability ? 'Añadir franja no disponible' : 'Añadir primera limpieza'}
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -135,6 +142,7 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
                     )}
                   </div>
                   
+                  {!readOnly && (
                   <div className="flex items-center gap-2">
                     <Switch
                       aria-label={`Activar ${item.locationName}`}
@@ -160,6 +168,7 @@ export const MaintenanceCleaningsSection: React.FC<MaintenanceCleaningsSectionPr
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                  )}
                 </div>
               ))}
             </div>

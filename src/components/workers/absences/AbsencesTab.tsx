@@ -14,34 +14,62 @@ import { CreateAbsenceModal } from './CreateAbsenceModal';
 import { CreateMaintenanceModal } from './CreateMaintenanceModal';
 import { AbsenceAuditLog } from './AbsenceAuditLog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AbsenceType } from '@/types/workerAbsence';
+import { SENSITIVE_ABSENCE_TYPES } from '@/lib/roleCapabilities';
+import { countUpcomingAbsences, madridTodayKey } from './availabilityStatus';
 
 interface AbsencesTabProps {
   cleanerId: string;
   cleanerName: string;
+  /** Crear, editar y eliminar (por defecto, sí; el planificador lo usa así). */
+  canEdit?: boolean;
+  /** Tipo médico/personal, notas e historial (por defecto, sí). */
+  showSensitive?: boolean;
 }
 
-export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName }) => {
+const ALL_ABSENCE_TYPES: AbsenceType[] = ['vacation', 'sick', 'day_off', 'holiday', 'personal', 'external_work'];
+
+export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName, canEdit = true, showSensitive = true }) => {
   const [showCreateAbsenceModal, setShowCreateAbsenceModal] = useState(false);
   const [showCreateAvailabilityModal, setShowCreateAvailabilityModal] = useState(false);
   const [showCreateMaintenanceModal, setShowCreateMaintenanceModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(null);
   
-  const { data: absences = [], isLoading: loadingAbsences } = useWorkerAbsences(cleanerId);
-  const { data: fixedDaysOff = [], isLoading: loadingFixedDays } = useWorkerFixedDaysOff(cleanerId);
-  const { data: maintenanceCleanings = [], isLoading: loadingMaintenance } = useWorkerMaintenanceCleanings(cleanerId);
-  const today = new Date().toISOString().slice(0, 10);
-  const activeOrUpcomingAbsences = absences.filter((absence) => absence.endDate >= today);
+  const absencesQuery = useWorkerAbsences(cleanerId);
+  const fixedDaysQuery = useWorkerFixedDaysOff(cleanerId);
+  const maintenanceQuery = useWorkerMaintenanceCleanings(cleanerId);
+  const { data: absences = [], isLoading: loadingAbsences } = absencesQuery;
+  const { data: fixedDaysOff = [], isLoading: loadingFixedDays } = fixedDaysQuery;
+  const { data: maintenanceCleanings = [], isLoading: loadingMaintenance } = maintenanceQuery;
+  const failed = [
+    absencesQuery.error && 'ausencias',
+    fixedDaysQuery.error && 'días libres',
+    maintenanceQuery.error && 'franjas y mantenimientos',
+  ].filter(Boolean) as string[];
+  const retry = () => {
+    if (absencesQuery.error) absencesQuery.refetch();
+    if (fixedDaysQuery.error) fixedDaysQuery.refetch();
+    if (maintenanceQuery.error) maintenanceQuery.refetch();
+  };
+  // «Hoy» en Madrid: entre las 00:00 y la 01:00/02:00 la fecha UTC aún es la de ayer.
+  const upcomingCount = countUpcomingAbsences(absences, madridTodayKey());
+  const allowedTypes = showSensitive
+    ? ALL_ABSENCE_TYPES
+    : ALL_ABSENCE_TYPES.filter((type) => !(SENSITIVE_ABSENCE_TYPES as readonly string[]).includes(type));
+  const canEditType = (type: AbsenceType) => canEdit && allowedTypes.includes(type);
   const activeFixedDays = fixedDaysOff.filter((day) => day.isActive);
   const activeMaintenance = maintenanceCleanings.filter((cleaning) => cleaning.isActive && cleaning.scheduleType !== 'unavailability');
 
   const handleDateClick = (date: Date) => {
+    if (!canEdit) return;
     setSelectedDate(date);
     setSelectedEndDate(date);
     setShowCreateAbsenceModal(true);
   };
 
   const handleDateRangeSelect = (startDate: Date, endDate: Date) => {
+    if (!canEdit) return;
     setSelectedDate(startDate);
     setSelectedEndDate(endDate);
     setShowCreateAbsenceModal(true);
@@ -54,11 +82,12 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
       {/* Header with action buttons */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-lg font-black text-slate-950">Ausencias</h3>
-          <p className="text-sm text-slate-500">Disponibilidad, días libres y limpiezas de mantenimiento de {cleanerName}.</p>
+          <h3 className="text-lg font-black text-slate-950">Disponibilidad y ausencias</h3>
+          <p className="text-sm text-slate-500">Ausencias, días libres fijos, franjas no disponibles y limpiezas de mantenimiento de {cleanerName}.</p>
         </div>
+        {canEdit && (
         <div className="grid grid-cols-2 gap-2 sm:flex">
-          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setShowCreateAvailabilityModal(true)}><Clock className="h-4 w-4 mr-1" />Disponibilidad</Button>
+          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setShowCreateAvailabilityModal(true)}><Clock className="h-4 w-4 mr-1" />Franja no disponible</Button>
           <Button 
             variant="outline" 
             size="sm"
@@ -82,17 +111,28 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
             Mantenimiento
           </Button>
         </div>
+        )}
       </div>
 
+      {failed.length > 0 ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert">
+          No se pudieron consultar: {failed.join(', ')}. Los datos de esta pestaña pueden estar incompletos.{' '}
+          <button type="button" className="font-semibold underline underline-offset-2" onClick={retry}>
+            Reintentar
+          </button>
+        </div>
+      ) : isLoading ? (
+        <p className="text-sm text-slate-500" role="status">Cargando disponibilidad…</p>
+      ) : (
       <div className="grid gap-2 sm:grid-cols-3">
         <AbsenceSummaryCard
           label="Ausencias próximas"
-          value={activeOrUpcomingAbsences.length}
-          helper={activeOrUpcomingAbsences.length ? 'Revisar cobertura' : 'Sin avisos'}
-          tone={activeOrUpcomingAbsences.length ? 'warning' : 'ok'}
+          value={upcomingCount}
+          helper={upcomingCount ? 'Revisar cobertura' : 'Sin ausencias próximas'}
+          tone={upcomingCount ? 'warning' : 'ok'}
         />
         <AbsenceSummaryCard
-          label="Días fijos libres"
+          label="Días libres fijos"
           value={activeFixedDays.length}
           helper="Patrón semanal"
           tone="neutral"
@@ -100,29 +140,32 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
         <AbsenceSummaryCard
           label="Mantenimientos"
           value={activeMaintenance.length}
-          helper="Bloqueos operativos"
+          helper="Limpiezas fijas que suman horas"
           tone="neutral"
         />
       </div>
+      )}
 
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-4">
+        <TabsList className={showSensitive ? 'grid h-auto w-full grid-cols-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-4' : 'grid h-auto w-full grid-cols-3 rounded-2xl bg-slate-100 p-1'}>
           <TabsTrigger value="calendar" className="flex items-center gap-1 rounded-xl py-2.5">
             <Calendar className="h-4 w-4" />
             Calendario
           </TabsTrigger>
           <TabsTrigger value="fixed" className="flex items-center gap-1 rounded-xl py-2.5">
             <Clock className="h-4 w-4" />
-            Disponibilidad
+            Días y franjas
           </TabsTrigger>
           <TabsTrigger value="list" className="flex items-center gap-1 rounded-xl py-2.5">
             <Building2 className="h-4 w-4" />
             Lista
           </TabsTrigger>
+          {showSensitive && (
           <TabsTrigger value="history" className="flex items-center gap-1 rounded-xl py-2.5">
             <History className="h-4 w-4" />
             Historial
           </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="calendar" className="mt-4">
@@ -132,8 +175,10 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
             fixedDaysOff={fixedDaysOff}
             maintenanceCleanings={maintenanceCleanings}
             onDateClick={handleDateClick}
-            onDateRangeSelect={handleDateRangeSelect}
+            onDateRangeSelect={canEdit ? handleDateRangeSelect : undefined}
             isLoading={isLoading}
+            readOnly={!canEdit}
+            showSensitive={showSensitive}
           />
         </TabsContent>
 
@@ -141,8 +186,9 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
           <FixedDaysOffSection 
             cleanerId={cleanerId}
             fixedDaysOff={fixedDaysOff}
+            readOnly={!canEdit}
           />
-          <MaintenanceCleaningsSection availability cleanerId={cleanerId} cleanerName={cleanerName}
+          <MaintenanceCleaningsSection availability readOnly={!canEdit} cleanerId={cleanerId} cleanerName={cleanerName}
             maintenanceCleanings={maintenanceCleanings.filter(item => item.scheduleType === 'unavailability')}
             onAddNew={() => setShowCreateAvailabilityModal(true)} />
           <MaintenanceCleaningsSection 
@@ -150,6 +196,7 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
             cleanerName={cleanerName}
             maintenanceCleanings={maintenanceCleanings.filter(item => item.scheduleType !== 'unavailability')}
             onAddNew={() => setShowCreateMaintenanceModal(true)}
+            readOnly={!canEdit}
           />
         </TabsContent>
 
@@ -158,14 +205,19 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
             cleanerId={cleanerId}
             absences={absences}
             isLoading={loadingAbsences}
+            canEditType={canEditType}
+            showSensitive={showSensitive}
           />
         </TabsContent>
 
+        {showSensitive && (
         <TabsContent value="history" className="mt-4">
           <AbsenceAuditLog cleanerId={cleanerId} />
         </TabsContent>
+        )}
       </Tabs>
 
+      {canEdit && (<>
       <CreateMaintenanceModal scheduleType="unavailability" open={showCreateAvailabilityModal} onOpenChange={setShowCreateAvailabilityModal} cleanerId={cleanerId} cleanerName={cleanerName} />
       {/* Modals */}
       <CreateAbsenceModal 
@@ -175,6 +227,7 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
         cleanerName={cleanerName}
         initialDate={selectedDate}
         initialEndDate={selectedEndDate}
+        allowedTypes={allowedTypes}
       />
       
       <CreateMaintenanceModal 
@@ -183,6 +236,7 @@ export const AbsencesTab: React.FC<AbsencesTabProps> = ({ cleanerId, cleanerName
         cleanerId={cleanerId}
         cleanerName={cleanerName}
       />
+      </>)}
     </div>
   );
 };

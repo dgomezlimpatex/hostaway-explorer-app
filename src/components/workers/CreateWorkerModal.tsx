@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,33 +17,58 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertTriangle, Building2 } from 'lucide-react';
 import { useCreateCleaner } from "@/hooks/useCleaners";
 import { useSede } from '@/contexts/SedeContext';
-import { CreateCleanerData } from "@/services/cleanerStorage";
-
-const WORKER_CATEGORY_OPTIONS = [
-  'Operario de limpieza',
-  'Supervisor',
-  'Administrador',
-] as const;
+import { Cleaner } from '@/types/calendar';
+import {
+  STANDARD_WORKER_CATEGORIES,
+  findPossibleDuplicates,
+  parseHours,
+  validateWorkerForm,
+} from '@/features/personnel/workerForm';
+import { toast } from '@/hooks/use-toast';
 
 interface CreateWorkerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Equipo cargado de la sede activa, para avisar de posibles duplicados. */
+  existingWorkers?: Cleaner[];
 }
 
-export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps) => {
+interface CreateWorkerForm {
+  name: string;
+  email: string;
+  telefono: string;
+  isActive: boolean;
+  contractHours: string;
+  category: string;
+  startDate: string;
+}
+
+const EMPTY_FORM: CreateWorkerForm = {
+  name: '',
+  email: '',
+  telefono: '',
+  isActive: true,
+  contractHours: '',
+  category: 'Operario de limpieza',
+  startDate: '',
+};
+
+export const CreateWorkerModal = ({ open, onOpenChange, existingWorkers = [] }: CreateWorkerModalProps) => {
   const { availableSedes, activeSede } = useSede();
   const [selectedSedeId, setSelectedSedeId] = useState<string>('');
-  const [formData, setFormData] = useState<CreateCleanerData>({
-    name: '',
-    email: '',
-    telefono: '',
-    isActive: true,
-    contractHoursPerWeek: 0,
-    category: 'Operario de limpieza',
-    startDate: '',
-  });
+  const [formData, setFormData] = useState<CreateWorkerForm>(EMPTY_FORM);
+  const [touched, setTouched] = useState(false);
+  const [confirmedDuplicates, setConfirmedDuplicates] = useState(false);
 
   const createCleaner = useCreateCleaner();
+  const errors = validateWorkerForm(formData);
+  const invalid = Object.keys(errors).length > 0;
+  // Solo se compara con la sede cargada en el listado.
+  const duplicates = useMemo(
+    () => (selectedSedeId && selectedSedeId === activeSede?.id ? findPossibleDuplicates(existingWorkers, formData) : []),
+    [existingWorkers, formData, selectedSedeId, activeSede?.id],
+  );
+  useEffect(() => setConfirmedDuplicates(false), [formData.name, formData.email, formData.telefono]);
 
   // Auto-seleccionar sede activa si existe
   useEffect(() => {
@@ -56,32 +81,40 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name.trim() || !selectedSedeId) {
-      return;
-    }
+    setTouched(true);
+    if (invalid || !selectedSedeId) return;
+    if (duplicates.length && !confirmedDuplicates) return;
 
+    const otherSede = selectedSedeId !== activeSede?.id ? availableSedes.find(s => s.id === selectedSedeId) : null;
     createCleaner.mutate(
-      { ...formData, sede_id: selectedSedeId },
+      {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        telefono: formData.telefono.trim(),
+        isActive: formData.isActive,
+        contractHoursPerWeek: parseHours(formData.contractHours) ?? 0,
+        category: formData.category,
+        startDate: formData.startDate,
+        sede_id: selectedSedeId,
+      },
       {
         onSuccess: () => {
+          if (otherSede) {
+            toast({
+              title: 'Creado en otra sede',
+              description: "Para verlo, cambia a la sede «" + otherSede.nombre + "» en el selector de sede.",
+            });
+          }
           onOpenChange(false);
           setSelectedSedeId('');
-          setFormData({
-            name: '',
-            email: '',
-            telefono: '',
-            isActive: true,
-            contractHoursPerWeek: 0,
-            category: 'Operario de limpieza',
-            startDate: '',
-          });
+          setFormData(EMPTY_FORM);
+          setTouched(false);
         },
       }
     );
   };
 
-  const handleChange = (field: keyof CreateCleanerData, value: string | boolean | number) => {
+  const handleChange = (field: keyof CreateWorkerForm, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -92,9 +125,9 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="w-[calc(100vw-1rem)] max-h-[92dvh] overflow-y-auto sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Crear Nuevo Trabajador</DialogTitle>
+          <DialogTitle>Nuevo trabajador</DialogTitle>
           <DialogDescription>
             Añade un nuevo trabajador a tu equipo de limpieza.
           </DialogDescription>
@@ -108,11 +141,11 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
             </AlertDescription>
           </Alert>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900">
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">
-                <strong>Solo para casos excepcionales.</strong> Lo normal es dar de alta al trabajador en <strong>REGISTRO</strong> (la app de gestión) y luego ir a <strong>Integraciones · REGISTRO</strong>: al vincularlo se crea aquí automáticamente con DNI, PIN y categoría, y se le envía la invitación por email para que cree su contraseña. Los trabajadores creados a mano aquí <strong>no tendrán DNI, PIN ni categoría</strong> y tampoco recibirán invitación automática.
+                <strong>Solo para casos excepcionales.</strong> Lo normal es dar de alta al trabajador en <strong>REGISTRO</strong> (la app de gestión) y luego ir a <strong>Integraciones · REGISTRO</strong>: al vincularlo se crea aquí automáticamente con DNI, PIN y categoría, y se le envía la invitación por email para que cree su contraseña. Los trabajadores creados a mano aquí <strong>no tendrán DNI ni PIN de REGISTRO</strong> y tampoco recibirán invitación automática.
               </AlertDescription>
             </Alert>
             <div className="space-y-2">
@@ -157,7 +190,9 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
                 onChange={(e) => handleChange('name', e.target.value)}
                 placeholder="Nombre del trabajador"
                 required
+                aria-invalid={(touched && !!errors.name) || undefined}
               />
+              {touched && errors.name && <p className="text-sm text-destructive" role="alert">{errors.name}</p>}
             </div>
 
           <div className="space-y-2">
@@ -167,8 +202,11 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
               type="email"
               value={formData.email}
               onChange={(e) => handleChange('email', e.target.value)}
+              onBlur={() => setTouched(true)}
               placeholder="email@ejemplo.com"
+              aria-invalid={(touched && !!errors.email) || undefined}
             />
+            {touched && errors.email && <p className="text-sm text-destructive" role="alert">{errors.email}</p>}
           </div>
 
           <div className="space-y-2">
@@ -185,15 +223,16 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
             <Label htmlFor="contractHoursPerWeek">Horas semanales por contrato</Label>
             <Input
               id="contractHoursPerWeek"
-              type="number"
-              min="0"
-              max="80"
-              step="0.25"
-              value={formData.contractHoursPerWeek ?? 0}
-              onChange={(e) => handleChange('contractHoursPerWeek', Number(e.target.value) || 0)}
+              inputMode="decimal"
+              value={formData.contractHours}
+              onChange={(e) => handleChange('contractHours', e.target.value)}
+              onBlur={() => setTouched(true)}
               placeholder="0"
+              aria-invalid={(touched && !!errors.contractHours) || undefined}
             />
-            <p className="text-xs text-muted-foreground">Si no indicas horas, se guardará 0.</p>
+            {touched && errors.contractHours
+              ? <p className="text-sm text-destructive" role="alert">{errors.contractHours}</p>
+              : <p className="text-xs text-muted-foreground">Entre 0 y 80, en cuartos de hora. Si no indicas horas, se guardará 0.</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -207,7 +246,7 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {WORKER_CATEGORY_OPTIONS.map((category) => (
+                  {STANDARD_WORKER_CATEGORIES.map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
                     </SelectItem>
@@ -217,7 +256,7 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="startDate">Fecha de Inicio</Label>
+              <Label htmlFor="startDate">Fecha de alta</Label>
               <Input
                 id="startDate"
                 type="date"
@@ -236,12 +275,30 @@ export const CreateWorkerModal = ({ open, onOpenChange }: CreateWorkerModalProps
             <Label htmlFor="isActive">Trabajador activo</Label>
           </div>
 
+          {duplicates.length > 0 && (
+            <Alert className="border-amber-300 bg-amber-50" role="alert">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-sm text-amber-900">
+                <strong>Posible duplicado en esta sede:</strong>{' '}
+                {duplicates.map(d => d.name + (d.isActive === false ? ' (inactivo)' : '') + ' — coincide ' + d.reasons.join(', ')).join('; ')}.
+                <label className="mt-2 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={confirmedDuplicates}
+                    onChange={(e) => setConfirmedDuplicates(e.target.checked)}
+                  />
+                  Es otra persona: crear de todos modos
+                </label>
+              </AlertDescription>
+            </Alert>
+          )}
+
            <DialogFooter>
              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                Cancelar
              </Button>
-             <Button type="submit" disabled={createCleaner.isPending || !selectedSedeId || !formData.name.trim()}>
-               {createCleaner.isPending ? 'Creando...' : 'Crear Trabajador'}
+             <Button type="submit" disabled={createCleaner.isPending || !selectedSedeId || !formData.name.trim() || (duplicates.length > 0 && !confirmedDuplicates)}>
+               {createCleaner.isPending ? 'Creando…' : 'Crear trabajador'}
              </Button>
            </DialogFooter>
            </form>

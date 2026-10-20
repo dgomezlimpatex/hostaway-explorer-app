@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { EditAbsenceModal } from './EditAbsenceModal';
+import { isSensitiveAbsenceType } from '@/lib/roleCapabilities';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -36,13 +37,23 @@ interface AbsencesListProps {
   cleanerId: string;
   absences: WorkerAbsence[];
   isLoading?: boolean;
+  /** Si se puede editar/eliminar una ausencia de ese tipo (por defecto, todas). */
+  canEditType?: (type: WorkerAbsence['absenceType']) => boolean;
+  /** Tipo médico/personal y notas visibles (por defecto, sí). */
+  showSensitive?: boolean;
 }
+
+const GENERIC_ABSENCE = { label: 'Ausencia', color: '#64748B', icon: '•' };
 
 export const AbsencesList: React.FC<AbsencesListProps> = ({
   cleanerId,
   absences,
   isLoading,
+  canEditType = () => true,
+  showSensitive = true,
 }) => {
+  const absenceConfig = (type: WorkerAbsence['absenceType']) =>
+    !showSensitive && isSensitiveAbsenceType(type) ? GENERIC_ABSENCE : ABSENCE_TYPE_CONFIG[type] ?? GENERIC_ABSENCE;
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<WorkerAbsence | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
@@ -104,7 +115,7 @@ export const AbsencesList: React.FC<AbsencesListProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los tipos</SelectItem>
-                {Object.entries(ABSENCE_TYPE_CONFIG).map(([key, config]) => (
+                {Object.entries(ABSENCE_TYPE_CONFIG).filter(([key]) => showSensitive || !isSensitiveAbsenceType(key)).map(([key, config]) => (
                   <SelectItem key={key} value={key}>
                     {config.icon} {config.label}
                   </SelectItem>
@@ -126,7 +137,8 @@ export const AbsencesList: React.FC<AbsencesListProps> = ({
           ) : (
             <div className="space-y-3">
               {filteredAbsences.map(absence => {
-                const config = ABSENCE_TYPE_CONFIG[absence.absenceType];
+                const config = absenceConfig(absence.absenceType);
+                const editable = canEditType(absence.absenceType);
                 const days = calculateDays(absence.startDate, absence.endDate);
                 const isHourly = absence.startTime && absence.endTime;
                 
@@ -178,17 +190,19 @@ export const AbsencesList: React.FC<AbsencesListProps> = ({
                         </p>
                       )}
                       
-                      {absence.notes && (
+                      {showSensitive && absence.notes && (
                         <p className="text-xs text-muted-foreground mt-1 truncate">
                           {absence.notes}
                         </p>
                       )}
                     </div>
                     
+                    {editable && (
                     <div className="flex items-center gap-1 ml-2">
                       <Button 
                         variant="ghost" 
                         size="icon"
+                        aria-label="Editar ausencia"
                         onClick={() => setEditItem(absence)}
                       >
                         <Edit2 className="h-4 w-4" />
@@ -196,12 +210,14 @@ export const AbsencesList: React.FC<AbsencesListProps> = ({
                       <Button 
                         variant="ghost" 
                         size="icon"
+                        aria-label="Eliminar ausencia"
                         onClick={() => setDeleteId(absence.id)}
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                    )}
                   </div>
                 );
               })}

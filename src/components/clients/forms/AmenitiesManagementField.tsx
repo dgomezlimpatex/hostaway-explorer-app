@@ -8,7 +8,7 @@ export function AmenitiesManagementField({ control }: { control: Control<ClientF
     <FormItem className="flex flex-row items-start space-x-3 space-y-0">
       <FormControl><Checkbox checked={field.value ?? true} onCheckedChange={field.onChange} /></FormControl>
       <div className="space-y-1 leading-none">
-        <FormLabel>🧴 Gestión de amenities</FormLabel>
+        <FormLabel>Gestión de amenities</FormLabel>
         <p className="text-xs text-muted-foreground">Kits de baño, cocina y alimentación, y paño de cocina. Las propiedades heredan este ajuste salvo configuración personalizada.</p>
       </div>
     </FormItem>

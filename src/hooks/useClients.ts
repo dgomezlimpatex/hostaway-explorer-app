@@ -4,6 +4,8 @@ import { CreateClientData } from '@/types/client';
 import { toast } from '@/hooks/use-toast';
 import { useSede } from '@/contexts/SedeContext';
 import { useCacheInvalidation } from './useCacheInvalidation';
+import { DeleteNotAppliedError } from '@/services/storage/baseStorage';
+import { ClientDeletionBlockedError, evaluateClientDeletion } from '@/components/clients/clientRules';
 
 export const useClients = () => {
   const { activeSede, isInitialized, loading } = useSede();
@@ -53,41 +55,48 @@ export const useCreateClient = () => {
 };
 
 export const useUpdateClient = () => {
-  const queryClient = useQueryClient();
-  const { activeSede } = useSede();
   const { invalidateClients } = useCacheInvalidation();
 
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateClientData> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateClientData>; successTitle?: string }) => {
       const result = await clientStorage.update(id, updates);
-      if (!result) throw new Error('Cliente no encontrado');
+      if (!result) throw new Error('No se ha guardado: el cliente ya no existe o no tienes permiso para modificarlo.');
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       invalidateClients();
       toast({
-        title: "Cliente actualizado",
+        title: variables.successTitle || "Cliente actualizado",
         description: "Los datos del cliente han sido actualizados.",
       });
     },
     onError: (error) => {
       console.error('Update client error:', error);
       toast({
-        title: "Error",
-        description: "Ha ocurrido un error al actualizar el cliente.",
+        title: "No se han guardado los cambios",
+        description: error instanceof Error && error.message.startsWith('No se ha guardado') ? error.message : "Ha ocurrido un error al actualizar el cliente.",
         variant: "destructive",
       });
     },
   });
 };
 
+/** Recuento de registros relacionados (propiedades, tareas, portal, PMS...) antes de permitir borrar. */
+export const useClientDeletionCheck = (clientId: string, enabled: boolean) => useQuery({
+  queryKey: ['client-deletion-dependencies', clientId],
+  queryFn: async () => evaluateClientDeletion(await clientStorage.getDeletionDependencies(clientId)),
+  enabled: enabled && !!clientId,
+  staleTime: 0,
+  gcTime: 0,
+});
+
 export const useDeleteClient = () => {
-  const queryClient = useQueryClient();
-  const { activeSede } = useSede();
   const { invalidateClients } = useCacheInvalidation();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Se vuelve a comprobar justo antes de borrar: nunca se envía el borrado con dependencias.
+      await clientStorage.assertDeletable(id);
       const success = await clientStorage.delete(id);
       if (!success) throw new Error('Cliente no encontrado');
       return success;
@@ -96,14 +105,16 @@ export const useDeleteClient = () => {
       invalidateClients();
       toast({
         title: "Cliente eliminado",
-        description: "El cliente ha sido eliminado exitosamente.",
+        description: "El cliente ha sido eliminado.",
       });
     },
     onError: (error) => {
       console.error('Delete client error:', error);
       toast({
-        title: "Error",
-        description: "Ha ocurrido un error al eliminar el cliente.",
+        title: "No se ha eliminado el cliente",
+        description: error instanceof ClientDeletionBlockedError
+          ? 'Tiene registros relacionados o no se han podido comprobar. Inactívalo en su lugar.'
+          : error instanceof DeleteNotAppliedError ? error.message : "Ha ocurrido un error al eliminar el cliente.",
         variant: "destructive",
       });
     },
