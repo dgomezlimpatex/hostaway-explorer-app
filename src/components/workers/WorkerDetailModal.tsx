@@ -34,6 +34,16 @@ import { DeactivateWorkerDialog } from './DeactivateWorkerDialog';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface WorkerDetailModalProps {
   worker: Cleaner | null;
@@ -449,16 +459,22 @@ const invokeRouteWorkerManagement = async <T,>(body: Record<string, unknown>): P
   return data as T;
 };
 
-const RouteWorkerAccessCard = ({ worker }: { worker: Cleaner }) => {
+/**
+ * Acceso al sistema de ruta (rol de repartidor). Solo debe montarse para administración
+ * y gerencia: supervisión no consulta la función. Muestra el error real de la consulta.
+ */
+export const RouteWorkerAccessCard = ({ worker }: { worker: Cleaner }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const queryKey = ['laundry-route-worker-access', worker.id];
-  const { data: status, isLoading } = useQuery({
+  const { data: status, isLoading, error: statusError, refetch } = useQuery({
     queryKey,
     queryFn: () => invokeRouteWorkerManagement<RouteWorkerAccessStatus>({
       action: 'status',
       cleanerId: worker.id,
     }),
+    retry: false,
   });
 
   const toggleAccess = useMutation({
@@ -470,7 +486,7 @@ const RouteWorkerAccessCard = ({ worker }: { worker: Cleaner }) => {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey });
       toast({
-        title: result.active ? 'Rol de repartidor activado' : 'Rol de repartidor desactivado',
+        title: result.active ? 'Rol de repartidor activado' : 'Rol de repartidor retirado',
         description: result.active
           ? 'Ya puede entrar en el nuevo sistema de ruta con su PIN de REGISTRO.'
           : 'Sus sesiones de ruta han quedado cerradas.',
@@ -489,45 +505,69 @@ const RouteWorkerAccessCard = ({ worker }: { worker: Cleaner }) => {
   const canEnable = status?.hasRegistroPin && status?.workerIsActive;
 
   return (
-    <Card className="border-0 shadow-sm">
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f4f0ff] text-[#310984]">
-            <Truck className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-700">Nuevo sistema de ruta</h3>
-              <Badge className={isEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}>
-                {isEnabled ? 'Repartidor activo' : 'Sin acceso'}
-              </Badge>
+    <section className="p-panel" aria-labelledby={`acceso-ruta-${worker.id}`}>
+      <div className="p-panel-head">
+        <h2 id={`acceso-ruta-${worker.id}`}>
+          <Truck className="mr-2 inline h-4 w-4" aria-hidden="true" />
+          Sistema de ruta
+        </h2>
+        {status && <span className={`p-tag ${isEnabled ? 'active' : ''}`}>{isEnabled ? 'Repartidor' : 'Sin acceso'}</span>}
+      </div>
+      <div className="p-content">
+        <p className="p-muted">Acceso a los enlaces de ruta con el PIN sincronizado desde REGISTRO.</p>
+        {isLoading ? (
+          <p className="p-muted mt-3" role="status">Consultando el acceso de ruta…</p>
+        ) : statusError ? (
+          <p className="p-notice p-error mt-3" role="alert">
+            No se pudo consultar el acceso de ruta.{' '}
+            <button type="button" className="p-link" onClick={() => refetch()}>Reintentar</button>
+          </p>
+        ) : (
+          <>
+            {!status?.hasRegistroPin && (
+              <p className="p-notice mt-3">No se puede activar: este trabajador no tiene PIN en REGISTRO.</p>
+            )}
+            {status?.hasRegistroPin && !status?.workerIsActive && !isEnabled && (
+              <p className="p-notice mt-3">No se puede activar mientras el perfil esté inactivo.</p>
+            )}
+            <div className="p-form-actions">
+              <button
+                type="button"
+                className="p-button small"
+                disabled={toggleAccess.isPending || (!isEnabled && !canEnable)}
+                onClick={() => setConfirmOpen(true)}
+              >
+                {toggleAccess.isPending
+                  ? 'Guardando…'
+                  : isEnabled
+                    ? 'Quitar rol de repartidor…'
+                    : 'Asignar rol de repartidor…'}
+              </button>
             </div>
-            <p className="mt-1 text-xs text-slate-500">Acceso exclusivo a enlaces route_v2 mediante el PIN sincronizado desde REGISTRO.</p>
-          </div>
-        </div>
-
-        {!isLoading && !status?.hasRegistroPin && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            No se puede activar: este trabajador no tiene PIN en REGISTRO.
-          </div>
+          </>
         )}
-
-        <Button
-          type="button"
-          variant={isEnabled ? 'outline' : 'default'}
-          className="w-full"
-          disabled={isLoading || toggleAccess.isPending || (!isEnabled && !canEnable)}
-          onClick={() => toggleAccess.mutate(!isEnabled)}
-        >
-          <Truck className="mr-2 h-4 w-4" />
-          {toggleAccess.isPending
-            ? 'Guardando...'
-            : isEnabled
-              ? 'Quitar rol de repartidor'
-              : 'Asignar rol de repartidor'}
-        </Button>
-      </CardContent>
-    </Card>
+      </div>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isEnabled ? `¿Quitar el rol de repartidor a ${worker.name}?` : `¿Asignar el rol de repartidor a ${worker.name}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isEnabled
+                ? 'Se cerrarán sus sesiones del sistema de ruta.'
+                : 'Podrá entrar en los enlaces de ruta con su PIN de REGISTRO.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => toggleAccess.mutate(!isEnabled)}>
+              {isEnabled ? 'Quitar rol' : 'Asignar rol'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
   );
 };
 const Field = ({

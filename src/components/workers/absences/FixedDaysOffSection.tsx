@@ -9,11 +9,14 @@ import { Loader2 } from 'lucide-react';
 interface FixedDaysOffSectionProps {
   cleanerId: string;
   fixedDaysOff: WorkerFixedDayOff[];
+  /** Solo consulta: casillas deshabilitadas. */
+  readOnly?: boolean;
 }
 
 export const FixedDaysOffSection: React.FC<FixedDaysOffSectionProps> = ({
   cleanerId,
   fixedDaysOff,
+  readOnly = false,
 }) => {
   const toggleMutation = useToggleWorkerFixedDayOff();
 
@@ -35,9 +38,9 @@ export const FixedDaysOffSection: React.FC<FixedDaysOffSectionProps> = ({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Días Libres Fijos</CardTitle>
+        <CardTitle className="text-base">Días libres fijos</CardTitle>
         <CardDescription>
-          <span className="block">Marca los días de la semana en los que este trabajador no trabaja regularmente</span>
+          <span className="block">{readOnly ? 'Días de la semana en los que no trabaja regularmente.' : 'Marca los días de la semana en los que no trabaja regularmente. Cada casilla se guarda al marcarla.'}</span>
           <span className="mt-1 block">Las tareas ya asignadas se conservan; el día libre orienta la planificación automática y permite asignaciones manuales de emergencia.</span>
         </CardDescription>
       </CardHeader>
@@ -57,7 +60,7 @@ export const FixedDaysOffSection: React.FC<FixedDaysOffSectionProps> = ({
                   id={`day-${dayOfWeek}`}
                   checked={isActive}
                   onCheckedChange={(checked) => handleToggle(dayOfWeek, checked as boolean)}
-                  disabled={isLoading}
+                  disabled={readOnly || isLoading}
                 />
                 <Label 
                   htmlFor={`day-${dayOfWeek}`}
