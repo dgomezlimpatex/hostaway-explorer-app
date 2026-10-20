@@ -1,4 +1,5 @@
 import { Clock, GripVertical, ListTodo, RefreshCw } from "lucide-react";
+import { getDisplayStatus } from "@/utils/calendarTaskStatus";
 import { Task } from "@/hooks/useCalendarData";
 import { cn } from "@/lib/utils";
 import { useClientData } from "@/hooks/useClientData";
@@ -107,7 +108,7 @@ export const TaskCard = ({
         "border border-line border-l-4",
         isRecurring
           ? "bg-line-soft hover:bg-paper border-dashed"
-          : cn("bg-surface hover:bg-paper", getStatusAccent(task.status)),
+          : cn("bg-surface hover:bg-paper", getStatusAccent(getDisplayStatus(task))),
         "rounded-lg p-2 text-ink shadow-sober hover:shadow-md transition-all duration-200 group relative overflow-visible select-none",
         effectiveDraggable && "cursor-move",
         !effectiveDraggable && "cursor-pointer",

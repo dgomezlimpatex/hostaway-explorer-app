@@ -211,6 +211,49 @@ export class TaskAssignmentService {
     return updatedTask;
   }
 
+  /**
+   * Quita solo a la trabajadora indicada de una tarea compartida y conserva al
+   * resto. Si era la única asignada, la tarea queda sin asignar.
+   */
+  async removeCleanerFromTask(taskId: string, cleanerId: string): Promise<Task> {
+    const currentTask = await taskStorageService.getById(taskId);
+    if (!currentTask) throw new Error('No se encontró la tarea para quitar a la trabajadora.');
+
+    const previousCleanerIds = await this.getCurrentCleanerIds(taskId, currentTask);
+    if (!previousCleanerIds.includes(cleanerId)) {
+      throw new Error('Esa trabajadora ya no está asignada a la tarea. Recarga el calendario.');
+    }
+    const nextCleanerIds = previousCleanerIds.filter((id) => id !== cleanerId);
+
+    const assignmentResult = await executeCanonicalTaskAssignmentChange({
+      taskId,
+      nextCleanerIds,
+      previousCleanerIds,
+    }, {
+      setAssignments: (id, cleanerIds) => multipleTaskAssignmentService.setTaskAssignments(id, cleanerIds),
+      updateSchedule: (id, startTime, endTime) => taskStorageService.updateTask(id, { startTime, endTime }),
+    });
+
+    const updatedTask = this.mergeAssignmentResult(currentTask, assignmentResult);
+
+    void recordAiObservedEvent({
+      eventType: 'task_unassigned',
+      entityType: 'tasks',
+      entityId: taskId,
+      summary: `Quitada una trabajadora de la tarea ${updatedTask.property}`,
+      afterData: {
+        id: updatedTask.id,
+        property: updatedTask.property,
+        date: updatedTask.date,
+        removedCleanerId: cleanerId,
+        keptCleanerIds: nextCleanerIds,
+      },
+      metadata: { source: 'taskAssignmentService.removeCleanerFromTask' },
+    });
+
+    return updatedTask;
+  }
+
   async unassignTask(taskId: string): Promise<Task> {
     const currentTask = await taskStorageService.getById(taskId);
     if (!currentTask) throw new Error('No se encontró la tarea para desasignarla.');

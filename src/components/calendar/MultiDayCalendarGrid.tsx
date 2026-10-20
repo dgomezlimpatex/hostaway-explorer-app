@@ -7,6 +7,8 @@ import { Cleaner, Task } from "@/types/calendar";
 import type { DragState } from "@/hooks/useDragAndDrop";
 import { WorkloadSummary } from "@/types/workload";
 import { getClientColor } from "@/utils/clientColors";
+import { getDisplayStatus } from "@/utils/calendarTaskStatus";
+import { useCalendarActions } from "./CalendarActionsContext";
 import {
   CalendarDayTask,
   CleanerDayCells,
@@ -22,7 +24,7 @@ interface MultiDayCalendarGridProps {
   dragState: DragState;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void;
-  onDragStart: (e: React.DragEvent, task: Task) => void;
+  onDragStart: (e: React.DragEvent, task: Task, originCleanerId?: string) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onTaskClick: (task: Task) => void;
   onSelectDay: (day: string) => void;
@@ -44,29 +46,37 @@ const getInitials = (name: string) =>
 
 const DayTaskChip = ({
   entry,
+  cleanerId,
   assignedCount,
   isBeingDragged,
+  canDrag,
   onTaskClick,
   onDragStart,
   onDragEnd,
 }: {
   entry: CalendarDayTask;
+  /** Row of this chip: a shared task dragged from here replaces only this person. */
+  cleanerId: string;
   assignedCount: number;
   isBeingDragged: boolean;
+  canDrag: boolean;
   onTaskClick: (task: Task) => void;
-  onDragStart: (e: React.DragEvent, task: Task) => void;
+  onDragStart: (e: React.DragEvent, task: Task, originCleanerId?: string) => void;
   onDragEnd: (e: React.DragEvent) => void;
 }) => {
   const { task, displayEndTime, hasOverlap } = entry;
   const color = getClientColor(task.clienteId);
   const isSplit = assignedCount > 1;
+  // Same displayed status as the day view and the mobile agenda.
+  const displayStatus = getDisplayStatus(task);
 
   return (
     <div
       role="button"
       tabIndex={0}
-      draggable
+      draggable={canDrag}
       data-task-id={task.id}
+      data-status={displayStatus}
       onClick={() => onTaskClick(task)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -76,7 +86,11 @@ const DayTaskChip = ({
       }}
       onDragStart={(e) => {
         e.stopPropagation();
-        onDragStart(e, task);
+        if (!canDrag) {
+          e.preventDefault();
+          return;
+        }
+        onDragStart(e, task, cleanerId);
       }}
       onDragEnd={onDragEnd}
       title={[
@@ -85,7 +99,8 @@ const DayTaskChip = ({
         hasOverlap ? "Conflicto de horario con otra tarea del día" : null,
       ].filter(Boolean).join("\n")}
       className={cn(
-        "group relative rounded-md border border-l-4 px-2 py-1 text-left text-[11px] leading-tight shadow-sm cursor-move select-none",
+        "group relative rounded-md border border-l-4 px-2 py-1 text-left text-[11px] leading-tight shadow-sm select-none",
+        canDrag ? "cursor-move" : "cursor-pointer",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         task.isRecurringInstance && "border-dashed",
         hasOverlap && "ring-2 ring-danger",
@@ -95,7 +110,7 @@ const DayTaskChip = ({
     >
       <div className="flex items-center gap-1 font-semibold tabular-nums">
         <span
-          className={cn("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[task.status] ?? "bg-ink-4")}
+          className={cn("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[displayStatus] ?? "bg-ink-4")}
           aria-hidden
         />
         <span>{formatTime(task.startTime)}–{formatTime(displayEndTime)}</span>
@@ -124,6 +139,7 @@ export const MultiDayCalendarGrid = memo(({
   workloadMap,
   preferredCleanerIds,
 }: MultiDayCalendarGridProps) => {
+  const { permissions } = useCalendarActions();
   const draggedTask = dragState.draggedTask;
   const isDragging = dragState.isDragging && !!draggedTask;
   const hasPreferred = isDragging && !!preferredCleanerIds && preferredCleanerIds.size > 0;
@@ -230,8 +246,10 @@ export const MultiDayCalendarGrid = memo(({
                       <DayTaskChip
                         key={entry.task.id}
                         entry={entry}
+                        cleanerId={cleaner.id}
                         assignedCount={assignmentsMap?.[entry.task.id]?.length ?? 1}
                         isBeingDragged={draggedTask?.id === entry.task.id}
+                        canDrag={permissions.canEdit}
                         onTaskClick={onTaskClick}
                         onDragStart={onDragStart}
                         onDragEnd={onDragEnd}

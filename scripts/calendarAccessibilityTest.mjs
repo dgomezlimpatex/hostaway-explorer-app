@@ -59,5 +59,5 @@ const task = { id: 't', date: '2026-10-06', property: 'Piso Centro', address: ''
 const cleanerCard = html(h(m.CleanerTaskCard, { task, onClick: noop }));
 assert.match(cleanerCard, /^<div role="button" tabindex="0"/, 'cleaner card focusable as a button');
 const dayCard = html(h(m.EnhancedTaskCard, { task, onClick: noop }));
-assert.match(dayCard, /role="button"[^>]*tabindex="0"[^>]*aria-label="Piso Centro, 09:00 a 10:00"/, 'day card focusable and labelled');
+assert.match(dayCard, /role="button"[^>]*tabindex="0"[^>]*aria-label="Piso Centro, 09:00 a 10:00, sin iniciar, más acciones con la tecla Menú o Mayúsculas\+F10"/, 'day card focusable and labelled (with status and keyboard menu)');
 console.log('calendar-accessibility: OK (labelled clear/back/date buttons, no nested controls, focusable task cards; no network)');

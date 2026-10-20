@@ -14,13 +14,14 @@ export function useState(initial) {
 export function useRef(initial) { const i = cursor++; if (!(i in values)) values[i] = { current: initial }; return values[i]; }
 export const useMemo = f => f(); export const useCallback = f => f; export const useEffect = () => {};
 export const memo = c => c;
+export const createContext = value => ({ _value: value, Provider: 'Provider' }); export const useContext = context => context._value;
 export const jsx = (type, props) => ({ type, props }); export const jsxs = jsx; export const Fragment = 'fragment';
 export const createElement = (type, props, ...children) => ({ type, props: { ...props, children } });
 export default { createElement, memo };
 export const useClientData = () => ({ getClientName: () => null });
 export const useTaskQuickActions = () => ({ resizeTask() {}, moveTaskToDate() {}, addTaskDuration() {} });
 `;
-const tags = ['Clock', 'ListTodo', 'GripVertical', 'GripHorizontal', 'Pencil', 'Copy', 'Trash2', 'UserMinus', 'CalendarDays', 'Timer',
+const tags = ['Clock', 'ListTodo', 'GripVertical', 'GripHorizontal', 'Pencil', 'Copy', 'Trash2', 'UserMinus', 'CalendarDays', 'Timer', 'Users', 'Eye',
   'Tooltip', 'TooltipContent', 'TooltipProvider', 'TooltipTrigger', 'ContextMenu', 'ContextMenuContent', 'ContextMenuItem',
   'ContextMenuSeparator', 'ContextMenuSub', 'ContextMenuSubContent', 'ContextMenuSubTrigger', 'ContextMenuTrigger', 'TaskStatusBadge'];
 const built = await build({
@@ -43,14 +44,15 @@ const base = { id: 't1', property: 'Piso de prueba', date: '2026-10-06', status:
 const render = task => { m.reset(); return text(m.EnhancedTaskCard({ task, onClick() {} })); };
 
 const normal = render(base);
-for (const label of ['Redimensionar tarea', 'Mover a', 'Duración', 'Duplicar tarea', 'Eliminar', 'Editar detalles', 'Desasignar']) {
+// "Duplicar sin asignar": the copy is created without people (CAL-14).
+for (const label of ['Redimensionar tarea', 'Mover a', 'Duración', 'Duplicar sin asignar', 'Eliminar', 'Editar detalles', 'Desasignar']) {
   assert.ok(normal.includes(label), `normal task offers ${label}`);
 }
 
 // Regression: on a virtual recurring occurrence these actions found no task
 // row and silently did nothing.
 const recurring = render({ ...base, id: 'recurring_tpl_2026-10-06', isRecurringInstance: true, recurringTaskId: 'tpl' });
-for (const label of ['Redimensionar tarea', 'Mover a', 'Duración', 'Duplicar tarea', 'Eliminar']) {
+for (const label of ['Redimensionar tarea', 'Mover a', 'Duración', 'Duplicar sin asignar', 'Eliminar']) {
   assert.ok(!recurring.includes(label), `recurring occurrence hides ${label}`);
 }
 assert.ok(recurring.includes('Editar detalles'), 'details remain available');

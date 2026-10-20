@@ -1,8 +1,8 @@
 
-import { useEffect, useMemo } from "react";
-import { 
-  UnassignedTasksWithSuspense, 
-  CalendarModalsWithSuspense 
+import { useCallback, useEffect, useMemo } from "react";
+import {
+  UnassignedTasksWithSuspense,
+  CalendarModalsWithSuspense
 } from "./LazyCalendarComponents";
 import { taskStorageService } from "@/services/taskStorage";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ import { usePreferredCleaners } from "@/hooks/usePropertyPreferredCleaners";
 import { useCalendarWorkload } from "@/hooks/useCalendarWorkload";
 import { useUnavailableCleaners } from "@/hooks/useUnavailableCleaners";
 import { buildTaskAssignmentsMap, isTaskAssigned, isTaskAssignedToCleaner } from "@/utils/taskAssignments";
+import { getCleanerAvailabilityForDay } from "@/utils/availabilityUtils";
 import { materializeRecurringTaskInstance } from "@/services/recurringTaskInstanceService";
 import type { DragState } from "@/hooks/useDragAndDrop";
 import type { ConfirmFn } from "./useConfirmDialog";
@@ -32,6 +33,9 @@ import {
   getVisibleDays,
   isMultiDayView,
 } from "./utils/multiDayCalendar";
+import { CalendarActionsProvider, FULL_CALENDAR_PERMISSIONS, type CalendarActionsValue, type CalendarPermissions } from "./CalendarActionsContext";
+import { buildTimeSlots, getTimelineBounds, ZOOM_SLOT_WIDTH, type TimelineScale, type TimelineZoom } from "./utils/timelineScale";
+import { buildUnassignedDuplicate } from "./utils/calendarDisplay";
 
 
 type RecurringCalendarTask = Task & {
@@ -59,7 +63,7 @@ export interface CalendarContainerProps {
   isTaskModalOpen: boolean;
   setIsTaskModalOpen: (open: boolean) => void;
   dragState: DragState;
-  handleDragStart: (e: React.DragEvent, task: Task) => void;
+  handleDragStart: (e: React.DragEvent, task: Task, originCleanerId?: string) => void;
   handleDragEnd: (e: React.DragEvent) => void;
   handleDragOver: (e: React.DragEvent) => void;
   handleDrop: (e: React.DragEvent, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void;
@@ -68,12 +72,19 @@ export interface CalendarContainerProps {
   handleTaskClick: (task: Task) => void;
   handleCreateTask: (taskData: Omit<Task, 'id'>) => Promise<void>;
   handleBatchCreateTasks: (tasksData: Omit<Task, 'id'>[]) => Promise<void>;
-  handleUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
-  handleDeleteTask: (taskId: string) => Promise<void>;
-  handleUnassignTask: (taskId: string) => Promise<void>;
+  handleUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<boolean | void>;
+  handleDeleteTask: (taskId: string) => Promise<boolean | void>;
+  handleUnassignTask: (taskId: string) => Promise<boolean | void>;
+  handleRemoveCleanerFromTask?: (taskId: string, cleanerId: string, cleanerName?: string) => Promise<boolean | void>;
   onNavigateDate: (direction: 'prev' | 'next') => void;
   onSelectDay: (day: string) => void;
   onConfirm: ConfirmFn;
+  /** What the current role may do (calendar module of the role matrix). */
+  permissions?: CalendarPermissions;
+  validateScheduleChange?: CalendarActionsValue['validateScheduleChange'];
+  zoom?: TimelineZoom;
+  /** Explains why unassigned tasks still show with the cleaner filter. */
+  unassignedNote?: string;
 }
 
 export const CalendarContainer = ({
@@ -81,7 +92,6 @@ export const CalendarContainer = ({
   cleaners,
   currentDate,
   currentView,
-  timeSlots,
   availability,
   headerScrollRef,
   bodyScrollRef,
@@ -105,9 +115,14 @@ export const CalendarContainer = ({
   handleUpdateTask,
   handleDeleteTask,
   handleUnassignTask,
+  handleRemoveCleanerFromTask,
   onNavigateDate,
   onSelectDay,
-  onConfirm
+  onConfirm,
+  permissions = FULL_CALENDAR_PERMISSIONS,
+  validateScheduleChange,
+  zoom = 'normal',
+  unassignedNote
 }: CalendarContainerProps) => {
   // Note: Mobile cleaner view logic moved to CleaningCalendar component
   // to avoid conditional hooks execution
@@ -129,7 +144,9 @@ export const CalendarContainer = ({
 
   // Fetch absence status for all cleaners on current date
   const cleanerIds = useMemo(() => cleaners.map(c => c.id), [cleaners]);
-  const { data: absenceStatus } = useWorkersAbsenceStatus(cleanerIds, currentDate);
+  const { data: absenceStatus } = useWorkersAbsenceStatus(cleanerIds, currentDate, {
+    canSeeAbsenceDetails: permissions.canSeeAbsenceDetails,
+  });
 
   // Workload data for all cleaners (viewed week)
   const { workloadMap } = useCalendarWorkload(currentDate);
@@ -140,7 +157,9 @@ export const CalendarContainer = ({
   const rangeStartDate = useMemo(() => civilDateToLocalDate(visibleDays[0]), [visibleDays]);
 
   // Cleaners fully unavailable across the visible range (full-day absence or fixed day off)
-  const { unavailableIds } = useUnavailableCleaners(cleaners, rangeStartDate, currentView);
+  const { unavailableIds } = useUnavailableCleaners(cleaners, rangeStartDate, currentView, {
+    canSeeAbsenceDetails: permissions.canSeeAbsenceDetails,
+  });
 
   // Cleaner IDs that have tasks assigned today — these stay visible even if "unavailable"
   const cleanersWithTasksTodayIds = useMemo(() => {
@@ -162,10 +181,24 @@ export const CalendarContainer = ({
     [cleaners, unavailableIds, cleanersWithTasksTodayIds]
   );
 
+  // Cleaners without availability configured for the day shown: unknown, not free.
+  const unconfiguredCleanerIds = useMemo(
+    () => new Set(visibleCleaners.filter(c => !getCleanerAvailabilityForDay(c.id, currentDate, availability)).map(c => c.id)),
+    [visibleCleaners, currentDate, availability],
+  );
+
+  // Timeline range: 06:00–22:30 by default, widened to show every task of the day.
+  const currentDayStr = formatMadridDate(currentDate);
+  const scale = useMemo<TimelineScale>(() => {
+    const bounds = getTimelineBounds(assignedTasks.filter(t => t.date === currentDayStr));
+    return { ...bounds, slotWidth: ZOOM_SLOT_WIDTH[zoom] };
+  }, [assignedTasks, currentDayStr, zoom]);
+  const dayTimeSlots = useMemo(() => buildTimeSlots(scale), [scale]);
+
   // Get preferred cleaners for the currently dragged task's property
   const draggedPropertyId = dragState.isDragging ? dragState.draggedTask?.propertyId : undefined;
   const { data: draggedTaskPreferred = [] } = usePreferredCleaners(draggedPropertyId);
-  const preferredCleanerIdsForDrag = useMemo(() => 
+  const preferredCleanerIdsForDrag = useMemo(() =>
     dragState.isDragging ? new Set(draggedTaskPreferred.map(p => p.cleaner_id)) : new Set<string>(),
     [draggedTaskPreferred, dragState.isDragging]
   );
@@ -192,6 +225,15 @@ export const CalendarContainer = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const handleBlockedDrop = useCallback((reason: string) => {
+    toast({ title: 'No se puede asignar en esta franja', description: reason, variant: 'destructive' });
+  }, [toast]);
+
+  const handleOverlapTaskSelect = useCallback((taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) handleTaskClick(task);
+  }, [tasks, handleTaskClick]);
+
   useEffect(() => {
     const findTask = (id: string) => tasks.find(t => t.id === id);
 
@@ -203,31 +245,36 @@ export const CalendarContainer = ({
     };
 
     const handleDuplicate = async (e: Event) => {
+      if (!permissions.canCreate) return;
       const { taskId } = (e as CustomEvent).detail || {};
       const t = findTask(taskId);
       if (!t) return;
       try {
-        const { id, created_at, updated_at, ...rest } = t;
-        await taskStorageService.createTask({
-          ...rest,
-          status: 'pending',
-        });
+        // The copy is created without anyone assigned (no assignment notices).
+        await taskStorageService.createTask(buildUnassignedDuplicate(t) as Omit<Task, 'id'>);
         queryClient.invalidateQueries({
           predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
         });
-        toast({ title: 'Tarea duplicada', description: 'Se ha creado una copia.' });
+        toast({ title: 'Tarea duplicada', description: 'La copia está en "Tareas sin asignar".' });
       } catch (err: unknown) {
         toast({ title: 'Error', description: getErrorMessage(err, 'No se pudo duplicar.'), variant: 'destructive' });
       }
     };
 
     const handleUnassign = async (e: Event) => {
-      const { taskId } = (e as CustomEvent).detail || {};
+      if (!permissions.canEdit) return;
+      const { taskId, cleanerId, cleanerName, all } = (e as CustomEvent).detail || {};
       const t = findTask(taskId);
       if (!t) return;
 
       try {
         if ((t as RecurringCalendarTask).isRecurringInstance) {
+          const confirmed = await onConfirm({
+            title: 'Desasignar ocurrencia',
+            description: `Se creará una tarea individual sin asignar para ${t.property} en esta fecha.`,
+            confirmLabel: 'Desasignar',
+          });
+          if (!confirmed) return;
           await materializeRecurringTaskInstance(t, {
             cleaner: undefined,
             cleanerId: undefined,
@@ -247,6 +294,24 @@ export const CalendarContainer = ({
           return;
         }
 
+        // Only this person of a shared task: the rest of the team stays.
+        if (!all && cleanerId && handleRemoveCleanerFromTask) {
+          const confirmed = await onConfirm({
+            title: `Quitar a ${cleanerName || 'la trabajadora'}`,
+            description: `${cleanerName || 'Esta trabajadora'} dejará de estar en ${t.property}. El resto del equipo se mantiene.`,
+            confirmLabel: 'Quitar',
+          });
+          if (!confirmed) return;
+          await handleRemoveCleanerFromTask(taskId, cleanerId, cleanerName);
+          return;
+        }
+
+        const confirmed = await onConfirm({
+          title: 'Desasignar tarea',
+          description: `${t.property} quedará sin nadie asignado y pasará a "Tareas sin asignar".`,
+          confirmLabel: 'Desasignar',
+        });
+        if (!confirmed) return;
         await handleUnassignTask(taskId);
       } catch (err: unknown) {
         toast({
@@ -258,6 +323,7 @@ export const CalendarContainer = ({
     };
 
     const handleDelete = async (e: Event) => {
+      if (!permissions.canDelete) return;
       const { taskId } = (e as CustomEvent).detail || {};
       const confirmed = await onConfirm({
         title: 'Eliminar tarea',
@@ -267,13 +333,16 @@ export const CalendarContainer = ({
       });
       if (!confirmed) return;
       optimisticRemove(taskId);
-      try {
-        await handleDeleteTask(taskId);
-      } catch {
+      // The success message waits for the real result; on failure the
+      // mutation shows the error and the task comes back.
+      const deleted = await handleDeleteTask(taskId);
+      if (deleted === false) {
         queryClient.invalidateQueries({
           predicate: q => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
         });
+        return;
       }
+      toast({ title: 'Tarea eliminada', description: 'La tarea se ha eliminado.' });
     };
 
     window.addEventListener('task:duplicate', handleDuplicate);
@@ -284,18 +353,31 @@ export const CalendarContainer = ({
       window.removeEventListener('task:unassign', handleUnassign);
       window.removeEventListener('task:delete', handleDelete);
     };
-  }, [tasks, queryClient, toast, handleUnassignTask, handleDeleteTask, onConfirm]);
+  }, [tasks, queryClient, toast, handleUnassignTask, handleRemoveCleanerFromTask, handleDeleteTask, onConfirm, permissions]);
+
+  const actionsValue = useMemo<CalendarActionsValue>(
+    () => ({ permissions, validateScheduleChange, scale }),
+    [permissions, validateScheduleChange, scale],
+  );
+
+  const isEmptyDay = !isMultiDay && tasks.filter(t => t.date === currentDayStr).length === 0;
 
   return (
-    <>
+    <CalendarActionsProvider value={actionsValue}>
       {/* Overlap Alerts - Compact collapsible banner */}
       <OverlapAlertsBanner
         overlapsByCleanerMap={overlapsByCleanerMap}
         cleaners={cleaners}
         showDate={isMultiDay}
         resetKey={visibleDays.join(',')}
+        onTaskSelect={handleOverlapTaskSelect}
       />
 
+      {isEmptyDay && (
+        <div className="mb-2 rounded-md border border-dashed border-border bg-card px-3 py-2 text-sm text-muted-foreground" role="status">
+          No hay tareas para este día con los filtros actuales.
+        </div>
+      )}
 
       {/* Main Layout with Unassigned Tasks on Left and Calendar on Right */}
       <div className="flex gap-2 w-full flex-1 min-h-0">
@@ -307,6 +389,8 @@ export const CalendarContainer = ({
               onTaskClick={handleTaskClick}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
+              canDrag={permissions.canEdit}
+              note={unassignedNote}
             />
           </div>
         )}
@@ -333,7 +417,7 @@ export const CalendarContainer = ({
           ) : (
           <CalendarLayout
             cleaners={visibleCleaners}
-            timeSlots={timeSlots}
+            timeSlots={dayTimeSlots}
             assignedTasks={assignedTasks}
             availability={availability}
             currentDate={currentDate}
@@ -354,6 +438,9 @@ export const CalendarContainer = ({
             isDragging={dragState.isDragging}
             preferredCleanerIds={preferredCleanerIdsForDrag}
             workloadMap={workloadMap}
+            scale={scale}
+            onBlockedDrop={handleBlockedDrop}
+            unconfiguredCleanerIds={unconfiguredCleanerIds}
           />
           )}
         </div>
@@ -386,7 +473,8 @@ export const CalendarContainer = ({
         onUpdateTask={handleUpdateTask}
         onDeleteTask={handleDeleteTask}
         onUnassignTask={handleUnassignTask}
+        permissions={permissions}
       />
-    </>
+    </CalendarActionsProvider>
   );
 };

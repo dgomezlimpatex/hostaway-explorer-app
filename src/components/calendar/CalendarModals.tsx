@@ -3,6 +3,7 @@ import { CreateTaskModal } from "../modals/CreateTaskModal";
 import { BatchCreateTaskModal } from "../modals/BatchCreateTaskModal";
 import { TaskDetailsModal } from "../modals/TaskDetailsModal";
 import { Task } from "@/types/calendar";
+import type { CalendarPermissions } from "./CalendarActionsContext";
 
 interface CalendarModalsProps {
   isCreateModalOpen: boolean;
@@ -15,9 +16,11 @@ interface CalendarModalsProps {
   currentDate: Date;
   onCreateTask: (taskData: Omit<Task, 'id'>) => Promise<void>;
   onBatchCreateTasks: (tasksData: Omit<Task, 'id'>[]) => Promise<void>;
-  onUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
-  onDeleteTask: (taskId: string) => Promise<void>;
-  onUnassignTask: (taskId: string) => Promise<void>;
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => Promise<boolean | void>;
+  onDeleteTask: (taskId: string) => Promise<boolean | void>;
+  onUnassignTask: (taskId: string) => Promise<boolean | void>;
+  /** Calendar permissions of the role; without them the detail keeps its own rule. */
+  permissions?: CalendarPermissions;
 }
 
 export const CalendarModals = ({
@@ -33,7 +36,8 @@ export const CalendarModals = ({
   onBatchCreateTasks,
   onUpdateTask,
   onDeleteTask,
-  onUnassignTask
+  onUnassignTask,
+  permissions
 }: CalendarModalsProps) => {
   return (
     <>
@@ -57,7 +61,9 @@ export const CalendarModals = ({
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}
         onUnassignTask={onUnassignTask}
-        onCreateTask={onCreateTask}
+        onCreateTask={permissions?.canCreate === false ? undefined : onCreateTask}
+        canEditTasks={permissions?.canEdit}
+        canDeleteTasks={permissions?.canDelete}
       />
     </>
   );

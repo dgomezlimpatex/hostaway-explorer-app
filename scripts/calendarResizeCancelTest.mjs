@@ -22,13 +22,14 @@ export function flushEffects() {
   for (const [i, effect, deps] of pending.splice(0)) { effects[i]?.cleanup?.(); effects[i] = { deps, cleanup: effect() }; }
 }
 export const memo = c => c;
+export const createContext = value => ({ _value: value, Provider: 'Provider' }); export const useContext = context => context._value;
 export const jsx = (type, props) => ({ type, props }); export const jsxs = jsx; export const Fragment = 'fragment';
 export const createElement = (type, props, ...children) => ({ type, props: { ...props, children } });
 export default { createElement, memo };
 export const useClientData = () => ({ getClientName: () => null });
 export const useTaskQuickActions = () => ({ resizeTask: (...a) => globalThis.resizes.push(a), moveTaskToDate() {}, addTaskDuration() {} });
 `;
-const tags = ['Clock', 'ListTodo', 'GripVertical', 'GripHorizontal', 'Pencil', 'Copy', 'Trash2', 'UserMinus', 'CalendarDays', 'Timer',
+const tags = ['Clock', 'ListTodo', 'GripVertical', 'GripHorizontal', 'Pencil', 'Copy', 'Trash2', 'UserMinus', 'CalendarDays', 'Timer', 'Users', 'Eye',
   'Tooltip', 'TooltipContent', 'TooltipProvider', 'TooltipTrigger', 'ContextMenu', 'ContextMenuContent', 'ContextMenuItem',
   'ContextMenuSeparator', 'ContextMenuSub', 'ContextMenuSubContent', 'ContextMenuSubTrigger', 'ContextMenuTrigger', 'TaskStatusBadge'];
 const built = await build({

@@ -22,12 +22,20 @@ const fromMinutes = (mins: number) => {
 
 export const snapToQuarter = (mins: number) => Math.round(mins / SNAP_MIN) * SNAP_MIN;
 
+export type ScheduleChangeGuard = (
+  task: Task,
+  next: { date: string; startTime: string; endTime: string },
+) => Promise<boolean>;
+
 /**
  * Quick edit actions for tasks from calendar (resize, reschedule, duplicate, etc.).
+ * - `validate` runs the same checks as a drop (overlaps, absences,
+ *   availability) before anything is saved or anyone is notified.
  * - All run with optimistic updates.
  * - Background DB writes; rollback on error via invalidation.
  */
-export const useTaskQuickActions = () => {
+export const useTaskQuickActions = (options: { validate?: ScheduleChangeGuard } = {}) => {
+  const { validate } = options;
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -83,6 +91,7 @@ export const useTaskQuickActions = () => {
       const newDuration = safeEndMin - startMin;
 
       if (newEndTime === task.endTime) return;
+      if (validate && !(await validate(task, { date: task.date, startTime: task.startTime, endTime: newEndTime }))) return;
 
       optimisticPatch(taskId, { endTime: newEndTime, duration: newDuration });
 
@@ -103,7 +112,7 @@ export const useTaskQuickActions = () => {
         });
       }
     },
-    [findTask, optimisticPatch, invalidateTasks, toast]
+    [findTask, optimisticPatch, invalidateTasks, toast, validate]
   );
 
   /** Reschedule keeping the same cleaner: move to new start time and date. */
@@ -127,6 +136,7 @@ export const useTaskQuickActions = () => {
       ) {
         return;
       }
+      if (validate && !(await validate(task, { date: targetDate, startTime: newStart, endTime: newEnd }))) return;
 
       optimisticPatch(taskId, {
         startTime: newStart,
@@ -151,12 +161,15 @@ export const useTaskQuickActions = () => {
         });
       }
     },
-    [findTask, optimisticPatch, invalidateTasks, toast]
+    [findTask, optimisticPatch, invalidateTasks, toast, validate]
   );
 
-  /** Quick date shift: today / tomorrow / +1 week. */
+  /**
+   * Quick date shift. previousDay/nextDay/nextWeek are relative to the task's
+   * own date (not to the real today), so they behave the same in any view.
+   */
   const moveTaskToDate = useCallback(
-    async (taskId: string, target: 'today' | 'tomorrow' | 'nextWeek' | string) => {
+    async (taskId: string, target: 'today' | 'tomorrow' | 'previousDay' | 'nextDay' | 'nextWeek' | string) => {
       const task = findTask(taskId);
       if (!task) return;
 
@@ -167,6 +180,10 @@ export const useTaskQuickActions = () => {
         newDate = today;
       } else if (target === 'tomorrow') {
         newDate = shiftCivilDate(today, 1);
+      } else if (target === 'previousDay') {
+        newDate = shiftCivilDate(task.date || today, -1);
+      } else if (target === 'nextDay') {
+        newDate = shiftCivilDate(task.date || today, 1);
       } else if (target === 'nextWeek') {
         newDate = shiftCivilDate(task.date || today, 7);
       } else {
@@ -174,6 +191,7 @@ export const useTaskQuickActions = () => {
       }
 
       if (newDate === task.date) return;
+      if (validate && !(await validate(task, { date: newDate, startTime: task.startTime, endTime: task.endTime }))) return;
 
       optimisticPatch(taskId, { date: newDate });
 
@@ -191,7 +209,7 @@ export const useTaskQuickActions = () => {
         });
       }
     },
-    [findTask, optimisticPatch, invalidateTasks, toast]
+    [findTask, optimisticPatch, invalidateTasks, toast, validate]
   );
 
   /** Set duration in minutes (recalculates endTime). */
@@ -205,6 +223,7 @@ export const useTaskQuickActions = () => {
       const newEnd = fromMinutes(endMin);
 
       if (newEnd === task.endTime) return;
+      if (validate && !(await validate(task, { date: task.date, startTime: task.startTime, endTime: newEnd }))) return;
 
       optimisticPatch(taskId, { endTime: newEnd, duration: durationMinutes });
 
@@ -225,7 +244,7 @@ export const useTaskQuickActions = () => {
         });
       }
     },
-    [findTask, optimisticPatch, invalidateTasks, toast]
+    [findTask, optimisticPatch, invalidateTasks, toast, validate]
   );
 
   /** Add (or subtract) minutes to the current task duration. */
@@ -242,6 +261,7 @@ export const useTaskQuickActions = () => {
       const newEnd = fromMinutes(endMin);
 
       if (newEnd === task.endTime) return;
+      if (validate && !(await validate(task, { date: task.date, startTime: task.startTime, endTime: newEnd }))) return;
 
       optimisticPatch(taskId, { endTime: newEnd, duration: newDuration });
 
@@ -262,7 +282,7 @@ export const useTaskQuickActions = () => {
         });
       }
     },
-    [findTask, optimisticPatch, invalidateTasks, toast]
+    [findTask, optimisticPatch, invalidateTasks, toast, validate]
   );
 
   return {

@@ -1,6 +1,6 @@
 
 import React, { useCallback, useRef, useEffect, useState, useMemo } from "react";
-import { taskMatches, cleanerNameMatches } from "./calendar/utils/calendarSearch";
+import { cleanerNameMatches, filterCalendarTasks } from "./calendar/utils/calendarSearch";
 import { useClients } from "@/hooks/useClients";
 import { formatMadridDate } from "@/utils/date";
 import { filterTasksByQueryRange } from "@/utils/taskQueryRange";
@@ -12,25 +12,39 @@ import { UnavailableWorkersPanel } from "./calendar/UnavailableWorkersPanel";
 import { ManagerMobileAgendaCalendar } from "./calendar/ManagerMobileAgendaCalendar";
 import { CalendarModalsWithSuspense } from "./calendar/LazyCalendarComponents";
 import { CalendarFooterSummary } from "./calendar/CalendarFooterSummary";
+import { CalendarActionsProvider } from "./calendar/CalendarActionsContext";
+import { useCalendarPermissions } from "./calendar/useCalendarCapabilities";
+import { parseCalendarUrlState, withoutParams, writeCalendarUrlState } from "./calendar/utils/calendarUrlState";
+import { DEFAULT_SCALE, type TimelineZoom } from "./calendar/utils/timelineScale";
+import { getFooterPeriodLabel } from "./calendar/utils/calendarDisplay";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Button } from "@/components/ui/button";
 import { useCalendarLogic } from "@/hooks/useCalendarLogic";
-import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
 import { useDeviceType } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useSede } from "@/contexts/SedeContext";
-import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import type { Client } from "@/types/client";
 import { useSearchParams } from "react-router-dom";
+
+const formatUpdatedAt = (timestamp?: number) =>
+  timestamp ? new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' }).format(timestamp) : null;
 
 const CleaningCalendar = () => {
   const { isMobile } = useDeviceType();
   const { userRole } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Filters, search and zoom start from the URL (date and view are read by
+  // useCalendarNavigation on its first render).
+  const initialUrlState = useMemo(() => parseCalendarUrlState(searchParams), []); // eslint-disable-line react-hooks/exhaustive-deps
   const hasLoadedOnce = useRef(false);
   const deepLinkTaskOpened = useRef(false);
-  const { isLoading: authGuardLoading, hasFullAccess, hasSedeAccess } = useAuthGuard();
+  const deepLinkTaskLookedUp = useRef(false);
+  const { isLoading: authGuardLoading, hasFullAccess, hasSedeAccess, isAuthenticated, hasRole } = useAuthGuard();
   const { isInitialized: sedeInitialized, loading: sedeLoading, activeSede } = useSede();
+  const permissions = useCalendarPermissions();
 
   // Calendar logic and data
   const {
@@ -42,6 +56,9 @@ const CleaningCalendar = () => {
     headerScrollRef,
     bodyScrollRef,
     isLoading,
+    isTasksError,
+    refetchTasks,
+    tasksUpdatedAt,
     selectedTask,
     isTaskModalOpen,
     isCreateModalOpen,
@@ -63,35 +80,39 @@ const CleaningCalendar = () => {
     handleTaskClick,
     handleUpdateTask,
     handleDeleteTask,
-    handleDeleteAllTasks,
     handleUnassignTask,
+    handleRemoveCleanerFromTask,
+    validateScheduleChange,
     setIsTaskModalOpen,
     setIsCreateModalOpen,
     setIsBatchCreateModalOpen,
     confirm,
     confirmDialog,
-  } = useCalendarLogic();
+  } = useCalendarLogic({ canSeeAbsenceDetails: permissions.canSeeAbsenceDetails });
 
-  const deepLinkDate = searchParams.get('date');
-  const deepLinkTaskId = searchParams.get('task');
-
-  useEffect(() => {
-    if (!deepLinkDate || !/^\d{4}-\d{2}-\d{2}$/.test(deepLinkDate)) return;
-    const date = new Date(`${deepLinkDate}T12:00:00`);
-    if (Number.isNaN(date.getTime())) return;
-    setCurrentDate(date);
-    setCurrentView('day');
-  }, [deepLinkDate, setCurrentDate, setCurrentView]);
+  const deepLinkTaskId = initialUrlState.task;
 
   useEffect(() => {
     if (!deepLinkTaskId || deepLinkTaskOpened.current) return;
-    const task = tasks.find(item => item.id === deepLinkTaskId);
-    if (!task) return;
-    handleTaskClick(task);
-    deepLinkTaskOpened.current = true;
-  }, [deepLinkTaskId, handleTaskClick, tasks]);
+    const task = tasks.find(item => item.id === deepLinkTaskId || item.originalTaskId === deepLinkTaskId);
+    if (task) {
+      handleTaskClick(task);
+      deepLinkTaskOpened.current = true;
+      return;
+    }
+    // ?task without (or with a wrong) ?date: look up the task's day once and
+    // move there, so the link works for any date, not only today.
+    if (isLoading || deepLinkTaskLookedUp.current) return;
+    deepLinkTaskLookedUp.current = true;
+    void Promise.resolve(
+      supabase.from('tasks').select('date').eq('id', deepLinkTaskId).maybeSingle()
+    ).then(({ data }) => {
+      const date = (data as { date?: string } | null)?.date;
+      if (date && date !== formatMadridDate(currentDate)) setCurrentDate(civilDateToLocalDate(date));
+    }).catch(() => { /* the calendar simply stays on the date shown */ });
+  }, [deepLinkTaskId, handleTaskClick, tasks, isLoading, currentDate, setCurrentDate]);
 
-  
+
   // Track if we've loaded data at least once to avoid full-screen loading on refetches
   useEffect(() => {
     if (tasks.length > 0 || cleaners.length > 0) {
@@ -100,12 +121,29 @@ const CleaningCalendar = () => {
   }, [tasks.length, cleaners.length]);
 
   // Admin filters (filters tasks/cleaners shown in calendar)
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClientFilters, setSelectedClientFilters] = useState<string[]>([]);
-  const [selectedCleanerFilters, setSelectedCleanerFilters] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState(initialUrlState.q);
+  const [selectedClientFilters, setSelectedClientFilters] = useState<string[]>(initialUrlState.clients);
+  const [selectedCleanerFilters, setSelectedCleanerFilters] = useState<string[]>(initialUrlState.cleaners);
+  const [zoom, setZoom] = useState<TimelineZoom>(initialUrlState.zoom ?? 'normal');
   const isAdminSearchEnabled = userRole !== 'cleaner';
   const { data: clientsData = [] } = useClients();
   const clientsList = clientsData as Client[];
+
+  // Keep date, view, filters, search and zoom in the URL (replace: no history spam).
+  const currentDayStr = formatMadridDate(currentDate);
+  useEffect(() => {
+    const written = writeCalendarUrlState(searchParams, {
+      date: currentDayStr,
+      view: currentView,
+      clients: selectedClientFilters,
+      cleaners: selectedCleanerFilters,
+      q: searchTerm,
+      zoom,
+    });
+    // The task link opens once; afterwards it leaves the URL.
+    const next = deepLinkTaskOpened.current ? withoutParams(written, ['task']) : written;
+    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
+  }, [currentDayStr, currentView, selectedClientFilters, selectedCleanerFilters, searchTerm, zoom, searchParams, setSearchParams, isTaskModalOpen]);
 
   const clientNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -143,37 +181,12 @@ const CleaningCalendar = () => {
 
   const filteredTasks = useMemo(() => {
     if (!isAdminSearchEnabled) return tasks;
-    const term = searchTerm.trim();
-    const hasClientFilter = clientFilterSet.size > 0;
-    const hasCleanerFilter = cleanerFilterSet.size > 0;
-    const hasSearch = !!term;
-
-    if (!hasClientFilter && !hasCleanerFilter && !hasSearch) return tasks;
-
-    return tasks.filter(t => {
-      const assignedCleanerIds = getTaskAssignedCleanerIds(t);
-
-      // Filtro por cliente
-      if (hasClientFilter && (!t.clienteId || !clientFilterSet.has(t.clienteId))) return false;
-
-      // Filtro por empleado: las sin asignar siempre pasan
-      if (
-        hasCleanerFilter
-        && assignedCleanerIds.length > 0
-        && !assignedCleanerIds.some((cleanerId) => cleanerFilterSet.has(cleanerId))
-      ) return false;
-
-      // Búsqueda libre: las sin asignar siempre se muestran
-      if (hasSearch) {
-        if (assignedCleanerIds.length === 0) return true;
-        const cleanerHit = assignedCleanerIds.some((cleanerId) =>
-          matchingCleanerIds?.has(cleanerId) ?? false
-        );
-        const fieldHit = taskMatches(t, term, clientNameById);
-        if (!cleanerHit && !fieldHit) return false;
-      }
-
-      return true;
+    return filterCalendarTasks(tasks, {
+      term: searchTerm,
+      clientIds: clientFilterSet,
+      cleanerIds: cleanerFilterSet,
+      matchingCleanerIds,
+      clientNameById,
     });
   }, [tasks, searchTerm, matchingCleanerIds, isAdminSearchEnabled, clientNameById, clientFilterSet, cleanerFilterSet]);
 
@@ -202,6 +215,10 @@ const CleaningCalendar = () => {
     if (!hasAnyFilter) return undefined;
     return `${filteredTasks.length} tareas · ${filteredCleaners.length} empleados`;
   }, [searchTerm, clientFilterSet, cleanerFilterSet, filteredTasks.length, filteredCleaners.length]);
+
+  const unassignedNote = cleanerFilterSet.size > 0
+    ? 'Con el filtro de empleado, las sin asignar se siguen mostrando.'
+    : undefined;
 
   const isMultiDay = isMultiDayView(currentView);
   // Week view starts on Monday, so range-based panels use the first visible day.
@@ -235,6 +252,26 @@ const CleaningCalendar = () => {
     // no-op
   }, []);
 
+  const pageActions = useMemo(
+    () => ({ permissions, validateScheduleChange, scale: DEFAULT_SCALE }),
+    [permissions, validateScheduleChange],
+  );
+
+  // Authenticated with a role but without any sede: say it instead of spinning forever.
+  if (!authGuardLoading && isAuthenticated && hasRole && !hasSedeAccess) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background p-6">
+        <div className="max-w-md rounded-lg border border-border bg-card p-6 text-center shadow-sm" role="alert">
+          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-warning" aria-hidden />
+          <h1 className="text-lg font-semibold">No tienes ninguna sede asignada</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            El calendario muestra las tareas de una sede. Pide a un administrador que te asigne una.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Wait for auth and sede initialization before showing calendar
   if (authGuardLoading || !sedeInitialized || sedeLoading || (hasSedeAccess && !activeSede?.id)) {
     return (
@@ -253,6 +290,25 @@ const CleaningCalendar = () => {
     );
   }
 
+  // A failed load with nothing to show: never present it as an empty day.
+  if (isTasksError && tasks.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background p-6">
+        <div className="max-w-md rounded-lg border border-border bg-card p-6 text-center shadow-sm" role="alert">
+          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-danger" aria-hidden />
+          <h1 className="text-lg font-semibold">No se han podido cargar las tareas</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Comprueba la conexión y vuelve a intentarlo. El calendario no muestra un día vacío cuando la carga falla.
+          </p>
+          <Button className="mt-4 gap-2" onClick={() => void refetchTasks?.()}>
+            <RefreshCw className="h-4 w-4" />
+            Reintentar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Only show full-screen loading on the very first load, not during refetches
   const isInitialLoad = !hasLoadedOnce.current && isLoading && (!tasks || tasks.length === 0);
   if (isInitialLoad) {
@@ -265,14 +321,31 @@ const CleaningCalendar = () => {
 
   // Show subtle loading indicator during refetches (non-blocking)
   const isRefetching = hasLoadedOnce.current && isLoading;
+  const lastUpdate = formatUpdatedAt(tasksUpdatedAt);
 
+  // Previous data is still shown, but the person must know it may be stale.
+  const staleDataBanner = isTasksError && tasks.length > 0 ? (
+    <div className="flex items-center justify-between gap-3 rounded-md border border-danger/40 bg-paper px-3 py-2 text-sm" role="alert">
+      <span className="flex items-center gap-2 text-danger">
+        <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+        No se han podido actualizar las tareas{lastUpdate ? `; datos de las ${lastUpdate}` : ''}.
+      </span>
+      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => void refetchTasks?.()}>
+        <RefreshCw className="h-3.5 w-3.5" />
+        Reintentar
+      </Button>
+    </div>
+  ) : null;
+
+  const newTaskAction = permissions.canCreate ? handleNewTask : undefined;
+  const newBatchTaskAction = permissions.canCreate ? handleNewBatchTask : undefined;
 
   // Mobile views - render specific mobile interfaces
   if (isMobile) {
-    // Mobile manager/admin view
-    
+    // Mobile manager/admin view: consultation agenda (no new reparto gestures).
+
     return (
-      <>
+      <CalendarActionsProvider value={pageActions}>
         <div className="h-screen flex flex-col bg-background text-foreground transition-colors duration-300 relative overflow-hidden">
           {/* Subtle loading indicator during refetches */}
           {isRefetching && (
@@ -281,18 +354,26 @@ const CleaningCalendar = () => {
               <span className="text-sm text-muted-foreground">Actualizando...</span>
             </div>
           )}
+          {staleDataBanner && <div className="px-3 pt-3">{staleDataBanner}</div>}
           <ManagerMobileAgendaCalendar
             currentDate={currentDate}
             tasks={tasks}
             cleaners={cleaners}
             onNavigateDate={navigateDate}
             onGoToToday={goToToday}
+            onSelectDate={setCurrentDate}
             onTaskClick={handleTaskClick}
-            onNewTask={handleNewTask}
-            onNewBatchTask={handleNewBatchTask}
+            onNewTask={newTaskAction}
+            onNewBatchTask={newBatchTaskAction}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            clientOptions={clientFilterOptions}
+            selectedClientIds={selectedClientFilters}
+            onClientFilterChange={setSelectedClientFilters}
+            clientNameById={clientNameById}
           />
         </div>
-        
+
         {confirmDialog}
 
         {/* Modals for mobile manager view */}
@@ -310,8 +391,9 @@ const CleaningCalendar = () => {
           onUpdateTask={handleUpdateTask}
           onDeleteTask={handleDeleteTask}
           onUnassignTask={handleUnassignTask}
+          permissions={permissions}
         />
-      </>
+      </CalendarActionsProvider>
     );
   }
 
@@ -319,8 +401,9 @@ const CleaningCalendar = () => {
   // CleanerCalendarScreen for them.
 
   // Desktop manager/admin view
-  
+
   return (
+    <CalendarActionsProvider value={pageActions}>
     <div className="h-screen flex flex-col bg-background text-foreground transition-colors duration-300 relative overflow-hidden">
       {/* Subtle loading indicator during refetches */}
       {isRefetching && (
@@ -329,7 +412,7 @@ const CleaningCalendar = () => {
           <span className="text-sm text-muted-foreground">Actualizando...</span>
         </div>
       )}
-      <div className="flex-1 flex flex-col gap-3 px-2 py-3 max-w-full overflow-hidden">        
+      <div className="flex-1 flex flex-col gap-3 px-2 py-3 max-w-full overflow-hidden">
         {/* Enhanced Responsive Header */}
         <ResponsiveCalendarHeader
           currentDate={currentDate}
@@ -337,8 +420,11 @@ const CleaningCalendar = () => {
           onNavigateDate={navigateDate}
           onGoToToday={goToToday}
           onViewChange={setCurrentView}
-          onNewTask={handleNewTask}
-          onNewBatchTask={handleNewBatchTask}
+          onNewTask={newTaskAction}
+          onNewBatchTask={newBatchTaskAction}
+          onSelectDate={setCurrentDate}
+          zoom={zoom}
+          onZoomChange={setZoom}
           showSearch={isAdminSearchEnabled}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -350,6 +436,8 @@ const CleaningCalendar = () => {
           onClientFiltersChange={setSelectedClientFilters}
           onCleanerFiltersChange={setSelectedCleanerFilters}
         />
+
+        {staleDataBanner}
 
         {/* Panel desplegable de trabajadoras no disponibles */}
         <UnavailableWorkersPanel
@@ -390,9 +478,14 @@ const CleaningCalendar = () => {
             handleUpdateTask={handleUpdateTask}
             handleDeleteTask={handleDeleteTask}
             handleUnassignTask={handleUnassignTask}
+            handleRemoveCleanerFromTask={handleRemoveCleanerFromTask}
             onNavigateDate={navigateDate}
             onSelectDay={handleSelectDay}
             onConfirm={confirm}
+            permissions={permissions}
+            validateScheduleChange={validateScheduleChange}
+            zoom={zoom}
+            unassignedNote={unassignedNote}
           />
         </div>
 
@@ -403,11 +496,12 @@ const CleaningCalendar = () => {
           <CalendarFooterSummary
             tasks={summaryTasks}
             cleaners={filteredCleaners}
-            periodLabel={isMultiDay ? 'en el periodo' : 'hoy'}
+            periodLabel={getFooterPeriodLabel(currentDate, isMultiDay)}
           />
         </div>
       </div>
     </div>
+    </CalendarActionsProvider>
   );
 };
 

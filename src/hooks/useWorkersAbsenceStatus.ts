@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ABSENCE_TYPE_COLORS } from '@/types/workerAbsence';
+import { ABSENCE_COLUMNS, maskAbsenceType } from '@/components/calendar/utils/absencePrivacy';
 
 export interface WorkerAbsenceStatus {
   cleanerId: string;
@@ -23,7 +24,12 @@ export interface WorkerAbsenceStatus {
   }[];
 }
 
-export const useWorkersAbsenceStatus = (requestedCleanerIds: string[], date: Date) => {
+export const useWorkersAbsenceStatus = (
+  requestedCleanerIds: string[],
+  date: Date,
+  // Without access to absence details a medical leave shows as a generic absence.
+  { canSeeAbsenceDetails = true }: { canSeeAbsenceDetails?: boolean } = {},
+) => {
   // The result is a map: order and repeated IDs do not change its contents.
   // Keep the existing freshness and invalidation behavior while sharing the key.
   const cleanerIds = [...new Set(requestedCleanerIds)].sort();
@@ -31,7 +37,7 @@ export const useWorkersAbsenceStatus = (requestedCleanerIds: string[], date: Dat
   const dayOfWeek = date.getDay();
 
   return useQuery({
-    queryKey: ['workers-absence-status', cleanerIds, dateStr],
+    queryKey: ['workers-absence-status', cleanerIds, dateStr, canSeeAbsenceDetails],
     queryFn: async (): Promise<Record<string, WorkerAbsenceStatus>> => {
       if (cleanerIds.length === 0) return {};
 
@@ -40,7 +46,8 @@ export const useWorkersAbsenceStatus = (requestedCleanerIds: string[], date: Dat
         // Full-day and hourly absences for this date
         supabase
           .from('worker_absences')
-          .select('*')
+          // Only what the calendar shows: notes are never read here.
+          .select(ABSENCE_COLUMNS)
           .in('cleaner_id', cleanerIds)
           .lte('start_date', dateStr)
           .gte('end_date', dateStr),
@@ -88,15 +95,16 @@ export const useWorkersAbsenceStatus = (requestedCleanerIds: string[], date: Dat
       absencesResult.data?.forEach(absence => {
         if (statusMap[absence.cleaner_id]) {
           const isFullDay = !absence.start_time || !absence.end_time;
+          const absenceType = maskAbsenceType(absence.absence_type, canSeeAbsenceDetails);
           
           if (isFullDay) {
             statusMap[absence.cleaner_id].isAbsent = true;
-            statusMap[absence.cleaner_id].absenceType = absence.absence_type;
-            statusMap[absence.cleaner_id].absenceColor = 
-              ABSENCE_TYPE_COLORS[absence.absence_type as keyof typeof ABSENCE_TYPE_COLORS] || '#6B7280';
+            statusMap[absence.cleaner_id].absenceType = absenceType;
+            statusMap[absence.cleaner_id].absenceColor =
+              ABSENCE_TYPE_COLORS[absenceType as keyof typeof ABSENCE_TYPE_COLORS] || '#6B7280';
           } else {
             statusMap[absence.cleaner_id].hourlyAbsences?.push({
-              type: absence.absence_type,
+              type: absenceType,
               startTime: absence.start_time!,
               endTime: absence.end_time!,
               locationName: absence.location_name || undefined

@@ -9,17 +9,32 @@ export interface DragState {
   draggedFromPosition?: { cleanerId: string; timeSlot: string };
 }
 
-export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string, cleaners: Cleaner[], timeSlot?: string) => void) => {
+/**
+ * `originCleanerId` is the cleaner row the block was dragged from. A shared
+ * task is drawn in every assigned row, so the drop needs it to replace only
+ * that person.
+ */
+export type TaskAssignHandler = (
+  taskId: string,
+  cleanerId: string,
+  cleaners: Cleaner[],
+  timeSlot?: string,
+  originCleanerId?: string,
+) => void;
+
+export const useDragAndDrop = (onTaskAssign: TaskAssignHandler) => {
   // Keep the active task synchronously, even before React commits a render.
   const activeTaskRef = useRef<Task | null>(null);
+  const originCleanerRef = useRef<string | undefined>(undefined);
   const [dragState, setDragState] = useState<DragState>({
     draggedTask: null,
     isDragging: false,
     dragOffset: { x: 0, y: 0 }
   });
 
-  const handleDragStart = useCallback((e: React.DragEvent, task: Task) => {
+  const handleDragStart = useCallback((e: React.DragEvent, task: Task, originCleanerId?: string) => {
     activeTaskRef.current = task;
+    originCleanerRef.current = originCleanerId;
     e.dataTransfer.effectAllowed = 'move';
     
     // Set multiple data formats for better compatibility
@@ -34,8 +49,8 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     };
 
     // Store original position for assigned tasks
-    const draggedFromPosition = task.cleaner ? {
-      cleanerId: task.cleanerId || '',
+    const draggedFromPosition = (originCleanerId || task.cleaner) ? {
+      cleanerId: originCleanerId || task.cleanerId || '',
       timeSlot: task.startTime
     } : undefined;
 
@@ -50,6 +65,7 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
 
   const handleDragEnd = useCallback((e: React.DragEvent) => {
     activeTaskRef.current = null;
+    originCleanerRef.current = undefined;
     setDragState({
       draggedTask: null,
       isDragging: false,
@@ -89,11 +105,14 @@ export const useDragAndDrop = (onTaskAssign: (taskId: string, cleanerId: string,
     // active drag from this calendar, never to an unrelated external payload.
     taskId = taskId || activeTask?.id;
     const isActiveTask = !!activeTask?.id && taskId === activeTask.id;
+    const originCleanerId = originCleanerRef.current;
     activeTaskRef.current = null;
+    originCleanerRef.current = undefined;
 
     if (isActiveTask) {
       // Always call onTaskAssign - let the backend handle if it's the same position
-      onTaskAssign(taskId, cleanerId, cleaners, timeSlot);
+      if (originCleanerId) onTaskAssign(taskId, cleanerId, cleaners, timeSlot, originCleanerId);
+      else onTaskAssign(taskId, cleanerId, cleaners, timeSlot);
     } else {
       console.error('❌ useDragAndDrop - No task ID or dragged task found:', { taskId, draggedTask: dragState.draggedTask });
     }

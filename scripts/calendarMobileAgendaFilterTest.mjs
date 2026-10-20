@@ -19,7 +19,8 @@ export const useNavigate = () => () => {};
 export const format = () => 'fecha'; export const es = {};
 `;
 const tags = ['Badge', 'Button', 'Card', 'CardContent', 'MobileBottomNav', 'TaskStatusBadge',
-  'AlertTriangle', 'CalendarDays', 'ChevronLeft', 'ChevronRight', 'Clock', 'MapPin', 'UserRound', 'Users', 'Plus', 'ArrowLeft', 'Home', 'CheckCircle2', 'PlayCircle', 'Menu'];
+  'AlertTriangle', 'CalendarDays', 'ChevronLeft', 'ChevronRight', 'Clock', 'MapPin', 'UserRound', 'Users', 'Plus', 'ArrowLeft', 'Home', 'CheckCircle2', 'PlayCircle', 'Menu',
+  'Search', 'X', 'Input', 'Popover', 'PopoverContent', 'PopoverTrigger', 'Calendar'];
 const built = await build({
   stdin: { resolveDir: process.cwd(), loader: 'tsx', contents: `
     export { ManagerMobileAgendaCalendar } from './src/components/calendar/ManagerMobileAgendaCalendar';

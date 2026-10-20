@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Cleaner, Task, ViewType } from '@/types/calendar';
 import { getVisibleDays } from './utils/multiDayCalendar';
 import { useUnavailableCleaners, UnavailableCleanerInfo } from '@/hooks/useUnavailableCleaners';
+import { useCalendarActions } from './CalendarActionsContext';
 import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'calendar.unavailableWorkersExpanded';
@@ -22,7 +23,10 @@ export const UnavailableWorkersPanel = ({
   currentView,
   tasks,
 }: UnavailableWorkersPanelProps) => {
-  const { unavailableList } = useUnavailableCleaners(cleaners, currentDate, currentView);
+  const { permissions } = useCalendarActions();
+  const { unavailableList } = useUnavailableCleaners(cleaners, currentDate, currentView, {
+    canSeeAbsenceDetails: permissions.canSeeAbsenceDetails,
+  });
 
   const [expanded, setExpanded] = useState<boolean>(() => {
     try {
