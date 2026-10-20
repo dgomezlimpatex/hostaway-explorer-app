@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { AlertCircle, ChevronLeft, ChevronRight, ChevronRight as Arrow, Info, RefreshCw, Search, Smartphone, X } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronLeft, ChevronRight, ChevronRight as Arrow, Info, RefreshCw, Search, Smartphone, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { rpcUntyped } from '@/lib/supabaseUntyped';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,14 +15,15 @@ import { useWhatsAppDeliveryHealth } from '@/hooks/useWhatsAppDeliveryHealth';
 import { WhatsAppDeliveryDetail } from '@/features/whatsapp-monitor/WhatsAppDeliveryDetail';
 import { WhatsAppResolutionDialog, type ResolutionMode } from '@/features/whatsapp-monitor/WhatsAppResolutionDialog';
 import { WhatsAppStatusBadge } from '@/features/whatsapp-monitor/WhatsAppStatusBadge';
+import { WhatsAppManualQueue } from '@/features/whatsapp-monitor/WhatsAppManualQueue';
 import {
+  MANUAL_QUEUE_LIMIT,
   PAGE_SIZE,
   PERIODS,
   PERIOD_LABELS,
   STATUS_FILTERS,
   UNCONFIRMED_MINUTES,
   activeChips,
-  ageLabel,
   escapeLikePattern,
   eventLabel,
   failureLabel,
@@ -31,10 +32,11 @@ import {
   formatTaskDate,
   isForbidden,
   lastMoment,
+  maskedPhone,
   parseFilters,
-  resendWindow,
+  phoneTail,
+  queueAttempt,
   skipCause,
-  uncertaintyLabel,
   writeFilters,
   type DeliveryRow,
   type MonitorFilters,
@@ -61,7 +63,9 @@ function rowCause(row: DeliveryRow) {
   if (cause) return cause.label;
   const failure = failureLabel(row);
   if (failure && row.status !== 'queued') return failure;
-  if (row.status === 'queued' && row.error_code === 'reconciliation_required') return 'Reintento automático o comprobación manual';
+  if (row.status === 'queued' && row.error_code === 'reconciliation_required') {
+    return queueAttempt({ channel: 'whatsapp', detail: row.error_detail ?? '' }).exhausted ? 'Comprobación manual' : 'Reintento automático o comprobación manual';
+  }
   if (row.status === 'sent' && !row.delivered_at) return 'Entrega no comunicada';
   if (row.status === 'delivered') return 'Lectura no comunicada';
   return null;
@@ -150,7 +154,7 @@ export default function WhatsAppNotifications() {
   const sendQueue = useQuery({
     queryKey: ['notification-send-reconciliation-queue'],
     queryFn: async (): Promise<SendReconciliationRow[]> => {
-      const { data, error: queryError } = await rpcUntyped('get_notification_send_reconciliation_queue', { _limit: 50 });
+      const { data, error: queryError } = await rpcUntyped('get_notification_send_reconciliation_queue', { _limit: MANUAL_QUEUE_LIMIT });
       if (queryError) throw queryError;
       return (data ?? []) as unknown as SendReconciliationRow[];
     },
@@ -179,6 +183,7 @@ export default function WhatsAppNotifications() {
   const webhookRows = webhookQueue.data ?? [];
   const showQueues = isAdmin && (sendRows.length > 0 || webhookRows.length > 0 || sendQueue.isError || webhookQueue.isError);
   const queueByDelivery = useMemo(() => new Map((sendQueue.data ?? []).map((row) => [row.delivery_id, row])), [sendQueue.data]);
+  const historyById = useMemo(() => new Map((history.data ?? []).map((row) => [row.id, row])), [history.data]);
 
   const refreshing = history.isFetching || stats.isFetching || callbacks.isFetching || sendQueue.isFetching || webhookQueue.isFetching;
   const refreshAll = () => Promise.all([
@@ -189,7 +194,7 @@ export default function WhatsAppNotifications() {
 
   const failedBlocks = [
     stats.isError && 'resumen',
-    callbacks.isError && isAdmin && 'callbacks de Meta',
+    callbacks.isError && isAdmin && 'respuestas de Meta',
     history.isError && 'historial',
     sendQueue.isError && !isForbidden(sendQueue.error) && 'envíos por comprobar',
     webhookQueue.isError && 'cola de Meta',
@@ -237,8 +242,7 @@ export default function WhatsAppNotifications() {
         <div className="space-y-1">
           <h1 className="flex items-center gap-2 text-2xl font-bold text-[#310984]"><Smartphone aria-hidden className="h-6 w-6" />Notificaciones WhatsApp</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Avisos automáticos a trabajadoras. «Aceptado» significa aceptado por Meta; Entregado y Leído solo aparecen si Meta lo comunica.
-            <span className="hidden sm:inline"> El modo del canal (activo o preparación) no se comprueba desde esta pantalla: los avisos registrados en modo preparación se marcan como tales.</span>
+            Avisos automáticos a trabajadoras. «Entregado» y «Leído» solo aparecen si Meta lo comunica.
           </p>
         </div>
         <div className="flex flex-col items-start gap-1 md:items-end">
@@ -263,7 +267,7 @@ export default function WhatsAppNotifications() {
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <AttentionChip label="Fallidos" value={statsValue(breakdown?.failed)} onClick={() => applyStatus('failed')} />
-          <AttentionChip label="Inciertos" hint="intento 1/2" value={statsValue(breakdown?.uncertain)} onClick={() => applyStatus('queued')} />
+          <AttentionChip label="Inciertos" hint="sin respuesta clara" value={statsValue(breakdown?.uncertain)} onClick={() => applyStatus('queued')} />
           <AttentionChip label={`Sin confirmar +${UNCONFIRMED_MINUTES} min`} value={statsValue(breakdown?.unconfirmed)} onClick={() => applyStatus('sent')} tone="warning" />
           <AttentionChip label="No enviados" hint={breakdown?.excludesPreparation ? 'sin teléfono u otro motivo' : 'incluye modo preparación y falta de teléfono'} value={statsValue(breakdown?.skipped)} onClick={() => applyStatus('skipped')} tone="warning" />
         </div>
@@ -274,13 +278,13 @@ export default function WhatsAppNotifications() {
         </p>
         {isAdmin ? (
           <div className="flex flex-wrap items-center gap-2 border-t pt-3 text-sm">
-            <span className="font-medium">Conciliación de Meta (solo administración):</span>
+            <span className="font-medium">Respuestas de Meta sin asociar:</span>
             {callbackPending !== undefined
-              ? <span>{callbackPending} callbacks sin correlacionar{callbackPending > 0 && ' · pueden corresponder a un aviso incierto ya contado arriba, por eso no se suman'}</span>
+              ? <span>{callbackPending}{callbackPending > 0 && <span className="text-muted-foreground"> · suelen ser de un aviso ya contado arriba, por eso no se suman</span>}</span>
               : callbacks.isError ? <Unavailable onRetry={() => void callbacks.refetch()} /> : <span className="text-muted-foreground">Cargando…</span>}
           </div>
         ) : (
-          <p className="flex gap-2 border-t pt-3 text-sm text-muted-foreground"><Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />Las colas de comprobación manual y de conciliación con Meta son solo de administración; aquí no se muestran sus cifras.</p>
+          <p className="flex gap-2 border-t pt-3 text-sm text-muted-foreground"><Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />Los envíos por comprobar y las respuestas de Meta sin asociar son solo de administración; aquí no se muestran sus cifras.</p>
         )}
 
         <div className="border-t pt-3">
@@ -300,75 +304,46 @@ export default function WhatsAppNotifications() {
           aria-expanded={queuesOpen}
           aria-controls="wa-queues"
           onClick={() => setQueuesOpen((open) => !open)}
-          className="flex w-full items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm font-medium text-red-900 outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-medium text-amber-900 outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
         >
-          <span>{[sendRows.length > 0 && `${sendRows.length} envíos por comprobar`, webhookRows.length > 0 && `${webhookRows.length} respuestas de Meta`, (sendQueue.isError || webhookQueue.isError) && 'colas sin comprobar'].filter(Boolean).join(' · ')}</span>
+          <span>{[sendRows.length > 0 && `${sendRows.length} envíos por comprobar`, webhookRows.length > 0 && `${webhookRows.length} respuestas de Meta sin asociar`, (sendQueue.isError || webhookQueue.isError) && 'colas sin comprobar'].filter(Boolean).join(' · ')}</span>
           <span className="text-xs underline">{queuesOpen ? 'Ocultar' : 'Ver'}</span>
         </button>
       )}
 
       <div id="wa-queues" className={cn('space-y-5', !queuesOpen && 'hidden md:block')}>
       {isAdmin && (sendRows.length > 0 || sendQueue.isError) && (
-        <Card className="border-red-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base text-red-900">Envíos pendientes de comprobación manual{sendRows.length > 0 && ` (${sendRows.length})`}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {sendQueue.isError && !isForbidden(sendQueue.error) && (
-              <p role="alert" className="text-sm text-red-700">No se pudo comprobar la cola. <button type="button" className="underline" onClick={() => void sendQueue.refetch()}>Reintentar</button></p>
-            )}
-            {sendQueue.isError && isForbidden(sendQueue.error) && <p className="text-sm text-muted-foreground">Esta cola es solo de administración.</p>}
-            {sendRows.length > 0 && <p className="text-sm text-muted-foreground">Comprueba primero el intento en Meta o Resend. WhatsApp aplica como máximo un reintento automático 2/2 tras 15 minutos; Resend solo reutiliza su clave dentro de la ventana segura.</p>}
-            {sendRows.map((row) => {
-              const uncertainty = uncertaintyLabel(row.uncertainty_state);
-              const safeWindow = resendWindow(row.created_at);
-              const busy = Boolean(row.open_action_status);
-              return (
-                <div key={row.delivery_id} className="rounded-lg border p-3">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0">
-                      <p className="font-medium">{row.channel === 'whatsapp' ? 'WhatsApp · Meta' : 'Email alternativo · Resend'} · {row.recipient_masked}</p>
-                      <p className="text-xs text-muted-foreground">{formatMoment(row.created_at)} ({ageLabel(row.created_at)}) · <strong>{uncertainty.label}</strong> · {row.detail}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => openDetail(row.delivery_id)}>Ver detalle</Button>
-                      <Button size="sm" variant="outline" disabled={busy || !uncertainty.canConfirm} onClick={() => setResolution({ row, mode: 'confirmed_sent' })}>Confirmar enviado…</Button>
-                      {row.channel === 'email' && !safeWindow.expired && (
-                        <Button size="sm" variant="destructive" disabled={busy} onClick={() => setResolution({ row, mode: 'confirmed_not_sent' })}>Confirmar no enviado…</Button>
-                      )}
-                    </div>
-                  </div>
-                  {row.channel === 'whatsapp' && <p className="mt-2 text-xs font-medium text-red-700">El intento 1/2 incierto puede recibir un único reintento backend tras 15 minutos. Después del intento 2/2 no habrá un tercero. Solo puede confirmarse como enviado con el ID de Meta.</p>}
-                  {row.channel === 'whatsapp' && !uncertainty.canConfirm && <p className="mt-1 text-xs text-amber-800">{uncertainty.explanation}</p>}
-                  {row.channel === 'email' && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {safeWindow.expired
-                        ? 'Ventana de reintento probablemente vencida (más de 23 h desde la creación): ya no se ofrece reintentar. Comprueba en Resend y confirma como enviado si salió.'
-                        : `Ventana de reintento: quedan unas ${safeWindow.remainingHours} h (estimada desde la creación del envío).`}
-                    </p>
-                  )}
-                  {row.open_action_status && <p className="mt-2 text-xs font-medium text-amber-700">Resolución encolada para el servidor.</p>}
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+        <WhatsAppManualQueue
+          rows={sendRows}
+          isError={sendQueue.isError}
+          error={sendQueue.error}
+          onRetry={() => void sendQueue.refetch()}
+          historyById={historyById}
+          selectedId={detailId}
+          onReview={openDetail}
+        />
       )}
 
       {isAdmin && (webhookRows.length > 0 || webhookQueue.isError) && (
-        <Card className="border-amber-200">
-          <CardHeader className="pb-3"><CardTitle className="text-base text-amber-900">Cola de conciliación de Meta{webhookRows.length > 0 && ` (${webhookRows.length})`}</CardTitle></CardHeader>
-          <CardContent className="overflow-x-auto">
-            {webhookQueue.isError && <p role="alert" className="text-sm text-red-700">No se pudo comprobar la cola de Meta. <button type="button" className="underline" onClick={() => void webhookQueue.refetch()}>Reintentar</button></p>}
-            {webhookRows.length > 0 && (
-              <table className="w-full min-w-[720px] text-sm">
-                <caption className="sr-only">Respuestas de Meta pendientes de correlacionar con un aviso</caption>
-                <thead><tr className="border-b text-left text-muted-foreground"><th scope="col" className="pb-2">Recibido</th><th scope="col" className="pb-2">Tipo</th><th scope="col" className="pb-2">Referencia</th><th scope="col" className="pb-2">Remitente</th><th scope="col" className="pb-2">Estado</th><th scope="col" className="pb-2">Intentos</th><th scope="col" className="pb-2">Detalle</th></tr></thead>
-                <tbody>{webhookRows.map((row, index) => <tr key={`${row.provider_message_ref}-${row.received_at}-${index}`} className="border-b"><td className="py-3">{formatMoment(row.received_at)}</td><td>{row.callback_kind === 'status' ? 'Estado' : 'Botón'}</td><td>{row.provider_message_ref}</td><td>{row.sender_masked}</td><td>{row.callback_state === 'manual_review' ? 'Revisión manual' : 'Reintentando'}</td><td>{row.attempts}</td><td className="max-w-xs text-xs text-muted-foreground">{row.detail}</td></tr>)}</tbody>
-              </table>
-            )}
-          </CardContent>
-        </Card>
+          <div className="rounded-2xl border bg-card p-4">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded text-base font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <span>Respuestas de Meta sin asociar{webhookRows.length > 0 && ` (${webhookRows.length})`}</span>
+              <ChevronDown aria-hidden className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-3 space-y-2 overflow-x-auto">
+              <p className="text-sm text-muted-foreground">Avisos de estado o botones que Meta envió y que el servidor aún no ha relacionado con un envío. Suelen pertenecer a un envío de la lista anterior; el servidor los reintenta solo.</p>
+              {webhookRows.length > 0 && (
+                <table className="w-full min-w-[640px] text-sm">
+                  <caption className="sr-only">Respuestas de Meta pendientes de correlacionar con un aviso</caption>
+                  <thead><tr className="border-b text-left text-muted-foreground"><th scope="col" className="pb-2">Recibido</th><th scope="col" className="pb-2">Tipo</th><th scope="col" className="pb-2">Remitente</th><th scope="col" className="pb-2">Estado</th><th scope="col" className="pb-2">Intentos</th><th scope="col" className="pb-2">Referencia</th></tr></thead>
+                  <tbody>{webhookRows.map((row, index) => <tr key={`${row.provider_message_ref}-${row.received_at}-${index}`} className="border-b"><td className="py-2">{formatMoment(row.received_at)}</td><td>{row.callback_kind === 'status' ? 'Estado' : 'Botón'}</td><td>{phoneTail(row.sender_masked) ? maskedPhone(row.sender_masked) : '—'}</td><td>{row.callback_state === 'manual_review' ? 'Revisión manual' : 'Reintentando'}</td><td>{row.attempts}</td><td className="text-xs text-muted-foreground">{row.provider_message_ref}</td></tr>)}</tbody>
+                </table>
+              )}
+            </div>
+          </details>
+          {webhookQueue.isError && <p role="alert" className="mt-2 text-sm text-red-700">No se pudo comprobar la cola de Meta. <button type="button" className="underline" onClick={() => void webhookQueue.refetch()}>Reintentar</button></p>}
+        </div>
       )}
 
       </div>
@@ -439,7 +414,7 @@ export default function WhatsAppNotifications() {
                       <li key={row.id}>
                         <button type="button" onClick={() => openDetail(row.id)} className="w-full rounded-xl border p-3 text-left outline-none hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary">
                           <span className="flex items-start justify-between gap-2"><WhatsAppStatusBadge row={row} /><span className="text-xs text-muted-foreground">{moment.verb} {formatMoment(moment.at)}</span></span>
-                          <span className="mt-1 block font-medium">{row.cleaner_name || 'Destinatario sin identificar'} <span className="font-normal text-muted-foreground">{row.recipient_masked}</span></span>
+                          <span className="mt-1 block font-medium">{row.cleaner_name || 'Destinatario sin identificar'} <span className="font-normal text-muted-foreground">{maskedPhone(row.recipient_masked)}</span></span>
                           <span className="block text-sm">{eventLabel(row)}</span>
                           <span className="block text-xs text-muted-foreground">{[row.property, formatTaskDate(row.task_date)].filter(Boolean).join(' · ') || 'Sin tarea asociada'}</span>
                           {cause && <span className="mt-1 flex items-center justify-between text-xs font-medium">{cause}<Arrow aria-hidden className="h-3.5 w-3.5" /></span>}
@@ -458,10 +433,10 @@ export default function WhatsAppNotifications() {
                       return (
                         <tr key={row.id} className={cn('border-b align-top', detailId === row.id && 'bg-muted/50')}>
                           <td className="py-3"><WhatsAppStatusBadge row={row} /></td>
-                          <td className="py-3"><p className="font-medium">{row.cleaner_name || 'Destinatario sin identificar'}</p><p className="text-xs text-muted-foreground">{row.recipient_masked}</p></td>
+                          <td className="py-3"><p className="font-medium">{row.cleaner_name || 'Destinatario sin identificar'}</p><p className="text-xs text-muted-foreground">{maskedPhone(row.recipient_masked)}</p></td>
                           <td className="py-3"><p>{eventLabel(row)}</p><p className="text-xs text-muted-foreground">{[row.property, formatTaskDate(row.task_date)].filter(Boolean).join(' · ') || 'Sin tarea asociada'}</p></td>
                           <td className="py-3 whitespace-nowrap">{moment.verb} {formatMoment(moment.at)}</td>
-                          <td className="max-w-xs py-3 text-xs">{rowCause(row) ?? '—'}{inQueue && <p className="font-medium text-red-700">En la cola de comprobación manual</p>}</td>
+                          <td className="max-w-xs py-3 text-xs">{rowCause(row) ?? '—'}{inQueue && <p className="font-medium text-amber-800">Por comprobar</p>}</td>
                           <td className="py-3 text-right"><Button size="sm" variant="ghost" aria-label={`Ver detalle de ${eventLabel(row)} a ${row.cleaner_name || 'destinatario sin identificar'}`} onClick={() => openDetail(row.id)}>Ver<Arrow aria-hidden className="ml-1 h-3.5 w-3.5" /></Button></td>
                         </tr>
                       );

@@ -24,7 +24,28 @@ const baseRows=[
   D('d9',{status:'undeliverable',error_code:'131049',error_detail:'Llamada [teléfono oculto] bloqueada por Meta',failed_at:ago(600),created_at:ago(601),cleaner_name:'Ana Pérez',event_type:'task_late_start_reminder',template_name:'late_start_v1'}),
   D('d10',{status:'processing_unknown',created_at:ago(700),cleaner_name:'Luis Gómez'}),
 ];
-const sendQueue=()=>[
+// Escenario parecido a producción (20/10/2026): seis WhatsApp 2/2 agotados y antiguos,
+// con el enmascarado mal codificado que devuelve hoy el servidor, más casos recientes.
+const MOJI='â€¢'.repeat(4);
+const EXHAUSTED='Intento WhatsApp 2/2 incierto; reintentos automáticos agotados. Requiere conciliación manual';
+const Q=(id,o)=>Object.assign({delivery_id:id,notification_event_id:'ev-'+id,channel:'whatsapp',provider:'meta_cloud_api',recipient_masked:MOJI+' 7093',template_name:'task_assigned_approval_es',uncertainty_state:'meta_uncertain',detail:EXHAUSTED,created_at:ago(5),open_action_status:null},o);
+const prodQueue=()=>[
+  Q('p1',{created_at:'2026-09-04T18:12:00Z'}),
+  Q('p2',{created_at:'2026-09-15T18:26:00Z',template_name:'task_modified_es'}),
+  Q('p3',{created_at:'2026-09-28T07:58:00Z',recipient_masked:MOJI+' 4439',template_name:null}),
+  Q('p4',{created_at:'2026-09-29T14:06:00Z',recipient_masked:MOJI+' 4439',template_name:'task_cancelled_es'}),
+  Q('p5',{created_at:'2026-10-02T09:15:00Z',recipient_masked:MOJI+' 6755',template_name:'plantilla_desconocida_x'}),
+  Q('p6',{created_at:'2026-10-08T16:40:00Z',recipient_masked:'Oculto',template_name:'task_approval_reminder_es'}),
+];
+const mixedQueue=()=>[
+  ...prodQueue().slice(0,2),
+  Q('d6',{created_at:ago(18),recipient_masked:'•••• 1234',template_name:'task_approval_reminder_es',detail:'Resultado de Meta incierto (network_error): tras 15 minutos se permitirá un único reintento 2/2 para priorizar entrega; existe riesgo excepcional de duplicado'}),
+  Q('r2',{created_at:ago(3*1440),recipient_masked:'•••• 5678',template_name:'task_modified_es',open_action_status:'pending'}),
+  Q('r3',{created_at:ago(2),recipient_masked:'•••• 9012',uncertainty_state:'meta_contacting',detail:'Contactando con Meta'}),
+  {delivery_id:'e1',notification_event_id:'ev-e1',channel:'email',provider:'resend',recipient_masked:'•••• 4321',template_name:'task_rejected_admin_fallback_email',uncertainty_state:'resend_uncertain',detail:'Resultado incierto: comprobar el proveedor antes de resolver',created_at:ago(60),open_action_status:null},
+];
+const fiftyQueue=()=>Array.from({length:50},(_,i)=>Q('f'+i,{created_at:ago((60-i)*1440)}));
+const sendQueue=()=>(window.fx||{}).queue==='prod'?prodQueue():(window.fx||{}).queue==='mixed'?mixedQueue():(window.fx||{}).queue==='fifty'?fiftyQueue():[
   {delivery_id:'d6',notification_event_id:'ev-d6',channel:'whatsapp',provider:'meta_cloud_api',recipient_masked:'•••• 1234',template_name:'task_approval_reminder_v1',uncertainty_state:(window.fx||{}).contacting?'meta_contacting':'meta_uncertain',detail:'Intento 1/2 sin respuesta de Meta',created_at:ago(18),open_action_status:null},
   {delivery_id:'e1',notification_event_id:'ev-e1',channel:'email',provider:'resend',recipient_masked:'•••• 4321',template_name:'task_rejected_admin_fallback_email',uncertainty_state:'resend_uncertain',detail:'Resultado incierto: comprobar el proveedor antes de resolver',created_at:ago(60),open_action_status:null},
   {delivery_id:'e2',notification_event_id:'ev-e2',channel:'email',provider:'resend',recipient_masked:'•••• 8765',template_name:'task_rejected_admin_fallback_email',uncertainty_state:'resend_uncertain',detail:'Resultado incierto antiguo',created_at:ago(25*60),open_action_status:null},

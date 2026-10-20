@@ -7,6 +7,9 @@ import { Label } from '@/components/ui/label';
 import {
   ageLabel,
   formatMoment,
+  queueAttempt,
+  recipientLabel,
+  templateSubject,
   resendWindow,
   resolutionErrorMessage,
   uncertaintyLabel,
@@ -43,6 +46,7 @@ export function WhatsAppResolutionDialog({ row, mode, onClose, onSubmit }: Props
   const isWhatsApp = row.channel === 'whatsapp';
   const provider = isWhatsApp ? 'Meta' : 'Resend';
   const uncertainty = uncertaintyLabel(row.uncertainty_state);
+  const attempt = queueAttempt(row);
   const safeWindow = resendWindow(row.created_at);
   const validation = mode === 'confirmed_sent' ? validateProviderMessageId(row.channel, value) : null;
   // Un WhatsApp incierto nunca se reabre: doble barrera además del servidor.
@@ -68,18 +72,17 @@ export function WhatsAppResolutionDialog({ row, mode, onClose, onSubmit }: Props
     <Dialog open onOpenChange={(open) => { if (!open && !submitting) onClose(); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{mode === 'confirmed_sent' ? `Confirmar enviado en ${provider}` : 'Confirmar no enviado y reintentar'}</DialogTitle>
+          <DialogTitle>{mode === 'confirmed_sent' ? `Registrar como enviado en ${provider}` : 'Registrar como no enviado y reintentar'}</DialogTitle>
           <DialogDescription>
-            {isWhatsApp ? 'WhatsApp' : 'Email alternativo'} a {row.recipient_masked} · {row.template_name ?? 'sin plantilla'}
+            {isWhatsApp ? 'WhatsApp' : 'Email alternativo'} · {recipientLabel(row.recipient_masked, row.channel)} · {templateSubject(row.template_name) ?? 'asunto no disponible'}
           </DialogDescription>
         </DialogHeader>
 
         <dl className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 rounded-lg border bg-muted/40 p-3 text-sm">
           <dt className="text-muted-foreground">Estado</dt><dd className="font-medium">{uncertainty.label}</dd>
           <dt className="text-muted-foreground">Creado</dt><dd>{formatMoment(row.created_at)} ({ageLabel(row.created_at)})</dd>
-          {isWhatsApp && <><dt className="text-muted-foreground">Intento</dt><dd>1/2 incierto. Como máximo habrá un reintento automático 2/2.</dd></>}
+          {isWhatsApp && <><dt className="text-muted-foreground">Intento</dt><dd>{attempt.exhausted ? '2/2 incierto. No habrá más intentos automáticos.' : attempt.retryPending ? '1/2 incierto. Como máximo habrá un reintento automático 2/2.' : attempt.attempt ? `${attempt.attempt} incierto.` : 'No indicado por el servidor.'}</dd></>}
           {!isWhatsApp && <><dt className="text-muted-foreground">Ventana segura</dt><dd>{safeWindow.expired ? 'Probablemente vencida' : `Quedan unas ${safeWindow.remainingHours} h`} <span className="text-muted-foreground">(estimada desde la creación)</span></dd></>}
-          <dt className="text-muted-foreground">Detalle</dt><dd className="break-words">{row.detail}</dd>
         </dl>
 
         {!uncertainty.canConfirm && <p role="status" className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />{uncertainty.explanation}</p>}
@@ -104,7 +107,7 @@ export function WhatsAppResolutionDialog({ row, mode, onClose, onSubmit }: Props
             <p id={errorId} className="text-xs text-muted-foreground">
               {touched && validation
                 ? <span className="font-medium text-red-700">{validation}</span>
-                : 'Comprueba en el registro del proveedor que ese mensaje fue a esta persona y a este aviso. El formato correcto no demuestra que el destinatario sea el correcto.'}
+                : `No envía otro ${isWhatsApp ? 'WhatsApp' : 'email'} ni demuestra que la persona lo recibió. Comprueba en ${provider} que ese mensaje fue a esta persona y a este aviso: el formato correcto no demuestra que el destinatario sea el correcto.`}
             </p>
           </div>
         ) : (
@@ -126,7 +129,7 @@ export function WhatsAppResolutionDialog({ row, mode, onClose, onSubmit }: Props
             onClick={() => void submit()}
             disabled={blocked || submitting || (mode === 'confirmed_sent' && touched && Boolean(validation))}
           >
-            {submitting ? 'Enviando…' : mode === 'confirmed_sent' ? 'Confirmar enviado' : 'Confirmar y reintentar'}
+            {submitting ? 'Registrando…' : mode === 'confirmed_sent' ? 'Registrar como enviado' : 'Registrar y reintentar'}
           </Button>
         </DialogFooter>
       </DialogContent>
