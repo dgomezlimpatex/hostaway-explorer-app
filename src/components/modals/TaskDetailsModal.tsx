@@ -26,10 +26,18 @@ interface TaskDetailsModalProps {
   task: Task | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
-  onDeleteTask: (taskId: string) => void;
-  onUnassignTask?: (taskId: string) => void;
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void | Promise<unknown>;
+  /** May return a promise; `false` means it was not deleted (the error is already shown). */
+  onDeleteTask: (taskId: string) => void | Promise<unknown>;
+  onUnassignTask?: (taskId: string) => void | Promise<unknown>;
   onCreateTask?: (taskData: Omit<Task, 'id'>) => Promise<void>;
+  /**
+   * Edit permission decided by the screen (the calendar passes its role
+   * matrix). Without it, only admin and manager can edit, as before.
+   */
+  canEditTasks?: boolean;
+  /** Delete permission decided by the screen; defaults to the edit permission. */
+  canDeleteTasks?: boolean;
   /** @deprecated kept for compatibility - inline editing is always on for admins/managers */
   openInEditMode?: boolean;
 }
@@ -41,6 +49,8 @@ export const TaskDetailsModal = ({
   onDeleteTask,
   onUnassignTask,
   onCreateTask,
+  canEditTasks,
+  canDeleteTasks,
 }: TaskDetailsModalProps) => {
   const [formData, setFormData] = useState<Partial<Task>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -54,7 +64,9 @@ export const TaskDetailsModal = ({
   const recurringTask = task as RecurringTaskInstance | null;
   const isRecurringInstance = Boolean(recurringTask?.isRecurringInstance);
   const realTaskId = task?.originalTaskId || task?.id || '';
-  const canEdit = (userRole === 'admin' || userRole === 'manager') && !isRecurringInstance;
+  const roleCanEdit = canEditTasks ?? (userRole === 'admin' || userRole === 'manager');
+  const canEdit = roleCanEdit && !isRecurringInstance;
+  const canDelete = (canDeleteTasks ?? roleCanEdit) && !isRecurringInstance;
   const displayTask = useMemo(() => (
     freshTask && task
       ? {
@@ -194,9 +206,18 @@ export const TaskDetailsModal = ({
       }
     }
 
-    onDeleteTask(realTaskId);
-    onOpenChange(false);
+    // Announce the deletion only after the real result.
     setShowDeleteConfirm(false);
+    let deleted = true;
+    try {
+      deleted = (await onDeleteTask(realTaskId)) !== false;
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      deleted = false;
+      toast({ title: "No se pudo eliminar", description: "La tarea no se ha eliminado.", variant: "destructive" });
+    }
+    if (!deleted) return;
+    onOpenChange(false);
     toast({ title: "Tarea eliminada", description: "La tarea se ha eliminado correctamente." });
   };
 
@@ -225,9 +246,14 @@ export const TaskDetailsModal = ({
     }
 
     if (onUnassignTask && task.cleaner) {
-      onUnassignTask(realTaskId);
-      onOpenChange(false);
       setShowUnassignConfirm(false);
+      let unassigned = true;
+      try {
+        unassigned = (await onUnassignTask(realTaskId)) !== false;
+      } catch {
+        unassigned = false;
+      }
+      if (unassigned) onOpenChange(false);
     }
   };
 
@@ -323,9 +349,9 @@ export const TaskDetailsModal = ({
           <DialogFooter className="flex-shrink-0 border-t bg-muted/20 px-6 py-3">
             <TaskDetailsActions
               task={taskForDisplay}
-              onDelete={(canEdit || isRecurringInstance) ? () => setShowDeleteConfirm(true) : undefined}
-              onUnassign={(canEdit || isRecurringInstance) && (onUnassignTask || isRecurringInstance) ? () => setShowUnassignConfirm(true) : undefined}
-              onAssign={(canEdit || isRecurringInstance) ? handleAssign : undefined}
+              onDelete={(canDelete || (isRecurringInstance && roleCanEdit && (canDeleteTasks ?? true))) ? () => setShowDeleteConfirm(true) : undefined}
+              onUnassign={(canEdit || (isRecurringInstance && roleCanEdit)) && (onUnassignTask || isRecurringInstance) ? () => setShowUnassignConfirm(true) : undefined}
+              onAssign={(canEdit || (isRecurringInstance && roleCanEdit)) ? handleAssign : undefined}
               onAssignMultiple={canEdit ? () => setShowAssignMultipleModal(true) : undefined}
               onOpenReport={() => setShowReportModal(true)}
             />

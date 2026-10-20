@@ -25,3 +25,13 @@ export function getCalendarTaskStatus(status: string, reports: CalendarProgressR
   if (relevant.some(closed)) return 'completed';
   return status === 'completed' ? 'pending' : status === 'in_progress' ? 'in-progress' : status;
 }
+
+/**
+ * Status shown everywhere in the calendar (card, week chip, legend, counters):
+ * the one derived from the cleaning reports when the query provides it, else
+ * the stored status. Display only: it never changes tasks.status or reports.
+ */
+export function getDisplayStatus(task: { status: string; calendarStatus?: string | null }): string {
+  const status = task.calendarStatus ?? task.status;
+  return status === 'in_progress' ? 'in-progress' : status;
+}

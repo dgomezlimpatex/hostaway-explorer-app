@@ -4,13 +4,20 @@ import { format, addDays } from 'date-fns';
 import { useMemo } from 'react';
 import { Cleaner } from '@/types/calendar';
 import { ABSENCE_TYPE_CONFIG, AbsenceType } from '@/types/workerAbsence';
+import {
+  ABSENCE_COLUMNS,
+  ABSENCE_COLUMNS_WITH_NOTES,
+  GENERIC_ABSENCE_LABEL,
+  GENERIC_ABSENCE_TYPE,
+  maskAbsenceType,
+} from '@/components/calendar/utils/absencePrivacy';
 
 export type UnavailableReason = 'fixed_day_off' | 'absence';
 
 export interface UnavailableCleanerInfo {
   cleaner: Cleaner;
   reason: UnavailableReason;
-  absenceType: AbsenceType | 'day_off';
+  absenceType: AbsenceType | 'day_off' | typeof GENERIC_ABSENCE_TYPE;
   label: string;
   color: string;
   icon: string;
@@ -39,7 +46,9 @@ const getDateRange = (currentDate: Date, view: ViewType): Date[] => {
 export const useUnavailableCleaners = (
   cleaners: Cleaner[],
   currentDate: Date,
-  view: ViewType = 'day'
+  view: ViewType = 'day',
+  // Without access to absence details: no notes and medical leave as a generic absence.
+  { canSeeAbsenceDetails = true }: { canSeeAbsenceDetails?: boolean } = {},
 ) => {
   const dates = useMemo(() => getDateRange(currentDate, view), [currentDate, view]);
   const dateStrs = useMemo(() => dates.map(d => format(d, 'yyyy-MM-dd')), [dates]);
@@ -50,7 +59,7 @@ export const useUnavailableCleaners = (
   const rangeEnd = dateStrs[dateStrs.length - 1];
 
   const { data, isLoading } = useQuery({
-    queryKey: ['unavailable-cleaners', cleanerIds, rangeStart, rangeEnd],
+    queryKey: ['unavailable-cleaners', cleanerIds, rangeStart, rangeEnd, canSeeAbsenceDetails],
     queryFn: async () => {
       if (cleanerIds.length === 0) {
         return { absences: [], fixedDays: [] };
@@ -59,7 +68,8 @@ export const useUnavailableCleaners = (
       const [absencesRes, fixedRes] = await Promise.all([
         supabase
           .from('worker_absences')
-          .select('*')
+          // Typed as the wider column list; notes are only requested when allowed.
+          .select((canSeeAbsenceDetails ? ABSENCE_COLUMNS_WITH_NOTES : ABSENCE_COLUMNS) as typeof ABSENCE_COLUMNS_WITH_NOTES)
           .in('cleaner_id', cleanerIds)
           .lte('start_date', rangeEnd)
           .gte('end_date', rangeStart)
@@ -99,15 +109,16 @@ export const useUnavailableCleaners = (
         // Pick the first absence as representative (most relevant) — exclude external_work
         const representative = dateCoveredByAbsence[dateStrs[0]];
         if (representative && representative.absence_type !== 'external_work') {
-          const cfg = ABSENCE_TYPE_CONFIG[representative.absence_type as AbsenceType];
+          const visibleType = maskAbsenceType(representative.absence_type, canSeeAbsenceDetails);
+          const cfg = ABSENCE_TYPE_CONFIG[visibleType as AbsenceType];
           map[cleaner.id] = {
             cleaner,
             reason: 'absence',
-            absenceType: representative.absence_type as AbsenceType,
-            label: cfg?.label || representative.absence_type,
+            absenceType: visibleType as UnavailableCleanerInfo['absenceType'],
+            label: cfg?.label || GENERIC_ABSENCE_LABEL,
             color: cfg?.color || '#6B7280',
             icon: cfg?.icon || '⛔',
-            notes: representative.notes,
+            notes: canSeeAbsenceDetails ? representative.notes : undefined,
             locationName: representative.location_name,
           };
           return;
@@ -135,7 +146,7 @@ export const useUnavailableCleaners = (
     });
 
     return map;
-  }, [data, cleaners, dateStrs, daysOfWeek]);
+  }, [data, cleaners, dateStrs, daysOfWeek, canSeeAbsenceDetails]);
 
   const unavailableList = useMemo(
     () => Object.values(unavailableMap).sort((a, b) => a.cleaner.name.localeCompare(b.cleaner.name)),

@@ -26,6 +26,8 @@ export const useDragAndDrop = handler => { dropHandler = handler; return { dragS
 export const useToast = () => ({ toast: t => calls.push(['toast', t.title]) });
 export const useQueryClient = () => ({ invalidateQueries: async () => {} });
 export const isCleanerAvailableAtTime = () => ({ available: true });
+export const getCleanerAvailabilityState = () => ({ state: 'available' });
+export const civilDayOfWeek = () => 2;
 export const materializeRecurringTaskInstance = async () => {};
 export const ABSENCE_TYPE_LABELS = {};
 const result = data => { const q = { eq: () => q, lte: () => q, gte: () => q, contains: () => q, select: () => q, maybeSingle: () => q, then: r => r({ data }) }; return q; };

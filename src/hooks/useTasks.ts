@@ -36,6 +36,22 @@ const createOptimisticAssignment = (
   }];
 };
 
+const createOptimisticTeam = (
+  taskId: string,
+  team: Array<{ id: string; name: string }>,
+): NonNullable<Task['assignments']> => {
+  const now = new Date().toISOString();
+  return team.map((member) => ({
+    id: `optimistic-${taskId}-${member.id}`,
+    task_id: taskId,
+    cleaner_id: member.id,
+    cleaner_name: member.name,
+    assigned_at: now,
+    created_at: now,
+    updated_at: now,
+  }));
+};
+
 const getErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message ? error.message : fallback;
 
@@ -50,7 +66,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
   const sedeId = activeSede?.id || 'no-sede';
 
   // Usar el hook optimizado en lugar del query básico
-  const { tasks, isLoading, isInitialLoading: isInitialLoadingTasks, error, queryKey } = useOptimizedTasks({
+  const { tasks, isLoading, isInitialLoading: isInitialLoadingTasks, error, isError, refetch, dataUpdatedAt, queryKey } = useOptimizedTasks({
     currentDate,
     currentView
   });
@@ -134,6 +150,11 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       });
       
       logger.error('Task update failed, reverted optimistic updates');
+      toast({
+        title: "No se pudo guardar",
+        description: getErrorMessage(error, "No se pudo actualizar la tarea. Se han recargado los datos."),
+        variant: "destructive",
+      });
     }
   });
 
@@ -222,6 +243,18 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
           return Array.isArray(query.queryKey) && 
                  query.queryKey[0] === 'tasks';
         }
+      });
+    },
+    onError: (error: unknown) => {
+      logger.error('Error deleting task:', error);
+      // Restore whatever an optimistic removal hid.
+      queryClient.invalidateQueries({
+        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'tasks',
+      });
+      toast({
+        title: "No se pudo eliminar",
+        description: getErrorMessage(error, "La tarea no se ha eliminado."),
+        variant: "destructive",
       });
     },
   });
@@ -405,7 +438,7 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
       
       toast({
         title: "Tarea desasignada",
-        description: "Se ha desasignado la tarea y se ha enviado una notificación por email.",
+        description: "La tarea ha quedado sin asignar.",
       });
       
       logger.log('⚡ Forced aggressive task unassignment cache invalidation and refetch');
@@ -419,6 +452,108 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
         title: "Error",
         description: getErrorMessage(error, "No se pudo desasignar la tarea."),
         variant: "destructive",
+      });
+    },
+  });
+
+  /**
+   * Calendar drop: changes the schedule and replaces only the person of the
+   * origin row, keeping the coworkers (see utils/calendarSharedMove).
+   */
+  const reassignKeepingCoworkersMutation = useMutation({
+    mutationFn: async ({
+      taskId, replacedCleanerId, cleanerId, cleanerName, startTime, endTime,
+    }: {
+      taskId: string;
+      replacedCleanerId?: string;
+      cleanerId: string;
+      cleanerName: string;
+      startTime?: string;
+      endTime?: string;
+      nextTeam: Array<{ id: string; name: string }>;
+    }) => taskAssignmentService.reassignTaskKeepingCoworkers(
+      taskId, replacedCleanerId, cleanerName, cleanerId, startTime, endTime,
+    ),
+    onMutate: async ({ taskId, nextTeam, startTime, endTime }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+      queryClient.setQueriesData(
+        { predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks' },
+        (oldData: Task[] | undefined) => {
+          if (!Array.isArray(oldData)) return oldData;
+          return oldData.map((task) => task.id === taskId
+            ? {
+                ...task,
+                cleanerId: nextTeam[0]?.id,
+                cleaner: nextTeam.map((member) => member.name).join(', ') || undefined,
+                assignments: createOptimisticTeam(taskId, nextTeam),
+                assignmentCount: nextTeam.length,
+                ...(startTime ? { startTime } : {}),
+                ...(endTime ? { endTime } : {}),
+              }
+            : task);
+        },
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+      });
+    },
+    onError: (error: unknown) => {
+      logger.error('Error in reassignKeepingCoworkers:', error);
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+      });
+      toast({
+        title: 'No se pudo mover la tarea',
+        description: getErrorMessage(error, 'No se ha guardado el cambio. Los datos se han recargado.'),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  /** Removes one person from a (shared) task and keeps the rest. */
+  const removeCleanerFromTaskMutation = useMutation({
+    mutationFn: async ({ taskId, cleanerId }: { taskId: string; cleanerId: string; cleanerName?: string }) =>
+      taskAssignmentService.removeCleanerFromTask(taskId, cleanerId),
+    onMutate: async ({ taskId, cleanerId }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+      queryClient.setQueriesData(
+        { predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks' },
+        (oldData: Task[] | undefined) => {
+          if (!Array.isArray(oldData)) return oldData;
+          return oldData.map((task) => {
+            if (task.id !== taskId || !Array.isArray(task.assignments)) return task;
+            const assignments = task.assignments.filter((assignment) => assignment.cleaner_id !== cleanerId);
+            return {
+              ...task,
+              assignments,
+              assignmentCount: assignments.length,
+              cleanerId: assignments[0]?.cleaner_id,
+              cleaner: assignments.map((assignment) => assignment.cleaner_name).filter(Boolean).join(', ') || undefined,
+            };
+          });
+        },
+      );
+    },
+    onSuccess: (_data, { cleanerName }) => {
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+      });
+      toast({
+        title: 'Trabajadora quitada',
+        description: cleanerName ? `${cleanerName} ya no está en esta tarea; el resto del equipo se mantiene.` : 'El resto del equipo se mantiene.',
+      });
+    },
+    onError: (error: unknown) => {
+      logger.error('Error removing cleaner from task:', error);
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'tasks',
+      });
+      toast({
+        title: 'No se pudo quitar a la trabajadora',
+        description: getErrorMessage(error, 'No se ha guardado el cambio.'),
+        variant: 'destructive',
       });
     },
   });
@@ -528,7 +663,17 @@ export const useTasks = (currentDate: Date, currentView: ViewType) => {
     isLoading,
     isInitialLoading: isInitialLoadingTasks,
     error,
+    isError,
+    refetchTasks: refetch,
+    tasksUpdatedAt: dataUpdatedAt,
     updateTask: updateTaskMutation.mutate,
+    // Awaitable variants: resolve when saved, reject on failure (the mutation
+    // already shows the error and restores the cache).
+    updateTaskAsync: updateTaskMutation.mutateAsync,
+    deleteTaskAsync: deleteTaskMutation.mutateAsync,
+    unassignTaskAsync: unassignTaskMutation.mutateAsync,
+    reassignTaskKeepingCoworkers: reassignKeepingCoworkersMutation.mutateAsync,
+    removeCleanerFromTask: removeCleanerFromTaskMutation.mutateAsync,
     createTask: createTaskMutation.mutate,
     // Awaitable variant: resolves with the created task, rejects on failure.
     createTaskAsync: createTaskMutation.mutateAsync,

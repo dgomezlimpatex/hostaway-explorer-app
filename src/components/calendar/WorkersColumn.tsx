@@ -4,7 +4,7 @@ import { Cleaner } from "@/types/calendar";
 import { cn } from "@/lib/utils";
 import { WorkerAbsenceStatus } from "@/hooks/useWorkersAbsenceStatus";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ABSENCE_TYPE_LABELS } from "@/types/workerAbsence";
+import { getAbsenceLabel as getAbsenceTypeLabel } from "./utils/absencePrivacy";
 import { Star } from "lucide-react";
 import { WorkloadSummary, getProgressBarColor } from "@/types/workload";
 import { Progress } from "@/components/ui/progress";
@@ -17,9 +17,11 @@ interface WorkersColumnProps {
   isDragging?: boolean;
   preferredCleanerIds?: Set<string>;
   workloadMap?: Record<string, WorkloadSummary>;
+  /** Cleaners with no availability configured for the day shown (unknown, not free). */
+  unconfiguredCleanerIds?: Set<string>;
 }
 
-export const WorkersColumn = memo(function WorkersColumn({ cleaners, onDragOver, onDrop, absenceStatus, isDragging, preferredCleanerIds, workloadMap }: WorkersColumnProps) {
+export const WorkersColumn = memo(function WorkersColumn({ cleaners, onDragOver, onDrop, absenceStatus, isDragging, preferredCleanerIds, workloadMap, unconfiguredCleanerIds }: WorkersColumnProps) {
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -45,7 +47,7 @@ export const WorkersColumn = memo(function WorkersColumn({ cleaners, onDragOver,
   const getAbsenceLabel = (status: WorkerAbsenceStatus | undefined) => {
     if (status?.isFixedDayOff) return 'Día libre fijo';
     if (status?.absenceType) {
-      return ABSENCE_TYPE_LABELS[status.absenceType as keyof typeof ABSENCE_TYPE_LABELS] || status.absenceType;
+      return getAbsenceTypeLabel(status.absenceType);
     }
     return '';
   };
@@ -135,7 +137,7 @@ export const WorkersColumn = memo(function WorkersColumn({ cleaners, onDragOver,
                           ))}
                           {hasHourlyAbsence && status?.hourlyAbsences?.map((h, i) => (
                             <div key={i} className="text-muted-foreground">
-                              ⏰ {ABSENCE_TYPE_LABELS[h.type as keyof typeof ABSENCE_TYPE_LABELS]} ({h.startTime.slice(0,5)} - {h.endTime.slice(0,5)})
+                              ⏰ {getAbsenceTypeLabel(h.type)} ({h.startTime.slice(0,5)} - {h.endTime.slice(0,5)})
                             </div>
                           ))}
                         </div>
@@ -148,6 +150,14 @@ export const WorkersColumn = memo(function WorkersColumn({ cleaners, onDragOver,
                 <div className="font-semibold text-gray-900 text-[13px] flex items-center gap-1 min-w-0 leading-tight">
                   {isPreferred && <Star className="h-3 w-3 shrink-0 fill-warning text-warning" />}
                   <span className="truncate">{cleaner.name}</span>
+                  {unconfiguredCleanerIds?.has(cleaner.id) && !isAbsent && (
+                    <span
+                      className="shrink-0 rounded bg-line-soft px-1 text-[9px] font-semibold text-ink-3"
+                      title="No tiene disponibilidad configurada para este día: el calendario no puede confirmar si está libre."
+                    >
+                      Sin horario
+                    </span>
+                  )}
                 </div>
                 {isAbsent ? (
                   <span 

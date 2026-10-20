@@ -36,7 +36,16 @@ export const useCalendarData = () => {
     tasks: realTasks,
     isLoading: isLoadingTasks,
     isInitialLoading: isInitialLoadingTasks,
+    isError: isTasksError,
+    error: tasksError,
+    refetchTasks,
+    tasksUpdatedAt,
     updateTask,
+    updateTaskAsync,
+    deleteTaskAsync,
+    unassignTaskAsync,
+    reassignTaskKeepingCoworkers,
+    removeCleanerFromTask,
     createTaskAsync,
     deleteTask,
     deleteAllTasks,
@@ -125,6 +134,11 @@ export const useCalendarData = () => {
     
     // Loading states - only show full loading for initial load, not refetching
     isLoading: isInitialLoadingTasks || isInitialLoadingCleaners,
+    // Load failure: shown with a retry, never as an empty day.
+    isTasksError,
+    tasksError,
+    refetchTasks,
+    tasksUpdatedAt,
     
     // Actions
     setCurrentDate,
@@ -135,6 +149,11 @@ export const useCalendarData = () => {
     assignTask,
     assignTaskWithSchedule,
     unassignTask: unassignTaskMutation,
+    updateTaskAsync,
+    deleteTaskAsync,
+    unassignTaskAsync,
+    reassignTaskKeepingCoworkers,
+    removeCleanerFromTask,
     // The calendar waits for the real result before announcing a creation.
     createTask: createTaskAsync,
     deleteTask,

@@ -18,7 +18,7 @@ const built = await build({
     export { renderToStaticMarkup } from 'react-dom/server';
   ` },
   bundle: true, write: false, platform: 'node', format: 'esm', jsx: 'automatic', logLevel: 'silent', metafile: true,
-  external: ['react', 'react-dom', 'react-dom/server', 'lucide-react', 'date-fns', 'date-fns/*', '@radix-ui/*', 'class-variance-authority', 'clsx', 'tailwind-merge'],
+  external: ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/server', 'lucide-react', 'date-fns', 'date-fns/*', '@radix-ui/*', 'class-variance-authority', 'clsx', 'tailwind-merge', 'react-day-picker'],
   plugins: [{ name: 'stubs', setup(plugin) {
     plugin.onResolve({ filter: /^(react-router-dom|@\/components\/mobile\/MobileBottomNav)$/ }, args => ({ path: args.path, namespace: 'stub' }));
     plugin.onLoad({ filter: /.*/, namespace: 'stub' }, args => ({ contents: stubs[args.path], loader: 'js' }));

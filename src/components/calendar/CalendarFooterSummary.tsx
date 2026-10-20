@@ -2,11 +2,13 @@ import { Cleaner, Task } from "@/types/calendar";
 import { useClientData } from "@/hooks/useClientData";
 import { getClientColor } from "@/utils/clientColors";
 import { useMemo } from "react";
+import { getDisplayStatus } from "@/utils/calendarTaskStatus";
+import { getTaskAssignedCleanerIds, isTaskAssigned } from "@/utils/taskAssignments";
 
 interface CalendarFooterSummaryProps {
   tasks: Task[];
   cleaners: Cleaner[];
-  /** Period shown next to the service count ("hoy", "en el periodo"). */
+  /** Period shown next to the service count ("hoy", "el lun 21/10", "en el periodo"). */
   periodLabel?: string;
 }
 
@@ -22,17 +24,26 @@ export const CalendarFooterSummary = ({ tasks, cleaners, periodLabel = 'hoy' }: 
     const activeCleanerIds = new Set<string>();
     const activeClientIds = new Set<string>();
 
+    let unassignedCount = 0;
+    let notStartedCount = 0;
+
     tasks.forEach(t => {
-      if (t.cleanerId) activeCleanerIds.add(t.cleanerId);
+      // Every assigned person counts, not only the first one of a shared task.
+      const ids = getTaskAssignedCleanerIds(t);
+      if (ids.length > 0) ids.forEach(id => activeCleanerIds.add(id));
       else if (t.cleaner) {
         const match = cleaners.find(c => c.name === t.cleaner);
         if (match) activeCleanerIds.add(match.id);
       }
       if (t.clienteId) activeClientIds.add(t.clienteId);
+      if (!isTaskAssigned(t)) unassignedCount += 1;
+      if (getDisplayStatus(t) === 'pending') notStartedCount += 1;
     });
 
     return {
       tasksCount: tasks.length,
+      unassignedCount,
+      notStartedCount,
       workersCount: activeCleanerIds.size,
       clientsCount: activeClientIds.size,
       clientIds: Array.from(activeClientIds),
@@ -71,6 +82,15 @@ export const CalendarFooterSummary = ({ tasks, cleaners, periodLabel = 'hoy' }: 
             </span>
             <span className="text-xs md:text-sm text-muted-foreground">
               {stats.clientsCount === 1 ? 'cliente' : 'clientes'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5" data-testid="footer-breakdown">
+            <span className={`text-sm font-semibold tabular-nums ${stats.unassignedCount > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
+              {stats.unassignedCount} sin asignar
+            </span>
+            <span className="text-muted-foreground" aria-hidden>·</span>
+            <span className="text-sm font-semibold tabular-nums text-muted-foreground">
+              {stats.notStartedCount} sin iniciar
             </span>
           </div>
         </div>
