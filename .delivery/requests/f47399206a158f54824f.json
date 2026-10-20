@@ -1,0 +1,25 @@
+{
+  "request": "Dani: «Adelante con todos los cambios propuestos» de la auditoría de Trabajadores (TRAB-01..26), con su decisión de que supervisión consulte sin ver PIN, DNI ni detalles de bajas médicas. Esta entrega cubre la parte de aplicación: ficha, alta, estados, listado, disponibilidad, accesibilidad y vista por rol.",
+  "reason": "Solo cambia pantallas y cálculos locales del módulo Trabajadores. No cambia la matriz de permisos (ROLE_PERMISSIONS sin tocar), ni RLS, SQL, funciones, autenticación, sincronizaciones ni envíos. La ficha sigue usando el mismo guardado (useUpdateCleaner) pero envía solo los campos cambiados; la llamada existente a la función de ruta no se modifica y ahora solo se monta para administración y gerencia. Ocultar PIN/DNI/tipo médico en la interfaz no es una protección de la base: la restricción en servidor se preparará aparte por la ruta revisada.",
+  "verification": "Base 3308911e + merge de main ccf26773. Pruebas Node sobre código real: workersProfileRulesTest (capacidades, contrato de supervisión sin activar, puesto conservado, validación 0-80/cuartos/correo, fecha borrable a null por el mapper, duplicados, hoy en Madrid, estado Hoy genérico, ventana igual a buildEffectiveAvailabilityForDate, tareas pasadas sin completar), workloadContractHoursTest actualizado a la regla vigente de horas de ficha, personnelHoursTest, workerFixedDaysOffPlanningTest y roleModeTest. Navegador local (no en cola, sin Chromium allí): workersBrowserTest con el layout real, cliente simulado y red abortada en escritorio 1366 y móvil 390: payloads, supervisión sin PIN/DNI/notas/«Baja» en el DOM ni controles de escritura ni invocaciones, errores y carga, ordenar sin botones de estado, pestañas visibles y vuelta con filtros. tsc app 102 errores = base (0 nuevos), tsc node 0, build OK, lint focalizado sin errores. Límites: mocks no prueban RLS ni datos de producción; la columna Hoy lee las consultas existentes de ausencias, días libres, franjas y ventana semanal.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/workersProfileRulesTest.mjs",
+    "scripts/workloadContractHoursTest.mjs",
+    "scripts/personnelHoursTest.mjs",
+    "scripts/workerFixedDaysOffPlanningTest.mjs",
+    "scripts/roleModeTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "b8d2434d4943cb53a02fa7965b65b9858e61873bf51214b732f85d24ecd8f44f"
+}
