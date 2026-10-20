@@ -23,7 +23,7 @@ export function WhatsAppStatusPanel() {
   const [loading, setLoading] = useState(true);
   const [counters, setCounters] = useState<HealthCounters | null>(null);
   const live = isWhatsAppNotificationsEnabled();
-  const { data: deliveryHealth } = useWhatsAppDeliveryHealth(true);
+  const deliveryHealth = useWhatsAppDeliveryHealth(true).stats.data;
 
   useEffect(() => {
     let active = true;
