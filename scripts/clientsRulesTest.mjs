@@ -3,7 +3,7 @@
 // un doble de Supabase en memoria (sin red, sin sesión, sin datos reales).
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
@@ -179,6 +179,12 @@ try {
   fake.deleteError = { message: 'violates foreign key', code: '23503' };
   await assert.rejects(remove(api.clientStorage, 'x'), e => e.code === '23503'); checks++;
   fake.deleteError = null;
+
+  // Habilitar Clientes a supervisión no abre el portal (PIN) ni las reservas de clientes; gerencia y admin conservan acceso.
+  const app = readFileSync('src/App.tsx', 'utf8');
+  const route = (path) => app.match(new RegExp('path="' + path + '" element=\\{\\s*<RoleProtectedRoute ([^>]*)>'))?.[1] || '';
+  eq([route('/admin/client-portals'), route('/client-reservations'), route('/clients')], ["requiredModule=\"clients\" excludedRoles={['supervisor']}", "requiredModule=\"clients\" excludedRoles={['supervisor']}", 'requiredModule="clients"'], 'Rutas del portal excluyen supervisión');
+  ok(/title: 'Portales de clientes', href: '\/admin\/client-portals', icon: Layers, permission: 'admin-only'/.test(readFileSync('src/components/dashboard/MobileDashboardSidebar.tsx', 'utf8')), 'Menú móvil del portal solo admin/gerencia');
 
   console.log(`PASS clientsRulesTest: ${checks} checks (validación edición/alta, permisos, duplicados, búsqueda, propiedades, borrado protegido y filas afectadas en BaseStorage)`);
 } finally {
