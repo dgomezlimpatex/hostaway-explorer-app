@@ -18,9 +18,10 @@ const browser = await chromium.launch({ headless: true, ...(process.platform ===
 const URL = 'https://whatsapp.local.test/';
 const where = page => page.getByTestId('where').textContent();
 const calls = (page, fn) => page.evaluate(name => (window.rpcCalls || []).filter(call => !name || call.fn === name), fn);
+const tableCalls = page => page.evaluate(() => window.tableCalls || []);
 const open = async (page, fx = {}, path = '/whatsapp-notifications') => {
   await page.evaluate(([p, s]) => {
-    Object.assign(window, { fx: s, rpcCalls: [], writes: [] });
+    Object.assign(window, { fx: s, rpcCalls: [], writes: [], tableCalls: [] });
     window.fixturePath = p;
     window.renderFixture();
   }, [path, fx]);
@@ -282,8 +283,28 @@ try {
     await expect(page.getByText(/intento 1\/2 incierto puede recibir/)).toHaveCount(0);
     await expect(section.getByText(/no se reenvían solos/)).toHaveCount(1);
     await expect(section.getByText(/Reintento automático posible/)).toHaveCount(0);
-    await expect(section.getByText('Teléfono acabado en 7093')).toHaveCount(2);
-    await expect(section.getByText('Teléfono oculto')).toHaveCount(1);
+    // Nombre por vínculo exacto: guardado (p1), ficha por ID con la misma terminación (p2),
+    // ficha borrada (p3), dos fichas sin nombre guardado (p4), evento de otra sede (p5).
+    await expect(section.getByText(/Teléfono acabado en/)).toHaveCount(0);
+    await expect(items.nth(5)).toContainText('Carmen Vidal');
+    await expect(items.nth(5)).toContainText('•••• 7093');
+    await expect(items.nth(4)).toContainText('Rosa Díaz');
+    await expect(items.nth(4)).toContainText('•••• 7093');
+    await expect(items.nth(3)).toContainText('Nombre no disponible');
+    await expect(items.nth(3)).toContainText('•••• 4439');
+    await expect(items.nth(2)).toContainText('Nombre no disponible');
+    await expect(items.nth(1)).toContainText('Nombre no disponible');
+    await expect(items.nth(1)).toContainText('•••• 6755');
+    await expect(items.nth(0)).toContainText('Inés Mora');
+    await expect(items.nth(0)).not.toContainText('••••');
+    await expect(section.getByText('Carmen Vidal Ortega')).toHaveCount(0);
+    // Una sola lectura de eventos y otra de fichas, con columnas mínimas.
+    // (una lectura de fichas del render anterior puede terminar después de reiniciar el registro)
+    const all = await tableCalls(page);
+    const reads = all.slice(all.findIndex(r => r.table === 'notification_events'));
+    assert.deepEqual(reads.map(r => [r.table, r.columns]), [['notification_events', 'id,cleaner_id,recipient_worker_id,recipient_name_snapshot'], ['cleaners', 'id,name']]);
+    assert.deepEqual(reads[0].ids.sort(), ['ev-p1', 'ev-p2', 'ev-p3', 'ev-p4', 'ev-p5', 'ev-p6']);
+    assert.deepEqual(reads[1].ids.sort(), ['c-borrada', 'c-ines', 'c-rosa']);
     await expect(section.getByText('Asunto no disponible')).toHaveCount(2);
     await expect(section.getByText('vie 4 sept 20:12 · hace 45 días')).toBeVisible();
     // Orden: más reciente primero.
@@ -291,14 +312,16 @@ try {
     assert.equal(await section.locator('.text-red-700').count(), 0);
 
     // Teclado: foco en «Revisar», Intro abre el detalle; Escape lo cierra y limpia la URL.
-    const review = section.getByRole('button', { name: /^Revisar Tarea asignada · Teléfono acabado en 7093 · vie 4 sept/ });
+    const review = section.getByRole('button', { name: /^Revisar Tarea asignada · Carmen Vidal · vie 4 sept/ });
     await review.focus();
     await page.keyboard.press('Enter');
     const sheet = page.getByRole('dialog');
     await expect(sheet.getByRole('heading', { name: 'Tarea asignada' })).toBeVisible();
     assert.equal(await where(page), '/whatsapp-notifications?envio=p1');
     await expect(sheet.getByText(/Se intentó enviar dos veces y Meta no confirmó/)).toBeVisible();
-    await expect(sheet.getByText(/Nombre y tarea no disponibles/)).toBeVisible();
+    await expect(sheet.getByText('Carmen Vidal · •••• 7093')).toBeVisible();
+    await expect(sheet.getByText(/Tarea no disponible: este envío no aparece en el historial/)).toBeVisible();
+    await expect(sheet.getByText(/Nombre actual de la ficha/)).toHaveCount(0);
     await expect(sheet.getByText(EXHAUSTED_TEXT)).toBeHidden();
     assert.equal(await sheet.locator('details').evaluate(el => el.open), false, 'datos técnicos plegados');
     await shot(page, 'escritorio-revisar-prod');
@@ -307,27 +330,89 @@ try {
     await page.keyboard.press('Escape');
     assert.equal(await where(page), '/whatsapp-notifications');
     assert.deepEqual(await page.evaluate(() => window.writes), []);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    // Enlace directo a cada envío (la hoja no depende de la página del historial).
+    // Ficha enlazada sin nombre guardado: se avisa de que es el nombre actual.
+    await open(page, { queue: 'prod' }, '/whatsapp-notifications?envio=p2');
+    await expect(sheet.getByText('Rosa Díaz · •••• 7093')).toBeVisible();
+    await expect(sheet.getByText(/Nombre actual de la ficha enlazada/)).toBeVisible();
+    // Dos fichas distintas sin nombre guardado: no se atribuye a ninguna.
+    await open(page, { queue: 'prod' }, '/whatsapp-notifications?envio=p4');
+    await expect(sheet.getByText(/enlaza a dos fichas distintas/)).toBeVisible();
+    await expect(sheet.getByText(/Rosa Díaz|Carmen Vidal/)).toHaveCount(0);
+    // Evento de otra sede que las políticas no devuelven.
+    await open(page, { queue: 'prod' }, '/whatsapp-notifications?envio=p5');
+    await expect(sheet.getByText('Nombre no disponible · •••• 6755')).toBeVisible();
+    await expect(sheet.getByText(/su ficha ya no existe o no es visible/)).toBeVisible();
+    await shot(page, 'escritorio-revisar-sin-nombre');
+    await page.keyboard.press('Escape');
+    assert.deepEqual(await page.evaluate(() => window.writes), []);
+  });
+
+  await step('Nombres independientes del historial: otro filtro, otra página y carga', async () => {
+    await open(page, { queue: 'prod', many: 120 }, '/whatsapp-notifications?estado=failed&pagina=2');
+    const section = page.getByRole('region', { name: /Envíos por comprobar/ });
+    await expect(section.getByText('Carmen Vidal').first()).toBeVisible();
+    await expect(section.getByText('Rosa Díaz').first()).toBeVisible();
+    await open(page, { queue: 'prod', namesDelay: 4000 });
+    await expect(section.getByText('Buscando nombre…')).toHaveCount(6);
+    await expect(section.getByText(/Teléfono acabado en/)).toHaveCount(0);
+    await page.clock.runFor(4500);
+    await expect(section.getByText('Carmen Vidal').first()).toBeVisible();
+  });
+
+  await step('Fallo al leer nombres: aviso con reintento y ningún nombre inventado', async () => {
+    await open(page, { queue: 'prod', failTables: ['notification_events'] });
+    const section = page.getByRole('region', { name: /Envíos por comprobar/ });
+    await expect(section.getByRole('alert')).toHaveText(/No se pudieron consultar los nombres de las destinatarias/, { timeout: 8000 });
+    await expect(section.getByText('Nombre no disponible')).toHaveCount(6);
+    await expect(section.getByText(/Carmen|Rosa|Inés/)).toHaveCount(0);
+    await section.getByRole('button', { name: /^Revisar Tarea asignada · Nombre no disponible · vie 4 sept/ }).click();
+    await expect(page.getByRole('dialog').getByText('No se pudo consultar el nombre.')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await shot(page, 'escritorio-nombres-fallo');
+    // Falla la lectura de fichas: tampoco se dan por buenos los nombres guardados a medias.
+    await open(page, { queue: 'prod', failTables: ['cleaners'] });
+    await expect(section.getByRole('alert')).toHaveText(/No se pudieron consultar los nombres/, { timeout: 8000 });
+    await page.evaluate(() => { window.fx.failTables = []; });
+    await section.getByRole('button', { name: 'Reintentar' }).click();
+    await expect(section.getByText('Carmen Vidal').first()).toBeVisible();
+    await expect(section.getByRole('alert')).toHaveCount(0);
+    assert.deepEqual(await page.evaluate(() => window.writes), []);
+  });
+
+  await step('Gestor (sin acceso a la cola): no se consultan nombres', async () => {
+    await open(page, { role: 'manager', queue: 'prod' });
+    await expect(page.getByText('6 avisos en total')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Envíos por comprobar/ })).toHaveCount(0);
+    assert.deepEqual(await tableCalls(page), []);
   });
 
   await step('Mezcla de antigüedades: recientes abiertos, anteriores plegados con cantidad y suma exacta', async () => {
     await open(page, { queue: 'mixed' });
     const section = page.getByRole('region', { name: /Envíos por comprobar/ });
-    await expect(section.getByRole('heading', { name: 'Envíos por comprobar (6)' })).toBeVisible();
-    const recent = section.getByRole('button', { name: /Últimos 7 días \(4\)/ });
+    await expect(section.getByRole('heading', { name: 'Envíos por comprobar (7)' })).toBeVisible();
+    const recent = section.getByRole('button', { name: /Últimos 7 días \(5\)/ });
     const older = section.getByRole('button', { name: /Anteriores \(2\)/ });
     await expect(recent).toHaveAttribute('aria-expanded', 'true');
     await expect(older).toHaveAttribute('aria-expanded', 'false');
     await expect(section.getByText('del vie 4 sept al mar 15 sept')).toBeVisible();
-    await expect(section.getByRole('button', { name: /^Revisar/ })).toHaveCount(4);
+    await expect(section.getByRole('button', { name: /^Revisar/ })).toHaveCount(5);
     await older.click();
-    await expect(section.getByRole('button', { name: /^Revisar/ })).toHaveCount(6);
+    await expect(section.getByRole('button', { name: /^Revisar/ })).toHaveCount(7);
+    // El historial nombra a otra persona (ficha actual); el envío conserva su nombre guardado.
+    const changed = section.getByRole('listitem').filter({ hasText: 'Marina Habitación 2' });
+    await expect(changed).toContainText('Marta Sanz');
+    await expect(changed).not.toContainText('Begoña Ruiz');
+    await expect(section.getByRole('listitem').filter({ hasText: 'Email alternativo' })).toContainText('Nombre no disponible');
     await expect(section.getByText('Reintento automático posible', { exact: true })).toHaveCount(1);
     await expect(section.getByText('Registro en curso', { exact: true })).toHaveCount(1);
     await expect(section.getByText('Contactando con Meta', { exact: true })).toHaveCount(1);
     await expect(section.getByText('Email sin confirmar', { exact: true })).toHaveCount(1);
     await expect(section.getByText(/aún pueden tener un último intento/)).toBeVisible();
     // Fila con resolución en curso: el detalle no permite registrar otra.
-    await section.getByRole('button', { name: /^Revisar Tarea modificada · Teléfono acabado en 5678/ }).click();
+    await section.getByRole('button', { name: /^Revisar Tarea modificada · Luis Gómez/ }).click();
     await expect(page.getByRole('dialog').getByRole('button', { name: 'Registrar como enviado…' })).toBeDisabled();
     await expect(page.getByRole('dialog').getByText('Ya hay una resolución en curso para este envío.')).toBeVisible();
     await page.keyboard.press('Escape');
@@ -394,6 +479,8 @@ try {
     await expect(mobile.getByRole('heading', { name: 'Envíos por comprobar (3)' })).toBeVisible();
     const mobileScroll = await mobile.evaluate(() => document.documentElement.scrollWidth);
     assert.ok(mobileScroll <= 390, `colas abiertas sin scroll horizontal (${mobileScroll})`);
+    await expect(mobile.getByRole('region', { name: /Envíos por comprobar/ }).getByText('Ana Pérez').first()).toBeVisible();
+    await expect(mobile.getByRole('region', { name: /Envíos por comprobar/ }).getByText('Luis Gómez').first()).toBeVisible();
     await shot(mobile, 'movil-colas-abiertas');
     await queues.click();
     await firstCard.click();

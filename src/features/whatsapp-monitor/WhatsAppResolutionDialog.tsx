@@ -22,12 +22,14 @@ export type ResolutionMode = 'confirmed_sent' | 'confirmed_not_sent';
 interface Props {
   row: SendReconciliationRow | null;
   mode: ResolutionMode;
+  /** Nombre resuelto por vínculo exacto; null si no se conoce. */
+  recipientName: string | null;
   onClose: () => void;
   onSubmit: (row: SendReconciliationRow, mode: ResolutionMode, providerMessageId: string | null) => Promise<void>;
 }
 
 /** Diálogo propio para cerrar un envío incierto. El servidor vuelve a validar todo. */
-export function WhatsAppResolutionDialog({ row, mode, onClose, onSubmit }: Props) {
+export function WhatsAppResolutionDialog({ row, mode, recipientName, onClose, onSubmit }: Props) {
   const [value, setValue] = useState('');
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -74,7 +76,7 @@ export function WhatsAppResolutionDialog({ row, mode, onClose, onSubmit }: Props
         <DialogHeader>
           <DialogTitle>{mode === 'confirmed_sent' ? `Registrar como enviado en ${provider}` : 'Registrar como no enviado y reintentar'}</DialogTitle>
           <DialogDescription>
-            {isWhatsApp ? 'WhatsApp' : 'Email alternativo'} · {recipientLabel(row.recipient_masked, row.channel)} · {templateSubject(row.template_name) ?? 'asunto no disponible'}
+            {isWhatsApp ? 'WhatsApp' : 'Email alternativo'} · {recipientName && `${recipientName} · `}{recipientLabel(row.recipient_masked, row.channel)} · {templateSubject(row.template_name) ?? 'asunto no disponible'}
           </DialogDescription>
         </DialogHeader>
 

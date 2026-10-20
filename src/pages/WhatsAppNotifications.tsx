@@ -16,6 +16,7 @@ import { WhatsAppDeliveryDetail } from '@/features/whatsapp-monitor/WhatsAppDeli
 import { WhatsAppResolutionDialog, type ResolutionMode } from '@/features/whatsapp-monitor/WhatsAppResolutionDialog';
 import { WhatsAppStatusBadge } from '@/features/whatsapp-monitor/WhatsAppStatusBadge';
 import { WhatsAppManualQueue } from '@/features/whatsapp-monitor/WhatsAppManualQueue';
+import { useRecipientNames } from '@/features/whatsapp-monitor/whatsappRecipientNames';
 import {
   MANUAL_QUEUE_LIMIT,
   PAGE_SIZE,
@@ -184,6 +185,12 @@ export default function WhatsAppNotifications() {
   const showQueues = isAdmin && (sendRows.length > 0 || webhookRows.length > 0 || sendQueue.isError || webhookQueue.isError);
   const queueByDelivery = useMemo(() => new Map((sendQueue.data ?? []).map((row) => [row.delivery_id, row])), [sendQueue.data]);
   const historyById = useMemo(() => new Map((history.data ?? []).map((row) => [row.id, row])), [history.data]);
+  // Nombre por el evento exacto de cada envío, sin depender de la página del historial.
+  const names = useRecipientNames(sendRows.map((row) => row.notification_event_id), isAdmin);
+  const nameOf = (row: SendReconciliationRow | null) => {
+    const resolved = row && names.status === 'ready' ? names.byEvent.get(row.notification_event_id) : undefined;
+    return resolved?.state === 'known' ? resolved.name : null;
+  };
 
   const refreshing = history.isFetching || stats.isFetching || callbacks.isFetching || sendQueue.isFetching || webhookQueue.isFetching;
   const refreshAll = () => Promise.all([
@@ -319,6 +326,8 @@ export default function WhatsAppNotifications() {
           error={sendQueue.error}
           onRetry={() => void sendQueue.refetch()}
           historyById={historyById}
+          names={names}
+          onRetryNames={names.refetch}
           selectedId={detailId}
           onReview={openDetail}
         />
@@ -463,6 +472,7 @@ export default function WhatsAppNotifications() {
         deliveryId={detailId}
         row={detailRow}
         queueRow={detailId ? queueByDelivery.get(detailId) ?? null : null}
+        names={names}
         isAdmin={isAdmin}
         onClose={closeDetail}
         onResolve={(row, mode) => setResolution({ row, mode })}
@@ -470,6 +480,7 @@ export default function WhatsAppNotifications() {
       <WhatsAppResolutionDialog
         row={resolution?.row ?? null}
         mode={resolution?.mode ?? 'confirmed_sent'}
+        recipientName={nameOf(resolution?.row ?? null)}
         onClose={() => setResolution(null)}
         onSubmit={submitResolution}
       />

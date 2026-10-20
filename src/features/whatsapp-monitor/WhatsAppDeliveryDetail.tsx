@@ -26,6 +26,7 @@ import {
   type DeliveryAttemptRow,
   type DeliveryRow,
   type ManualActionRow,
+  type RecipientLookup,
   type SendReconciliationRow,
   type TimelineEntry,
 } from './whatsappMonitorModel';
@@ -42,6 +43,8 @@ interface Props {
   deliveryId: string | null;
   row: DeliveryRow | null;
   queueRow: SendReconciliationRow | null;
+  /** Nombres de los envíos por comprobar, resueltos por su evento exacto. */
+  names: RecipientLookup;
   isAdmin: boolean;
   onClose: () => void;
   onResolve: (row: SendReconciliationRow, mode: 'confirmed_sent' | 'confirmed_not_sent') => void;
@@ -101,7 +104,7 @@ const ACTION_STATUS: Record<string, string> = {
   pending: 'pendiente', processing: 'en proceso', effect_pending: 'aplicándose', completed: 'completada', failed: 'fallida',
 };
 
-export function WhatsAppDeliveryDetail({ deliveryId, row, queueRow, isAdmin, onClose, onResolve }: Props) {
+export function WhatsAppDeliveryDetail({ deliveryId, row, queueRow, names, isAdmin, onClose, onResolve }: Props) {
   const detail = useQuery({
     queryKey: ['whatsapp-delivery-detail', deliveryId],
     enabled: Boolean(deliveryId),
@@ -125,19 +128,24 @@ export function WhatsAppDeliveryDetail({ deliveryId, row, queueRow, isAdmin, onC
   const info = row ? statusInfo(row) : null;
   const cause = row ? skipCause(row) : null;
   const failure = row ? failureLabel(row) : null;
-  const name = row?.cleaner_name || detail.data?.recipient_name_snapshot || null;
+  const queueId = queueRow ? queueIdentity(queueRow, row ?? undefined, names) : null;
+  // En un envío por comprobar solo vale el vínculo exacto del evento: el nombre
+  // de la fila del historial es el de la ficha actual y no sustituye al guardado.
+  const name = queueRow
+    ? (queueId?.nameKnown ? queueId.title : detail.data?.recipient_name_snapshot || null)
+    : row?.cleaner_name || detail.data?.recipient_name_snapshot || null;
   const property = row?.property || detail.data?.snapshot_property || null;
   const taskDate = formatTaskDate(row?.task_date || detail.data?.snapshot_task_date || null);
   const attempts = detail.data?.attempts ?? [];
   const masked = row?.recipient_masked ?? queueRow?.recipient_masked ?? null;
-  const queueId = queueRow ? queueIdentity(queueRow, row ?? undefined) : null;
   const state = queueRow ? queueState(queueRow) : null;
   const attempt = queueRow ? queueAttempt(queueRow) : null;
   const isEmail = queueRow?.channel === 'email';
   const safeWindow = queueRow ? resendWindow(queueRow.created_at) : null;
   const canRegister = state?.key === 'unconfirmed';
   const title = row ? eventLabel(row) : queueId?.subject ?? (queueRow ? 'Envío por comprobar' : 'Aviso de WhatsApp');
-  const who = name ?? (masked !== null ? recipientLabel(masked, queueRow?.channel) : 'Destinatario sin identificar');
+  const who = name ?? (queueId ? queueId.title : masked !== null ? recipientLabel(masked) : 'Destinatario sin identificar');
+  const showTail = masked !== null && (Boolean(name) || Boolean(queueId?.phone));
 
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
@@ -145,7 +153,7 @@ export function WhatsAppDeliveryDetail({ deliveryId, row, queueRow, isAdmin, onC
         <SheetHeader className="space-y-1 text-left">
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
-            {who}{name && masked !== null && <span> · {maskedPhone(masked)}</span>}
+            {who}{showTail && <span> · {maskedPhone(masked)}</span>}
             {(property || taskDate) && <><br />{[property, taskDate].filter(Boolean).join(' · ')}</>}
           </SheetDescription>
         </SheetHeader>
@@ -156,7 +164,9 @@ export function WhatsAppDeliveryDetail({ deliveryId, row, queueRow, isAdmin, onC
               <p><span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900 ring-1 ring-inset ring-amber-200">{state.label}</span></p>
               <p className="text-sm">{state.explanation}</p>
               <p className="text-sm text-muted-foreground">Envío iniciado el {momentWithAge(queueRow.created_at)}.</p>
-              {!name && <p className="text-xs text-muted-foreground">Nombre y tarea no disponibles: este envío no aparece en el historial cargado (otro periodo, filtro o página).</p>}
+              {!name && queueId?.nameNote && <p className="text-xs text-muted-foreground">{queueId.nameNote}</p>}
+              {name && queueId?.nameSource === 'record' && <p className="text-xs text-muted-foreground">Nombre actual de la ficha enlazada: el aviso no guardó el nombre de cuando se envió.</p>}
+              {!row && <p className="text-xs text-muted-foreground">Tarea no disponible: este envío no aparece en el historial cargado (otro periodo, filtro o página).</p>}
             </Section>
           )}
 
