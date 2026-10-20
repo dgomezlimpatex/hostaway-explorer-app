@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { rpcUntyped } from '@/lib/supabaseUntyped';
 import { Button } from '@/components/ui/button';
@@ -13,9 +14,15 @@ import {
   formatMoment,
   formatTaskDate,
   isMissingRpc,
+  maskedPhone,
+  momentWithAge,
+  queueAttempt,
+  queueIdentity,
+  queueState,
+  recipientLabel,
+  resendWindow,
   skipCause,
   statusInfo,
-  uncertaintyLabel,
   type DeliveryAttemptRow,
   type DeliveryRow,
   type ManualActionRow,
@@ -122,21 +129,66 @@ export function WhatsAppDeliveryDetail({ deliveryId, row, queueRow, isAdmin, onC
   const property = row?.property || detail.data?.snapshot_property || null;
   const taskDate = formatTaskDate(row?.task_date || detail.data?.snapshot_task_date || null);
   const attempts = detail.data?.attempts ?? [];
-  const uncertainty = queueRow ? uncertaintyLabel(queueRow.uncertainty_state) : null;
+  const masked = row?.recipient_masked ?? queueRow?.recipient_masked ?? null;
+  const queueId = queueRow ? queueIdentity(queueRow, row ?? undefined) : null;
+  const state = queueRow ? queueState(queueRow) : null;
+  const attempt = queueRow ? queueAttempt(queueRow) : null;
+  const isEmail = queueRow?.channel === 'email';
+  const safeWindow = queueRow ? resendWindow(queueRow.created_at) : null;
+  const canRegister = state?.key === 'unconfirmed';
+  const title = row ? eventLabel(row) : queueId?.subject ?? (queueRow ? 'Envío por comprobar' : 'Aviso de WhatsApp');
+  const who = name ?? (masked !== null ? recipientLabel(masked, queueRow?.channel) : 'Destinatario sin identificar');
 
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader className="space-y-1 text-left">
-          <SheetTitle>{row ? eventLabel(row) : queueRow ? 'Envío pendiente de comprobación' : 'Aviso de WhatsApp'}</SheetTitle>
+          <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
-            {[name ?? 'Destinatario sin identificar', row?.recipient_masked ?? queueRow?.recipient_masked].filter(Boolean).join(' · ')}
+            {who}{name && masked !== null && <span> · {maskedPhone(masked)}</span>}
             {(property || taskDate) && <><br />{[property, taskDate].filter(Boolean).join(' · ')}</>}
           </SheetDescription>
         </SheetHeader>
 
         <div className="mt-5 space-y-6">
-          {row && info && (
+          {queueRow && state && (
+            <Section title="Qué ha pasado">
+              <p><span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900 ring-1 ring-inset ring-amber-200">{state.label}</span></p>
+              <p className="text-sm">{state.explanation}</p>
+              <p className="text-sm text-muted-foreground">Envío iniciado el {momentWithAge(queueRow.created_at)}.</p>
+              {!name && <p className="text-xs text-muted-foreground">Nombre y tarea no disponibles: este envío no aparece en el historial cargado (otro periodo, filtro o página).</p>}
+            </Section>
+          )}
+
+          {queueRow && state && isAdmin && (
+            <Section title="Qué puedes hacer">
+              {isEmail ? (
+                <ol className="list-decimal space-y-1 pl-5 text-sm">
+                  <li>Busca en Resend el email de esa fecha ({recipientLabel(queueRow.recipient_masked, 'email').toLowerCase()}).</li>
+                  <li>Si salió, regístralo con su ID de Resend.</li>
+                  <li>{safeWindow && !safeWindow.expired
+                    ? `Si no salió, puedes registrarlo como no enviado: el servidor hará un único reintento (quedan unas ${safeWindow.remainingHours} h, estimadas desde la creación).`
+                    : 'Si no salió, avisa por otro medio: han pasado más de 23 h y ya no es seguro reintentarlo.'}</li>
+                </ol>
+              ) : (
+                <ol className="list-decimal space-y-1 pl-5 text-sm">
+                  <li>Busca en el registro de Meta el mensaje de esa fecha ({recipientLabel(queueRow.recipient_masked).toLowerCase()}).</li>
+                  <li>Si aparece como enviado, copia su ID (empieza por «wamid.») y regístralo aquí.</li>
+                  <li>Si no aparece, avisa a la persona por otro medio: desde aquí no se puede reenviar un WhatsApp con resultado incierto{attempt?.retryPending ? ' (el servidor aún puede hacer su único reintento automático)' : ''}.</li>
+                </ol>
+              )}
+              {!canRegister && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{state.key === 'registering' ? 'Ya hay una resolución en curso para este envío.' : state.explanation}</p>}
+              <div className="space-y-2 rounded-lg border p-3">
+                <Button variant="outline" disabled={!canRegister} onClick={() => onResolve(queueRow, 'confirmed_sent')}>Registrar como enviado…</Button>
+                <p className="text-xs text-muted-foreground">No envía otro {isEmail ? 'email' : 'WhatsApp'} ni demuestra que la persona lo recibió: solo cierra esta comprobación con el ID de {isEmail ? 'Resend' : 'Meta'}.</p>
+                {queueRow.channel === 'email' && safeWindow && !safeWindow.expired && (
+                  <Button variant="destructive" disabled={!canRegister} onClick={() => onResolve(queueRow, 'confirmed_not_sent')}>Registrar como no enviado y reintentar…</Button>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {row && info && !queueRow && (
             <Section title="Estado actual">
               <div className="flex flex-wrap items-center gap-2"><WhatsAppStatusBadge row={row} /></div>
               <p className="text-sm">{info.meaning}</p>
@@ -145,10 +197,8 @@ export function WhatsAppDeliveryDetail({ deliveryId, row, queueRow, isAdmin, onC
             </Section>
           )}
 
-          {!row && (
-            <p className="rounded-lg border p-3 text-sm text-muted-foreground">
-              Este envío no está en la página actual del historial (otro periodo, filtro o página). Se muestran los datos de la cola de comprobación.
-            </p>
+          {!row && !queueRow && (
+            <p className="rounded-lg border p-3 text-sm text-muted-foreground">Este aviso no está en la página actual del historial (otro periodo, filtro o página).</p>
           )}
 
           {row && (
@@ -156,40 +206,11 @@ export function WhatsAppDeliveryDetail({ deliveryId, row, queueRow, isAdmin, onC
               <Timeline entries={basicTimeline(row)} />
               {detail.isLoading && <p className="text-sm text-muted-foreground">Cargando intentos…</p>}
               {attempts.length > 0 && <Timeline entries={attemptEntries(attempts)} />}
-              {detail.isError && isMissingRpc(detail.error) && (
-                <p className="text-xs text-muted-foreground">El servidor todavía no ofrece el historial de intentos (1/2, 2/2) ni las acciones manuales; se muestran las horas registradas en el aviso.</p>
-              )}
               {detail.isError && !isMissingRpc(detail.error) && (
                 <p role="alert" className="text-xs text-red-700">No se pudo cargar el historial de intentos. <button type="button" className="underline" onClick={() => void detail.refetch()}>Reintentar</button></p>
               )}
-              {attempts.length > 1 && attempts.some((attempt) => attempt.state === 'completed_uncertain' || attempt.state === 'uncertain') && (
+              {attempts.length > 1 && attempts.some((item) => item.state === 'completed_uncertain' || item.state === 'uncertain') && (
                 <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Posible duplicado: si el intento incierto llegó, la persona pudo recibir dos mensajes.</p>
-              )}
-            </Section>
-          )}
-
-          {row && (
-            <Section title="Datos técnicos">
-              <dl className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-sm">
-                <dt className="text-muted-foreground">Plantilla</dt><dd className="break-words">{row.template_name ?? '—'}</dd>
-                <dt className="text-muted-foreground">ID de Meta</dt><dd>{row.provider_message_ref ?? 'Sin ID'}</dd>
-                <dt className="text-muted-foreground">Código</dt><dd>{row.error_code ?? '—'}</dd>
-                {row.error_detail && <><dt className="text-muted-foreground">Mensaje</dt><dd className="break-words">{row.error_detail}</dd></>}
-              </dl>
-            </Section>
-          )}
-
-          {queueRow && uncertainty && (
-            <Section title="Comprobación manual">
-              <p className="text-sm"><strong>{uncertainty.label}.</strong> {uncertainty.explanation}</p>
-              {queueRow.open_action_status && <p className="text-sm text-amber-800">Resolución encolada para el servidor ({ACTION_STATUS[queueRow.open_action_status] ?? queueRow.open_action_status}).</p>}
-              {isAdmin && (
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" disabled={!uncertainty.canConfirm || Boolean(queueRow.open_action_status)} onClick={() => onResolve(queueRow, 'confirmed_sent')}>Confirmar enviado…</Button>
-                  {queueRow.channel === 'email' && (
-                    <Button size="sm" variant="destructive" disabled={Boolean(queueRow.open_action_status)} onClick={() => onResolve(queueRow, 'confirmed_not_sent')}>Confirmar no enviado…</Button>
-                  )}
-                </div>
               )}
             </Section>
           )}
@@ -199,7 +220,7 @@ export function WhatsAppDeliveryDetail({ deliveryId, row, queueRow, isAdmin, onC
               <ul className="space-y-1 text-sm">
                 {detail.data.actions.map((action, index) => (
                   <li key={`${action.requested_at}-${index}`}>
-                    {formatMoment(action.requested_at)} · {action.resolution === 'confirmed_sent' ? 'Confirmado como enviado' : 'Confirmado como no enviado'}
+                    {formatMoment(action.requested_at)} · {action.resolution === 'confirmed_sent' ? 'Registrado como enviado' : 'Registrado como no enviado'}
                     {action.requested_by_name ? ` por ${action.requested_by_name}` : ''} · {ACTION_STATUS[action.status] ?? action.status}
                     {action.result_detail ? ` · ${action.result_detail}` : ''}
                   </li>
@@ -207,6 +228,27 @@ export function WhatsAppDeliveryDetail({ deliveryId, row, queueRow, isAdmin, onC
               </ul>
             </Section>
           )}
+
+          <details className="group rounded-lg border p-3">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              Datos técnicos<ChevronDown aria-hidden className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <dl className="mt-3 grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-muted-foreground">Plantilla</dt><dd className="break-words">{row?.template_name ?? queueRow?.template_name ?? '—'}</dd>
+              {row && <><dt className="text-muted-foreground">ID de Meta</dt><dd className="break-all">{row.provider_message_ref ?? 'Sin ID'}</dd></>}
+              {row && <><dt className="text-muted-foreground">Código</dt><dd>{row.error_code ?? '—'}</dd></>}
+              {row?.error_detail && <><dt className="text-muted-foreground">Mensaje</dt><dd className="break-words">{row.error_detail}</dd></>}
+              {queueRow && <><dt className="text-muted-foreground">Canal</dt><dd>{queueRow.channel === 'whatsapp' ? 'WhatsApp · Meta' : 'Email alternativo · Resend'}</dd></>}
+              {queueRow && <><dt className="text-muted-foreground">Intento</dt><dd>{attempt?.attempt ? `${attempt.attempt}${attempt.exhausted ? ' (sin más reintentos automáticos)' : ''}` : 'No indicado por el servidor'}</dd></>}
+              {queueRow && <><dt className="text-muted-foreground">Estado interno</dt><dd>{queueRow.uncertainty_state}</dd></>}
+              {queueRow && <><dt className="text-muted-foreground">Detalle del servidor</dt><dd className="break-words">{queueRow.detail}</dd></>}
+              {queueRow?.open_action_status && <><dt className="text-muted-foreground">Resolución</dt><dd>{ACTION_STATUS[queueRow.open_action_status] ?? queueRow.open_action_status}</dd></>}
+              {deliveryId && <><dt className="text-muted-foreground">ID del envío</dt><dd className="break-all">{deliveryId}</dd></>}
+            </dl>
+            {detail.isError && isMissingRpc(detail.error) && (
+              <p className="mt-2 text-xs text-muted-foreground">El servidor todavía no ofrece el historial de intentos (1/2, 2/2) ni las acciones manuales; se muestran las horas registradas en el aviso.</p>
+            )}
+          </details>
         </div>
       </SheetContent>
     </Sheet>

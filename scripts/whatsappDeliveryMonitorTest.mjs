@@ -11,6 +11,7 @@ const pageSources = [
   model,
   await read('src/features/whatsapp-monitor/WhatsAppDeliveryDetail.tsx'),
   await read('src/features/whatsapp-monitor/WhatsAppResolutionDialog.tsx'),
+  await read('src/features/whatsapp-monitor/WhatsAppManualQueue.tsx'),
 ].join('\n');
 assert.match(page, /Notificaciones WhatsApp/);
 // Rediseño (WA-05): «Enviados» pasa a «Aceptados por Meta» y el resumen se divide
@@ -30,9 +31,14 @@ assert.match(pageSources, /provider_message_ref/);
 assert.match(pageSources, /recipient_masked/);
 assert.match(page, /get_whatsapp_delivery_monitor/);
 assert.match(page, /get_whatsapp_webhook_reconciliation_queue/);
-assert.match(page, /Cola de conciliación de Meta/);
-assert.match(page, /WhatsApp aplica como máximo un reintento automático 2\/2 tras 15 minutos/);
-assert.match(page, /Después del intento 2\/2 no habrá un tercero/);
+assert.match(page, /Respuestas de Meta sin asociar/);
+// Rediseño de la comprobación manual: el límite de intentos se explica una vez y
+// según el estado de cada envío (2/2 agotado o reintento posible), sin repetir en
+// cada fila el aviso rojo genérico del intento 1/2.
+assert.match(model, /No habrá más intentos automáticos/);
+assert.match(model, /puede hacer un único reintento automático pasados 15 minutos/);
+assert.match(pageSources, /no se reenvían solos/);
+assert.doesNotMatch(pageSources, /El intento 1\/2 incierto puede recibir un único reintento backend/);
 assert.doesNotMatch(page, /El sistema nunca reenvía automáticamente un resultado incierto/);
 assert.doesNotMatch(page, /WhatsApp incierto no se reenvía/);
 // No se afirma un modo de canal que la pantalla no comprueba (WA-07).
@@ -201,11 +207,14 @@ assert.ok(
 );
 assert.match(page, /get_notification_send_reconciliation_queue/);
 assert.match(page, /request_notification_send_reconciliation/);
-assert.match(page, /Confirmar enviado/);
+// La resolución solo se ofrece en el detalle, tras pulsar «Revisar».
+const detailSheet = await read('src/features/whatsapp-monitor/WhatsAppDeliveryDetail.tsx');
+assert.match(detailSheet, /Registrar como enviado/);
+assert.doesNotMatch(page, /Confirmar enviado|Registrar como enviado/);
 // Doble barrera en interfaz: el WhatsApp incierto nunca se reabre y el reintento
 // solo se ofrece para email (además del bloqueo SQL comprobado arriba).
 assert.match(page, /row\.channel === 'whatsapp' && mode === 'confirmed_not_sent'/);
-assert.match(page, /row\.channel === 'email' && !safeWindow\.expired[\s\S]{0,260}Confirmar no enviado/);
+assert.match(detailSheet, /queueRow\.channel === 'email' && safeWindow && !safeWindow\.expired[\s\S]{0,260}Registrar como no enviado/);
 const dialog = await read('src/features/whatsapp-monitor/WhatsAppResolutionDialog.tsx');
 assert.match(dialog, /mode === 'confirmed_not_sent' && \(isWhatsApp \|\| safeWindow\.expired\)/);
 
@@ -413,11 +422,12 @@ assert.match(webhookStateMigration, /get_whatsapp_webhook_reconciliation_queue/)
 // El aviso sobre el límite de intentos vive ahora en el diálogo de resolución.
 const monitorPage = [
   await read('src/pages/WhatsAppNotifications.tsx'),
+  await read('src/features/whatsapp-monitor/WhatsAppDeliveryDetail.tsx'),
   await read('src/features/whatsapp-monitor/WhatsAppResolutionDialog.tsx'),
 ].join('\n');
 assert.match(
   monitorPage,
-  /row\.channel === 'email'[\s\S]{0,260}confirmed_not_sent/,
+  /[rR]ow\.channel === 'email'[\s\S]{0,260}confirmed_not_sent/,
   'solo Resend puede ofrecer confirmación de no enviado y reintento',
 );
 assert.match(

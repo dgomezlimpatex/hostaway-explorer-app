@@ -40,6 +40,7 @@ const newPage = async (viewport) => {
   await page.goto(URL);
   return page;
 };
+const EXHAUSTED_TEXT = 'Intento WhatsApp 2/2 incierto; reintentos automáticos agotados. Requiere conciliación manual';
 const attention = page => page.getByRole('region', { name: /Necesitan acción/ });
 
 let passed = 0;
@@ -59,11 +60,12 @@ try {
     await expect(region.getByRole('button', { name: /^1 Inciertos/ })).toBeVisible();
     await expect(region.getByRole('button', { name: /^1 Sin confirmar \+30 min/ })).toBeVisible();
     await expect(region.getByRole('button', { name: /^2 No enviados/ })).toBeVisible();
-    await expect(region.getByText(/1 callbacks sin correlacionar · pueden corresponder/)).toBeVisible();
+    await expect(region.getByText('Respuestas de Meta sin asociar:')).toBeVisible();
+    await expect(region.getByText(/suelen ser de un aviso ya contado arriba/)).toBeVisible();
     await expect(page.getByText(/2 entregados, de los cuales 1 leídos/)).toBeVisible();
     // WA-03: en cola, incierto y desconocido se distinguen.
     const table = page.getByRole('table', { name: /Historial de avisos de WhatsApp/ });
-    await expect(table.getByText('Incierto · intento 1/2')).toBeVisible();
+    await expect(table.getByText('Resultado incierto · 1/2')).toBeVisible();
     await expect(table.getByText('En cola', { exact: true })).toBeVisible();
     await expect(table.getByText('Desconocido: processing_unknown')).toBeVisible();
     // WA-06/15: causa por fila, fechas Madrid y verbo con hora.
@@ -73,7 +75,7 @@ try {
     await expect(table.getByText('Orzán 1º A · mié 21 oct').first()).toBeVisible();
     await expect(table.getByText('Leído 10:20')).toBeVisible();
     await expect(table.getByText('Falló 11:30')).toBeVisible();
-    await expect(table.getByText('En la cola de comprobación manual')).toBeVisible();
+    await expect(table.getByText('Por comprobar', { exact: true })).toBeVisible();
     await expect(page.getByText('Estados reales recibidos desde Meta')).toHaveCount(0);
     await expect(page.getByText('2026-10-21')).toHaveCount(0);
     await expect(page.getByText('Actualizado 12:00:00 · cada 30 s')).toBeVisible();
@@ -100,7 +102,7 @@ try {
     await page.evaluate(() => { window.fx = {}; });
 
     await open(page, { fail: ['get_whatsapp_webhook_pending_count'] });
-    await expect(page.getByRole('alert').filter({ hasText: 'callbacks de Meta' })).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: 'respuestas de Meta' })).toBeVisible();
     await expect(attention(page).getByText('No disponible', { exact: true })).toHaveCount(1);
     await expect(page.getByText('6 avisos en total')).toBeVisible();
 
@@ -122,10 +124,11 @@ try {
 
   await step('WA-10: gestión ve su alcance sin ceros de datos que no puede ver', async () => {
     await open(page, { role: 'manager' });
-    await expect(page.getByText(/Las colas de comprobación manual y de conciliación con Meta son solo de administración/)).toBeVisible();
-    await expect(page.getByText(/callbacks sin correlacionar/)).toHaveCount(0);
-    await expect(page.getByText('Envíos pendientes de comprobación manual')).toHaveCount(0);
-    await expect(page.getByText('Cola de conciliación de Meta')).toHaveCount(0);
+    await expect(page.getByText(/Los envíos por comprobar y las respuestas de Meta sin asociar son solo de administración/)).toBeVisible();
+    await expect(page.getByText('Respuestas de Meta sin asociar:')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /Envíos por comprobar/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Revisar/ })).toHaveCount(0);
+    await expect(page.getByText(/Respuestas de Meta sin asociar \(/)).toHaveCount(0);
     const fns = (await calls(page)).map(call => call.fn);
     assert.ok(!fns.includes('get_notification_send_reconciliation_queue'), 'no pide la cola de administración');
     assert.ok(!fns.includes('get_whatsapp_webhook_reconciliation_queue'));
@@ -182,6 +185,9 @@ try {
     await expect(sheet.getByText('Aceptado por Meta', { exact: true })).toHaveCount(2);
     await expect(sheet.getByText('Entrega no comunicada por Meta tras más de 30 min')).toBeVisible();
     await expect(sheet.getByText(/Entregado \(comunicado/)).toHaveCount(0);
+    // Datos técnicos plegados por defecto.
+    await expect(sheet.getByText('…c9d0e1f2')).toBeHidden();
+    await sheet.getByText('Datos técnicos').click();
     await expect(sheet.getByText(/todavía no ofrece el historial de intentos/)).toBeVisible();
     await expect(sheet.getByText('…c9d0e1f2')).toBeVisible();
     await shot(page, 'escritorio-detalle');
@@ -194,51 +200,144 @@ try {
     await expect(sheet.getByText(/Intento 1\/2 iniciado → sin respuesta clara/)).toBeVisible();
     await expect(sheet.getByText(/Intento 2\/2 iniciado → aceptado por Meta \(…a1b2c3d4\)/)).toBeVisible();
     await expect(sheet.getByText('Posible duplicado', { exact: false })).toBeVisible();
-    await expect(sheet.getByText('Resultado incierto en Meta.')).toBeVisible();
+    await expect(sheet.getByText('Entrega sin confirmar', { exact: true })).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Registrar como enviado…' })).toBeEnabled();
     await shot(page, 'escritorio-detalle-intentos');
     await page.keyboard.press('Escape');
   });
 
-  await step('WA-08/09: diálogo de resolución con validación, bloqueo y errores traducidos', async () => {
+  await step('WA-08/09: Revisar → detalle → registrar, con validación, bloqueo y errores traducidos', async () => {
     await open(page);
-    await expect(page.getByText('Envíos pendientes de comprobación manual (3)')).toBeVisible();
-    await page.getByRole('button', { name: 'Confirmar enviado…' }).first().click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog.getByText('Confirmar enviado en Meta')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Envíos por comprobar (3)' })).toBeVisible();
+    // La lista no ofrece confirmar: solo «Revisar».
+    await expect(page.getByRole('button', { name: /Confirmar enviado|Registrar como enviado/ })).toHaveCount(0);
+    await page.getByRole('button', { name: /^Revisar Recordatorio de aprobación · Ana Pérez/ }).click();
+    assert.equal(await where(page), '/whatsapp-notifications?envio=d6');
+    const sheet = page.getByRole('dialog', { name: 'Recordatorio de aprobación' });
+    await expect(sheet.getByText('Qué puedes hacer')).toBeVisible();
+    await expect(sheet.getByText(/No envía otro WhatsApp ni demuestra que la persona lo recibió/)).toBeVisible();
+    await sheet.getByRole('button', { name: 'Registrar como enviado…' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Registrar como enviado en Meta' });
+    await expect(dialog).toBeVisible();
     const input = dialog.getByLabel('ID del mensaje en Meta');
     await input.fill('12345');
-    await dialog.getByRole('button', { name: 'Confirmar enviado' }).click();
+    await dialog.getByRole('button', { name: 'Registrar como enviado' }).click();
     await expect(dialog.getByText(/empieza por «wamid.»/)).toBeVisible();
     assert.deepEqual(await page.evaluate(() => window.writes), []);
     await shot(page, 'escritorio-dialogo-validacion');
     await input.fill('wamid.SINTETICO1234567890');
-    await dialog.getByRole('button', { name: 'Confirmar enviado' }).click();
+    await dialog.getByRole('button', { name: 'Registrar como enviado' }).click();
     await expect(dialog).toHaveCount(0);
     const writes = await page.evaluate(() => window.writes);
     assert.deepEqual(writes, [{ fn: 'request_notification_send_reconciliation', args: { _delivery_id: 'd6', _resolution: 'confirmed_sent', _provider_message_id: 'wamid.SINTETICO1234567890' } }]);
+    await page.keyboard.press('Escape');
 
     // Error del servidor traducido.
-    await open(page, { resolutionError: 'delivery_not_reconcilable' });
-    await page.getByRole('button', { name: 'Confirmar enviado…' }).first().click();
+    await open(page, { resolutionError: 'delivery_not_reconcilable' }, '/whatsapp-notifications?envio=d6');
+    await sheet.getByRole('button', { name: 'Registrar como enviado…' }).click();
     await dialog.getByLabel('ID del mensaje en Meta').fill('wamid.SINTETICO1234567890');
-    await dialog.getByRole('button', { name: 'Confirmar enviado' }).click();
+    await dialog.getByRole('button', { name: 'Registrar como enviado' }).click();
     await expect(dialog.getByRole('alert')).toHaveText(/ya no está pendiente de comprobación/);
     await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
 
-    // Meta todavía contactando: confirmar deshabilitado con explicación.
+    // Meta todavía contactando: estado en la lista y registro deshabilitado con explicación.
     await open(page, { contacting: true });
-    await expect(page.getByRole('button', { name: 'Confirmar enviado…' }).first()).toBeDisabled();
-    await expect(page.getByText(/está contactando con Meta en este momento/)).toBeVisible();
+    await expect(page.getByText('Contactando con Meta', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /^Revisar Recordatorio de aprobación/ }).click();
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Registrar como enviado…' })).toBeDisabled();
+    await expect(page.getByRole('dialog').getByText(/contactando con Meta ahora mismo/).first()).toBeVisible();
+    await page.keyboard.press('Escape');
 
     // Email: dentro de la ventana se ofrece reintento; vencida, se explica y no se ofrece.
-    await open(page);
-    await expect(page.getByRole('button', { name: 'Confirmar no enviado…' })).toHaveCount(1);
-    await expect(page.getByText(/Ventana de reintento: quedan unas 2[12] h/)).toBeVisible();
-    await expect(page.getByText(/Ventana de reintento probablemente vencida/)).toBeVisible();
-    await page.getByRole('button', { name: 'Confirmar no enviado…' }).click();
-    await expect(dialog.getByText('Confirmar no enviado y reintentar')).toBeVisible();
+    await open(page, {}, '/whatsapp-notifications?envio=e1');
+    const emailSheet = page.getByRole('dialog');
+    await expect(emailSheet.getByRole('button', { name: 'Registrar como no enviado y reintentar…' })).toHaveCount(1);
+    await expect(emailSheet.getByText(/quedan unas 2[12] h/)).toBeVisible();
+    await emailSheet.getByRole('button', { name: 'Registrar como no enviado y reintentar…' }).click();
+    await expect(page.getByRole('dialog', { name: 'Registrar como no enviado y reintentar' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await open(page, {}, '/whatsapp-notifications?envio=e2');
+    await expect(page.getByRole('dialog').getByText(/ya no es seguro reintentarlo/)).toBeVisible();
+    await expect(page.getByRole('dialog').getByRole('button', { name: /no enviado/ })).toHaveCount(0);
     await page.keyboard.press('Escape');
     assert.deepEqual(await page.evaluate(() => window.writes), []);
+  });
+
+  await step('Escenario de producción: 6 envíos 2/2 antiguos, enmascarado corrupto y datos ausentes', async () => {
+    await open(page, { queue: 'prod' });
+    const section = page.getByRole('region', { name: /Envíos por comprobar/ });
+    await expect(section.getByRole('heading', { name: 'Envíos por comprobar (6)' })).toBeVisible();
+    assert.equal(await page.evaluate(() => /â€|€¢/.test(document.body.innerText)), false, 'sin caracteres corruptos');
+    // Sin recientes: «Anteriores» abierto, con cantidad y fechas visibles.
+    await expect(section.getByRole('button', { name: /Anteriores \(6\)/ })).toHaveAttribute('aria-expanded', 'true');
+    await expect(section.getByText('del vie 4 sept al jue 8 oct')).toBeVisible();
+    await expect(section.getByRole('button', { name: /Últimos 7 días/ })).toHaveCount(0);
+    const items = section.getByRole('listitem');
+    await expect(items).toHaveCount(6);
+    await expect(section.getByText('Entrega sin confirmar', { exact: true })).toHaveCount(6);
+    await expect(section.getByRole('button', { name: /^Revisar/ })).toHaveCount(6);
+    // Una sola explicación; ningún aviso rojo repetido por fila.
+    await expect(page.getByText(/intento 1\/2 incierto puede recibir/)).toHaveCount(0);
+    await expect(section.getByText(/no se reenvían solos/)).toHaveCount(1);
+    await expect(section.getByText(/Reintento automático posible/)).toHaveCount(0);
+    await expect(section.getByText('Teléfono acabado en 7093')).toHaveCount(2);
+    await expect(section.getByText('Teléfono oculto')).toHaveCount(1);
+    await expect(section.getByText('Asunto no disponible')).toHaveCount(2);
+    await expect(section.getByText('vie 4 sept 20:12 · hace 45 días')).toBeVisible();
+    // Orden: más reciente primero.
+    await expect(items.first()).toContainText('jue 8 oct');
+    assert.equal(await section.locator('.text-red-700').count(), 0);
+
+    // Teclado: foco en «Revisar», Intro abre el detalle; Escape lo cierra y limpia la URL.
+    const review = section.getByRole('button', { name: /^Revisar Tarea asignada · Teléfono acabado en 7093 · vie 4 sept/ });
+    await review.focus();
+    await page.keyboard.press('Enter');
+    const sheet = page.getByRole('dialog');
+    await expect(sheet.getByRole('heading', { name: 'Tarea asignada' })).toBeVisible();
+    assert.equal(await where(page), '/whatsapp-notifications?envio=p1');
+    await expect(sheet.getByText(/Se intentó enviar dos veces y Meta no confirmó/)).toBeVisible();
+    await expect(sheet.getByText(/Nombre y tarea no disponibles/)).toBeVisible();
+    await expect(sheet.getByText(EXHAUSTED_TEXT)).toBeHidden();
+    assert.equal(await sheet.locator('details').evaluate(el => el.open), false, 'datos técnicos plegados');
+    await shot(page, 'escritorio-revisar-prod');
+    // Sin RPC de detalle: no hay error visible ni escritura.
+    await expect(sheet.getByRole('alert')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    assert.equal(await where(page), '/whatsapp-notifications');
+    assert.deepEqual(await page.evaluate(() => window.writes), []);
+  });
+
+  await step('Mezcla de antigüedades: recientes abiertos, anteriores plegados con cantidad y suma exacta', async () => {
+    await open(page, { queue: 'mixed' });
+    const section = page.getByRole('region', { name: /Envíos por comprobar/ });
+    await expect(section.getByRole('heading', { name: 'Envíos por comprobar (6)' })).toBeVisible();
+    const recent = section.getByRole('button', { name: /Últimos 7 días \(4\)/ });
+    const older = section.getByRole('button', { name: /Anteriores \(2\)/ });
+    await expect(recent).toHaveAttribute('aria-expanded', 'true');
+    await expect(older).toHaveAttribute('aria-expanded', 'false');
+    await expect(section.getByText('del vie 4 sept al mar 15 sept')).toBeVisible();
+    await expect(section.getByRole('button', { name: /^Revisar/ })).toHaveCount(4);
+    await older.click();
+    await expect(section.getByRole('button', { name: /^Revisar/ })).toHaveCount(6);
+    await expect(section.getByText('Reintento automático posible', { exact: true })).toHaveCount(1);
+    await expect(section.getByText('Registro en curso', { exact: true })).toHaveCount(1);
+    await expect(section.getByText('Contactando con Meta', { exact: true })).toHaveCount(1);
+    await expect(section.getByText('Email sin confirmar', { exact: true })).toHaveCount(1);
+    await expect(section.getByText(/aún pueden tener un último intento/)).toBeVisible();
+    // Fila con resolución en curso: el detalle no permite registrar otra.
+    await section.getByRole('button', { name: /^Revisar Tarea modificada · Teléfono acabado en 5678/ }).click();
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Registrar como enviado…' })).toBeDisabled();
+    await expect(page.getByRole('dialog').getByText('Ya hay una resolución en curso para este envío.')).toBeVisible();
+    await page.keyboard.press('Escape');
+  });
+
+  await step('Límite de la cola: aviso explícito si el servidor devuelve 50', async () => {
+    await open(page, { queue: 'fifty' });
+    await expect(page.getByRole('heading', { name: 'Envíos por comprobar (50)' })).toBeVisible();
+    await expect(page.getByText(/Se muestran los 50 más antiguos que devuelve el servidor; puede haber más pendientes/)).toBeVisible();
+    assert.equal((await calls(page, 'get_notification_send_reconciliation_queue')).at(-1).args._limit, 50);
   });
 
   await step('WA-14: nombres accesibles, tablas descritas y región viva', async () => {
@@ -246,6 +345,8 @@ try {
     await expect(page.getByRole('searchbox', { name: 'Buscar' })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Estado' })).toBeVisible();
     await expect(page.getByRole('combobox', { name: 'Periodo' })).toBeVisible();
+    await expect(page.getByRole('table', { name: /Respuestas de Meta pendientes/ })).toBeHidden();
+    await page.getByText(/Respuestas de Meta sin asociar \(1\)/).click();
     await expect(page.getByRole('table', { name: /Respuestas de Meta pendientes/ })).toBeVisible();
     assert.ok(await page.locator('[aria-live="polite"]').count() >= 2);
     await page.getByRole('searchbox', { name: 'Buscar' }).focus();
@@ -283,14 +384,16 @@ try {
     // Colas de administración plegadas en una sola fila que se puede abrir.
     const queues = mobile.getByRole('button', { name: /3 envíos por comprobar · 1 respuestas de Meta/ });
     await expect(queues).toHaveAttribute('aria-expanded', 'false');
-    await expect(mobile.getByText('Envíos pendientes de comprobación manual (3)')).toBeHidden();
+    await expect(mobile.getByRole('heading', { name: 'Envíos por comprobar (3)' })).toBeHidden();
     const box = await firstCard.boundingBox();
     assert.ok(box.y < 844 * 2, `primer aviso a ${Math.round(box.y)} px (máximo una pantalla de desplazamiento)`);
     const scroll = await mobile.evaluate(() => document.documentElement.scrollWidth);
     assert.ok(scroll <= 390, `sin scroll horizontal (${scroll})`);
     await shot(mobile, 'movil-completo', { fullPage: true });
     await queues.click();
-    await expect(mobile.getByText('Envíos pendientes de comprobación manual (3)')).toBeVisible();
+    await expect(mobile.getByRole('heading', { name: 'Envíos por comprobar (3)' })).toBeVisible();
+    const mobileScroll = await mobile.evaluate(() => document.documentElement.scrollWidth);
+    assert.ok(mobileScroll <= 390, `colas abiertas sin scroll horizontal (${mobileScroll})`);
     await shot(mobile, 'movil-colas-abiertas');
     await queues.click();
     await firstCard.click();

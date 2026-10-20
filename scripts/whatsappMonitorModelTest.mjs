@@ -27,7 +27,12 @@ test('WA-03: en cola, incierto y desconocido tienen textos distintos', () => {
   const unknown = m.statusInfo(row({ status: 'processing_unknown' }));
   assert.equal(queued.key, 'queued');
   assert.equal(uncertain.key, 'uncertain');
-  assert.equal(uncertain.label, 'Incierto · intento 1/2');
+  // El intento solo se muestra si el servidor lo indica; sin texto no se supone 1/2.
+  assert.equal(uncertain.label, 'Resultado incierto');
+  assert.equal(m.statusInfo(row({ error_code: 'reconciliation_required', error_detail: 'Intento 1/2 sin respuesta de Meta' })).label, 'Resultado incierto · 1/2');
+  const exhausted = m.statusInfo(row({ error_code: 'reconciliation_required', error_detail: 'Intento WhatsApp 2/2 incierto; reintentos automáticos agotados. Requiere conciliación manual' }));
+  assert.equal(exhausted.label, 'Resultado incierto · 2/2');
+  assert.match(exhausted.meaning, /No habrá más intentos automáticos/);
   assert.equal(unknown.key, 'unknown');
   assert.equal(unknown.label, 'Desconocido: processing_unknown');
   assert.equal(new Set([queued.label, uncertain.label, unknown.label]).size, 3);
@@ -156,6 +161,93 @@ test('Degradación: RPC inexistente y permisos', () => {
   assert.equal(m.isForbidden({ message: 'not_authorized' }), true);
   assert.equal(m.ageLabel(ago(18), NOW), 'hace 18 min');
   assert.equal(m.ageLabel(ago(26 * 60), NOW), 'hace 26 h');
+});
+
+// ---------------------------------------------------------------------------
+// Rediseño de «Envíos por comprobar»
+// ---------------------------------------------------------------------------
+const EXHAUSTED = 'Intento WhatsApp 2/2 incierto; reintentos automáticos agotados. Requiere conciliación manual';
+const RETRY = 'Resultado de Meta incierto (network_error): tras 15 minutos se permitirá un único reintento 2/2 para priorizar entrega; existe riesgo excepcional de duplicado';
+const q = o => ({ delivery_id: 'q', notification_event_id: 'e', channel: 'whatsapp', provider: 'meta_cloud_api', recipient_masked: '•••• 7093', template_name: 'task_assigned_approval_es', uncertainty_state: 'meta_uncertain', detail: EXHAUSTED, created_at: ago(5), open_action_status: null, ...o });
+
+test('Enmascarado: corrige la mala codificación y nunca muestra más de 4 dígitos', () => {
+  const moji = 'â€¢â€¢â€¢â€¢ 7093';
+  assert.equal(m.phoneTail(moji), '7093');
+  assert.equal(m.maskedPhone(moji), '•••• 7093');
+  assert.equal(m.recipientLabel(moji), 'Teléfono acabado en 7093');
+  assert.ok(!/â|€|¢/.test(m.maskedPhone(moji) + m.recipientLabel(moji)));
+  // Aunque el servidor devolviera el número completo, solo salen 4 dígitos.
+  assert.equal(m.maskedPhone('+34 600 112 233'), '•••• 2233');
+  assert.equal(m.recipientLabel('Oculto'), 'Teléfono oculto');
+  assert.equal(m.recipientLabel('••••'), 'Teléfono no disponible');
+  assert.equal(m.recipientLabel(null), 'Teléfono no disponible');
+  assert.equal(m.maskedPhone('••••'), '••••');
+  assert.equal(m.recipientLabel('•••• 4321', 'email'), 'Destinatario acabado en 4321');
+});
+
+test('Asunto desde la plantilla, sin inventarlo si no se reconoce', () => {
+  assert.equal(m.templateSubject('task_assigned_approval_es'), 'Tarea asignada');
+  assert.equal(m.templateSubject('task_modified_es'), 'Tarea modificada');
+  assert.equal(m.templateSubject('task_cancelled_es'), 'Asignación cancelada');
+  assert.equal(m.templateSubject('task_approval_reminder_es'), 'Recordatorio de aprobación');
+  assert.equal(m.templateSubject('task_late_start_reminder_es'), 'Recordatorio de inicio');
+  assert.equal(m.templateSubject('task_rejected_admin_alert_es'), 'Alerta de rechazo');
+  assert.equal(m.templateSubject('task_rejected_admin_fallback_email'), 'Alerta de rechazo');
+  assert.equal(m.templateSubject('plantilla_desconocida_x'), null);
+  assert.equal(m.templateSubject(null), null);
+});
+
+test('Intento 1/2 y 2/2 según el texto real del servidor', () => {
+  assert.deepEqual(m.queueAttempt(q({})), { attempt: '2/2', retryPending: false, exhausted: true });
+  assert.deepEqual(m.queueAttempt(q({ detail: RETRY })), { attempt: '1/2', retryPending: true, exhausted: false });
+  assert.deepEqual(m.queueAttempt(q({ detail: 'Ejecutando reintento WhatsApp 2/2; riesgo excepcional de duplicado aceptado' })), { attempt: '2/2', retryPending: false, exhausted: false });
+  assert.deepEqual(m.queueAttempt(q({ detail: 'Intento 1/2 sin respuesta de Meta' })), { attempt: '1/2', retryPending: false, exhausted: false });
+  assert.deepEqual(m.queueAttempt(q({ detail: 'texto nuevo' })), { attempt: null, retryPending: false, exhausted: false });
+  assert.deepEqual(m.queueAttempt(q({ channel: 'email', detail: EXHAUSTED })), { attempt: null, retryPending: false, exhausted: false });
+});
+
+test('Estado sencillo y explicación contextual', () => {
+  const exhausted = m.queueState(q({}));
+  assert.equal(exhausted.key, 'unconfirmed');
+  assert.equal(exhausted.label, 'Entrega sin confirmar');
+  assert.match(exhausted.explanation, /dos veces[\s\S]*No habrá más intentos automáticos/);
+  const retry = m.queueState(q({ detail: RETRY }));
+  assert.match(retry.explanation, /único reintento automático/);
+  assert.doesNotMatch(retry.explanation, /No habrá más/);
+  assert.equal(m.queueState(q({ uncertainty_state: 'meta_contacting' })).key, 'contacting');
+  assert.equal(m.queueState(q({ open_action_status: 'pending' })).label, 'Registro en curso');
+  assert.equal(m.queueState(q({ channel: 'email', uncertainty_state: 'resend_uncertain' })).label, 'Email sin confirmar');
+  const unknown = m.queueState(q({ uncertainty_state: 'raro' }));
+  assert.equal(unknown.key, 'unknown');
+  assert.match(unknown.explanation, /raro/);
+});
+
+test('Recientes y anteriores: ninguna fila se pierde y las fechas son de Madrid', () => {
+  const rows = [q({ delivery_id: 'a', created_at: '2026-09-04T18:12:00Z' }), q({ delivery_id: 'b', created_at: ago(18) }), q({ delivery_id: 'c', created_at: ago(7 * 1440 - 1) }), q({ delivery_id: 'd', created_at: ago(7 * 1440 + 1) }), q({ delivery_id: 'e', created_at: '2026-10-08T16:40:00Z' })];
+  const { recent, older } = m.splitQueueByAge(rows, NOW);
+  assert.deepEqual(recent.map(r => r.delivery_id), ['b', 'c']);
+  assert.deepEqual(older.map(r => r.delivery_id), ['d', 'e', 'a']);
+  assert.equal(recent.length + older.length, rows.length);
+  assert.equal(m.dateRangeLabel(older), 'del vie 4 sept al mar 13 oct');
+  assert.equal(m.dateRangeLabel([rows[0]]), 'el vie 4 sept');
+  assert.equal(m.dateRangeLabel([]), '');
+  // 23:30 UTC del 4/9 ya es 5/9 en Madrid.
+  assert.equal(m.dateRangeLabel([q({ created_at: '2026-09-04T23:30:00Z' })]), 'el sáb 5 sept');
+  assert.equal(m.momentWithAge('2026-09-04T18:12:00Z', NOW), 'vie 4 sept 20:12 · hace 45 días');
+  assert.deepEqual(m.splitQueueByAge([], NOW), { recent: [], older: [] });
+});
+
+test('Identificación: nombre del historial si coincide; si no, teléfono y ausencias honestas', () => {
+  const withHistory = m.queueIdentity(q({ recipient_masked: 'â€¢â€¢â€¢â€¢ 1234' }), row({ cleaner_name: 'Ana Pérez', event_type: 'task_approval_reminder' }));
+  assert.equal(withHistory.title, 'Ana Pérez');
+  assert.equal(withHistory.phone, '•••• 1234');
+  assert.equal(withHistory.subject, 'Recordatorio de aprobación');
+  assert.equal(withHistory.task, 'Orzán 1º A · mié 21 oct');
+  const alone = m.queueIdentity(q({ template_name: null }), undefined);
+  assert.equal(alone.title, 'Teléfono acabado en 7093');
+  assert.equal(alone.phone, null);
+  assert.equal(alone.subject, null);
+  assert.equal(alone.nameKnown, false);
 });
 
 console.log(`whatsappMonitorModelTest: ${passed} grupos correctos`);

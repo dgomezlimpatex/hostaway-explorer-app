@@ -101,7 +101,7 @@ export interface StatusInfo {
 
 const STATUS_INFO: Record<Exclude<StatusKey, 'unknown'>, Omit<StatusInfo, 'key'>> = {
   queued: { label: 'En cola', meaning: 'Preparado en el servidor; todavía no se ha contactado con Meta.' },
-  uncertain: { label: 'Incierto · intento 1/2', meaning: 'Meta no confirmó ni rechazó el envío. El servidor puede hacer un único reintento automático 2/2 o requiere comprobación manual.' },
+  uncertain: { label: 'Resultado incierto', meaning: 'Meta no confirmó ni rechazó el envío. El servidor puede hacer un único reintento automático 2/2 o requiere comprobación manual.' },
   sent: { label: 'Aceptado por Meta', meaning: 'Meta aceptó el mensaje. Aún no ha comunicado la entrega.' },
   delivered: { label: 'Entregado', meaning: 'Meta comunicó que el mensaje llegó al teléfono.' },
   read: { label: 'Leído', meaning: 'Meta comunicó que la persona lo leyó.' },
@@ -110,9 +110,14 @@ const STATUS_INFO: Record<Exclude<StatusKey, 'unknown'>, Omit<StatusInfo, 'key'>
   skipped: { label: 'No enviado', meaning: 'El servidor no intentó enviarlo.' },
 };
 
-export function statusInfo(row: Pick<DeliveryRow, 'status' | 'error_code'>): StatusInfo {
+export function statusInfo(row: Pick<DeliveryRow, 'status' | 'error_code'> & { error_detail?: string | null }): StatusInfo {
   if (row.status === 'queued' && row.error_code === 'reconciliation_required') {
-    return { key: 'uncertain', ...STATUS_INFO.uncertain };
+    // El intento solo se indica si el texto del servidor lo dice; no se supone 1/2.
+    const attempt = queueAttempt({ channel: 'whatsapp', detail: row.error_detail ?? '' });
+    if (attempt.exhausted) {
+      return { key: 'uncertain', label: 'Resultado incierto · 2/2', meaning: 'Meta no confirmó ninguno de los dos intentos. No habrá más intentos automáticos: requiere comprobación manual.' };
+    }
+    return { key: 'uncertain', ...STATUS_INFO.uncertain, label: attempt.attempt ? `Resultado incierto · ${attempt.attempt}` : STATUS_INFO.uncertain.label };
   }
   const known = STATUS_INFO[row.status as Exclude<StatusKey, 'unknown'>];
   if (known && row.status !== 'uncertain') return { key: row.status as StatusKey, ...known };
@@ -254,7 +259,9 @@ export function basicTimeline(row: DeliveryRow, now = Date.now()): TimelineEntry
     return entries;
   }
   if (info.key === 'uncertain') {
-    entries.push({ at: null, label: 'Intento 1/2 sin respuesta clara de Meta. Puede haber un único reintento automático 2/2.', tone: 'warning' });
+    entries.push({ at: null, label: info.label.endsWith('2/2')
+      ? 'Ningún intento tuvo respuesta clara de Meta. No habrá más intentos automáticos.'
+      : 'Sin respuesta clara de Meta. Como máximo puede haber un reintento automático.', tone: 'warning' });
   }
   if (info.key === 'queued') entries.push({ at: null, label: 'En cola: aún no se ha contactado con Meta', tone: 'neutral' });
   if (row.sent_at) entries.push({ at: row.sent_at, label: 'Aceptado por Meta', tone: 'info' });
@@ -503,3 +510,140 @@ export const isForbidden = (error: unknown) => {
   const source = (error && typeof error === 'object' ? error : {}) as { code?: string; message?: string };
   return source.code === '42501' || /forbidden|not_authorized/i.test(source.message ?? '');
 };
+
+// ---------------------------------------------------------------------------
+// Envíos por comprobar a mano: identificación, asunto, intento y grupos
+// ---------------------------------------------------------------------------
+
+/**
+ * Últimos 4 dígitos del destinatario enmascarado. El servidor de producción
+ * devuelve hoy los puntos mal codificados («â€¢»); se ignoran y nunca se
+ * muestran más de 4 dígitos aunque el texto contenga más.
+ */
+export function phoneTail(masked: string | null | undefined) {
+  const digits = (masked ?? '').replace(/\D/g, '');
+  return digits.length >= 4 ? digits.slice(-4) : null;
+}
+
+/** «•••• 7093» limpio, para listas compactas. */
+export function maskedPhone(masked: string | null | undefined) {
+  const tail = phoneTail(masked);
+  return tail ? `•••• ${tail}` : '••••';
+}
+
+/** «Teléfono acabado en 7093» o la ausencia del dato, sin inventarlo. */
+export function recipientLabel(masked: string | null | undefined, channel: 'whatsapp' | 'email' = 'whatsapp') {
+  const tail = phoneTail(masked);
+  const noun = channel === 'email' ? 'Destinatario' : 'Teléfono';
+  if (tail) return `${noun} acabado en ${tail}`;
+  return /oculto/i.test(masked ?? '') ? `${noun} oculto` : `${noun} no disponible`;
+}
+
+const TEMPLATE_EVENTS: Array<[RegExp, string]> = [
+  [/^task_assigned/, 'task_assigned'],
+  [/^task_modified/, 'task_modified'],
+  [/^task_cancelled/, 'task_cancelled'],
+  [/^task_approval_reminder/, 'task_approval_reminder'],
+  [/^(task_)?late_start/, 'task_late_start_reminder'],
+  [/^task_late_start_reminder/, 'task_late_start_reminder'],
+  [/^task_rejected/, 'task_rejected_alert'],
+  [/^task_approved/, 'task_approved_confirmation'],
+];
+
+/** Asunto legible a partir de la plantilla; null si no se reconoce o falta. */
+export function templateSubject(templateName: string | null | undefined) {
+  if (!templateName) return null;
+  const match = TEMPLATE_EVENTS.find(([pattern]) => pattern.test(templateName));
+  return match ? EVENT_LABELS[match[1]] : null;
+}
+
+export interface QueueAttempt {
+  /** Intento al que se refiere el texto del servidor, si lo indica. */
+  attempt: '1/2' | '2/2' | null;
+  /** El servidor todavía puede hacer el único reintento automático. */
+  retryPending: boolean;
+  /** No habrá más intentos automáticos. */
+  exhausted: boolean;
+}
+
+// Textos que escriben send-whatsapp-notification y la migración del reintento
+// acotado. Si cambian, el intento queda «sin indicar» en lugar de suponerlo.
+export function queueAttempt(row: Pick<SendReconciliationRow, 'channel' | 'detail'>): QueueAttempt {
+  const detail = row.detail ?? '';
+  if (row.channel !== 'whatsapp') return { attempt: null, retryPending: false, exhausted: false };
+  if (/agotad/i.test(detail)) return { attempt: '2/2', retryPending: false, exhausted: true };
+  if (/se permitir[aá] un [uú]nico reintento|tras 15 minutos/i.test(detail)) return { attempt: '1/2', retryPending: true, exhausted: false };
+  if (/reintento whatsapp 2\/2|ejecutando reintento/i.test(detail)) return { attempt: '2/2', retryPending: false, exhausted: false };
+  if (/intento 1\/2/i.test(detail)) return { attempt: '1/2', retryPending: false, exhausted: false };
+  return { attempt: null, retryPending: false, exhausted: false };
+}
+
+export type QueueStateKey = 'unconfirmed' | 'contacting' | 'registering' | 'unknown';
+
+/** Estado sencillo para la lista y explicación para el detalle. */
+export function queueState(row: SendReconciliationRow) {
+  const attempt = queueAttempt(row);
+  const email = row.channel === 'email';
+  if (row.open_action_status) {
+    return { key: 'registering' as QueueStateKey, label: 'Registro en curso', explanation: 'Ya se ha registrado una resolución; el servidor la aplicará en su próximo ciclo.' };
+  }
+  if (row.uncertainty_state === 'meta_contacting') {
+    return { key: 'contacting' as QueueStateKey, label: 'Contactando con Meta', explanation: 'El servidor está contactando con Meta ahora mismo. Espera a que termine antes de registrar nada.' };
+  }
+  if (row.uncertainty_state === 'meta_uncertain' || row.uncertainty_state === 'resend_uncertain') {
+    const explanation = email
+      ? 'Resend no confirmó si el email alternativo salió. Búscalo en Resend antes de decidir.'
+      : attempt.exhausted
+        ? 'Se intentó enviar dos veces y Meta no confirmó ninguno de los dos intentos. No habrá más intentos automáticos.'
+        : attempt.retryPending
+          ? 'El primer intento no tuvo respuesta clara de Meta. El servidor puede hacer un único reintento automático pasados 15 minutos.'
+          : 'Meta no confirmó ni rechazó el envío.';
+    return { key: 'unconfirmed' as QueueStateKey, label: email ? 'Email sin confirmar' : 'Entrega sin confirmar', explanation };
+  }
+  return { key: 'unknown' as QueueStateKey, label: 'Estado no reconocido', explanation: `El servidor devolvió un estado que esta pantalla no reconoce (${row.uncertainty_state}); no se permite registrar nada desde aquí.` };
+}
+
+export const RECENT_QUEUE_DAYS = 7;
+
+/**
+ * Separa la cola en recientes y anteriores sin quitar ninguna fila: la suma de
+ * los dos grupos es siempre el total recibido.
+ */
+export function splitQueueByAge<T extends { created_at: string }>(rows: T[], now = Date.now()) {
+  const limit = now - RECENT_QUEUE_DAYS * 24 * 3600 * 1000;
+  const recent: T[] = [];
+  const older: T[] = [];
+  for (const row of rows) (new Date(row.created_at).getTime() >= limit ? recent : older).push(row);
+  const byDate = (a: T, b: T) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  return { recent: recent.sort(byDate), older: older.sort(byDate) };
+}
+
+/** «del vie 4 sept al jue 8 oct» con fechas de Madrid. */
+export function dateRangeLabel(rows: Array<{ created_at: string }>) {
+  if (rows.length === 0) return '';
+  const times = rows.map((row) => new Date(row.created_at).getTime()).filter(Number.isFinite);
+  const day = (time: number) => clean(dayFormatter.format(new Date(time)));
+  const first = day(Math.min(...times));
+  const last = day(Math.max(...times));
+  return first === last ? `el ${first}` : `del ${first} al ${last}`;
+}
+
+/** Fecha corta con antigüedad: «vie 4 sept 20:12 · hace 45 días». */
+export const momentWithAge = (value: string, now = Date.now()) => `${formatMoment(value, now)} · ${ageLabel(value, now)}`;
+
+/** Límite de filas que pide la página a la RPC de la cola (ordenada de más antigua a más reciente). */
+export const MANUAL_QUEUE_LIMIT = 50;
+
+/** Identificación operativa de una fila de la cola, sin inventar datos ausentes. */
+export function queueIdentity(row: SendReconciliationRow, history: DeliveryRow | undefined) {
+  const subject = history ? eventLabel(history) : templateSubject(row.template_name);
+  const name = history?.cleaner_name || null;
+  const task = history ? [history.property, formatTaskDate(history.task_date)].filter(Boolean).join(' · ') : '';
+  return {
+    title: name ?? recipientLabel(row.recipient_masked, row.channel),
+    phone: name ? maskedPhone(row.recipient_masked) : null,
+    subject,
+    task,
+    nameKnown: Boolean(name),
+  };
+}
