@@ -1,0 +1,22 @@
+{
+  "request": "Dani aprobó las propuestas de la auditoría de Trabajadores, incluida TRAB-22: retirar en una PR propia los componentes antiguos sin importadores, conservando lo útil.",
+  "reason": "Solo elimina código de interfaz sin ninguna importación estática ni dinámica (comprobado con búsqueda en src y scripts) y reduce WorkerDetailModal.tsx a la tarjeta de acceso de ruta que usa la ficha vigente, sin tocar su llamada. No cambia rutas, datos, hooks, servicios, permisos ni backend. Se conserva AvailabilityModal (único editor de la ventana semanal) hasta que Dani decida sobre TRAB-10.",
+  "verification": "Base main 4010d026 (PR #175 publicada). tsc app: 100 errores, los 102 de la base menos los 2 que había en WorkersPage (0 nuevos); tsc node 0; build OK; lint del archivo modificado sin errores; workersProfileRulesTest OK; workersBrowserTest local (layout real, datos ficticios) OK con la ficha y su tarjeta de ruta. Límite: no hay pruebas de las pantallas retiradas porque no están montadas.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/workersProfileRulesTest.mjs",
+    "scripts/personnelHoursTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "10673e80c766dda1af76e316af1fd9fc01dba55931bba618d2915c25a2d9cadc"
+}
