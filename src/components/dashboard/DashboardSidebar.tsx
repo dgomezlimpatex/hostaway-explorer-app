@@ -253,7 +253,7 @@ export const DashboardSidebar = () => {
   const { signOut, profile, user } = useAuth();
   const shouldShowIncidentBadge = isAdminOrManager();
   const { data: incidentStats } = useIncidentStats(shouldShowIncidentBadge);
-  const { data: whatsappHealth } = useWhatsAppDeliveryHealth(shouldShowIncidentBadge);
+  const whatsappHealth = useWhatsAppDeliveryHealth(shouldShowIncidentBadge);
 
 
   const isActive = (href: string) => {
@@ -292,9 +292,13 @@ export const DashboardSidebar = () => {
 
   const getBadgeCount = (item: NavigationItem) => {
     if (item.badge === 'pending-incidents') return incidentStats?.pending_limpatex ?? 0;
-    if (item.badge === 'whatsapp-delivery-errors') return whatsappHealth?.unresolved ?? 0;
+    if (item.badge === 'whatsapp-delivery-errors') return whatsappHealth.menuCount;
     return 0;
   };
+
+  const isBadgeUnavailable = (item: NavigationItem) => (
+    item.badge === 'whatsapp-delivery-errors' && whatsappHealth.unavailable
+  );
 
   const renderNavigationSection = (title: string, items: NavigationItem[]) => {
     const filteredItems = filterItemsByPermission(items);
@@ -331,6 +335,15 @@ export const DashboardSidebar = () => {
                         )}
                       >
                         {getBadgeCount(item) > 99 ? '99+' : getBadgeCount(item)}
+                      </span>
+                    )}
+                    {getBadgeCount(item) === 0 && isBadgeUnavailable(item) && (
+                      <span
+                        title="No se pudo comprobar el estado de WhatsApp"
+                        aria-label="No se pudo comprobar el estado de WhatsApp"
+                        className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full border border-white/60 px-1.5 text-[11px] font-bold leading-none text-white"
+                      >
+                        !
                       </span>
                     )}
                   </NavLink>

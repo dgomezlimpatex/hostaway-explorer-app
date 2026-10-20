@@ -415,7 +415,14 @@ assert.match(
 assert.match(pendingProcessor, /status\.eq\.pending/);
 assert.match(pendingProcessor, /status\.eq\.processing/);
 assert.match(pendingProcessor, /send-whatsapp-notification/);
-assert.match(pendingProcessor, /\.limit\(50\)/);
+// eb8f58b4 sustituyó el lote fijo de 50 por lotes acotados con presupuesto de
+// tiempo. Se comprueba el límite real y que solo se procesan eventos en vivo.
+const maxEventBatch = Number(pendingProcessor.match(/const MAX_EVENT_BATCH = (\d+);/)?.[1]);
+assert.ok(maxEventBatch >= 1 && maxEventBatch <= 50, 'el worker debe procesar un lote acotado de eventos');
+assert.match(pendingProcessor, /\.eq\('notification_mode', 'live'\)[\s\S]{0,200}\.limit\(MAX_EVENT_BATCH\)/);
+assert.match(pendingProcessor, /\.slice\(0, MAX_EVENT_BATCH\)/, 'pendientes y reintentos juntos no superan el lote');
+assert.match(pendingProcessor, /get_bounded_whatsapp_retry_event_ids'[\s\S]{0,80}_limit: MAX_EVENT_BATCH/);
+assert.match(pendingProcessor, /const canStartWork = \(\) => remainingWorkMs\(\) > MIN_REMAINING_WORK_MS/);
 assert.match(pendingProcessor, /claim_whatsapp_webhook_callbacks/);
 assert.match(pendingProcessor, /bind_whatsapp_delivery_from_status/);
 assert.match(pendingProcessor, /apply_whatsapp_delivery_status/);
