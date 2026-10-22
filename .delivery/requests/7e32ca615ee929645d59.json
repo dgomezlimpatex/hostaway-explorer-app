@@ -1,0 +1,21 @@
+{
+  "request": "Dani: al modificar consumos de varias propiedades (ahora CGA8.3) falla Guardar cambios con 57014 statement timeout en stock_property_consumption_rules; corregir la carga y el guardado de consumos.",
+  "reason": "Solo cambia dos lecturas del cliente: las reglas de consumo de una propiedad se leen sin joins a productos/categorías/almacenes (ningún consumidor los usa) y el guardado lee únicamente product_id y warehouse_id, y solo si algún almacén va omitido. El upsert, su payload, onConflict, el aviso registrado y los permisos no cambian; no hay SQL, esquema, datos ni comunicaciones nuevas.",
+  "verification": "Prueba Node con stockStorage real y Supabase simulado: el código de main falla con 57014 en la lectura previa y nunca escribe; el nuevo guarda con 1 lectura estrecha + 1 upsert (0 lecturas si todos los almacenes son explícitos). Casos: cantidades 0, almacén omitido conservado, null/'' explícito, regla nueva, regla no editada/producto no visible intactos, notas, fallo de lectura o upsert sin éxito falso ni aviso, sin reintento ciego, varias propiedades concurrentes con latencia sin cruces, contrato de consumidores. Navegador con arnés local verificado por HEFESTO (openbot_browser). Build y tipos sin errores nuevos, lint focalizado. Límite: no se ha medido producción; los 500 de stock_products y query_monitor_stats no se resuelven con este cambio.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/propertyConsumptionSaveTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "4904d3d161805696f44004375c56bb256a55ebd5e0c4ad8aad4698d18162a762"
+}
