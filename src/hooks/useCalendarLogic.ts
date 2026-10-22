@@ -42,7 +42,7 @@ const describeShift = (shift: CascadeShift) =>
  */
 export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenceDetails?: boolean } = {}) => {
   const {
-    tasks,
+    tasks: sourceTasks,
     cleaners,
     currentDate,
     currentView,
@@ -74,6 +74,20 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
+  // A display-only layer: refetches cannot flash the old cascade while its
+  // existing writers are still running. Never put preview rows in query cache.
+  const [dropPreview, setDropPreview] = useState<Map<string, Partial<Task>> | null>(null);
+  const [pendingDrops, setPendingDrops] = useState(0);
+  const [dropPhase, setDropPhase] = useState('');
+  const latestSourceTasks = useRef(sourceTasks);
+  latestSourceTasks.current = sourceTasks;
+  // A queued gesture can still refer to the virtual ID drawn before the
+  // preceding cascade materialized it. Resolve only IDs returned by that writer.
+  const materializedTaskIds = useRef(new Map<string, string>());
+  const tasks = useMemo(() => dropPreview
+    ? sourceTasks.map(task => dropPreview.has(task.id) ? { ...task, ...dropPreview.get(task.id) } : task)
+    : sourceTasks, [sourceTasks, dropPreview]);
+
   // Refs for scroll synchronization
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const bodyScrollRef = useRef<HTMLDivElement>(null);
@@ -88,6 +102,8 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
    */
   const handleTaskAssign = useCallback(async (taskId: string, cleanerId: string, currentCleaners: Cleaner[], timeSlot?: string, originCleanerId?: string) => {
 
+    const tasks = sourceTasks;
+    taskId = materializedTaskIds.current.get(taskId) || taskId;
     const task = tasks.find(t => t.id === taskId);
     if (!task) {
       toast({
@@ -149,17 +165,6 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
     if (assignment.kind === 'keep-team' && !scheduleChanged) {
       // Same people, same time: nothing to save and nobody to notify.
       return;
-    }
-
-    // Absences, fixed day off and maintenance of the target cleaner (reads only).
-    const conflicts = await fetchCleanerDayConflicts(supabase, cleanerId, task.date, startTime, endTime, { canSeeAbsenceDetails });
-    for (const conflict of conflicts) {
-      const confirmed = await confirm({
-        title: conflict.title,
-        description: `${conflict.detail}\n\n¿Deseas asignar la tarea de todas formas?`,
-        confirmLabel: "Asignar igualmente",
-      });
-      if (!confirmed) return;
     }
 
     // Availability: a configured day off or hours outside the configuration
@@ -233,16 +238,58 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
       }
     }
 
+    const preview = new Map<string, Partial<Task>>();
+    const nameById = new Map(currentCleaners.map(c => [c.id, c.name]));
+    (task.assignments || []).forEach(a => { if (!nameById.has(a.cleaner_id)) nameById.set(a.cleaner_id, a.cleaner_name || ''); });
+    const now = new Date().toISOString();
+    const team: Task['assignments'] = assignment.nextCleanerIds.map(id => ({
+      id: `preview-${taskId}-${id}`, task_id: taskId, cleaner_id: id,
+      cleaner_name: nameById.get(id) || '', assigned_at: now, created_at: now, updated_at: now,
+    }));
+    preview.set(taskId, {
+      startTime, endTime, cleanerId: team[0]?.cleaner_id,
+      cleaner: team.map(a => a.cleaner_name).join(', '),
+      assignments: team, assignmentCount: team.length,
+    });
+    displaced.forEach(shift => preview.set(shift.taskId, { startTime: shift.newStartTime, endTime: shift.newEndTime }));
+    setDropPreview(preview);
+    setDropPhase('Vista previa · comprobando disponibilidad. Aún no se ha guardado.');
+
+    // Keep fresh checks before any write, but do not make the local preview wait
+    // for them. Cancellation below removes only this display layer.
+    // Absences, fixed day off and maintenance of the target cleaner (reads only).
+    const conflicts = await fetchCleanerDayConflicts(supabase, cleanerId, task.date, startTime, endTime, { canSeeAbsenceDetails });
+    for (const conflict of conflicts) {
+      const confirmed = await confirm({
+        title: conflict.title,
+        description: `${conflict.detail}\n\n¿Deseas asignar la tarea de todas formas?`,
+        confirmLabel: "Asignar igualmente",
+      });
+      if (!confirmed) return;
+    }
+
+    // A realtime/cache update during the dialog/checks invalidates the plan.
+    // Do not persist a preview based on an older day (including a new task).
+    const daySignature = (rows: Task[]) => JSON.stringify(rows.filter(t => t.date === task.date)
+      .map(t => [t.id, t.startTime, t.endTime, t.status, t.calendarStatus, t.cleaner, getTaskAssignedCleanerIds(t)])
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
+    if (daySignature(tasks) !== daySignature(latestSourceTasks.current)) {
+      toast({ title: 'El día ha cambiado', description: 'No se ha guardado este movimiento. Revisa los horarios actualizados y vuelve a mover la tarea.', variant: 'destructive' });
+      return;
+    }
+    setDropPhase('Guardando reorganización… Los horarios mostrados están pendientes.');
+
     // 1) Assignment + schedule of the dropped task (canonical service, reverts itself on failure).
     try {
       if ((task as CalendarTask).isRecurringInstance) {
-        await materializeRecurringTaskInstance(task, {
+        const materialized = await materializeRecurringTaskInstance(task, {
           cleaner: cleanerName,
           cleanerId,
           startTime,
           endTime,
           status: 'pending',
         });
+        materializedTaskIds.current.set(taskId, materialized.id);
 
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['recurring-task-executions'] }),
@@ -274,6 +321,7 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
     } catch (error) {
       // The mutation already showed the error and reloaded the data.
       console.error('Error assigning task:', error);
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
       return;
     }
 
@@ -296,13 +344,16 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
           return data?.length ?? 0;
         },
         // Virtual recurring occurrences have no row yet: create it with the new times.
-        materializeRecurring: (recurringTask: Task, newStartTime: string, newEndTime: string) =>
-          materializeRecurringTaskInstance(recurringTask, {
+        materializeRecurring: async (recurringTask: Task, newStartTime: string, newEndTime: string) => {
+          const materialized = await materializeRecurringTaskInstance(recurringTask, {
             cleaner: recurringTask.cleaner || cleanerName,
             cleanerId: recurringTask.cleanerId || cleanerId,
             startTime: newStartTime,
             endTime: newEndTime,
-          }),
+          });
+          materializedTaskIds.current.set(recurringTask.id, materialized.id);
+          return materialized;
+        },
       };
       const result = await persistCascadeShiftsSettled(displaced, tasks, persistence);
 
@@ -351,6 +402,10 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
       }
     }
 
+    // The canonical assignment mutations invalidate without awaiting the read.
+    // Keep the preview until that reconciliation finishes, also with no cascade.
+    if (displaced.length === 0) await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+
     const keptCoworkers = assignment.kind === 'replace-origin' ? assignment.nextCleanerIds.length - 1 : 0;
     const details = [
       displaced.length > 0
@@ -364,7 +419,34 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
       title: assignment.kind === 'keep-team' ? "Horario actualizado" : "Tarea asignada",
       description: details.join(' ') || "La tarea se ha asignado correctamente.",
     });
-  }, [tasks, assignTaskWithSchedule, reassignTaskKeepingCoworkers, toast, availability, queryClient, confirm, choose, canSeeAbsenceDetails]);
+  }, [sourceTasks, assignTaskWithSchedule, reassignTaskKeepingCoworkers, toast, availability, queryClient, confirm, choose, canSeeAbsenceDetails]);
+
+  // Serialize gestures, not writes inside the existing cascade. Every queued
+  // intent runs against the latest render after the previous reconciliation;
+  // an older failure can never roll back a later gesture. Keep every intent.
+  const latestDrop = useRef(handleTaskAssign);
+  latestDrop.current = handleTaskAssign;
+  const dropTail = useRef<Promise<void>>(Promise.resolve());
+  const enqueueTaskAssign = useCallback((...args: Parameters<typeof handleTaskAssign>) => {
+    setPendingDrops(n => n + 1);
+    const run = dropTail.current.then(async () => {
+      try {
+        await latestDrop.current(...args);
+      } catch (error) {
+        console.error('Error checking/reconciling calendar move:', error);
+        toast({ title: 'No se pudo completar el movimiento', description: 'Revisa el calendario actualizado antes de volver a intentarlo.', variant: 'destructive' });
+      } finally {
+        setDropPreview(null);
+        setPendingDrops(n => n - 1);
+        setDropPhase('');
+      }
+      // React Query batches notifications; let the reconciled rows render
+      // before resolving the next queued gesture's task and duration.
+      await new Promise<void>(resolve => setTimeout(resolve, 0));
+    });
+    dropTail.current = run;
+    return run;
+  }, [toast]);
 
   /**
    * Same checks as the drop for quick actions that change the schedule of an
@@ -418,7 +500,7 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
     handleDragEnd,
     handleDragOver,
     handleDrop
-  } = useDragAndDrop(handleTaskAssign);
+  } = useDragAndDrop(enqueueTaskAssign);
 
   // Memoized handlers with useCallback
   const handleNewTask = useCallback(() => {
@@ -542,6 +624,7 @@ export const useCalendarLogic = ({ canSeeAbsenceDetails = true }: { canSeeAbsenc
 
   return {
     // Data
+    pendingCalendarMove: pendingDrops > 0 ? `${dropPhase || 'Movimiento pendiente de comprobar.'}${pendingDrops > 1 ? ` ${pendingDrops - 1} movimiento(s) en cola.` : ''}` : null,
     tasks,
     cleaners,
     currentDate,
