@@ -464,7 +464,7 @@ class StockStorageService {
 
   async getPropertyConsumptionRules(propertyId: string): Promise<StockPropertyConsumptionRule[]> {
     // Sin joins: las pantallas de propiedad cruzan con useStockProducts y el
-    // join a productos/categorías/almacenes expiraba (57014).
+    // join a productos/categorías/almacenes podía expirar (57014).
     const { data, error } = await db
       .from('stock_property_consumption_rules')
       .select('*')
@@ -510,7 +510,7 @@ class StockStorageService {
 
     // Solo hace falta el almacén vigente cuando la regla no lo indica. Lectura
     // estrecha por propiedad, sin joins a productos/categorías/almacenes: la
-    // lectura completa expiraba (57014) antes de llegar a escribir.
+    // lectura completa podía expirar (57014) antes de llegar a escribir.
     const existingWarehouseByProduct = new Map<string, string | null>();
     if (rules.some(rule => rule.warehouse_id === undefined)) {
       const { data, error } = await db
