@@ -128,13 +128,13 @@ const bundle = await build({
 const fixture = `
 (() => {
   const base = {clienteId:'client',direccion:'Calle ficticia',numeroCamas:1,numeroCamasPequenas:0,numeroCamasSuite:0,numeroSofasCama:0,numeroBanos:1,numeroCocinas:1,duracionServicio:60,costeServicio:35,checkInPredeterminado:'15:00',checkOutPredeterminado:'11:00',numeroSabanas:3,numeroSabanasRequenas:0,numeroSabanasSuite:0,numeroToallasGrandes:2,numeroTotallasPequenas:2,numeroAlfombrines:1,numeroFundasAlmohada:2,kitAlimentario:1,amenitiesBano:1,amenitiesCocina:1,cantidadRollosPapelHigienico:2,cantidadRollosPapelCocina:0,bayetasCocina:1,bolsasBasura:1,notas:'',linenControlEnabled:true,amenitiesControlEnabled:true,isActive:true,excludeFromExport:false};
-  const listeners = new Set();
+  const listeners = [];
   const rule = (property_id, product_id, quantity_per_cleaning, warehouse_id, notes = null) => ({ id: property_id + ':' + product_id, property_id, product_id, quantity_per_cleaning, warehouse_id, notes, is_active: true, updated_at: '2026-10-22T10:00:00Z' });
   const db = window.harnessDb = {
     version: 0, log: [], events: [],
     controls: { wideJoinTimeout: true, failProducts: false, failRulesRead: false, failUpsert: false, latencyMs: 400 },
-    subscribe: fn => { listeners.add(fn); return () => listeners.delete(fn); },
-    notify: () => { db.version++; for (const fn of listeners) fn(); },
+    subscribe: fn => { listeners.push(fn); return () => { const index = listeners.indexOf(fn); if (index >= 0) listeners.splice(index, 1); }; },
+    notify: () => { db.version++; for (const fn of [...listeners]) fn(); },
     clients: [{ id: 'client', nombre: 'Cliente ficticio', isActive: true, linenControlEnabled: true, amenitiesControlEnabled: true }],
     properties: [
       { ...base, id: 'p-cga83', codigo: 'CGA8.3', nombre: 'Apartamento ficticio CGA8.3' },
