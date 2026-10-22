@@ -31,8 +31,15 @@ const overrides = {
       const op = { table, select: '*', filters: [], kind: 'read' };
       const b = new Proxy(function () {}, {
         get(_, prop) {
-          if (prop === 'then') return (resolve, reject) => {
+          if (prop === 'then') return async (resolve, reject) => {
             W.__db.calls.push(op);
+            if (W.__slow && ['worker_fixed_days_off', 'worker_absences', 'worker_maintenance_cleanings', 'tasks'].includes(table)) await new Promise(r => setTimeout(r, 1000));
+            if (table === 'tasks' && op.kind === 'update' && W.__slow) {
+              const expected = Object.fromEntries(op.filters.filter(f => f[0] === 'eq').map(f => [f[1], f[2]]));
+              const t = W.__tasks.find(t => t.id === expected.id && t.startTime === expected.start_time && t.endTime === expected.end_time && t.status === expected.status);
+              if (t) Object.assign(t, { startTime: op.payload.start_time, endTime: op.payload.end_time });
+              return resolve({ data: t ? [{ id: t.id }] : [], error: null });
+            }
             if (op.kind !== 'read') return Promise.resolve({ data: [{ id: 'x' }], error: null }).then(resolve, reject);
             const match = (row) => op.filters.every(([name, column, value]) => {
               if (name === 'eq') return row[column] === value;
@@ -104,11 +111,22 @@ const overrides = {
     export const taskStorageService = { ...real,
       getTasks: async () => {
         window.__db.calls.push({ getTasks: true });
+        if (window.__slow) await new Promise(r => setTimeout(r, 1000));
         if (window.__tasksFail) throw new Error('fallo de red simulado');
-        return window.__tasks;
+        return structuredClone(window.__tasks);
       },
       createTask: async (task) => { window.__db.calls.push({ createTask: task }); return { ...task, id: 'nueva' }; },
     };
+  `,
+  'src/services/storage/taskAssignmentService': `
+    const assign = async (taskId, cleanerName, cleanerId, startTime, endTime) => {
+      window.__db.calls.push({ fixtureAssignment: taskId });
+      await new Promise(r => setTimeout(r, window.__slow ? 1000 : 0));
+      window.__tasks = window.__tasks.map(t => t.id === taskId ? { ...t, cleanerId, cleaner: cleanerName,
+        assignments: [{ task_id: taskId, cleaner_id: cleanerId, cleaner_name: cleanerName }],
+        ...(startTime ? { startTime } : {}), ...(endTime ? { endTime } : {}) } : t);
+    };
+    export const taskAssignmentService = { assignTaskWithSchedule: assign };
   `,
   'src/hooks/useCalendarWorkload': `
     export * from '${abs('src/hooks/useCalendarWorkload.ts')}?real';
@@ -345,6 +363,36 @@ try {
     const after = await page.evaluate(() => window.__db.calls.filter((c) => c.kind && c.kind !== 'read' || c.fn || c.rpc).length);
     results.cascade.writesAfterCancel = after - before;
     assert.equal(after - before, 0, 'CAL-03: cancel makes no writes, no function calls');
+
+    // Real page + hooks + mutations; 1 s controlled delay at service boundaries.
+    // The measurement starts at the actual native drop/click, excluding Playwright.
+    await page.evaluate(() => {
+      window.__slow = true;
+      document.addEventListener('drop', () => { window.__dropAt = performance.now(); }, { capture: true });
+      const observer = new MutationObserver(() => {
+        if (!window.__previewMs && document.querySelector('[role="alertdialog"]')) window.__previewMs = performance.now() - window.__dropAt;
+        const card = document.querySelector('[role="button"][data-task-id="t-short"]');
+        if (window.__confirmAt && !window.__visibleMs && card?.getAttribute('aria-label').includes('09:30 a 10:00')) window.__visibleMs = performance.now() - window.__confirmAt;
+      });
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+      document.addEventListener('click', e => {
+        if (e.target.closest('button')?.textContent.includes('Desplazar y asignar')) window.__confirmAt = performance.now();
+      }, { capture: true });
+    });
+    await card.dragTo(slot);
+    await page.getByRole('alertdialog').waitFor();
+    await page.getByRole('button', { name: 'Desplazar y asignar', exact: true }).click();
+    await page.waitForFunction(() => window.__visibleMs !== undefined);
+    const timing = await page.evaluate(() => ({ previewMs: window.__previewMs, cascadeVisibleMs: window.__visibleMs, serverStartTime: window.__tasks.find(t => t.id === 't-short').startTime }));
+    assert.ok(timing.previewMs <= 100, `local preview ${timing.previewMs} ms`);
+    assert.ok(timing.cascadeVisibleMs <= 100, `local cascade ${timing.cascadeVisibleMs} ms`);
+    assert.equal(timing.serverStartTime, '09:00', 'cards move before the simulated server writes');
+    await page.getByRole('status').filter({ hasText: /Aún no se ha guardado|pendientes/ }).waitFor();
+    await shot(page, 'calendar-cascade-pending.png');
+    await page.waitForFunction(() => !document.body.textContent.includes('Los horarios mostrados están pendientes.') && window.__tasks.find(t => t.id === 't-short').startTime === '09:30');
+    timing.persistenceMs = await page.evaluate(() => performance.now() - window.__confirmAt);
+    results.cascade.immediate = timing;
+    await shot(page, 'calendar-cascade-saved.png');
     await context.close();
   }
 

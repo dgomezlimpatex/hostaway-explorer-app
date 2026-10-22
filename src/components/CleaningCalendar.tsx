@@ -49,6 +49,7 @@ const CleaningCalendar = () => {
   // Calendar logic and data
   const {
     tasks,
+    pendingCalendarMove,
     cleaners,
     currentDate,
     currentView,
@@ -437,6 +438,7 @@ const CleaningCalendar = () => {
           onCleanerFiltersChange={setSelectedCleanerFilters}
         />
 
+        {pendingCalendarMove && <div role="status" className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">{pendingCalendarMove}</div>}
         {staleDataBanner}
 
         {/* Panel desplegable de trabajadoras no disponibles */}
