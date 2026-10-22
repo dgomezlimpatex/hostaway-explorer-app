@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { build } from 'esbuild';
 
 // Ejecuta savePropertyConsumptionRules real con un Supabase simulado: sin red ni datos reales.
@@ -6,7 +7,7 @@ import { build } from 'esbuild';
 const entry = process.env.STOCK_STORAGE_ENTRY || './src/services/storage/stockStorage';
 const bundle = await build({
   stdin: {
-    contents: `export { stockStorage } from '${entry}'; export { calls, events } from './src/integrations/supabase/client';`,
+    contents: `export { stockStorage } from '${entry}'; export { calls, events } from './src/integrations/supabase/client'; export { buildInitialStockConsumptions } from './src/components/properties/forms/propertyStockConsumption';`,
     resolveDir: process.cwd(),
     loader: 'ts',
   },
@@ -45,7 +46,7 @@ const bundle = await build({
   }],
 });
 const url = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`;
-const { stockStorage, calls, events } = await import(url);
+const { stockStorage, calls, events, buildInitialStockConsumptions } = await import(url);
 
 const timeout = { code: '57014', message: 'canceling statement due to statement timeout' };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -99,6 +100,12 @@ assert.deepEqual(loaded.map(rule => [rule.product_id, rule.quantity_per_cleaning
 ]);
 assert.equal(typeof (await (scenario(), stockStorage.getPropertyConsumptionRules('other')))[0].quantity_per_cleaning, 'number');
 take();
+// Los consumidores de la propiedad solo usan product_id/quantity_per_cleaning/notes, no los embebidos.
+const products = [{ id: 'sheets', name: 'Sábanas grandes' }, { id: 'kit', name: 'Amenities baño' }, { id: 'paper', name: 'Rollos de papel higiénico' }];
+assert.deepEqual(buildInitialStockConsumptions(products, loaded, { cantidadRollosPapelHigienico: 2 }), { sheets: 3, kit: 1, paper: 2 });
+for (const file of ['src/components/properties/PropertyConsumptionsPanel.tsx', 'src/components/properties/usePropertyInlineEdit.ts', 'src/components/properties/forms/StockConsumptionSection.tsx', 'src/components/properties/forms/propertyStockConsumption.ts']) {
+  assert.doesNotMatch(readFileSync(file, 'utf8'), /\brules?(\.data)?(\?\.|\.)(product|warehouse)\b|find\([^)]*\)\?\.(product|warehouse)\b/, `${file} no lee reglas embebidas`);
+}
 // Un fallo de lectura sigue siendo un error (no una lista vacía), igual que en productos.
 scenario({ narrowReadError: timeout });
 await rejectsWith(stockStorage.getPropertyConsumptionRules('cga8-3'), '57014');
