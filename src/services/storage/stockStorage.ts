@@ -463,16 +463,11 @@ class StockStorageService {
   }
 
   async getPropertyConsumptionRules(propertyId: string): Promise<StockPropertyConsumptionRule[]> {
+    // Sin joins: las pantallas de propiedad cruzan con useStockProducts y el
+    // join a productos/categorías/almacenes podía expirar (57014).
     const { data, error } = await db
       .from('stock_property_consumption_rules')
-      .select(`
-        *,
-        product:stock_products(
-          *,
-          category:stock_categories(*)
-        ),
-        warehouse:stock_warehouses(*)
-      `)
+      .select('*')
       .eq('property_id', propertyId)
       .eq('is_active', true)
       .order('updated_at', { ascending: false });
@@ -511,18 +506,31 @@ class StockStorageService {
     propertyId: string,
     rules: SaveStockPropertyConsumptionRuleData[]
   ): Promise<void> {
-    const existingRules = await this.getPropertyConsumptionRules(propertyId);
-    const existingByProduct = new Map(existingRules.map(rule => [rule.product_id, rule]));
+    if (rules.length === 0) return;
+
+    // Solo hace falta el almacén vigente cuando la regla no lo indica. Lectura
+    // estrecha por propiedad, sin joins a productos/categorías/almacenes: la
+    // lectura completa podía expirar (57014) antes de llegar a escribir.
+    const existingWarehouseByProduct = new Map<string, string | null>();
+    if (rules.some(rule => rule.warehouse_id === undefined)) {
+      const { data, error } = await db
+        .from('stock_property_consumption_rules')
+        .select('product_id, warehouse_id')
+        .eq('property_id', propertyId)
+        .eq('is_active', true);
+
+      if (error) throw error;
+      for (const row of data || []) existingWarehouseByProduct.set(row.product_id, row.warehouse_id);
+    }
+
     const normalizedRules = rules.map((rule) => ({
       property_id: propertyId,
       product_id: rule.product_id,
-      warehouse_id: rule.warehouse_id === undefined ? existingByProduct.get(rule.product_id)?.warehouse_id ?? null : rule.warehouse_id || null,
+      warehouse_id: rule.warehouse_id === undefined ? existingWarehouseByProduct.get(rule.product_id) ?? null : rule.warehouse_id || null,
       quantity_per_cleaning: Math.max(0, Number(rule.quantity_per_cleaning) || 0),
       notes: rule.notes || null,
       is_active: true,
     }));
-
-    if (normalizedRules.length === 0) return;
 
     const { error } = await db
       .from('stock_property_consumption_rules')
