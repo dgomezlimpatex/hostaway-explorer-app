@@ -1,0 +1,26 @@
+{
+  "request": "Dani solicita respuesta visual inmediata al mover una tarea que desplaza otras en cascada en el calendario principal.",
+  "reason": "Cambio frontend de cálculo y presentación local: diálogo sin esperar red, capa visual pendiente y gestos serializados; conserva escritores, comprobaciones, compensaciones y avisos existentes sin ampliar efectos externos.",
+  "verification": "Hook real con fixtures offline y demoras: 376 ms a 8-15 ms en propuesta, 1089 ms a 15 ms en cascada visible; guardado separado. Casos de cancelación, fallo inicial/parcial, compensación concurrente, refetch obsoleto, gestos consecutivos, compartidas, recurrentes, fijas y 23:59. Página real en Chromium con mocks: 24 ms propuesta, 19 ms actualización DOM, 4087 ms persistencia/reconciliación. Build y lint correctos; aplicación 100 errores previos y actuales, Node 0 y 0. Ninguna prueba con producción o comunicaciones reales. Backend no transaccional y escritor inicial conservan sus límites previos, descritos en informe externo.",
+  "effects": {
+    "productionData": false,
+    "database": false,
+    "security": false,
+    "authentication": false,
+    "communications": false,
+    "integrations": false,
+    "costs": false,
+    "infrastructure": false
+  },
+  "tests": [
+    "scripts/calendarCascadeImmediateTest.mjs",
+    "scripts/calendarCascadeTest.mjs",
+    "scripts/calendarSharedDropTest.mjs",
+    "scripts/calendarTaskResizeTest.mjs",
+    "scripts/calendarRecurringQuickActionsTest.mjs",
+    "scripts/calendarMadridDatesTest.mjs"
+  ],
+  "version": 1,
+  "scope": "application",
+  "digest": "2f599f36aaf035f2c4776118793ecda417eea2b93b5af4696242758fb329e5a9"
+}
